@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page DML — Lesson 1</title>
+<style>
+:root{
+  --deep:#00586A;--teal:#007C89;--aqua:#6EDBDC;--bright:#00AFC8;
+  --ink:#11333B;--mist:#F4FAFA;--line:#D5EEEE;--white:#fff;
+  --good:#087F5B;--bad:#B42318;--amber:#9A6700;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--mist);color:var(--ink);line-height:1.55}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.topbar-inner{max-width:1180px;margin:auto;padding:12px 22px;display:flex;align-items:center;gap:18px}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--deep);color:#fff;display:grid;place-items:center;font-weight:900}
+.brand{flex:1}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:800}
+.brand h1{font-size:18px;margin:1px 0 0}
+.lang{border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:#fff;color:var(--ink)}
+.progress-wrap{height:5px;background:#dff2f2}
+.progress-bar{height:100%;background:var(--bright);width:0;transition:.3s}
+.layout{max-width:1180px;margin:auto;display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;padding:28px 22px 70px}
+.sidebar{position:sticky;top:86px;align-self:start}
+.course-card,.lesson-card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 6px 22px rgba(0,60,70,.06)}
+.course-card{padding:20px}
+.course-card h2{font-size:18px;margin:5px 0 8px}
+.muted{color:#60777d;font-size:14px}
+.stat{display:flex;justify-content:space-between;font-size:14px;margin-top:16px}
+.block-list{margin-top:14px;display:grid;gap:6px}
+.block-link{width:100%;border:0;background:transparent;border-radius:12px;padding:9px 10px;text-align:left;color:#547077;display:flex;gap:8px;align-items:center}
+.block-link:hover{background:var(--mist)}
+.block-link.active{background:#e7f8f8;color:var(--deep);font-weight:800}
+.block-link.done::before{content:"✓";color:var(--good);font-weight:900}
+.block-link:not(.done)::before{content:"○";color:#8da3a8}
+.lesson-card{padding:clamp(22px,5vw,52px)}
+.step-label{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:900}
+h2{font-size:clamp(28px,4vw,44px);line-height:1.12;margin:10px 0 18px;letter-spacing:-.025em}
+h3{font-size:23px;margin:28px 0 10px}
+h4{font-size:18px;margin:22px 0 7px}
+.lead{font-size:19px;color:#35575f}
+.quote{border-left:5px solid var(--aqua);background:#effafa;border-radius:0 16px 16px 0;padding:18px 20px;margin:22px 0;font-size:20px;font-weight:750}
+.status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:22px 0}
+.status-card{border:1px solid var(--line);background:#fbfefe;border-radius:16px;padding:14px}
+.status-card b{display:block}
+.question{border-top:1px solid var(--line);margin-top:30px;padding-top:26px}
+.options{display:grid;gap:10px;margin:16px 0}
+.option{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);background:#fff;border-radius:16px;padding:14px;text-align:left;width:100%;color:var(--ink)}
+.option:hover{border-color:var(--bright);background:#f2fcfc}
+.option.selected{border:2px solid var(--bright);background:#eafafa}
+.badge{min-width:28px;height:28px;border-radius:50%;background:#e6f5f5;color:var(--deep);display:grid;place-items:center;font-weight:900}
+.feedback{border-radius:16px;padding:16px;margin:14px 0}
+.feedback.good{background:#eaf8f2;border:1px solid #a4ddc6;color:#075f45}
+.feedback.bad{background:#fff1f1;border:1px solid #efb1b1;color:#8e1e1e}
+.feedback.neutral{background:#eef9fa;border:1px solid #bce5e7}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:34px}
+.btn{border:0;border-radius:14px;padding:12px 18px;font-weight:800}
+.btn-primary{background:var(--deep);color:#fff}
+.btn-primary:hover{background:var(--teal)}
+.btn-secondary{background:#e7f7f7;color:var(--deep)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.principle{background:var(--deep);color:#fff;border-radius:20px;padding:22px;margin:26px 0}
+.principle strong{color:var(--aqua)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:650px}
+th,td{padding:13px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:#e9f8f8;color:var(--deep)}
+.checklist{display:grid;gap:8px;margin:14px 0}
+.checkline{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #edf4f4}
+.mentor{border:1px solid var(--line);border-radius:18px;padding:18px;margin:18px 0;background:#fbfefe}
+.mentor-label{color:var(--teal);font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:900}
+textarea{width:100%;min-height:160px;padding:15px;border:1px solid var(--line);border-radius:16px;resize:vertical;color:var(--ink)}
+.voice-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.mic{border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px}
+.mic.listening{background:#fff0f0;border-color:#e69b9b;color:#a11}
+.complete-panel{text-align:center;padding:18px 0}
+.tick{font-size:55px;color:var(--good)}
+.hidden{display:none!important}
+.accordion{border:1px solid var(--line);border-radius:16px;margin:10px 0;overflow:hidden}
+.acc-btn{width:100%;border:0;background:#fbfefe;padding:15px;text-align:left;font-weight:800;color:var(--ink)}
+.acc-body{padding:0 15px 15px;display:none}
+.accordion.open .acc-body{display:block}
+.model-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.model-card{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}
+.model-card button{margin-top:10px}
+.choice-note{font-size:13px;color:#60777d}
+@media(max-width:840px){
+ .layout{grid-template-columns:1fr;padding:18px 12px 50px}
+ .sidebar{position:static}
+ .block-list{display:none}
+ .lesson-card{border-radius:18px;padding:24px 18px}
+ .status-grid,.model-grid{grid-template-columns:1fr}
+ .topbar-inner{padding:10px 12px}
+ .brand h1{font-size:15px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">TP</div>
+    <div class="brand">
+      <div class="eyebrow">Turner Page Academy</div>
+      <h1>Data Migration Lead Programme</h1>
+    </div>
+    <select id="language" class="lang" aria-label="Learning language">
+      <option value="en-GB">English</option>
+      <option disabled>Français — coming soon</option>
+      <option disabled>Deutsch — coming soon</option>
+      <option disabled>Español — coming soon</option>
+      <option disabled>Norsk — coming soon</option>
+    </select>
+  </div>
+  <div class="progress-wrap"><div id="topProgress" class="progress-bar"></div></div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="course-card">
+      <div class="eyebrow">Module 1</div>
+      <h2>The Data Migration Lead Mindset</h2>
+      <p class="muted">Lesson 1 · What a Data Migration Lead Really Owns</p>
+      <div class="stat"><span>Lesson progress</span><strong id="progressText">0%</strong></div>
+      <div class="block-list" id="blockList"></div>
+    </div>
+  </aside>
+  <main class="lesson-card" id="lesson"></main>
+</div>
+
+<script>
+const stateKey="tp_dml_l1_final";
+let state=JSON.parse(localStorage.getItem(stateKey)||'{"index":0,"completed":[],"answers":{},"reflection":"","attempts":0}');
+const blocks=[
+{
+id:"b1",nav:"Challenge",title:"Are We Ready to Migrate?",type:"single",
+html:`<p class="lead">It's Friday afternoon. Next weekend is the first full migration rehearsal.</p>
+<p>In an hour, you'll present your migration status to the Programme Manager. You've reviewed the latest information.</p>
+<div class="status-grid">
+<div class="status-card"><b>ETL development</b>Complete</div>
+<div class="status-card"><b>Migration environments</b>Ready</div>
+<div class="status-card"><b>Migration validation</b>97% complete</div>
+<div class="status-card"><b>Customer data</b>380 records accepted by Finance with missing payment terms</div>
+<div class="status-card"><b>Defects</b>Two high-priority defects remain open</div>
+</div>
+<div class="quote">“David, are we ready to migrate next weekend?”</div>
+<div class="question"><h3>Your response</h3><p>What would you say?</p></div>`,
+options:["We're ready to migrate.","We're not ready to migrate.","We're ready, provided the remaining risks are resolved before the migration.","I need further evidence before I can make a recommendation."],
+feedback:[
+`<strong>You may ultimately recommend Go.</strong><br>But the information shown does not yet explain the impact of the open defects, incomplete validation or accepted Finance-data issue. A Go recommendation needs evidence, not a mostly green status pack.`,
+`<strong>You may ultimately recommend No-Go.</strong><br>But the information shown does not yet demonstrate that the remaining issues prevent a safe migration. A No-Go recommendation also needs evidence.`,
+`<strong>Go with conditions may be the right outcome.</strong><br>Before defining those conditions, you need to understand the impact of each outstanding issue and whether the remaining risks are acceptable.`,
+`<strong>This is the strongest response at this stage.</strong><br>You have useful status information, but not enough evidence to justify Go, No-Go or Go with conditions. The lesson will show you what a DML must establish before recommending.`
+]},
+{
+id:"b2",nav:"Ownership",title:"What Does the Data Migration Lead Own?",type:"multi",
+html:`<p>Separate the current facts from your responsibilities.</p>
+<div class="table-wrap"><table><thead><tr><th>Area</th><th>Status</th></tr></thead><tbody>
+<tr><td>ETL</td><td>Complete</td></tr><tr><td>Migration validation</td><td>97% complete</td></tr>
+<tr><td>Customer payment terms</td><td>380 records accepted by Finance</td></tr>
+<tr><td>Critical defects</td><td>Two still open</td></tr><tr><td>Infrastructure</td><td>Ready</td></tr>
+</tbody></table></div>
+<div class="question"><h3>Your task</h3><p>Which statements do you believe are true? Select every answer that applies.</p></div>`,
+options:[
+"I own the successful delivery of the ETL workstream.",
+"I own correcting the missing Finance data.",
+"I own ensuring migration validation reaches the agreed exit criteria.",
+"I own recommending whether the migration should proceed.",
+"I own closing the two critical defects myself."
+]
+},
+{
+id:"b3",nav:"Coach",title:"Let's Review Your Answers",type:"review",
+html:`<p>The course has recorded what you selected in Block 2. We will now review each statement and coach your reasoning.</p>`
+},
+{
+id:"b4",nav:"Apply",title:"Continue the Meeting",type:"staged",
+html:`<div class="quote">Finance: “We're happy to accept the missing payment terms. We'll correct them after migration.”</div>
+<div class="quote">Test Lead: “Validation is only 97% complete because two business teams haven't finished reviewing their data.”</div>
+<div class="quote">Programme Manager: “Does this change your recommendation?”</div>`
+},
+{
+id:"b5",nav:"Responsibility model",title:"The Turner Page Responsibility Model",type:"model",
+html:`<p>A DML owns the successful delivery of the migration workstream. That does not mean personally owning every task or every piece of business data.</p>
+<p>Open each area. Predict the primary owner before revealing the Turner Page view.</p>`
+},
+{
+id:"b6",nav:"New project",title:"New Project, Same Thinking",type:"single",
+html:`<p>Six months later, you're leading another D365 migration. Go-live is in four days.</p>
+<div class="status-grid">
+<div class="status-card"><b>ETL</b>Complete</div><div class="status-card"><b>Validation</b>100% complete</div>
+<div class="status-card"><b>Business sign-off</b>Complete</div><div class="status-card"><b>Infrastructure</b>Ready</div>
+<div class="status-card"><b>Critical defect</b>One remains open</div>
+</div>
+<p>The defect affects a report used daily by Purchasing. It does not affect the migration itself.</p>
+<div class="quote">Technical Lead: “It's only a reporting issue. Let's migrate.”</div>
+<div class="quote">Purchasing Manager: “My team uses that report every day. I don't want to go live until it's fixed.”</div>
+<div class="quote">Programme Manager: “What's your recommendation?”</div>`,
+options:[
+"Recommend delaying the migration until the defect is fixed.",
+"Recommend proceeding because the migration itself is unaffected.",
+"Assess the business impact, confirm whether an acceptable workaround exists, and make an evidence-based recommendation.",
+"Ask the Technical Lead to decide because it's a technical issue."
+],
+feedback:[
+`You may ultimately recommend delay, but first establish the actual business impact and whether a workable mitigation exists.`,
+`The migration may be technically unaffected, but post-migration business impact still matters. Technical readiness alone is not enough.`,
+`<strong>This is the strongest response.</strong><br>Establish the business impact, mitigation, risk ownership and overall readiness before recommending.`,
+`The Technical Lead can explain the defect. The DML must integrate that evidence into the migration recommendation.`
+]},
+{
+id:"b7",nav:"Five questions",title:"The Five Questions Every DML Should Ask",type:"evidence",
+html:`<p>Before recommending Go or No-Go, answer five questions:</p>
+<div class="checklist">
+<div class="checkline"><strong>1.</strong>&nbsp; Is the migration technically ready?</div>
+<div class="checkline"><strong>2.</strong>&nbsp; Have agreed exit criteria been achieved?</div>
+<div class="checkline"><strong>3.</strong>&nbsp; Is the business ready?</div>
+<div class="checkline"><strong>4.</strong>&nbsp; What risks remain, and are they acceptable?</div>
+<div class="checkline"><strong>5.</strong>&nbsp; Can I defend my recommendation with evidence?</div>
+</div>
+<div class="principle"><strong>Recommendations are earned through evidence.</strong><br>Not confidence. Not optimism. Not pressure.</div>`
+},
+{
+id:"b8",nav:"Mentor insight",title:"Lessons from the Real World",type:"mentor",
+html:`<p>The same five mistakes appear repeatedly. Open each one, then choose the blind spot you are most likely to face.</p>`
+},
+{
+id:"b9",nav:"Reflection",title:"Imagine It's Monday Morning",type:"reflection",
+html:`<p>You've started your first assignment as a Data Migration Lead.</p>
+<div class="quote">“So... what does a Data Migration Lead actually do?”</div>
+<p>You have one minute. Type or dictate your answer.</p>
+<label for="reflection"><strong>Your answer</strong></label>
+<textarea id="reflection" placeholder="A Data Migration Lead..."></textarea>
+<div class="voice-row"><button type="button" id="micButton" class="mic">🎤 Start speaking</button><span id="micStatus" class="muted"></span></div>`
+},
+{
+id:"b10",nav:"Summary",title:"If You Remember Nothing Else...",type:"content",
+html:`<p class="lead">A successful Data Migration Lead is not the person who does the most technical work.</p>
+<p>The DML leads the migration workstream, manages risk and provides evidence-based recommendations that give the project confidence to make informed decisions.</p>
+<h3>Remember these five principles</h3>
+<div class="checklist">
+<div class="checkline">✓ Own the migration workstream—not every task.</div>
+<div class="checkline">✓ Build recommendations on evidence, not optimism.</div>
+<div class="checkline">✓ Ensure issues are understood and managed—not necessarily solved by you.</div>
+<div class="checkline">✓ Lead people, risks and decisions—not just technical activities.</div>
+<div class="checkline">✓ Give the project confidence to make informed migration decisions.</div>
+</div>
+<div class="quote">Would you answer “Are we ready to migrate?” differently now than you would have at the start?</div>`
+},
+{
+id:"b11",nav:"Complete",title:"Congratulations!",type:"content",
+html:`<div class="complete-panel"><div class="tick">✓</div>
+<p class="lead"><strong>You've completed your first Turner Page Data Migration Lead lesson.</strong></p>
+<p>Every lesson in this programme is designed to change the way you think—not simply increase what you know.</p></div>
+<h3>Today you learned how to</h3>
+<div class="checklist">
+<div class="checkline">✓ Distinguish ownership from execution.</div>
+<div class="checkline">✓ Understand what a DML is truly responsible for.</div>
+<div class="checkline">✓ Make evidence-based migration recommendations.</div>
+<div class="checkline">✓ Lead the migration workstream without becoming the bottleneck.</div>
+<div class="checkline">✓ Think like an experienced Data Migration Lead.</div>
+</div>
+<div class="quote">“Am I listening like a technical specialist... or am I listening like a Data Migration Lead?”</div>
+<h3>Next lesson</h3>
+<p><strong>Lesson 2 — The Data Migration Lead Within the ERP Project</strong></p>
+<p class="muted">Lesson 2 is not yet available in this prototype.</p>`
+}
+];
+
+const owners=[
+["Business data quality","Business","Identify issues, communicate impact and ensure they are managed."],
+["ETL development","Data Migration Team","Lead the workstream and ensure successful delivery."],
+["Data profiling","Data Migration Team","Lead the workstream and ensure successful delivery."],
+["Data mapping","Data Migration Team and Business","Ensure completion, agreement and governance."],
+["Migration validation","Data Migration Team and Business","Ensure agreed exit criteria are achieved."],
+["Migration planning","Data Migration Lead","Own."],
+["Migration risks","Data Migration Lead","Own."],
+["Migration readiness","Data Migration Lead","Own."],
+["Migration recommendation","Data Migration Lead","Own."],
+["Go / No-Go decision","Programme Manager / Project Governance","Provide an evidence-based recommendation."]
+];
+
+const mistakes=[
+["Becoming the bottleneck","Capable people naturally start solving everything themselves.","Watch for people waiting for you, tasks that should be delegated, and a to-do list growing faster than everyone else's.","What can I clarify or delegate today so the migration depends less on me tomorrow?"],
+["Confusing activity with progress","Meetings, emails and workshops create the feeling of movement.","Ask what evidence proves the migration is closer to success than yesterday.","What measurable result changed today?"],
+["Accepting reassurance instead of evidence","“We're nearly there” is easy to accept under pressure.","Trust people, but base recommendations on completed work and visible evidence.","What has actually been completed, and where is the evidence?"],
+["Solving the wrong problem","The visible symptom attracts attention before impact and ownership are understood.","Establish business impact, risk and ownership before fixing or escalating.","What problem actually threatens the migration outcome?"],
+["Forgetting the objective","Pressure makes people optimise for individual teams or stakeholders.","Make every decision increase the likelihood of a successful migration.","Does this decision help the migration succeed, or merely keep someone happy?"]
+];
+
+const lesson=document.getElementById("lesson"), list=document.getElementById("blockList");
+function save(){localStorage.setItem(stateKey,JSON.stringify(state))}
+function done(id){if(!state.completed.includes(id))state.completed.push(id)}
+function pct(){return Math.round(state.completed.length/blocks.length*100)}
+function renderList(){
+ list.innerHTML="";
+ blocks.forEach((b,i)=>{
+  const btn=document.createElement("button");btn.className="block-link";btn.textContent=(i+1)+". "+b.nav;
+  btn.addEventListener("click",()=>{if(i<=state.index||state.completed.includes(b.id)){state.index=i;save();render()}});
+  list.appendChild(btn);
+ });
+}
+function chrome(){
+ document.getElementById("topProgress").style.width=pct()+"%";
+ document.getElementById("progressText").textContent=pct()+"%";
+ [...list.children].forEach((x,i)=>{x.classList.toggle("active",i===state.index);x.classList.toggle("done",state.completed.includes(blocks[i].id))});
+}
+function shell(b,i){return `<div class="step-label">Lesson 1 · Block ${i+1} of ${blocks.length}</div><h2>${b.title}</h2>${b.html}<div id="dynamic"></div><div class="actions"><button id="back" class="btn btn-secondary" ${i===0?"disabled":""}>Back</button><button id="next" class="btn btn-primary">Continue</button></div>`}
+function addOptions(b,multi=false){
+ const d=document.getElementById("dynamic"), wrap=document.createElement("div");wrap.className="options";
+ const sel=multi?(state.answers[b.id]||[]):state.answers[b.id];
+ b.options.forEach((o,idx)=>{
+  const bt=document.createElement("button");bt.className="option";
+  const chosen=multi?sel.includes(idx):sel===idx;
+  if(chosen)bt.classList.add("selected");
+  bt.innerHTML=`<span class="badge">${multi?(chosen?"✓":"+") : String.fromCharCode(65+idx)}</span><span>${o}</span>`;
+  bt.onclick=()=>{if(multi){let s=new Set(state.answers[b.id]||[]);s.has(idx)?s.delete(idx):s.add(idx);state.answers[b.id]=[...s]}else state.answers[b.id]=idx;save();render()};
+  wrap.appendChild(bt)
+ });
+ d.appendChild(wrap)
+}
+function setupMic(ta){
+ const btn=document.getElementById("micButton"), status=document.getElementById("micStatus");
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){btn.disabled=true;status.textContent="Speech recognition is not supported in this browser.";return}
+ const rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;let base=ta.value,listening=false;
+ rec.onstart=()=>{listening=true;btn.classList.add("listening");btn.textContent="■ Stop speaking";status.textContent="Listening…"};
+ rec.onresult=e=>{let t="";for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;ta.value=(base+" "+t).trim();state.reflection=ta.value;save()};
+ rec.onend=()=>{listening=false;base=ta.value;btn.classList.remove("listening");btn.textContent="🎤 Start speaking";status.textContent=""};
+ btn.onclick=()=>listening?rec.stop():rec.start()
+}
+function analyseReflection(text){
+ const t=text.toLowerCase();
+ const checks=[
+  ["ownership",/(own|responsib|accountab|delivery)/],
+  ["leadership",/(lead|coordinat|manage|bring together|workstream)/],
+  ["evidence",/(evidence|facts|metrics|validation|status)/],
+  ["risk",/(risk|issue|defect|mitigat)/],
+  ["boundaries",/(not personally|doesn't personally|business owns|delegate|others perform)/],
+  ["recommendation",/(recommend|decision|go.?no.?go|readiness)/]
+ ];
+ const found=checks.filter(x=>x[1].test(t)).map(x=>x[0]);
+ const missing=checks.filter(x=>!x[1].test(t)).map(x=>x[0]);
+ let score=Math.min(10,Math.max(2,Math.round(found.length/6*10)));
+ return {found,missing,score}
+}
+function render(){
+ const b=blocks[state.index],i=state.index;lesson.innerHTML=shell(b,i);
+ document.getElementById("back").onclick=()=>{if(i>0){state.index--;save();render();scrollTo({top:0,behavior:"smooth"})}};
+ const next=document.getElementById("next"),dyn=document.getElementById("dynamic");let ready=["content"].includes(b.type);
+
+ if(b.type==="single"){
+  addOptions(b,false);
+  if(state.answers[b.id]!==undefined){
+   ready=true;const f=document.createElement("div");f.className="feedback neutral";f.innerHTML=b.feedback[state.answers[b.id]];dyn.appendChild(f)
+  } else ready=false
+ }
+ if(b.type==="multi"){
+  addOptions(b,true);ready=(state.answers[b.id]||[]).length>0
+ }
+ if(b.type==="review"){
+  const chosen=state.answers.b2||[];
+  const truths=[true,false,true,true,false];
+  const explanations=[
+   "Your DMCs may build the ETL, but you own successful delivery of that workstream.",
+   "Finance owns its data. You must ensure the issue, impact and decision are understood and managed.",
+   "You may not perform every validation, but you own achievement of the agreed exit criteria.",
+   "The DML provides the evidence-based migration recommendation.",
+   "The responsible team fixes the defect. You ensure its impact and risk are understood and managed."
+  ];
+  truths.forEach((truth,idx)=>{
+   const learnerYes=chosen.includes(idx), aligned=learnerYes===truth;
+   const box=document.createElement("div");box.className="mentor";
+   box.innerHTML=`<div class="mentor-label">Statement ${idx+1}</div><h3>${blocks[1].options[idx]}</h3>
+   <p><strong>You selected:</strong> ${learnerYes?"Yes":"No"}</p>
+   <div class="feedback ${aligned?"good":"bad"}">${aligned?"Your answer aligns with Turner Page thinking.":"This is a common misconception."}</div>
+   <p><strong>Turner Page view:</strong> ${truth?"This statement is true.":"This statement is false."}</p><p>${explanations[idx]}</p>`;
+   dyn.appendChild(box)
+  });
+  dyn.insertAdjacentHTML("beforeend",`<div class="principle"><strong>You do not own every task.</strong><br>You own ensuring the migration workstream is delivered, understood and managed.</div>`);
+  ready=true
+ }
+ if(b.type==="staged"){
+  const a=state.answers.b4||{};
+  dyn.innerHTML=`<div class="question"><h3>Decision 1</h3><p>What do you say next?</p></div>`;
+  const opts1=["Yes. We should delay the migration.","No. We can still migrate.","Before I answer, I need to understand the business impact of the remaining issues.","Let's escalate this immediately to the Steering Committee."];
+  opts1.forEach((o,idx)=>{
+   const bt=document.createElement("button");bt.className="option"+(a.d1===idx?" selected":"");bt.innerHTML=`<span class="badge">${String.fromCharCode(65+idx)}</span><span>${o}</span>`;
+   bt.onclick=()=>{a.d1=idx;state.answers.b4=a;save();render()};dyn.appendChild(bt)
+  });
+  if(a.d1!==undefined){
+   const fb1=[
+    "You may ultimately recommend delay, but you have not yet established the impact.",
+    "You may ultimately recommend Go, but you have not yet established whether the remaining issues are acceptable.",
+    "<strong>Strong response.</strong> You are resisting pressure to react before understanding the evidence.",
+    "Escalation may become necessary, but first establish the facts and options."
+   ][a.d1];
+   dyn.insertAdjacentHTML("beforeend",`<div class="feedback neutral">${fb1}</div><div class="question"><h3>Decision 2</h3><p>The Programme Manager asks: “Fine. What do you need to understand?”</p></div>`);
+   const opts2=["Which business processes are affected?","Why validation has not reached 100%?","Whether the business owners have formally accepted the remaining risk?","All of the above."];
+   opts2.forEach((o,idx)=>{
+    const bt=document.createElement("button");bt.className="option"+(a.d2===idx?" selected":"");bt.innerHTML=`<span class="badge">${String.fromCharCode(65+idx)}</span><span>${o}</span>`;
+    bt.onclick=()=>{a.d2=idx;state.answers.b4=a;save();render()};dyn.appendChild(bt)
+   });
+   if(a.d2!==undefined){
+    dyn.insertAdjacentHTML("beforeend",`<div class="feedback ${a.d2===3?"good":"neutral"}">${a.d2===3?"<strong>Correct.</strong> All three are needed before you can update your recommendation.":"That question matters, but it is only part of the evidence you need. You must understand impact, incomplete validation and formal risk acceptance."}</div><div class="principle"><strong>Evidence before recommendation.</strong><br>Recommendation before escalation.</div>`);
+    ready=true
+   }
+  }
+ }
+ if(b.type==="model"){
+  let opened=state.answers.b5||[];
+  const grid=document.createElement("div");grid.className="model-grid";
+  owners.forEach((row,idx)=>{
+   const c=document.createElement("div");c.className="model-card";
+   c.innerHTML=`<strong>${row[0]}</strong><p class="choice-note">Who is the primary owner, and what does the DML own?</p>`;
+   const bt=document.createElement("button");bt.className="btn btn-secondary";bt.textContent=opened.includes(idx)?"Hide answer":"Reveal answer";
+   bt.onclick=()=>{let s=new Set(opened);s.has(idx)?s.delete(idx):s.add(idx);state.answers.b5=[...s];save();render()};
+   c.appendChild(bt);
+   if(opened.includes(idx))c.insertAdjacentHTML("beforeend",`<div class="feedback neutral"><strong>Primary owner:</strong> ${row[1]}<br><strong>DML responsibility:</strong> ${row[2]}</div>`);
+   grid.appendChild(c)
+  });dyn.appendChild(grid);ready=opened.length===owners.length
+ }
+ if(b.type==="evidence"){
+  dyn.insertAdjacentHTML("beforeend",`<div class="question"><h3>Apply the framework</h3><p>You have ETL completion, environment readiness and a validation percentage. Which evidence is still missing?</p></div>`);
+  const options=["The business impact of outstanding data and defects.","Confirmation of risk ownership and acceptance.","Evidence that exit criteria have been met.","All of the above."];
+  const chosen=state.answers.b7;
+  options.forEach((o,idx)=>{
+   const bt=document.createElement("button");bt.className="option"+(chosen===idx?" selected":"");bt.innerHTML=`<span class="badge">${String.fromCharCode(65+idx)}</span><span>${o}</span>`;
+   bt.onclick=()=>{state.answers.b7=idx;save();render()};dyn.appendChild(bt)
+  });
+  if(chosen!==undefined){dyn.insertAdjacentHTML("beforeend",`<div class="feedback ${chosen===3?"good":"neutral"}">${chosen===3?"<strong>Correct.</strong> A status percentage is not enough. You need impact, ownership, acceptance and exit-criteria evidence.":"That evidence matters, but it is not the only gap. A defensible recommendation needs all three."}</div>`);ready=true}else ready=false
+ }
+ if(b.type==="mentor"){
+  let open=state.answers.b8open||[];
+  mistakes.forEach((m,idx)=>{
+   const ac=document.createElement("div");ac.className="accordion"+(open.includes(idx)?" open":"");
+   ac.innerHTML=`<button class="acc-btn">Mistake ${idx+1}: ${m[0]}</button><div class="acc-body"><h4>Why it happens</h4><p>${m[1]}</p><h4>Experienced DML thinking</h4><p>${m[2]}</p><div class="principle"><strong>Ask yourself</strong><br>${m[3]}</div></div>`;
+   ac.querySelector("button").onclick=()=>{let s=new Set(open);s.has(idx)?s.delete(idx):s.add(idx);state.answers.b8open=[...s];save();render()};dyn.appendChild(ac)
+  });
+  dyn.insertAdjacentHTML("beforeend",`<div class="question"><h3>Your likely blind spot</h3><p>Which mistake are you most at risk of making?</p></div>`);
+  mistakes.forEach((m,idx)=>{
+   const bt=document.createElement("button");bt.className="option"+(state.answers.b8===idx?" selected":"");bt.innerHTML=`<span class="badge">${idx+1}</span><span>${m[0]}</span>`;
+   bt.onclick=()=>{state.answers.b8=idx;save();render()};dyn.appendChild(bt)
+  });
+  if(state.answers.b8!==undefined){
+   const m=mistakes[state.answers.b8];
+   dyn.insertAdjacentHTML("beforeend",`<div class="feedback neutral"><strong>Turner Page Coach</strong><br>${m[2]}<br><br><strong>Your practical question:</strong> ${m[3]}<br><br>There is no wrong selection here. Knowing your likely blind spot is the first step towards controlling it.</div>`);ready=true
+  } else ready=false
+ }
+ if(b.type==="reflection"){
+  const ta=document.getElementById("reflection");ta.value=state.reflection||"";setupMic(ta);
+  const coachBtn=document.createElement("button");coachBtn.className="btn btn-primary";coachBtn.textContent=state.attempts?"Analyse revised answer":"Get coaching";
+  coachBtn.onclick=()=>{state.reflection=ta.value.trim();if(state.reflection.length<30){alert("Please give a fuller answer before requesting coaching.");return}state.attempts=(state.attempts||0)+1;save();render()};
+  dyn.appendChild(coachBtn);
+  if(state.attempts){
+   const r=analyseReflection(state.reflection);
+   const strengths=r.found.length?r.found.join(", "):"Your answer is clear and direct";
+   const gaps=r.missing.length?r.missing.join(", "):"No major gaps detected";
+   dyn.insertAdjacentHTML("beforeend",`<div class="feedback neutral"><strong>Turner Page Coach</strong><br><br><strong>Strengths:</strong> ${strengths}.<br><strong>Areas to strengthen:</strong> ${gaps}.<br><strong>Indicative score:</strong> ${r.score}/10.<br><br>${r.missing.length?"Revise your answer and try again. Aim to explain ownership, leadership boundaries and evidence-based recommendations.":"This is a strong answer. It explains the role through leadership and responsibility rather than a task list."}</div>
+   <h3>Turner Page model answer</h3><div class="quote">A Data Migration Lead is responsible for the successful delivery of the data migration workstream. They do not personally perform every migration activity or own every piece of business data. They lead the migration effort by coordinating people, managing risks, monitoring progress and making evidence-based recommendations. Their role is to ensure the project has the information needed to make safe, informed migration decisions.</div>`);
+   ready=true
+  }else ready=false
+ }
+ next.disabled=!ready;
+ next.onclick=()=>{if(!ready)return;done(b.id);if(i<blocks.length-1){state.index++;save();render();scrollTo({top:0,behavior:"smooth"})}else{save();chrome();alert("Lesson 1 complete. Progress has been saved in this browser.")}};
+ chrome()
+}
+renderList();render();
+</script>
+</body>
+</html>
