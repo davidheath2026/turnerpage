@@ -1,14 +1,12 @@
 # Turner Page — Lesson 1
 
-Updated live package for **Lesson 1: Thinking Like a Data Migration Lead**.
+This update fixes Block 9.
 
-## This update
+## Fix
 
-Block 4 now includes:
-
-- the original five project-status items;
-- individual coaching for every selected evidence requirement;
-- a closing explanation connecting the exercise to DML judgement.
+- The Continue button now works once the reflection contains at least 40 characters.
+- Coaching feedback appears while the learner is typing.
+- All previous Block 4 improvements remain included.
 
 ## Publish
 
