@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Turner Page | Thinking like a Data Migration Lead</title>
+<title>Turner Page | Thinking like a Data Migration Lead: Making evidence-based decisions</title>
 <style>
 :root{
   --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
@@ -63,6 +63,11 @@ p{max-width:820px}
 .experience{background:#f7fbfb;border:1px solid #d9ecec}
 .misconception{background:#fffaf1;border:1px solid #ead7aa}
 .callout-label{font-size:11px;text-transform:uppercase;letter-spacing:.16em;font-weight:900;margin-bottom:8px}
+.promise{border:1px solid #cde6e6;background:linear-gradient(135deg,#f7fcfc,#eaf7f7);border-radius:24px;padding:26px;margin:26px 0 30px;box-shadow:0 12px 30px rgba(0,95,108,.08)}
+.promise h3{margin-top:0;color:var(--deep)}
+.promise-lines{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.promise-lines div{border:1px solid #d4eaea;background:white;border-radius:14px;padding:12px;text-align:center;font-weight:800;color:var(--deep)}
+.footer-promise{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:#657d82;font-size:13px}
 .experience .callout-label{color:var(--teal)}
 .misconception .callout-label{color:#8c651a}
 .visual-card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbfb);padding:22px;margin:28px 0;overflow:hidden}
@@ -82,6 +87,12 @@ p{max-width:820px}
 .ownership-card h3{margin-top:0}
 .behaviour{border-left:4px solid var(--teal);padding:9px 0 9px 18px;margin:18px 0}
 textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);border-radius:16px;resize:vertical;color:var(--ink);background:white}
+.voice-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.analysis-state{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#f7fbfb;border-radius:16px;padding:16px;margin-top:18px}
+.spinner{width:20px;height:20px;border:3px solid #cfe5e5;border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.score-card{display:flex;align-items:center;gap:18px;border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:18px;margin:16px 0}
+.score{font-size:34px;font-weight:900;color:var(--deep);min-width:90px}
 .actions{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:24px;border-top:1px solid #e6f0f0}
 .btn{border:0;border-radius:14px;padding:12px 19px;font-weight:800}
 .primary{background:var(--deep);color:white}
@@ -104,6 +115,7 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
   .brand-copy{display:none}
   .lesson{padding:24px 18px}
   .status-grid,.ownership-grid,.framework-grid{grid-template-columns:1fr}
+  .promise-lines{grid-template-columns:1fr 1fr}
   h1{font-size:36px}
 }
 </style>
@@ -126,7 +138,7 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
     <div class="panel course-panel">
       <div class="kicker">Module 1</div>
       <h2>The Data Migration Lead mindset</h2>
-      <p class="meta">Lesson 1: Thinking like a Data Migration Lead</p>
+      <p class="meta">Lesson 1: Thinking like a Data Migration Lead<br><span class="small">Making evidence-based decisions</span></p>
       <div class="progress-row"><span>Lesson progress</span><strong id="sideProgress">0%</strong></div>
       <div class="lesson-nav" id="lessonNav"></div>
     </div>
@@ -137,7 +149,7 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
 
 <script>
 const STORAGE_KEY="tp_lesson1_premium";
-let state=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"index":0,"completed":[],"answers":{},"reflection":""}');
+let state=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"index":0,"completed":[],"answers":{},"reflection":"","valuable":""}');
 
 const fiveQuestions=[
   {
@@ -146,7 +158,7 @@ const fiveQuestions=[
     detail:`<p>This is not the same as asking whether the data loaded successfully.</p>
     <p>A successful load proves that the migration process can move records. It does not prove that the records are complete, accurate or usable.</p>
     <p>An experienced Data Migration Lead asks whether known issues are understood, whether the affected data is material to the business, and whether the right people have accepted the consequences.</p>
-    <div class="callout experience"><div class="callout-label">Experience tells us</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div>
+    <div class="callout experience"><div class="callout-label">Turner Page insight</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div>
     <div class="principle"><strong>Key takeaway</strong><br>Data readiness is about usability and understood risk, not a perfect percentage.</div>`
   },
   {
@@ -154,7 +166,7 @@ const fiveQuestions=[
     short:"Rehearsal, repeatability and reconciliation",
     detail:`<p>A migration process that has never been executed successfully is still unproven.</p>
     <p>Documentation matters, but successful rehearsals provide stronger evidence. They show whether the process can be repeated, whether teams understand their roles, whether reconciliations work, and whether the migration fits inside the available outage window.</p>
-    <div class="callout misconception"><div class="callout-label">Common misconception</div><p>If the runbook is complete, the process is ready.</p><p>A runbook records intent. A successful rehearsal provides evidence.</p></div>
+    <div class="callout misconception"><div class="callout-label">Common trap</div><p>If the runbook is complete, the process is ready.</p><p>A runbook records intent. A successful rehearsal provides evidence.</p></div>
     <div class="principle"><strong>Key takeaway</strong><br>Execution confidence comes from rehearsal, not optimism.</div>`
   },
   {
@@ -171,7 +183,7 @@ const fiveQuestions=[
     detail:`<p>Even a well-designed migration process can fail in an unstable environment.</p>
     <p>Environment readiness includes infrastructure, security, permissions, connectivity, integrations, performance, monitoring and operational support.</p>
     <p>The right question is not simply whether an environment exists. It is whether the complete technical landscape can support both the migration and the business immediately afterwards.</p>
-    <div class="callout experience"><div class="callout-label">Experience tells us</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div>
+    <div class="callout experience"><div class="callout-label">Turner Page insight</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div>
     <div class="principle"><strong>Key takeaway</strong><br>An environment is ready only when the end-to-end process can operate inside it.</div>`
   },
   {
@@ -179,7 +191,7 @@ const fiveQuestions=[
     short:"Impact, ownership, mitigation and acceptance",
     detail:`<p>No project reaches migration with zero risk.</p>
     <p>The professional question is whether the remaining risks are understood well enough to be managed. That means knowing what could go wrong, what the business impact would be, who owns the mitigation, and whether governance has accepted the residual risk.</p>
-    <div class="callout misconception"><div class="callout-label">Common misconception</div><p>A high-priority defect automatically means No-Go.</p><p>Not necessarily. Severity labels are useful, but business impact is what matters. A reporting defect with a reliable workaround may be acceptable. A defect that prevents invoices being raised may not be.</p></div>
+    <div class="callout misconception"><div class="callout-label">Common trap</div><p>A high-priority defect automatically means No-Go.</p><p>Not necessarily. Severity labels are useful, but business impact is what matters. A reporting defect with a reliable workaround may be acceptable. A defect that prevents invoices being raised may not be.</p></div>
     <div class="principle"><strong>Key takeaway</strong><br>Good projects do not eliminate every risk. They understand and manage risk intelligently.</div>`
   }
 ];
@@ -187,7 +199,20 @@ const fiveQuestions=[
 const blocks=[
 {
  id:"b1",nav:"The challenge",title:"Are we ready to migrate?",type:"single",
- html:`<p class="lead">It is Friday afternoon. The first full migration rehearsal is scheduled for next weekend.</p>
+ html:`<div class="promise">
+ <div class="kicker">Our promise</div>
+ <h3>The Turner Page Promise</h3>
+ <p>We believe professional training should do more than transfer knowledge. It should improve professional judgement.</p>
+ <p>Everything in this programme has been chosen because it helps you become a better Data Migration Lead on a real ERP project.</p>
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ <p><strong>If it does not improve the way you think, communicate or make decisions, it does not belong in this course.</strong></p>
+ </div>
+ <div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>This lesson is not designed to test how much you already know. It is designed to change the way you think.</p>
+ <p>By the end, you should approach migration readiness differently from how you did at the start.</p>
+ </div>
+ <p class="lead">It is Friday afternoon. The first full migration rehearsal is scheduled for next weekend.</p>
  <p>Senior stakeholders want reassurance. You have just reviewed the latest migration status when the Programme Manager asks for your recommendation.</p>
  <div class="status-grid">
    <div class="status-card"><strong>ETL development</strong>Complete</div>
@@ -226,12 +251,12 @@ const blocks=[
    </div>
  </div>
 
- <div class="callout experience"><div class="callout-label">Experience tells us</div>
+ <div class="callout experience"><div class="callout-label">Turner Page insight</div>
  <p>One of the biggest mistakes on ERP programmes is confusing status with readiness.</p>
  <p>A project can report green infrastructure, green ETL and green testing, yet still fail because the business cannot operate effectively afterwards.</p>
  </div>
 
- <div class="callout misconception"><div class="callout-label">Common misconception</div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div>
  <p><strong>The Data Migration Lead decides whether the project goes live.</strong></p>
  <p>Governance makes the decision. The Data Migration Lead provides the migration evidence and recommendation that help governance make the right decision.</p>
  </div>
@@ -290,7 +315,7 @@ const blocks=[
    <div class="ownership-card"><h3>Influences</h3><ul><li>Business decisions</li><li>Project planning</li><li>Cutover planning</li><li>Programme governance</li><li>Go-live decisions</li></ul></div>
    <div class="ownership-card"><h3>Supports</h3><ul><li>Data Migration Consultants</li><li>Test teams</li><li>Business data owners</li><li>Functional consultants</li><li>Infrastructure teams</li></ul></div>
  </div>
- <div class="callout misconception"><div class="callout-label">Common misconception</div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div>
  <p><strong>If an issue affects data migration, the Data Migration Lead owns fixing it.</strong></p>
  <p>No. The Data Migration Lead owns ensuring that the issue, impact, responsibility and mitigation are understood and managed.</p></div>
  <div class="principle"><strong>Key takeaway</strong><br>You own the migration workstream. You do not personally own every task required to deliver it.</div>`
@@ -342,6 +367,13 @@ const blocks=[
  <div class="quote">“Are we ready to migrate?”</div>
  <p>Explain how a Data Migration Lead should decide.</p>
  <textarea id="reflection" placeholder="A Data Migration Lead should..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
  <div id="reflectionFeedback"></div>`
 },
 {
@@ -358,10 +390,24 @@ const blocks=[
  <div class="principle"><strong>Evidence before recommendation.</strong><br>That is the habit at the heart of effective Data Migration Leadership.</div>`
 },
 {
- id:"b11",nav:"Lesson complete",title:"Congratulations",type:"content",
+ id:"b11",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
  html:`<div class="complete"><div class="tick">✓</div>
- <p class="lead"><strong>You have completed Lesson 1: Thinking like a Data Migration Lead.</strong></p>
- <p>You now have a practical framework for approaching migration decisions as a leader rather than simply carrying out technical tasks.</p></div>
+ <p class="lead"><strong>You have completed Thinking like a Data Migration Lead: Making evidence-based decisions.</strong></p>
+ <p>You have not simply learned about migration. You have begun developing the judgement expected of an experienced Data Migration Lead.</p>
+ </div>
+ <div class="promise">
+ <div class="kicker">The Turner Page Promise</div>
+ <h3>Learning that improves professional judgement</h3>
+ <p>Everything in this lesson was selected because it can improve the decisions you make on a real ERP project.</p>
+ </div>
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
  <h3>Next lesson</h3>
  <p><strong>The Data Migration Lead within the ERP project</strong></p>`
 }
@@ -402,13 +448,14 @@ function renderNav(){
  });
 }
 function shell(b,i){
- return `<div class="step">Lesson 1 · Section ${i+1} of ${blocks.length}</div><h2>${b.title}</h2>${b.html}<div id="dynamic"></div><div class="actions"><button id="back" class="btn secondary">Back</button><button id="next" class="btn primary">Continue</button></div>`;
+ return `<div class="step">Lesson 1 · Section ${i+1} of ${blocks.length}</div><h2>${b.title}</h2>${b.html}<div id="dynamic"></div><div class="actions"><button id="back" class="btn secondary">Back</button><button id="next" class="btn primary">Continue</button></div><div class="footer-promise"><strong>The Turner Page Promise</strong><br>Helping Data Migration Leads make better decisions on real ERP projects.</div>`;
 }
 function render(){
  const b=blocks[state.index], i=state.index;
  lesson.innerHTML=shell(b,i);
  const dynamic=document.getElementById("dynamic");
  const next=document.getElementById("next");
+ next.textContent=i===blocks.length-1?"Finish lesson":"Continue";
  let ready=b.type==="content";
 
  if(b.type==="single"){
@@ -482,35 +529,197 @@ function render(){
 
  if(b.type==="reflection"){
    const area=document.getElementById("reflection");
-   area.value=state.reflection||"";
    const feedback=document.getElementById("reflectionFeedback");
-   const update=()=>{
-     state.reflection=area.value;save();
-     const ok=area.value.trim().length>=40;
-     next.disabled=!ok;
-     if(ok){
-       const t=area.value.toLowerCase(),hits=[];
-       if(/evidence|facts|status|validation/.test(t))hits.push("evidence");
-       if(/risk|impact|mitigat/.test(t))hits.push("risk");
-       if(/business|user|operate/.test(t))hits.push("business readiness");
-       if(/environment|infrastructure|security|integration/.test(t))hits.push("environment readiness");
-       if(/recommend|decision|ready/.test(t))hits.push("recommendation");
-       feedback.innerHTML=`<div class="feedback"><strong>Turner Page coach</strong><br>Your answer refers to: ${hits.length?hits.join(", "):"the decision itself"}. A strong answer explains that the Data Migration Lead builds a complete picture across data, process, business readiness, environments and residual risk before recommending.</div>`;
-     } else feedback.innerHTML="";
+   const analyseButton=document.getElementById("analyseButton");
+   const micButton=document.getElementById("micButton");
+   const micStatus=document.getElementById("micStatus");
+   area.value=state.reflection||"";
+
+   area.oninput=()=>{
+     state.reflection=area.value;
+     save();
+     feedback.innerHTML="";
+     analyseButton.disabled=area.value.trim().length<40;
    };
-   area.oninput=update;
-   ready=(state.reflection||"").trim().length>=40;
-   if(ready)update();
+
+   analyseButton.disabled=area.value.trim().length<40;
+
+   const analyseResponse=()=>{
+     const t=area.value.toLowerCase();
+     const strengths=[];
+     const gaps=[];
+
+     const evidence=/evidence|facts|status|validation|reconciliation/.test(t);
+     const risk=/risk|impact|mitigat|defect/.test(t);
+     const business=/business|user|operate|operational/.test(t);
+     const environment=/environment|infrastructure|security|integration|permission/.test(t);
+     const process=/rehears|process|repeat|runbook|cutover/.test(t);
+     const recommendation=/recommend|decision|ready|go.?no.?go/.test(t);
+     const ownership=/owner|accountab|responsib|accept/.test(t);
+
+     if(evidence)strengths.push("You recognised that recommendations should be based on evidence rather than instinct.");
+     if(business)strengths.push("You considered business impact rather than focusing only on technical completion.");
+     if(risk)strengths.push("You referred to remaining risk and the need to understand its impact.");
+     if(recommendation)strengths.push("You connected the evidence to a clear readiness recommendation.");
+     if(process)strengths.push("You considered whether the migration process itself has been proven.");
+     if(environment)strengths.push("You included environment readiness in the overall picture.");
+     if(ownership)strengths.push("You recognised the importance of ownership or formal acceptance.");
+
+     if(!evidence)gaps.push("Make the role of evidence explicit.");
+     if(!process)gaps.push("Include whether the migration process has been rehearsed and proven.");
+     if(!business)gaps.push("Consider whether the business can operate successfully afterwards.");
+     if(!environment)gaps.push("Include environment and integration readiness.");
+     if(!risk)gaps.push("Explain how remaining risks, impact and mitigation should be assessed.");
+     if(!ownership)gaps.push("Mention risk ownership or formal business acceptance.");
+
+     const score=Math.max(4,Math.min(10,Math.round((strengths.length/7)*10*10)/10));
+
+     feedback.innerHTML=`
+       <div class="score-card">
+         <div class="score">${score.toFixed(1)}/10</div>
+         <div><strong>Indicative assessment</strong><br><span class="small">Based on the breadth and quality of the reasoning in this response.</span></div>
+       </div>
+       <div class="feedback good">
+         <strong>Strong points</strong>
+         <ul>${(strengths.length?strengths:["You gave a direct answer and engaged with the decision."]).map(x=>`<li>${x}</li>`).join("")}</ul>
+       </div>
+       <div class="feedback">
+         <strong>You could strengthen your answer by discussing</strong>
+         <ul>${(gaps.length?gaps:["No major gaps detected."]).map(x=>`<li>${x}</li>`).join("")}</ul>
+       </div>
+       <h3>Turner Page model answer</h3>
+       <div class="quote">A Data Migration Lead should gather evidence across data readiness, migration process, business readiness, environment readiness and residual risk before making a recommendation. Their role is not simply to answer yes or no. It is to provide a recommendation that can be justified, explained and defended.</div>
+       <div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is strong professional thinking. You are approaching the question as a Data Migration Lead rather than as a technical specialist.":"You have the foundation. Strengthen the answer by covering the complete readiness picture rather than only one or two areas."}</div>
+     `;
+     ready=true;
+     next.disabled=false;
+   };
+
+   analyseButton.onclick=()=>{
+     if(area.value.trim().length<40)return;
+     feedback.innerHTML=`<div class="analysis-state"><div class="spinner"></div><div><strong>Analysing your response</strong><br><span class="small">Reviewing your reasoning against the Turner Page readiness framework.</span></div></div>`;
+     analyseButton.disabled=true;
+     setTimeout(()=>{analyseResponse();analyseButton.disabled=false;analyseButton.textContent="Analyse revised answer";},2200);
+   };
+
+   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+   if(SpeechRecognition){
+     const recognition=new SpeechRecognition();
+     recognition.lang="en-GB";
+     recognition.continuous=true;
+     recognition.interimResults=true;
+     let listening=false;
+     let baseText=area.value;
+
+     recognition.onstart=()=>{
+       listening=true;
+       baseText=area.value;
+       micButton.textContent="Stop microphone";
+       micStatus.textContent="Listening...";
+     };
+     recognition.onresult=(event)=>{
+       let transcript="";
+       for(let i=event.resultIndex;i<event.results.length;i++){
+         transcript+=event.results[i][0].transcript;
+       }
+       area.value=(baseText+" "+transcript).trim();
+       state.reflection=area.value;
+       save();
+       analyseButton.disabled=area.value.trim().length<40;
+     };
+     recognition.onend=()=>{
+       listening=false;
+       baseText=area.value;
+       micButton.textContent="Use microphone";
+       micStatus.textContent="";
+     };
+     recognition.onerror=()=>{
+       micStatus.textContent="Microphone input was not available.";
+     };
+     micButton.onclick=()=>{listening?recognition.stop():recognition.start()};
+   }else{
+     micButton.disabled=true;
+     micStatus.textContent="Microphone input is not supported in this browser.";
+   }
+
+   ready=false;
+ }
+
+ if(b.type==="valuable"){
+   const area=document.getElementById("valuableReflection");
+   const feedback=document.getElementById("valuableFeedback");
+   const micButton=document.getElementById("valuableMicButton");
+   const micStatus=document.getElementById("valuableMicStatus");
+   area.value=state.valuable||"";
+
+   const updateValuable=()=>{
+     state.valuable=area.value;
+     save();
+     const ok=area.value.trim().length>=20;
+     next.disabled=!ok;
+     feedback.innerHTML=ok
+       ? `<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration-readiness discussion and ask how it should change your behaviour.</div>`
+       : "";
+   };
+   area.oninput=updateValuable;
+   ready=(state.valuable||"").trim().length>=20;
+   if(ready)updateValuable();
+
+   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+   if(SpeechRecognition){
+     const recognition=new SpeechRecognition();
+     recognition.lang="en-GB";
+     recognition.continuous=true;
+     recognition.interimResults=true;
+     let listening=false;
+     let baseText=area.value;
+
+     recognition.onstart=()=>{
+       listening=true;
+       baseText=area.value;
+       micButton.textContent="Stop microphone";
+       micStatus.textContent="Listening...";
+     };
+     recognition.onresult=(event)=>{
+       let transcript="";
+       for(let k=event.resultIndex;k<event.results.length;k++){
+         transcript+=event.results[k][0].transcript;
+       }
+       area.value=(baseText+" "+transcript).trim();
+       updateValuable();
+     };
+     recognition.onend=()=>{
+       listening=false;
+       baseText=area.value;
+       micButton.textContent="Use microphone";
+       micStatus.textContent="";
+     };
+     recognition.onerror=()=>{micStatus.textContent="Microphone input was not available.";};
+     micButton.onclick=()=>{listening?recognition.stop():recognition.start();};
+   } else {
+     micButton.disabled=true;
+     micStatus.textContent="Microphone input is not supported in this browser.";
+   }
  }
 
  document.getElementById("back").disabled=i===0;
  document.getElementById("back").onclick=()=>{if(i>0){state.index--;save();render();scrollTo({top:0,behaviour:"smooth"})}};
- next.disabled=!ready||i===blocks.length-1;
+ next.disabled=!ready;
  next.onclick=()=>{
-   const canContinue=b.type==="reflection"?(state.reflection||"").trim().length>=40:ready;
+   const canContinue=b.type==="reflection"?ready:ready;
    if(!canContinue)return;
    complete(b.id);
-   if(i<blocks.length-1){state.index++;save();render();scrollTo({top:0,behaviour:"smooth"})}
+   if(i<blocks.length-1){
+     state.index++;
+     save();
+     render();
+     scrollTo({top:0,behaviour:"smooth"});
+   } else {
+     save();
+     updateChrome();
+     next.textContent="Lesson completed";
+     next.disabled=true;
+   }
  };
  updateChrome();
 }

@@ -1,22 +1,22 @@
-# Turner Page Lesson 1 premium build
+# Turner Page Lesson 1 revised build
 
-This package contains the redesigned live Lesson 1 microsite.
+This is the revised Lesson 1 HTML package.
 
 ## Included
 
-- Turner Page logo
-- Richer manuscript for Sections 1 to 3
-- Expanded five-question framework
-- Revised Block 4 coaching
-- Sentence-case headings
-- Full use of “Data Migration Lead”
-- No em dashes
-- Premium responsive layout
-- Working progress and saved browser state
+- The Turner Page Promise built into the learner experience
+- “Turner Page insight” and “Common trap” call-outs
+- Rich five-question teaching content
+- Revised coached application exercise
+- Microphone-enabled AI feedback in Section 9
+- End-of-lesson “single most valuable thing” reflection
+- Turner Page Promise footer
+- Official Turner Page logo
+- Browser-based progress saving
 
-## Publish to GitHub
+## Publish
 
-Replace the current repository root with:
+Replace the current files in the root of the GitHub `turnerpage` repository with:
 
 - `index.html`
 - `vercel.json`
