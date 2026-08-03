@@ -1,19 +1,26 @@
-# Turner Page — Lesson 1
+# Turner Page Lesson 1 premium build
 
-This update fixes Block 9.
+This package contains the redesigned live Lesson 1 microsite.
 
-## Fix
+## Included
 
-- The Continue button now works once the reflection contains at least 40 characters.
-- Coaching feedback appears while the learner is typing.
-- All previous Block 4 improvements remain included.
+- Turner Page logo
+- Richer manuscript for Sections 1 to 3
+- Expanded five-question framework
+- Revised Block 4 coaching
+- Sentence-case headings
+- Full use of “Data Migration Lead”
+- No em dashes
+- Premium responsive layout
+- Working progress and saved browser state
 
-## Publish
+## Publish to GitHub
 
-Replace the existing root files in the GitHub `turnerpage` repository with:
+Replace the current repository root with:
 
 - `index.html`
 - `vercel.json`
 - `README.md`
+- `assets/turner-page-logo.png`
 
-Commit directly to `main`. Vercel will redeploy automatically.
+Commit to `main`. Vercel will redeploy automatically.
