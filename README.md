@@ -1,10 +1,18 @@
 # Turner Page — Lesson 1
 
-Canonical replacement for the live Turner Page microsite.
+Updated live package for **Lesson 1: Thinking Like a Data Migration Lead**.
 
-## Upload to GitHub
+## This update
 
-Replace the files in the root of the `turnerpage` repository with:
+Block 4 now includes:
+
+- the original five project-status items;
+- individual coaching for every selected evidence requirement;
+- a closing explanation connecting the exercise to DML judgement.
+
+## Publish
+
+Replace the existing root files in the GitHub `turnerpage` repository with:
 
 - `index.html`
 - `vercel.json`
