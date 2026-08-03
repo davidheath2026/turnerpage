@@ -715,10 +715,10 @@ function render(){
      render();
      scrollTo({top:0,behaviour:"smooth"});
    } else {
+     complete(b.id);
      save();
      updateChrome();
-     next.textContent="Lesson completed";
-     next.disabled=true;
+     window.location.href="lesson-complete.html";
    }
  };
  updateChrome();
