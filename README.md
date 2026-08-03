@@ -1,23 +1,13 @@
-# Turner Page — DML Micro-course MVP
+# Turner Page — Lesson 1
 
-This is the single canonical proof-of-concept repository for the Turner Page micro-course.
+Canonical replacement for the live Turner Page microsite.
 
-## Contents
+## Upload to GitHub
 
-- `index.html` — the complete interactive Lesson 1 microsite
-- `vercel.json` — simple static-site deployment settings
+Replace the files in the root of the `turnerpage` repository with:
 
-## Deploy to Vercel from GitHub
+- `index.html`
+- `vercel.json`
+- `README.md`
 
-1. Unzip this package.
-2. Upload `index.html`, `README.md`, and `vercel.json` to the root of the GitHub repository.
-3. In Vercel, choose **Add New → Project**.
-4. Import the GitHub repository.
-5. Leave the framework preset as **Other** if Vercel does not detect one.
-6. Deploy.
-
-No build command or output directory is required.
-
-## Important
-
-This is the proof-of-concept version. Future changes should be made to this repository rather than by creating separate `final`, `live`, or `v2` copies.
+Commit directly to `main`. Vercel will redeploy automatically.
