@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turner Page Academy | Enrol</title>
+<style>
+:root{
+ --deep:#005f6c;--teal:#0b7f8e;--bg:#eef7f7;--line:#d9e8e8;--text:#12343b;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Inter,Segoe UI,Arial,sans-serif;
+ background:linear-gradient(180deg,#f8fcfc,#eef7f7);
+ color:var(--text);
+}
+.wrapper{
+ max-width:680px;
+ margin:60px auto;
+ padding:0 20px;
+}
+.card{
+ background:#fff;
+ border:1px solid var(--line);
+ border-radius:22px;
+ padding:42px;
+ box-shadow:0 16px 40px rgba(0,0,0,.08);
+}
+.logo{
+ text-align:center;
+ margin-bottom:20px;
+}
+.logo img{height:56px}
+.kicker{
+ text-align:center;
+ color:var(--teal);
+ text-transform:uppercase;
+ letter-spacing:.15em;
+ font-size:.8rem;
+ font-weight:700;
+}
+h1{
+ text-align:center;
+ margin:10px 0 8px;
+ color:var(--deep);
+}
+p{
+ text-align:center;
+ color:#587177;
+ margin-bottom:30px;
+}
+label{
+ display:block;
+ font-weight:600;
+ margin:16px 0 6px;
+}
+input{
+ width:100%;
+ padding:14px;
+ border:1px solid #ccd;
+ border-radius:10px;
+ font-size:16px;
+}
+button{
+ width:100%;
+ margin-top:26px;
+ padding:15px;
+ border:0;
+ border-radius:10px;
+ background:var(--deep);
+ color:#fff;
+ font-size:16px;
+ font-weight:700;
+ cursor:pointer;
+}
+.footer{
+ text-align:center;
+ margin-top:24px;
+}
+.footer a{
+ color:var(--deep);
+ text-decoration:none;
+ font-weight:700;
+}
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+<div class="card">
+
+<div class="logo">
+<img src="assets/turner-page-logo.png" alt="Turner Page">
+</div>
+
+<div class="kicker">Turner Page Academy</div>
+
+<h1>Create your learning account</h1>
+
+<p>Create your account to begin the Data Migration Lead Programme.</p>
+
+<label>Full name</label>
+<input id="name" autocomplete="name">
+
+<label>Email address</label>
+<input id="email" type="email" autocomplete="email">
+
+<label>Password</label>
+<input id="password" type="password">
+
+<label>Confirm password</label>
+<input id="confirm" type="password">
+
+<button onclick="createAccount()">Create my account</button>
+
+<div class="footer">
+Already have an account?
+<a href="login.html">Login</a>
+</div>
+
+</div>
+</div>
+
+<script>
+function createAccount(){
+
+ const name=document.getElementById("name").value.trim();
+ const email=document.getElementById("email").value.trim().toLowerCase();
+ const password=document.getElementById("password").value;
+ const confirm=document.getElementById("confirm").value;
+
+ if(!name||!email||!password){
+   alert("Please complete all fields.");
+   return;
+ }
+
+ if(password!==confirm){
+   alert("Passwords do not match.");
+   return;
+ }
+
+ const learner={
+   name:name,
+   email:email,
+   password:password,
+   enrolled:new Date().toISOString()
+ };
+
+ localStorage.setItem("tpLearner",JSON.stringify(learner));
+
+ window.location.href="welcome.html";
+}
+</script>
+
+</body>
+</html>
