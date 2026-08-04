@@ -140,6 +140,8 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
   .promise-lines{grid-template-columns:1fr 1fr}
   h1{font-size:36px}
 }
+
+.from-field{border-left:4px solid #005f6c;background:#f7fbfb;padding:18px;border-radius:10px;margin:22px 0}.from-field h4{margin:6px 0}.from-field audio{margin:10px 0}
 </style>
 </head>
 <body>
@@ -298,7 +300,14 @@ const blocks=[
  html:`<p class="lead">Turner Page Data Migration Leads use simple mental frameworks that help them ask the right questions consistently.</p>
  <p>Whenever somebody asks, “Are we ready?”, these five questions help build a complete picture.</p>
  <div class="visual-card framework-overview">
-   <div class="visual-title">The Turner Page migration readiness framework</div>
+   <div class="visual-title">The Turner Page migration readiness framework
+<div class="callout from-field">
+<div class="callout-label">🎧 FROM THE FIELD</div>
+<h4>Five Questions Before Sign-off</h4>
+<p><strong>Zoe</strong> · Composite project story based on real ERP implementations.</p>
+<audio controls preload="metadata" style="width:100%"><source src="assets/audio/5Questions-SignOff-Zoe.mp3" type="audio/mpeg"></audio>
+<p><strong>Turner Page Reflection</strong><br>Would you have recommended Go before working through all five readiness areas?</p>
+</div></div>
    <div class="framework-grid">
     ${fiveQuestions.map((q,i)=>`
       <article class="framework-node ${q.colour}">
