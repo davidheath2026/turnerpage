@@ -141,7 +141,13 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
   h1{font-size:36px}
 }
 
-.from-field{border-left:4px solid #005f6c;background:#f7fbfb;padding:18px;border-radius:10px;margin:22px 0}.from-field h4{margin:6px 0}.from-field audio{margin:10px 0}
+.from-field{margin:24px 0;padding:18px;border:1px solid #d7e7e7;border-radius:14px;background:#f9fcfc}
+.from-field .callout-label{color:#005f6c;font-weight:700;letter-spacing:.08em;font-size:.82rem}
+.from-field h4{margin:.4rem 0}
+.from-field .meta{color:#5b6b72;font-size:.92rem;margin-bottom:10px}
+.from-field audio{width:100%;margin:10px 0}
+.reflection{margin-top:12px;padding-top:10px;border-top:1px solid #dde}
+.reflection strong{color:#005f6c}
 </style>
 </head>
 <body>
@@ -301,13 +307,17 @@ const blocks=[
  <p>Whenever somebody asks, “Are we ready?”, these five questions help build a complete picture.</p>
  <div class="visual-card framework-overview">
    <div class="visual-title">The Turner Page migration readiness framework
-<div class="callout from-field">
+<div class="from-field">
 <div class="callout-label">🎧 FROM THE FIELD</div>
-<h4>Five Questions Before Sign-off</h4>
-<p><strong>Zoe</strong> · Composite project story based on real ERP implementations.</p>
-<audio controls preload="metadata" style="width:100%"><source src="assets/audio/5Questions-SignOff-Zoe.mp3" type="audio/mpeg"></audio>
-<p><strong>Turner Page Reflection</strong><br>Would you have recommended Go before working through all five readiness areas?</p>
-</div></div>
+<h4>Before I Recommended Go</h4>
+<div class="meta"><strong>Zoe</strong> · Data Migration Lead · Manufacturing ERP</div>
+<audio controls preload="metadata">
+<source src="assets/audio/5Questions-SignOff-Zoe.mp3" type="audio/mpeg">
+</audio>
+<div class="reflection"><strong>Turner Page Reflection</strong><br>
+Would you have recommended Go before working through all five readiness areas?</div>
+</div>
+</div>
    <div class="framework-grid">
     ${fiveQuestions.map((q,i)=>`
       <article class="framework-node ${q.colour}">
@@ -325,7 +335,17 @@ const blocks=[
      <img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true">
      <div class="tp-insight-content">
        <div class="callout-label">Turner Page insight</div>
-       <p>A Turner Page Data Migration Lead does not begin by asking, “Are we ready?” They ask, “What evidence do we have that we are ready?” Only after all five readiness areas have been assessed should a recommendation be made.</p>
+       <p>A Turner Page Data Migration Lead does not begin by asking, “Are we ready?” They ask, “What evidence do we have that we are ready?” Only after all five readiness areas have been assessed should a recommendation be made.</p>Only after all five readiness areas have been assessed should a recommendation be made.</p>
+<div class="from-field">
+<div class="callout-label">🎧 FROM THE FIELD</div>
+<h4>When "Ready" Isn't Ready</h4>
+<div class="meta"><strong>Darren</strong> · Data Migration Lead · Distribution ERP</div>
+<audio controls preload="metadata">
+<source src="assets/audio/InvoicingIssue-Darren.mp3" type="audio/mpeg">
+</audio>
+<div class="reflection"><strong>Turner Page Reflection</strong><br>
+Would you have recommended Go if invoicing was still unavailable?</div>
+</div>
      </div>
    </div>
  </div>
