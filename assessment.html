@@ -1,151 +1,491 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lesson 1 Certification Assessment</title>
+<title>Turner Page | Lesson 1 Certification Assessment</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f8f8;margin:0}
-.wrap{max-width:900px;margin:40px auto;background:#fff;padding:30px;border-radius:12px}
-h1,h2{color:#005f6c}
-button{background:#005f6c;color:#fff;border:none;padding:12px 22px;border-radius:8px;cursor:pointer}
-.option{display:block;margin:10px 0;padding:12px;border:1px solid #ccc;border-radius:8px;cursor:pointer}
-.progress{font-weight:bold;margin-bottom:20px}
+:root{
+  --ink:#102f36;
+  --deep:#005f6c;
+  --teal:#0b7f8e;
+  --aqua:#7dd8d8;
+  --mist:#f3f9f9;
+  --paper:#fff;
+  --line:#d8e9e9;
+  --good:#0b7d5b;
+  --warn:#8a6113;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);
+  color:var(--ink);
+  line-height:1.6;
+}
+.topbar{
+  background:#fff;
+  border-bottom:1px solid var(--line);
+}
+.topbar-inner{
+  max-width:1120px;
+  margin:auto;
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  gap:22px;
+}
+.logo{height:46px;width:auto}
+.brand{flex:1}
+.brand strong{display:block}
+.brand span{font-size:12px;color:#61787d}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:.25s}
+.page{
+  max-width:980px;
+  margin:36px auto 80px;
+  padding:0 20px;
+}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:clamp(26px,5vw,52px);
+  box-shadow:var(--shadow);
+}
+.kicker{
+  color:var(--teal);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+}
+h1{
+  margin:8px 0 18px;
+  font-size:clamp(34px,5vw,52px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+h2{
+  margin:8px 0 22px;
+  font-size:clamp(26px,4vw,38px);
+  line-height:1.18;
+}
+.lead{
+  color:#405b62;
+  font-size:19px;
+}
+.assessment-facts{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:28px 0;
+}
+.fact{
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#f9fcfc;
+}
+.fact strong{display:block;color:var(--deep)}
+.scenario{
+  margin:22px 0;
+  padding:20px 22px;
+  border-left:5px solid var(--aqua);
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
+  font-size:18px;
+}
+.options{
+  display:grid;
+  gap:12px;
+  margin:22px 0;
+}
+.option{
+  display:flex;
+  gap:13px;
+  align-items:flex-start;
+  width:100%;
+  padding:16px;
+  text-align:left;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  color:var(--ink);
+  cursor:pointer;
+}
+.option:hover{border-color:var(--teal)}
+.option.selected{
+  border:2px solid var(--teal);
+  background:#edfafa;
+}
+.badge{
+  min-width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#e3f3f3;
+  color:var(--deep);
+  font-weight:900;
+}
+.actions{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:34px;
+  padding-top:22px;
+  border-top:1px solid var(--line);
+}
+button{
+  border:0;
+  border-radius:13px;
+  padding:13px 20px;
+  font-weight:850;
+  cursor:pointer;
+}
+.primary{background:var(--deep);color:#fff}
+.secondary{background:#e7f5f5;color:var(--deep)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.result-head{
+  text-align:center;
+  padding-bottom:26px;
+}
+.score{
+  font-size:60px;
+  line-height:1;
+  font-weight:900;
+  color:var(--deep);
+}
+.status-pass{color:var(--good)}
+.status-fail{color:#9a3e32}
+.review{
+  margin:22px 0;
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fbfefe;
+}
+.review.correct{border-left:5px solid var(--good)}
+.review.incorrect{border-left:5px solid #b15b45}
+.answer-line{
+  margin:8px 0;
+  color:#4b656b;
+}
+.explanation{
+  margin-top:13px;
+  padding-top:13px;
+  border-top:1px solid var(--line);
+}
 .hidden{display:none}
-blockquote{border-left:4px solid #0a7d8b;padding-left:12px;color:#444}
-.review{background:#eef7f8;padding:15px;border-radius:8px;margin:20px 0}
+@media(max-width:760px){
+  .assessment-facts{grid-template-columns:1fr 1fr}
+  .topbar-inner{padding:10px 14px}
+  .logo{height:39px}
+  .brand span{display:none}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-<div id="intro">
-<h1>Lesson 1 Certification Assessment</h1>
-<p>This assessment tests your professional judgement.</p>
-<ul>
-<li>10 scenario-based questions</li>
-<li>Pass mark: 80%</li>
-<li>No feedback during the assessment</li>
-<li>Detailed review after submission</li>
-</ul>
-<button onclick="start()">Start Assessment</button>
-</div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <img class="logo" src="assets/turner-page-logo.png" alt="Turner Page">
+    <div class="brand">
+      <strong>Lesson 1 Certification Assessment</strong>
+      <span>Thinking like a Data Migration Lead</span>
+    </div>
+    <strong id="progressText">Not started</strong>
+  </div>
+  <div class="progress-shell"><div id="progressBar" class="progress-bar" style="width:0"></div></div>
+</header>
 
-<div id="quiz" class="hidden"></div>
-<div id="results" class="hidden"></div>
-</div>
+<main class="page">
+  <section id="intro" class="card">
+    <div class="kicker">Certification assessment</div>
+    <h1>Think like a Data Migration Lead</h1>
+    <p class="lead">
+      This assessment tests professional judgement rather than simple recall.
+      Read each project scenario carefully and choose the response that best reflects Turner Page thinking.
+    </p>
+
+    <div class="assessment-facts">
+      <div class="fact"><strong>10 questions</strong>Scenario-based</div>
+      <div class="fact"><strong>80% pass mark</strong>8 correct answers</div>
+      <div class="fact"><strong>No feedback</strong>Until submission</div>
+      <div class="fact"><strong>Unlimited attempts</strong>Review and retry</div>
+    </div>
+
+    <p><strong>There may be more than one plausible action. Choose the best professional response.</strong></p>
+
+    <div class="actions">
+      <button class="secondary" onclick="location.href='lesson-complete.html'">Back</button>
+      <button class="primary" onclick="startAssessment()">Start assessment</button>
+    </div>
+  </section>
+
+  <section id="quiz" class="card hidden"></section>
+  <section id="results" class="card hidden"></section>
+</main>
 
 <script>
-const questions=[
-{
-q:"The Programme Manager says ETL is complete, validation is 97%, customer master data is signed off and there are no critical defects. Can I tell the Steering Committee we are ready?",
-options:[
-"Yes.",
-"No. Nothing should ever go live before 100%.",
-"I don't yet have enough evidence. I need to assess all five readiness areas.",
-"Ask the ETL Lead."
-],
-answer:2,
-why:"The information relates mainly to technical delivery. A Data Migration Lead should gather evidence across all readiness areas before recommending Go/No-Go."
-},
-{
-q:"Why does a project need a Data Migration Lead?",
-options:["Own every task","Manage ETL developers","Bring together technical, business and operational evidence","Replace the Project Manager"],
-answer:2,
-why:"The role exists to provide balanced, evidence-based recommendations."
-},
-{
-q:"A migration rehearsal succeeds technically, but users cannot process orders because reference data is missing. Which readiness area failed?",
-options:["Data","Migration Process","Business Readiness","Environment"],
-answer:2,
-why:"Technical success alone does not mean the business is ready."
-},
-{
-q:"A stakeholder says 'We've closed all the critical defects.'",
-options:["We're ready.","Nothing else matters.","Critical defects are only one part of migration readiness.","Stop validating."],
-answer:2,
-why:"Defect status is only one input into a readiness recommendation."
-},
-{
-q:"Finance wants to clean duplicate suppliers after Go Live.",
-options:["Nothing to worry about.","ETL will fix it.","Poor data becomes a business problem after migration.","Ignore it."],
-answer:2,
-why:"Migration transfers data quality issues unless they are addressed."
-},
-{
-q:"The Steering Committee wants an immediate recommendation.",
-options:["Recommend Go","Recommend No-Go","Explain more evidence is required","Ask someone else"],
-answer:2,
-why:"Professional judgement requires sufficient evidence."
-},
-{
-q:"The ETL Lead says 'Our work is finished.'",
-options:["Nothing else matters.","Business readiness is the next concern.","Celebrate.","Close the workstream."],
-answer:1,
-why:"ETL completion is only one component of readiness."
-},
-{
-q:"A business area refuses to sign off migrated data.",
-options:["Ignore them.","Go live anyway.","Understand the risk and escalate if needed.","Delete the data."],
-answer:2,
-why:"Unresolved business risks must be visible to governance."
-},
-{
-q:"Which quality best defines an excellent Data Migration Lead?",
-options:["SQL expertise","Programming","Evidence-based professional judgement","Presentation skills"],
-answer:2,
-why:"Judgement is the distinguishing capability."
-},
-{
-q:"Why does Turner Page emphasise evidence?",
-options:["Looks professional","Governance likes reports","Recommendations without evidence are opinions","ETL generates evidence"],
-answer:2,
-why:"Evidence underpins trustworthy recommendations."
-}
+const questions = [
+  {
+    title:"A confident status report",
+    scenario:`The Programme Manager says: “ETL is complete, validation is 97%, the environment is ready and there are no critical migration defects. Can I tell the Steering Committee that we are ready for the dress rehearsal?”`,
+    prompt:"What is your best response?",
+    options:[
+      "Yes. The available status indicates that the rehearsal should proceed.",
+      "No. Migration activity must reach 100% before any rehearsal can begin.",
+      "Not yet. I need evidence across data, process, business, environment and residual risk before making that recommendation.",
+      "Ask the ETL Lead to make the recommendation because the technical work is complete."
+    ],
+    answer:2,
+    explanation:"The status is encouraging, but it does not provide a complete readiness picture. A Turner Page Data Migration Lead gathers evidence across all five readiness areas before recommending."
+  },
+  {
+    title:"The missing 3%",
+    scenario:`Validation is reported as 97% complete. The Project Director says the remaining 3% is too small to affect the decision.`,
+    prompt:"What should concern you most?",
+    options:[
+      "The percentage itself, because validation should always reach exactly 100%.",
+      "Whether the remaining 3% contains business-critical records or balances.",
+      "Whether the validation team can work overtime to improve the percentage.",
+      "Whether the Steering Committee understands how percentages are calculated."
+    ],
+    answer:1,
+    explanation:"A percentage has little meaning without materiality. A small volume can contain the records with the greatest business impact."
+  },
+  {
+    title:"Successful migration, failed Monday morning",
+    scenario:`The rehearsal finishes on time. Every planned record is loaded and reconciled. On the following morning, users cannot process orders because required reference data was never approved.`,
+    prompt:"Which conclusion is strongest?",
+    options:[
+      "The migration was successful because all technical activities completed.",
+      "The environment was not ready because users could not process orders.",
+      "Business readiness was incomplete despite technical migration success.",
+      "The issue belongs entirely to the functional team and should not affect migration readiness."
+    ],
+    answer:2,
+    explanation:"Technical completion does not prove that the organisation can operate. Business readiness is part of the overall recommendation."
+  },
+  {
+    title:"The invoicing defect",
+    scenario:`Four days before go-live, a configuration defect prevents customer invoices from being raised. The defect is not caused by migrated data and does not affect the migration run itself.`,
+    prompt:"How should it influence your recommendation?",
+    options:[
+      "It should not influence it because the defect sits outside the migration workstream.",
+      "It automatically requires No-Go because invoice creation is business-critical.",
+      "Assess the operational impact, workaround, ownership and residual risk before recommending.",
+      "Recommend Go and ask Finance to resolve the issue during hypercare."
+    ],
+    answer:2,
+    explanation:"The Data Migration Lead should not judge migration in isolation. The correct response is to assess whether the business can operate and whether the risk is understood and accepted."
+  },
+  {
+    title:"Who owns duplicate customers?",
+    scenario:`Profiling identifies thousands of duplicate customer records. The Sales Director asks the migration team to select the correct record and remove the others before go-live.`,
+    prompt:"What is the best response?",
+    options:[
+      "Agree, because the Data Migration Lead owns every issue that affects migrated data.",
+      "Refuse, because data quality is never part of the migration workstream.",
+      "Provide evidence and options, but require the business data owner to make the business decisions.",
+      "Load every record and let users decide which records to use after go-live."
+    ],
+    answer:2,
+    explanation:"Migration can analyse the problem and facilitate resolution, but it should not make business decisions about which customer records are valid."
+  },
+  {
+    title:"A completed runbook",
+    scenario:`The cutover runbook is fully documented, reviewed and approved. The final rehearsal was cancelled to protect the delivery date.`,
+    prompt:"What evidence is still missing?",
+    options:[
+      "None. An approved runbook proves that the migration process is ready.",
+      "Evidence that the end-to-end process can be executed repeatedly within the available window.",
+      "Evidence that every individual task has a named owner.",
+      "Evidence that all technical resources have read the runbook."
+    ],
+    answer:1,
+    explanation:"A runbook records intent. A rehearsal demonstrates execution, timing, coordination, reconciliation and repeatability."
+  },
+  {
+    title:"A green dashboard",
+    scenario:`The migration dashboard is entirely green. When challenged, the team explains that it measures task completion, defect counts and environment availability. It does not measure user access, operational continuity or risk acceptance.`,
+    prompt:"What should you do?",
+    options:[
+      "Recommend Go because governance has already agreed the dashboard measures.",
+      "Recommend No-Go because a dashboard that omits information cannot be trusted.",
+      "Explain that the dashboard shows status, not complete readiness, and gather the missing evidence.",
+      "Add an amber note to the dashboard but keep the overall recommendation green."
+    ],
+    answer:2,
+    explanation:"Status reporting can look positive while omitting decisive evidence. The Data Migration Lead must understand what is measured and what is not."
+  },
+  {
+    title:"Pressure for an immediate answer",
+    scenario:`During a Steering Committee meeting, the sponsor asks you for an immediate Go or No-Go recommendation. One country has not completed validation and you do not yet understand the affected data.`,
+    prompt:"What is the strongest professional response?",
+    options:[
+      "Recommend No-Go because incomplete validation always prevents go-live.",
+      "Recommend Go because the sponsor needs a clear answer.",
+      "State that you cannot yet make a defensible recommendation and specify the evidence required.",
+      "Abstain and ask the country lead to make the decision."
+    ],
+    answer:2,
+    explanation:"Confidence does not mean guessing. A professional response explains why the evidence is incomplete and what is needed to reach a defensible recommendation."
+  },
+  {
+    title:"One high-priority defect",
+    scenario:`A high-priority reporting defect remains open. Purchasing uses the report daily, but a tested manual workaround is available for the first week after go-live.`,
+    prompt:"Which recommendation is most appropriate?",
+    options:[
+      "No-Go, because any high-priority defect is unacceptable.",
+      "Go, because reporting defects do not affect migrated data.",
+      "Assess the workaround, duration, business impact, ownership and formal acceptance before recommending.",
+      "Remove the high-priority label so that the project can proceed."
+    ],
+    answer:2,
+    explanation:"Severity labels support decision-making but do not replace it. The real questions concern impact, mitigation, ownership and accepted residual risk."
+  },
+  {
+    title:"The final recommendation",
+    scenario:`All five readiness areas have been reviewed. Data quality issues are understood, the process has been rehearsed successfully, users can operate, environments are stable and the remaining risks have named owners and approved mitigations.`,
+    prompt:"What should your recommendation contain?",
+    options:[
+      "A simple statement that migration is green.",
+      "A technical summary of the load statistics and defect count.",
+      "A clear recommendation supported by the evidence, conditions and residual risks governance must understand.",
+      "A promise that no migration-related issues will occur after go-live."
+    ],
+    answer:2,
+    explanation:"A professional recommendation is clear and defensible. It summarises the evidence, conditions and residual risks without pretending risk has been eliminated."
+  }
 ];
-let idx=0,answers=[];
-function start(){intro.classList.add('hidden');quiz.classList.remove('hidden');render();}
-function render(){
-const q=questions[idx];
-quiz.innerHTML=`<div class="progress">Question ${idx+1} of ${questions.length}</div>
-<blockquote>${q.q}</blockquote>
-${q.options.map((o,i)=>`<label class="option"><input type="radio" name="a" value="${i}"> ${String.fromCharCode(65+i)}. ${o}</label>`).join("")}
-<p><button ${idx==0?"disabled":""} onclick="prev()">Previous</button>
-<button onclick="next()">Next</button></p>`;
+
+let current = 0;
+let answers = Array(questions.length).fill(null);
+
+const intro = document.getElementById("intro");
+const quiz = document.getElementById("quiz");
+const results = document.getElementById("results");
+const progressText = document.getElementById("progressText");
+const progressBar = document.getElementById("progressBar");
+
+function startAssessment(){
+  intro.classList.add("hidden");
+  quiz.classList.remove("hidden");
+  renderQuestion();
 }
-function prev(){idx--;render();}
-function next(){
-const s=document.querySelector('input[name=a]:checked');
-if(!s){alert("Please select an answer.");return;}
-answers[idx]=+s.value;
-if(idx<questions.length-1){idx++;render();}else finish();
+
+function renderQuestion(){
+  const q = questions[current];
+  const pct = Math.round((current/questions.length)*100);
+  progressText.textContent = `Question ${current+1} of ${questions.length}`;
+  progressBar.style.width = pct + "%";
+
+  quiz.innerHTML = `
+    <div class="kicker">Question ${current+1} of ${questions.length}</div>
+    <h2>${q.title}</h2>
+    <div class="scenario">${q.scenario}</div>
+    <p><strong>${q.prompt}</strong></p>
+    <div class="options">
+      ${q.options.map((option,index)=>`
+        <button class="option ${answers[current]===index ? "selected" : ""}" onclick="selectAnswer(${index})">
+          <span class="badge">${String.fromCharCode(65+index)}</span>
+          <span>${option}</span>
+        </button>
+      `).join("")}
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="previousQuestion()" ${current===0 ? "disabled" : ""}>Previous</button>
+      <button class="primary" onclick="nextQuestion()" ${answers[current]===null ? "disabled" : ""}>
+        ${current===questions.length-1 ? "Submit assessment" : "Next"}
+      </button>
+    </div>
+  `;
 }
-function finish(){
-quiz.classList.add('hidden');
-results.classList.remove('hidden');
-let score=0;
-questions.forEach((q,i)=>{if(answers[i]===q.answer)score++;});
-const pass=score>=8;
-if (pass) {
-  const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
-  const completedAt = new Date().toISOString();
-  const datePart = completedAt.slice(0,10).replaceAll("-","");
-  const namePart = String(learner.name || "LEARNER").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-  localStorage.setItem("tpAssessmentResult", JSON.stringify({
-    score,
-    passed: true,
-    completedAt,
-    certificateId: `TP-DML-${datePart}-${namePart}`
-  }));
+
+function selectAnswer(index){
+  answers[current] = index;
+  renderQuestion();
 }
-let out=`<h1>Assessment Complete</h1><h2>${pass?"PASS":"NOT PASSED"}</h2><p><strong>Score:</strong> ${score}/10</p><h2>Review</h2>`;
-questions.forEach((q,i)=>{
-out+=`<div class="review"><strong>Question ${i+1}</strong><br>
-Your answer: ${String.fromCharCode(65+(answers[i]??0))}<br>
-Correct answer: ${String.fromCharCode(65+q.answer)}<br><br>
-<strong>Why this is the best answer</strong><br>${q.why}</div>`;
-});
-out+=pass?`<p><button onclick="location.href='certificate.html'">Proceed to Certificate</button></p>`:`<p><button onclick="location.reload()">Try Again</button></p>`;
-results.innerHTML=out;
+
+function previousQuestion(){
+  if(current>0){
+    current--;
+    renderQuestion();
+  }
+}
+
+function nextQuestion(){
+  if(answers[current]===null) return;
+  if(current < questions.length-1){
+    current++;
+    renderQuestion();
+  } else {
+    submitAssessment();
+  }
+}
+
+function submitAssessment(){
+  quiz.classList.add("hidden");
+  results.classList.remove("hidden");
+  progressBar.style.width = "100%";
+  progressText.textContent = "Assessment complete";
+
+  let score = 0;
+  questions.forEach((q,index)=>{
+    if(answers[index]===q.answer) score++;
+  });
+
+  const pass = score >= 8;
+
+  if(pass){
+    const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
+    const completedAt = new Date().toISOString();
+    const datePart = completedAt.slice(0,10).replaceAll("-","");
+    const namePart = String(learner.name || "LEARNER").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+    localStorage.setItem("tpAssessmentResult", JSON.stringify({
+      score,
+      passed:true,
+      completedAt,
+      certificateId:`TP-DML-${datePart}-${namePart}`
+    }));
+  }
+
+  results.innerHTML = `
+    <div class="result-head">
+      <div class="kicker">Assessment result</div>
+      <div class="score">${score}/10</div>
+      <h2 class="${pass ? "status-pass" : "status-fail"}">${pass ? "Passed" : "Not passed this time"}</h2>
+      <p class="lead">${pass
+        ? "You have demonstrated the evidence-based judgement expected in Lesson 1."
+        : "Review the explanations below, revisit the lesson where necessary, and try again."}</p>
+    </div>
+
+    <h2>Review your answers</h2>
+
+    ${questions.map((q,index)=>{
+      const correct = answers[index]===q.answer;
+      return `
+        <article class="review ${correct ? "correct" : "incorrect"}">
+          <div class="kicker">Question ${index+1}</div>
+          <h3>${q.title}</h3>
+          <p>${q.scenario}</p>
+          <div class="answer-line"><strong>Your answer:</strong> ${String.fromCharCode(65+answers[index])}. ${q.options[answers[index]]}</div>
+          <div class="answer-line"><strong>Best answer:</strong> ${String.fromCharCode(65+q.answer)}. ${q.options[q.answer]}</div>
+          <div class="explanation"><strong>Why this is the best answer</strong><br>${q.explanation}</div>
+        </article>
+      `;
+    }).join("")}
+
+    <div class="actions">
+      <button class="secondary" onclick="location.reload()">${pass ? "Retake assessment" : "Try again"}</button>
+      ${pass ? `<button class="primary" onclick="location.href='certificate.html'">View certificate</button>` :
+               `<button class="primary" onclick="location.href='lesson.html'">Return to lesson</button>`}
+    </div>
+  `;
 }
 </script>
 </body>
