@@ -125,6 +125,18 @@ results.classList.remove('hidden');
 let score=0;
 questions.forEach((q,i)=>{if(answers[i]===q.answer)score++;});
 const pass=score>=8;
+if (pass) {
+  const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
+  const completedAt = new Date().toISOString();
+  const datePart = completedAt.slice(0,10).replaceAll("-","");
+  const namePart = String(learner.name || "LEARNER").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+  localStorage.setItem("tpAssessmentResult", JSON.stringify({
+    score,
+    passed: true,
+    completedAt,
+    certificateId: `TP-DML-${datePart}-${namePart}`
+  }));
+}
 let out=`<h1>Assessment Complete</h1><h2>${pass?"PASS":"NOT PASSED"}</h2><p><strong>Score:</strong> ${score}/10</p><h2>Review</h2>`;
 questions.forEach((q,i)=>{
 out+=`<div class="review"><strong>Question ${i+1}</strong><br>
