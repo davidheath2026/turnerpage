@@ -1,4 +1,115 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 1 Complete</title><style>body{font-family:Arial,sans-serif;background:#f5f9fa;margin:0}.c{max-width:900px;margin:40px auto;background:#fff;padding:40px;border-radius:12px}button{padding:14px 26px;background:#005f6c;color:#fff;border:0;border-radius:8px;font-size:18px;cursor:pointer}</style></head><body><div class="c"><img src="assets/turner-page-logo.png" style="max-width:220px"><h1>Lesson 1 complete</h1><p>Congratulations. You have completed <strong>Lesson 1 – Thinking like a Data Migration Lead.</strong></p><h2>Key takeaways</h2><ul><li>Evidence before opinion.</li><li>Migration readiness is broader than technical completion.</li><li>Use the Turner Page Migration Readiness Framework.</li><li>Ask better questions before making recommendations.</li></ul><h2>Your reflection</h2><textarea style="width:100%;height:180px"></textarea><h2>Assessment</h2><p>10 questions • Approximately 10 minutes • Pass mark 80% • Unlimited attempts</p><p><button onclick="location.href='assessment.html'">Start Assessment</button></p></div><script>
-const tpLearner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turner Page | Lesson 1 Complete</title>
+<style>
+:root{
+  --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
+  --mist:#f3f9f9; --paper:#fff; --line:#d8e9e9; --good:#0b7d5b;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);color:var(--ink);line-height:1.62}
+.topbar{background:#fff;border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1120px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:22px}
+.logo{height:46px;width:auto}.brand{flex:1}.brand strong{display:block}.brand span{font-size:12px;color:#61787d}
+.page{max-width:980px;margin:36px auto 80px;padding:0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(28px,5vw,54px);box-shadow:var(--shadow)}
+.complete-mark{width:66px;height:66px;margin-bottom:18px;display:grid;place-items:center;border-radius:50%;background:#eaf7f2;color:var(--good);font-size:34px;font-weight:900}
+.kicker{color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+h1{margin:8px 0 16px;font-size:clamp(36px,5vw,54px);line-height:1.08;letter-spacing:-.035em}
+h2{margin:30px 0 12px;font-size:25px}.lead{max-width:780px;color:#405b62;font-size:19px}
+.takeaways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0 8px}
+.takeaway{position:relative;padding:17px 18px 17px 47px;border:1px solid var(--line);border-radius:16px;background:#fbfefe}
+.takeaway::before{content:"✓";position:absolute;left:18px;top:15px;color:var(--good);font-weight:900}
+.reflection{margin-top:28px;padding:22px;border:1px solid var(--line);border-radius:20px;background:#f8fbfb}
+textarea{width:100%;min-height:150px;padding:16px;border:1px solid var(--line);border-radius:15px;resize:vertical;font:inherit;color:var(--ink);background:#fff}
+.assessment{margin-top:28px;padding:24px;border-radius:20px;background:linear-gradient(135deg,#005f6c,#0b7f8e);color:#fff}
+.assessment h2{margin:0 0 8px;color:#fff}
+.assessment-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.assessment-grid div{padding:12px;border:1px solid rgba(255,255,255,.22);border-radius:13px;background:rgba(255,255,255,.08)}
+.assessment-grid strong{display:block}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:30px}
+button{border:0;border-radius:13px;padding:13px 20px;font-weight:850;cursor:pointer}
+.primary{background:#fff;color:var(--deep)}.secondary{background:#e7f5f5;color:var(--deep)}
+.promise{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);color:#647d82;text-align:center;font-size:13px}
+@media(max-width:760px){
+  .takeaways,.assessment-grid{grid-template-columns:1fr}
+  .actions{flex-direction:column-reverse}.actions button{width:100%}
+  .topbar-inner{padding:10px 14px}.logo{height:39px}.brand span{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" aria-label="Return to home"><img class="logo" src="assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="brand"><strong>Data Migration Lead Programme</strong><span>Professional training and certification</span></div>
+  </div>
+</header>
+
+<main class="page">
+  <section class="card">
+    <div class="complete-mark">✓</div>
+    <div class="kicker">Lesson 1 complete</div>
+    <h1>Well done, <span id="learnerName">Chetan</span>.</h1>
+
+    <p class="lead">
+      You have completed <strong>Thinking like a Data Migration Lead: Making evidence-based decisions.</strong>
+      You are now ready to test how well you can apply the Turner Page approach to realistic project situations.
+    </p>
+
+    <h2>What you have covered</h2>
+    <div class="takeaways">
+      <div class="takeaway">Build a complete evidence picture before making a recommendation.</div>
+      <div class="takeaway">Assess data, process, business, environments and residual risk.</div>
+      <div class="takeaway">Own the migration workstream without taking ownership of every task.</div>
+      <div class="takeaway">Judge readiness by business impact, not technical status alone.</div>
+    </div>
+
+    <div class="reflection">
+      <div class="kicker">Your reflection</div>
+      <h2>What is the single most valuable thing you learned?</h2>
+      <p>This is for you. Your answer is saved on this device.</p>
+      <textarea id="lessonReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+    </div>
+
+    <div class="assessment">
+      <div class="kicker" style="color:#a9eeee">Next step</div>
+      <h2>Lesson 1 certification assessment</h2>
+      <p>The assessment tests professional judgement rather than simple recall.</p>
+
+      <div class="assessment-grid">
+        <div><strong>10 questions</strong>Scenario-based</div>
+        <div><strong>About 15 minutes</strong>Complete in one sitting</div>
+        <div><strong>80% pass mark</strong>8 correct answers</div>
+        <div><strong>Unlimited attempts</strong>Review and retry</div>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" onclick="location.href='lesson.html'">Return to lesson</button>
+        <button class="primary" onclick="location.href='assessment.html'">Start assessment</button>
+      </div>
+    </div>
+
+    <div class="promise">
+      <strong>The Turner Page Promise</strong><br>
+      Helping Data Migration Leads make better decisions on real ERP projects.
+    </div>
+  </section>
+</main>
+
+<script>
+const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
+const fullName = learner.name && learner.name.trim() ? learner.name.trim() : "Chetan Patel";
+document.getElementById("learnerName").textContent = fullName.split(/\s+/)[0];
+
+const reflectionKey = "tpLesson1CompletionReflection";
+const reflection = document.getElementById("lessonReflection");
+reflection.value = localStorage.getItem(reflectionKey) || "";
+reflection.addEventListener("input", () => localStorage.setItem(reflectionKey, reflection.value));
 </script>
-</body></html>
+</body>
+</html>
