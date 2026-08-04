@@ -81,6 +81,8 @@ p{max-width:820px}
 .framework-node .num{font-size:12px;color:var(--teal);font-weight:900}
 .framework-node h4{margin:8px 0 8px;font-size:17px}
 .framework-detail{border:1px solid var(--line);border-radius:20px;background:#fbfefe;padding:20px;margin:14px 0}
+.framework-visual{margin:26px 0 18px}
+.framework-visual img{display:block;width:100%;height:auto;border-radius:20px;border:1px solid var(--line);box-shadow:0 12px 30px rgba(9,68,78,.08)}
 .framework-detail button{margin-top:10px}
 .ownership-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
 .ownership-card{border:1px solid var(--line);border-radius:20px;background:#fbfefe;padding:18px}
@@ -267,12 +269,9 @@ const blocks=[
  id:"b3",nav:"The five questions",title:"The five questions every Data Migration Lead asks",type:"framework",
  html:`<p class="lead">Experienced Data Migration Leads develop simple mental frameworks that help them ask the right questions consistently.</p>
  <p>Whenever somebody asks, “Are we ready?”, these five questions help build a complete picture.</p>
- <div class="visual-card">
-   <div class="visual-title">The Turner Page migration readiness framework</div>
-   <div class="framework-grid">
-    ${fiveQuestions.map((q,i)=>`<div class="framework-node"><div class="num">0${i+1}</div><h4>${q.title}</h4><div class="small">${q.short}</div></div>`).join("")}
-   </div>
- </div>
+ <figure class="framework-visual">
+   <img src="assets/migration-readiness-framework.png" alt="The Turner Page Migration Readiness Framework showing five readiness questions covering data, migration process, business, environments and remaining risks.">
+ </figure>
  <p>Explore each question in detail before moving on.</p>`
 },
 {
