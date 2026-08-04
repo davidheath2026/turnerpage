@@ -178,6 +178,33 @@ button.secondary{background:#dceeee;color:var(--deep)}
   .actions{display:none}
 }
 </style>
+
+<style id="tp-print-fix">
+@page{size:A4 landscape;margin:0;}
+@media print{
+ html,body{
+  width:297mm;
+  height:210mm;
+  margin:0!important;
+  padding:0!important;
+  background:#fff!important;
+  overflow:hidden;
+ }
+ .wrap,.container,.certificate-container{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:8mm!important;
+ }
+ .cert,.certificate{
+  height:194mm!important;
+  page-break-inside:avoid!important;
+  break-inside:avoid!important;
+  box-shadow:none!important;
+ }
+}
+</style>
+
 </head>
 <body>
 <section class="certificate">
@@ -188,7 +215,7 @@ button.secondary{background:#dceeee;color:var(--deep)}
     <h1>Professional Certificate of Completion</h1>
 
     <div class="certifies">This certifies that</div>
-    <div class="name" id="candidateName"><span id="learnerName">Chetan Patel</span></div>
+    <div class="name" id="candidateName">Chetan Patel</div>
 
     <div class="course-label">has successfully completed</div>
     <div class="course">Thinking like a Data Migration Lead</div>
@@ -226,10 +253,10 @@ button.secondary{background:#dceeee;color:var(--deep)}
 </div>
 
 <script>
-const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"<span id="learnerName">Chetan Patel</span>"}');
+const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
 const assessment = JSON.parse(localStorage.getItem("tpAssessmentResult") || '{}');
 
-const learnerName = learner.name && learner.name.trim() ? learner.name.trim() : "<span id="learnerName">Chetan Patel</span>";
+const learnerName = learner.name && learner.name.trim() ? learner.name.trim() : "Chetan Patel";
 document.getElementById("candidateName").textContent = learnerName;
 
 const date = assessment.completedAt ? new Date(assessment.completedAt) : new Date();
@@ -246,13 +273,6 @@ const datePart = date.toISOString().slice(0,10).replaceAll("-","");
 const namePart = safePart(learnerName) || "LEARNER";
 const credentialId = assessment.certificateId || `TP-DML-${datePart}-${namePart}`;
 document.getElementById("certificateId").textContent = credentialId;
-</script>
-
-<script>
-const learner=JSON.parse(localStorage.getItem("tpCurrentLearner")||localStorage.getItem("tpLearner")||"{}");
-if(document.getElementById("learnerName")&&learner.name){
-document.getElementById("learnerName").textContent=learner.name;
-}
 </script>
 </body>
 </html>
