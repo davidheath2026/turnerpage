@@ -1,36 +1,140 @@
-<!doctype html><html><head><meta charset='utf-8'>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>Lesson 1 Assessment</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lesson 1 Certification Assessment</title>
 <style>
 body{font-family:Arial,sans-serif;background:#f4f8f8;margin:0}
 .wrap{max-width:900px;margin:40px auto;background:#fff;padding:30px;border-radius:12px}
-h1{color:#005f6c}.progress{font-weight:bold}.q{margin:20px 0}.opt{display:block;border:1px solid #ccc;padding:12px;margin:10px 0;border-radius:8px;cursor:pointer}
+h1,h2{color:#005f6c}
 button{background:#005f6c;color:#fff;border:none;padding:12px 22px;border-radius:8px;cursor:pointer}
-button:disabled{opacity:.4}
-.feedback{background:#eef7f8;border-left:4px solid #0a7d8b;padding:12px;margin-top:15px}
-</style></head><body><div class='wrap'><h1>Lesson 1 Assessment (Practice Mode)</h1><div id='app'></div>
+.option{display:block;margin:10px 0;padding:12px;border:1px solid #ccc;border-radius:8px;cursor:pointer}
+.progress{font-weight:bold;margin-bottom:20px}
+.hidden{display:none}
+blockquote{border-left:4px solid #0a7d8b;padding-left:12px;color:#444}
+.review{background:#eef7f8;padding:15px;border-radius:8px;margin:20px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="intro">
+<h1>Lesson 1 Certification Assessment</h1>
+<p>This assessment tests your professional judgement.</p>
+<ul>
+<li>10 scenario-based questions</li>
+<li>Pass mark: 80%</li>
+<li>No feedback during the assessment</li>
+<li>Detailed review after submission</li>
+</ul>
+<button onclick="start()">Start Assessment</button>
+</div>
+
+<div id="quiz" class="hidden"></div>
+<div id="results" class="hidden"></div>
+</div>
+
 <script>
-const qs=[
-{q:'The Programme Manager says ETL is complete, validation is 97%, customer master is signed off and there are no critical defects. Can you recommend Go-Live?',o:["Yes, we're ready.", 'No, nothing should ever go live before 100%.', 'Not yet. I need evidence across all areas of migration readiness.', 'Ask the ETL Lead.'],a:2,f:'Correct. A Data Migration Lead recommends based on complete evidence, not partial status updates.'},{q:'Why does a project need a Data Migration Lead?',o:['To own every migration task.', 'To manage ETL developers.', 'To bring together technical, business and operational evidence for governance.', 'To replace the Project Manager.'],a:2,f:'Correct. The role exists to provide balanced, evidence-based recommendations.'},{q:'A migration rehearsal succeeds technically, but users cannot process orders because reference data is missing. Which readiness area failed?',o:['Data', 'Migration Process', 'Business Readiness', 'Environment'],a:2,f:'Correct. Technical success does not guarantee business readiness.'},{q:"A stakeholder says 'We've closed all the critical defects.' Your response?",o:["We're ready.", 'Nothing else matters.', 'Critical defects are only one part of migration readiness.', 'Great, stop validating.'],a:2,f:'Correct. Readiness is broader than defect status.'},{q:'Finance wants to clean duplicate suppliers after Go-Live. What concerns you most?',o:['Nothing.', 'ETL will fix it.', 'Poor data becomes a business problem after migration.', 'Ignore it.'],a:2,f:'Correct. Migration transfers business data—it does not magically improve it.'},{q:'The Steering Committee wants an immediate Go/No-Go recommendation but you still have unanswered questions.',o:['Recommend Go.', 'Recommend No-Go.', 'Explain that more evidence is required before making a professional recommendation.', 'Ask someone else.'],a:2,f:'Correct. Professional judgement requires sufficient evidence.'},{q:"The ETL Lead says 'Our work is finished.' What is your next concern?",o:['Nothing.', 'Business readiness and operational readiness.', 'Celebrate.', 'Close the workstream.'],a:1,f:'Correct. ETL completion is only one component of readiness.'},{q:'A business area refuses to sign off migrated data.',o:['Ignore them.', 'Go live anyway.', 'Understand the risk and escalate through governance if required.', 'Delete their data.'],a:2,f:'Correct. Governance must understand unresolved business risks.'},{q:'Which quality best defines an excellent Data Migration Lead?',o:['SQL expertise.', 'Programming ability.', 'Evidence-based professional judgement.', 'Presentation skills.'],a:2,f:'Correct. Technical skills matter, but judgement is what governance relies on.'},{q:'Why does Turner Page emphasise evidence?',o:['It looks professional.', 'Governance likes reports.', 'Recommendations without evidence are opinions.', 'ETL generates evidence.'],a:2,f:'Correct. Evidence turns opinion into professional recommendation.'}
+const questions=[
+{
+q:"The Programme Manager says ETL is complete, validation is 97%, customer master data is signed off and there are no critical defects. Can I tell the Steering Committee we are ready?",
+options:[
+"Yes.",
+"No. Nothing should ever go live before 100%.",
+"I don't yet have enough evidence. I need to assess all five readiness areas.",
+"Ask the ETL Lead."
+],
+answer:2,
+why:"The information relates mainly to technical delivery. A Data Migration Lead should gather evidence across all readiness areas before recommending Go/No-Go."
+},
+{
+q:"Why does a project need a Data Migration Lead?",
+options:["Own every task","Manage ETL developers","Bring together technical, business and operational evidence","Replace the Project Manager"],
+answer:2,
+why:"The role exists to provide balanced, evidence-based recommendations."
+},
+{
+q:"A migration rehearsal succeeds technically, but users cannot process orders because reference data is missing. Which readiness area failed?",
+options:["Data","Migration Process","Business Readiness","Environment"],
+answer:2,
+why:"Technical success alone does not mean the business is ready."
+},
+{
+q:"A stakeholder says 'We've closed all the critical defects.'",
+options:["We're ready.","Nothing else matters.","Critical defects are only one part of migration readiness.","Stop validating."],
+answer:2,
+why:"Defect status is only one input into a readiness recommendation."
+},
+{
+q:"Finance wants to clean duplicate suppliers after Go Live.",
+options:["Nothing to worry about.","ETL will fix it.","Poor data becomes a business problem after migration.","Ignore it."],
+answer:2,
+why:"Migration transfers data quality issues unless they are addressed."
+},
+{
+q:"The Steering Committee wants an immediate recommendation.",
+options:["Recommend Go","Recommend No-Go","Explain more evidence is required","Ask someone else"],
+answer:2,
+why:"Professional judgement requires sufficient evidence."
+},
+{
+q:"The ETL Lead says 'Our work is finished.'",
+options:["Nothing else matters.","Business readiness is the next concern.","Celebrate.","Close the workstream."],
+answer:1,
+why:"ETL completion is only one component of readiness."
+},
+{
+q:"A business area refuses to sign off migrated data.",
+options:["Ignore them.","Go live anyway.","Understand the risk and escalate if needed.","Delete the data."],
+answer:2,
+why:"Unresolved business risks must be visible to governance."
+},
+{
+q:"Which quality best defines an excellent Data Migration Lead?",
+options:["SQL expertise","Programming","Evidence-based professional judgement","Presentation skills"],
+answer:2,
+why:"Judgement is the distinguishing capability."
+},
+{
+q:"Why does Turner Page emphasise evidence?",
+options:["Looks professional","Governance likes reports","Recommendations without evidence are opinions","ETL generates evidence"],
+answer:2,
+why:"Evidence underpins trustworthy recommendations."
+}
 ];
-let i=0;
-function draw(){
- let x=qs[i];
- document.getElementById('app').innerHTML=`<div class='progress'>Question ${i+1} of ${qs.length}</div><div class='q'><h2>${x.q}</h2>${
- x.o.map((v,n)=>`<label class='opt'><input type='radio' name='a' value='${n}'> ${String.fromCharCode(65+n)}. ${v}</label>`).join('')
- }<div id='fb'></div><br><button onclick='check()'>Submit Answer</button></div>`;
+let idx=0,answers=[];
+function start(){intro.classList.add('hidden');quiz.classList.remove('hidden');render();}
+function render(){
+const q=questions[idx];
+quiz.innerHTML=`<div class="progress">Question ${idx+1} of ${questions.length}</div>
+<blockquote>${q.q}</blockquote>
+${q.options.map((o,i)=>`<label class="option"><input type="radio" name="a" value="${i}"> ${String.fromCharCode(65+i)}. ${o}</label>`).join("")}
+<p><button ${idx==0?"disabled":""} onclick="prev()">Previous</button>
+<button onclick="next()">Next</button></p>`;
 }
-function check(){
- let c=document.querySelector('input[name=a]:checked');
- if(!c){alert('Please choose an answer');return;}
- let ok=(+c.value===qs[i].a);
- document.getElementById('fb').innerHTML=`<div class='feedback'><strong>${ok?'Correct':'Not quite.'}</strong><br>${qs[i].f}</div><br><button onclick='next()'>${i==qs.length-1?'Finish Assessment':'Next Question'}</button>`;
-}
+function prev(){idx--;render();}
 function next(){
- i++;
- if(i>=qs.length){
- document.getElementById('app').innerHTML="<h2>Assessment Complete</h2><p>Well done. You have completed the Lesson 1 practice assessment.</p><button onclick=\"location.href='certificate.html'\">Continue</button>";
- } else draw();
+const s=document.querySelector('input[name=a]:checked');
+if(!s){alert("Please select an answer.");return;}
+answers[idx]=+s.value;
+if(idx<questions.length-1){idx++;render();}else finish();
 }
-draw();
-</script></div></body></html>
+function finish(){
+quiz.classList.add('hidden');
+results.classList.remove('hidden');
+let score=0;
+questions.forEach((q,i)=>{if(answers[i]===q.answer)score++;});
+const pass=score>=8;
+let out=`<h1>Assessment Complete</h1><h2>${pass?"PASS":"NOT PASSED"}</h2><p><strong>Score:</strong> ${score}/10</p><h2>Review</h2>`;
+questions.forEach((q,i)=>{
+out+=`<div class="review"><strong>Question ${i+1}</strong><br>
+Your answer: ${String.fromCharCode(65+(answers[i]??0))}<br>
+Correct answer: ${String.fromCharCode(65+q.answer)}<br><br>
+<strong>Why this is the best answer</strong><br>${q.why}</div>`;
+});
+out+=pass?`<p><button onclick="location.href='certificate.html'">Proceed to Certificate</button></p>`:`<p><button onclick="location.reload()">Try Again</button></p>`;
+results.innerHTML=out;
+}
+</script>
+</body>
+</html>
