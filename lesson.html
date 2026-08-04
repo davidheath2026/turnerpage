@@ -68,7 +68,7 @@ p{max-width:820px}
 .promise-lines{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
 .promise-lines div{border:1px solid #d4eaea;background:white;border-radius:14px;padding:12px;text-align:center;font-weight:800;color:var(--deep)}
 .footer-promise{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:#657d82;font-size:13px}
-.experience .callout-label{color:var(--teal)}
+.tp-insight .callout-label{color:var(--teal)}
 .misconception .callout-label{color:#8c651a}
 .visual-card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbfb);padding:22px;margin:28px 0;overflow:hidden}
 .visual-title{font-size:13px;text-transform:uppercase;letter-spacing:.13em;color:#5f777c;font-weight:800;margin-bottom:16px}
@@ -96,10 +96,10 @@ p{max-width:820px}
 .framework-checks{list-style:none;padding:0;margin:0;display:grid;gap:9px}
 .framework-checks li{position:relative;padding-left:19px;font-size:13px;line-height:1.4;color:#49636a}
 .framework-checks li::before{content:"✓";position:absolute;left:0;top:0;color:var(--accent);font-weight:900}
-.framework-insight{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:start;margin-top:18px;padding:17px 18px;border-radius:16px;background:#eaf7f7;border:1px solid #cae7e7}
-.framework-insight .insight-mark{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--deep);color:white;font-weight:900;font-family:Georgia,serif;font-size:22px}
-.framework-insight strong{color:var(--deep)}
-.framework-insight p{margin:4px 0 0}
+.tp-insight{display:grid;grid-template-columns:48px 1fr;gap:16px;align-items:start;background:#f8fbfb;border:1px solid var(--line);padding:20px 22px}
+.tp-insight-mark{display:block;width:44px;height:44px;object-fit:contain}
+.tp-insight-content p{margin:0}
+.tp-insight-content p+p{margin-top:10px}
 .framework-detail{border:1px solid var(--line);border-radius:20px;background:#fbfefe;padding:20px;margin:14px 0}
 .framework-detail button{margin-top:10px}
 .ownership-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
@@ -126,6 +126,8 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
   .sidebar{position:static}
   .lesson-nav{display:none}
   .framework-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tp-insight{grid-template-columns:40px 1fr;padding:18px}
+  .tp-insight-mark{width:36px;height:36px}
   .flow{grid-template-columns:1fr}
   .arrow{transform:rotate(90deg)}
 }
@@ -180,7 +182,7 @@ const fiveQuestions=[
     detail:`<p>This is not the same as asking whether the data loaded successfully.</p>
     <p>A successful load proves that the migration process can move records. It does not prove that the records are complete, accurate or usable.</p>
     <p>An experienced Data Migration Lead asks whether known issues are understood, whether the affected data is material to the business, and whether the right people have accepted the consequences.</p>
-    <div class="callout experience"><div class="callout-label">Turner Page insight</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div>
+    <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div></div>
     <div class="principle"><strong>Key takeaway</strong><br>Data readiness is about usability and understood risk, not a perfect percentage.</div>`
   },
   {
@@ -211,7 +213,7 @@ const fiveQuestions=[
     detail:`<p>Even a well-designed migration process can fail in an unstable environment.</p>
     <p>Environment readiness includes infrastructure, security, permissions, connectivity, integrations, performance, monitoring and operational support.</p>
     <p>The right question is not simply whether an environment exists. It is whether the complete technical landscape can support both the migration and the business immediately afterwards.</p>
-    <div class="callout experience"><div class="callout-label">Turner Page insight</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div>
+    <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div></div>
     <div class="principle"><strong>Key takeaway</strong><br>An environment is ready only when the end-to-end process can operate inside it.</div>`
   },
   {
@@ -281,10 +283,8 @@ const blocks=[
    </div>
  </div>
 
- <div class="callout experience"><div class="callout-label">Turner Page insight</div>
- <p>One of the biggest mistakes on ERP programmes is confusing status with readiness.</p>
- <p>A project can report green infrastructure, green ETL and green testing, yet still fail because the business cannot operate effectively afterwards.</p>
- </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>One of the biggest mistakes on ERP programmes is confusing status with readiness.</p>
+ <p>A project can report green infrastructure, green ETL and green testing, yet still fail because the business cannot operate effectively afterwards.</p></div></div>
 
  <div class="callout misconception"><div class="callout-label">Common trap</div>
  <p><strong>The Data Migration Lead decides whether the project goes live.</strong></p>
@@ -295,7 +295,7 @@ const blocks=[
 },
 {
  id:"b3",nav:"The five questions",title:"The five questions every Data Migration Lead asks",type:"framework",
- html:`<p class="lead">Experienced Data Migration Leads develop simple mental frameworks that help them ask the right questions consistently.</p>
+ html:`<p class="lead">Turner Page Data Migration Leads use simple mental frameworks that help them ask the right questions consistently.</p>
  <p>Whenever somebody asks, “Are we ready?”, these five questions help build a complete picture.</p>
  <div class="visual-card framework-overview">
    <div class="visual-title">The Turner Page migration readiness framework</div>
@@ -312,10 +312,10 @@ const blocks=[
         </ul>
       </article>`).join("")}
    </div>
-   <div class="framework-insight">
-     <div class="insight-mark">i</div>
-     <div>
-       <strong>Turner Page insight</strong>
+   <div class="callout tp-insight">
+     <img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true">
+     <div class="tp-insight-content">
+       <div class="callout-label">Turner Page insight</div>
        <p>A Turner Page Data Migration Lead does not begin by asking, “Are we ready?” They ask, “What evidence do we have that we are ready?” Only after all five readiness areas have been assessed should a recommendation be made.</p>
      </div>
    </div>
@@ -351,7 +351,7 @@ const blocks=[
  ],
  closing:`<h3>Turner Page coaching</h3>
  <p>You have not tried to answer the Programme Manager immediately. Instead, you have identified the evidence needed before answering.</p>
- <p>Experienced Data Migration Leads build the picture first. Once the picture is complete, the recommendation often becomes clear.</p>
+ <p>Turner Page Data Migration Leads build the picture first. Once the picture is complete, the recommendation often becomes clear.</p>
  <div class="principle"><strong>A Data Migration Lead is not judged by how quickly they give an answer.</strong><br>They are judged by whether they can justify that answer with evidence.</div>`
 },
 {
@@ -373,7 +373,7 @@ const blocks=[
  <p>For each situation, decide whether it is primarily your responsibility, a shared responsibility, or owned elsewhere.</p>`
 },
 {
- id:"b7",nav:"How experienced leads think",title:"How experienced Data Migration Leads think",type:"content",
+ id:"b7",nav:"How Turner Page leads think",title:"How Turner Page Data Migration Leads think",type:"content",
  html:`<p class="lead">Technical ability gets you onto a migration project. Professional judgement earns the programme's trust.</p>
  <div class="behaviour"><h3>They seek evidence before making recommendations</h3><p>Opinions are useful. Evidence is essential.</p></div>
  <div class="behaviour"><h3>They communicate clearly</h3><p>Senior stakeholders need the decision, impact and risk, not a technical data dump.</p></div>
