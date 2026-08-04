@@ -1,0 +1,15 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Login</title><style>
+body{font-family:Arial;background:#f4f8f8;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+.card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.1);width:360px}
+img{max-width:220px;display:block;margin:0 auto 20px}
+input{width:100%;padding:12px;margin:10px 0;box-sizing:border-box}
+button{width:100%;padding:12px;background:#005f6c;color:#fff;border:none;border-radius:8px}
+.err{color:#b00;margin-top:10px}
+</style></head><body><div class='card'><img src='assets/turner-page-logo.png'><h2>Welcome back</h2><p>Sign in to continue.</p>
+<input id='e' placeholder='Email'><input id='p' type='password' placeholder='Password'><button onclick='go()'>Sign In</button><div id='m' class='err'></div>
+</div><script>
+function go(){
+if(e.value==='demo@turnerpage.com'&&p.value==='TurnerPage2026'){location.href='lesson.html';}
+else m.textContent='Incorrect email or password.';
+}
+</script></body></html>
