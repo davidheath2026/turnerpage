@@ -3,276 +3,65 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Turner Page Professional Certificate</title>
+<title>Turner Page Certificate</title>
 <style>
-:root{
-  --ink:#102f36;
-  --deep:#005f6c;
-  --teal:#0b7f8e;
-  --aqua:#7dd8d8;
-  --line:#cfe4e4;
-  --mist:#f3f9f9;
-}
+@page{size:A4 portrait;margin:10mm;}
 *{box-sizing:border-box}
-body{
-  margin:0;
-  padding:28px;
-  background:#edf5f5;
-  color:var(--ink);
-  font-family:Inter,Segoe UI,Arial,sans-serif;
+html,body{margin:0;background:#eef4f5;font-family:Georgia,"Times New Roman",serif}
+.page{
+width:190mm;min-height:277mm;margin:10mm auto;background:#fff;
+border:2px solid #005f6c;padding:10mm;position:relative;
 }
-.certificate{
-  position:relative;
-  max-width:1120px;
-  min-height:760px;
-  margin:auto;
-  overflow:hidden;
-  background:white;
-  border:1px solid var(--line);
-  box-shadow:0 18px 55px rgba(7,64,74,.12);
-}
-.certificate::before{
-  content:"";
-  position:absolute;
-  inset:18px;
-  border:2px solid var(--deep);
-  pointer-events:none;
-}
-.certificate::after{
-  content:"TP";
-  position:absolute;
-  left:50%;
-  top:48%;
-  transform:translate(-50%,-50%);
-  font-size:270px;
-  font-weight:900;
-  letter-spacing:-.12em;
-  color:rgba(0,95,108,.035);
-  pointer-events:none;
-}
-.inner{
-  position:relative;
-  z-index:1;
-  padding:60px 80px 52px;
-  text-align:center;
-}
-.logo{height:66px;width:auto;margin-bottom:30px}
-.kicker{
-  color:var(--teal);
-  font-size:13px;
-  font-weight:900;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-}
-h1{
-  margin:10px 0 34px;
-  color:var(--deep);
-  font-size:48px;
-  line-height:1.05;
-  letter-spacing:-.03em;
-}
-.certifies{font-size:18px;color:#61787d}
-.name{
-  margin:20px auto 18px;
-  padding-bottom:10px;
-  max-width:760px;
-  border-bottom:1px solid var(--line);
-  color:var(--deep);
-  font-family:Georgia,serif;
-  font-size:48px;
-  font-weight:700;
-}
-.course-label{margin-top:18px;color:#61787d;font-size:17px}
-.course{
-  margin:12px 0 10px;
-  font-size:31px;
-  font-weight:850;
-}
-.subtitle{font-size:20px;color:#456068}
-.statement{
-  max-width:790px;
-  margin:28px auto;
-  font-size:17px;
-  line-height:1.7;
-  color:#405a61;
-}
-.details{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-  margin:42px 0 34px;
-  text-align:left;
-}
-.detail{
-  padding:14px 18px;
-  background:var(--mist);
-  border-top:3px solid var(--teal);
-}
-.detail span{
-  display:block;
-  margin-bottom:4px;
-  color:#6a8085;
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-}
-.detail strong{font-size:16px}
-.signing{
-  display:flex;
-  justify-content:center;
-  margin-top:28px;
-}
-.signature-block{
-  width:330px;
-  text-align:center;
-}
-.signature{
-  display:block;
-  max-width:230px;
-  max-height:95px;
-  margin:0 auto -4px;
-}
-.signature-line{
-  border-top:1px solid #81979b;
-  padding-top:8px;
-  font-weight:850;
-}
-.role{
-  color:#61787d;
-  font-size:13px;
-  line-height:1.5;
-}
-.promise{
-  margin-top:32px;
-  color:#61787d;
-  font-size:13px;
-}
-.actions{
-  max-width:1120px;
-  margin:20px auto 0;
-  text-align:center;
-}
-button{
-  border:0;
-  border-radius:12px;
-  padding:13px 22px;
-  margin:5px;
-  background:var(--deep);
-  color:white;
-  font-weight:800;
-  cursor:pointer;
-}
-button.secondary{background:#dceeee;color:var(--deep)}
-@media(max-width:760px){
-  body{padding:10px}
-  .inner{padding:45px 34px}
-  h1{font-size:36px}
-  .name{font-size:36px}
-  .details{grid-template-columns:1fr}
-}
+.inner{border:4px solid #c8a24a;min-height:253mm;padding:18mm;text-align:center}
+.logo{height:70px}
+h1{color:#005f6c;font-size:34px;margin:16px 0 8px}
+.sub{letter-spacing:3px;text-transform:uppercase;color:#777;font-size:12px}
+.name{font-size:40px;font-weight:bold;margin:28px 0;color:#1d2f35}
+.course{font-size:24px;color:#005f6c;margin:18px 0}
+.body{font-size:18px;line-height:1.6;color:#444}
+.footer{position:absolute;left:28mm;right:28mm;bottom:24mm;display:flex;justify-content:space-between;align-items:flex-end}
+.meta{font-family:Arial,sans-serif;font-size:13px;text-align:left;line-height:1.8}
+.sig{text-align:center}
+.sig img{height:80px;transform:rotate(-90deg)}
+.sigline{border-top:1px solid #777;padding-top:6px;width:180px;font-family:Arial,sans-serif}
 @media print{
-  @page{size:A4 landscape;margin:8mm}
-  body{padding:0;background:white}
-  .certificate{max-width:none;min-height:0;box-shadow:none}
-  .actions{display:none}
+html,body{background:#fff}
+.page{margin:0;border:none;width:190mm;min-height:277mm}
 }
 </style>
-
-<style id="tp-print-fix">
-@page{size:A4 landscape;margin:0;}
-@media print{
- html,body{
-  width:297mm;
-  height:210mm;
-  margin:0!important;
-  padding:0!important;
-  background:#fff!important;
-  overflow:hidden;
- }
- .wrap,.container,.certificate-container{
-  width:100%!important;
-  max-width:none!important;
-  margin:0!important;
-  padding:8mm!important;
- }
- .cert,.certificate{
-  height:194mm!important;
-  page-break-inside:avoid!important;
-  break-inside:avoid!important;
-  box-shadow:none!important;
- }
-}
-</style>
-
 </head>
 <body>
-<section class="certificate">
-  <div class="inner">
-    <img src="assets/turner-page-logo.png" class="logo" alt="Turner Page">
-
-    <div class="kicker">Data Migration Lead Programme</div>
-    <h1>Professional Certificate of Completion</h1>
-
-    <div class="certifies">This certifies that</div>
-    <div class="name" id="candidateName">Chetan Patel</div>
-
-    <div class="course-label">has successfully completed</div>
-    <div class="course">Thinking like a Data Migration Lead</div>
-    <div class="subtitle">Making evidence-based decisions</div>
-
-    <p class="statement">
-      The learner has demonstrated an understanding of the professional judgement
-      required to assess migration readiness and make evidence-based recommendations
-      on ERP implementation programmes.
-    </p>
-
-    <div class="details">
-      <div class="detail"><span>Assessment score</span><strong id="assessmentScore">Passed</strong></div>
-      <div class="detail"><span>Date awarded</span><strong id="completionDate"></strong></div>
-      <div class="detail"><span>Credential ID</span><strong id="certificateId"></strong></div>
-    </div>
-
-    <div class="signing">
-      <div class="signature-block">
-        <img src="assets/david-heath-signature.png" class="signature" alt="Signature of David Heath">
-        <div class="signature-line">David Heath</div>
-        <div class="role">Founder<br>Turner Page Training &amp; Certification Ltd</div>
-      </div>
-    </div>
-
-    <div class="promise">
-      Helping Data Migration Leads make better decisions on real ERP projects.
-    </div>
-  </div>
-</section>
-
-<div class="actions">
-  <button onclick="window.print()">Print / Save as PDF</button>
-  <button class="secondary" onclick="window.location.href='index.html'">Return to home</button>
+<div class="page">
+<div class="inner">
+<img src="assets/turner-page-logo.png" class="logo">
+<div class="sub">Certificate of Achievement</div>
+<h1>Turner Page Academy</h1>
+<div class="body">This certifies that</div>
+<div class="name" id="learnerName">Learner Name</div>
+<div class="body">has successfully completed</div>
+<div class="course">Thinking Like a Data Migration Lead<br>Lesson 1</div>
+<div class="body">and demonstrated the judgement expected of a professional Data Migration Lead.</div>
 </div>
-
+<div class="footer">
+<div class="meta">
+<div><strong>Date:</strong> <span id="date"></span></div>
+<div><strong>Score:</strong> <span id="score"></span></div>
+<div><strong>Credential ID:</strong> <span id="cred"></span></div>
+</div>
+<div class="sig">
+<img src="assets/david-heath-signature.png" alt="Signature">
+<div class="sigline">David Heath<br>Founder, Turner Page Academy</div>
+</div>
+</div>
+</div>
 <script>
-const learner = JSON.parse(localStorage.getItem("tpLearner") || '{"name":"Chetan Patel"}');
-const assessment = JSON.parse(localStorage.getItem("tpAssessmentResult") || '{}');
-
-const learnerName = learner.name && learner.name.trim() ? learner.name.trim() : "Chetan Patel";
-document.getElementById("candidateName").textContent = learnerName;
-
-const date = assessment.completedAt ? new Date(assessment.completedAt) : new Date();
-document.getElementById("completionDate").textContent =
-  new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"long",year:"numeric"}).format(date);
-
-document.getElementById("assessmentScore").textContent =
-  Number.isFinite(assessment.score) ? assessment.score + "/10" : "Passed";
-
-function safePart(value){
-  return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-}
-const datePart = date.toISOString().slice(0,10).replaceAll("-","");
-const namePart = safePart(learnerName) || "LEARNER";
-const credentialId = assessment.certificateId || `TP-DML-${datePart}-${namePart}`;
-document.getElementById("certificateId").textContent = credentialId;
+const learner=JSON.parse(localStorage.getItem("tpCurrentLearner")||localStorage.getItem("tpLearner")||"{}");
+const result=JSON.parse(localStorage.getItem("tpAssessmentResult")||"{}");
+document.getElementById("learnerName").textContent=learner.name||"Learner";
+const d=result.completedAt?new Date(result.completedAt):new Date();
+document.getElementById("date").textContent=d.toLocaleDateString("en-GB");
+document.getElementById("score").textContent=(result.score!==undefined?result.score+"/"+(result.total||10):"Passed");
+document.getElementById("cred").textContent=result.certificateId||("TP-"+d.getFullYear()+"-"+Math.floor(Math.random()*90000+10000));
 </script>
 </body>
 </html>
