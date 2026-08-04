@@ -1,1 +1,36 @@
-<!DOCTYPE html><html><body style='font-family:Arial;max-width:800px;margin:40px auto'><h1>Assessment coming next</h1><p>This placeholder confirms the navigation works.</p></body></html>
+<!doctype html><html><head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Lesson 1 Assessment</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f8f8;margin:0}
+.wrap{max-width:900px;margin:40px auto;background:#fff;padding:30px;border-radius:12px}
+h1{color:#005f6c}.progress{font-weight:bold}.q{margin:20px 0}.opt{display:block;border:1px solid #ccc;padding:12px;margin:10px 0;border-radius:8px;cursor:pointer}
+button{background:#005f6c;color:#fff;border:none;padding:12px 22px;border-radius:8px;cursor:pointer}
+button:disabled{opacity:.4}
+.feedback{background:#eef7f8;border-left:4px solid #0a7d8b;padding:12px;margin-top:15px}
+</style></head><body><div class='wrap'><h1>Lesson 1 Assessment (Practice Mode)</h1><div id='app'></div>
+<script>
+const qs=[
+{q:'The Programme Manager says ETL is complete, validation is 97%, customer master is signed off and there are no critical defects. Can you recommend Go-Live?',o:["Yes, we're ready.", 'No, nothing should ever go live before 100%.', 'Not yet. I need evidence across all areas of migration readiness.', 'Ask the ETL Lead.'],a:2,f:'Correct. A Data Migration Lead recommends based on complete evidence, not partial status updates.'},{q:'Why does a project need a Data Migration Lead?',o:['To own every migration task.', 'To manage ETL developers.', 'To bring together technical, business and operational evidence for governance.', 'To replace the Project Manager.'],a:2,f:'Correct. The role exists to provide balanced, evidence-based recommendations.'},{q:'A migration rehearsal succeeds technically, but users cannot process orders because reference data is missing. Which readiness area failed?',o:['Data', 'Migration Process', 'Business Readiness', 'Environment'],a:2,f:'Correct. Technical success does not guarantee business readiness.'},{q:"A stakeholder says 'We've closed all the critical defects.' Your response?",o:["We're ready.", 'Nothing else matters.', 'Critical defects are only one part of migration readiness.', 'Great, stop validating.'],a:2,f:'Correct. Readiness is broader than defect status.'},{q:'Finance wants to clean duplicate suppliers after Go-Live. What concerns you most?',o:['Nothing.', 'ETL will fix it.', 'Poor data becomes a business problem after migration.', 'Ignore it.'],a:2,f:'Correct. Migration transfers business data—it does not magically improve it.'},{q:'The Steering Committee wants an immediate Go/No-Go recommendation but you still have unanswered questions.',o:['Recommend Go.', 'Recommend No-Go.', 'Explain that more evidence is required before making a professional recommendation.', 'Ask someone else.'],a:2,f:'Correct. Professional judgement requires sufficient evidence.'},{q:"The ETL Lead says 'Our work is finished.' What is your next concern?",o:['Nothing.', 'Business readiness and operational readiness.', 'Celebrate.', 'Close the workstream.'],a:1,f:'Correct. ETL completion is only one component of readiness.'},{q:'A business area refuses to sign off migrated data.',o:['Ignore them.', 'Go live anyway.', 'Understand the risk and escalate through governance if required.', 'Delete their data.'],a:2,f:'Correct. Governance must understand unresolved business risks.'},{q:'Which quality best defines an excellent Data Migration Lead?',o:['SQL expertise.', 'Programming ability.', 'Evidence-based professional judgement.', 'Presentation skills.'],a:2,f:'Correct. Technical skills matter, but judgement is what governance relies on.'},{q:'Why does Turner Page emphasise evidence?',o:['It looks professional.', 'Governance likes reports.', 'Recommendations without evidence are opinions.', 'ETL generates evidence.'],a:2,f:'Correct. Evidence turns opinion into professional recommendation.'}
+];
+let i=0;
+function draw(){
+ let x=qs[i];
+ document.getElementById('app').innerHTML=`<div class='progress'>Question ${i+1} of ${qs.length}</div><div class='q'><h2>${x.q}</h2>${
+ x.o.map((v,n)=>`<label class='opt'><input type='radio' name='a' value='${n}'> ${String.fromCharCode(65+n)}. ${v}</label>`).join('')
+ }<div id='fb'></div><br><button onclick='check()'>Submit Answer</button></div>`;
+}
+function check(){
+ let c=document.querySelector('input[name=a]:checked');
+ if(!c){alert('Please choose an answer');return;}
+ let ok=(+c.value===qs[i].a);
+ document.getElementById('fb').innerHTML=`<div class='feedback'><strong>${ok?'Correct':'Not quite.'}</strong><br>${qs[i].f}</div><br><button onclick='next()'>${i==qs.length-1?'Finish Assessment':'Next Question'}</button>`;
+}
+function next(){
+ i++;
+ if(i>=qs.length){
+ document.getElementById('app').innerHTML="<h2>Assessment Complete</h2><p>Well done. You have completed the Lesson 1 practice assessment.</p><button onclick=\"location.href='certificate.html'\">Continue</button>";
+ } else draw();
+}
+draw();
+</script></div></body></html>
