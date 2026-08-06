@@ -1,67 +1,531 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
+<script>
+/* Gatekeeper: failed or missing results are sent straight back to the assessment.
+   Runs before the rest of the page paints, so failed learners never see this page. */
+(function(){
+  try{
+    const result = JSON.parse(localStorage.getItem("tpAssessmentResult") || "{}");
+    if(!result.passed){
+      location.replace("assessment.html");
+    }
+  }catch(e){
+    location.replace("assessment.html");
+  }
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Turner Page Certificate</title>
+<title>Turner Page | Achievement Unlocked</title>
 <style>
-@page{size:A4 portrait;margin:10mm;}
-*{box-sizing:border-box}
-html,body{margin:0;background:#eef4f5;font-family:Georgia,"Times New Roman",serif}
-.page{
-width:190mm;min-height:277mm;margin:10mm auto;background:#fff;
-border:2px solid #005f6c;padding:10mm;position:relative;
+:root{
+  --ink:#102f36;
+  --deep:#005f6c;
+  --teal:#0b7f8e;
+  --aqua:#7dd8d8;
+  --mist:#f3f9f9;
+  --paper:#fff;
+  --line:#d8e9e9;
+  --good:#0b7d5b;
+  --warn:#8a6113;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
 }
-.inner{border:4px solid #c8a24a;min-height:253mm;padding:18mm;text-align:center}
-.logo{height:70px}
-h1{color:#005f6c;font-size:34px;margin:16px 0 8px}
-.sub{letter-spacing:3px;text-transform:uppercase;color:#777;font-size:12px}
-.name{font-size:40px;font-weight:bold;margin:28px 0;color:#1d2f35}
-.course{font-size:24px;color:#005f6c;margin:18px 0}
-.body{font-size:18px;line-height:1.6;color:#444}
-.footer{position:absolute;left:28mm;right:28mm;bottom:24mm;display:flex;justify-content:space-between;align-items:flex-end}
-.meta{font-family:Arial,sans-serif;font-size:13px;text-align:left;line-height:1.8}
-.sig{text-align:center}
-.sig img{height:80px;transform:none}
-.sigline{border-top:1px solid #777;padding-top:6px;width:180px;font-family:Arial,sans-serif}
-@media print{
-html,body{background:#fff}
-.page{margin:0;border:none;width:190mm;min-height:277mm}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);
+  color:var(--ink);
+  line-height:1.6;
+}
+.topbar{background:#fff;border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1120px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:22px}
+.logo{height:46px;width:auto}
+.brand{flex:1}
+.brand strong{display:block}
+.brand span{font-size:12px;color:#61787d}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:width 1.1s cubic-bezier(.4,0,.2,1);width:0}
+.page{max-width:980px;margin:36px auto 80px;padding:0 20px}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:clamp(26px,5vw,52px);
+  box-shadow:var(--shadow);
+  margin-bottom:26px;
+}
+.kicker{color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+h1{margin:8px 0 6px;font-size:clamp(32px,5vw,50px);line-height:1.08;letter-spacing:-.035em}
+h2{margin:8px 0 22px;font-size:clamp(24px,4vw,32px);line-height:1.18}
+.lead{color:#405b62;font-size:18px}
+button{border:0;border-radius:13px;padding:13px 20px;font-weight:850;cursor:pointer;font-family:inherit;font-size:15px}
+.primary{background:var(--deep);color:#fff}
+.secondary{background:#e7f5f5;color:var(--deep)}
+button:hover{filter:brightness(1.04)}
+.hidden{display:none}
+
+/* --- Animations --- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.fade-up{opacity:0;animation:fadeUp .7s ease forwards}
+.scale-in{opacity:0;animation:scaleIn .8s ease forwards}
+
+/* --- Hero --- */
+.hero-card{text-align:center}
+.hero-icon{
+  width:64px;height:64px;margin:0 auto 18px;border-radius:50%;
+  background:linear-gradient(135deg,var(--deep),var(--teal));
+  display:grid;place-items:center;color:#fff;font-size:30px;font-weight:900;
+}
+.hero-course{color:var(--teal);font-weight:800;font-size:20px;margin-top:4px}
+.hero-sub{color:#61787d;font-size:15px;margin-top:2px}
+
+/* --- Achievement summary --- */
+.achieve-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:8px}
+.achieve-card{
+  padding:20px 16px;border:1px solid var(--line);border-radius:16px;
+  background:#f9fcfc;text-align:center;
+}
+.achieve-check{
+  width:38px;height:38px;margin:0 auto 12px;border-radius:50%;
+  background:var(--good);color:#fff;display:grid;place-items:center;font-weight:900;
+}
+.achieve-card span{font-size:14px;font-weight:700;color:var(--ink)}
+
+/* --- Certificate --- */
+.cert-wrap{position:relative}
+.certificate{
+  position:relative;
+  background:#fff;
+  border:1px solid var(--teal);
+  border-radius:18px;
+  padding:clamp(28px,6vw,64px);
+  text-align:center;
+  overflow:hidden;
+}
+.watermark{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:clamp(60px,14vw,150px);
+  color:var(--teal);opacity:.045;transform:rotate(-18deg);white-space:nowrap;
+  pointer-events:none;user-select:none;
+}
+.cert-inner{position:relative;z-index:1}
+.cert-kicker{color:var(--teal);font-size:12px;font-weight:900;letter-spacing:.22em;text-transform:uppercase}
+.cert-academy{font-family:Georgia,"Times New Roman",serif;font-size:clamp(24px,4vw,32px);color:var(--deep);margin:10px 0 22px}
+.cert-lead{color:#61787d;font-size:15px}
+.cert-name{
+  font-family:Georgia,"Times New Roman",serif;font-weight:700;
+  font-size:clamp(30px,5vw,44px);color:var(--ink);margin:16px 0;
+}
+.cert-course{color:var(--teal);font-weight:700;font-size:19px;margin:14px 0}
+.cert-body{color:#405b62;font-size:15px;max-width:520px;margin:0 auto}
+.cert-divider{height:1px;background:var(--line);margin:30px 0}
+.cert-footer{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;text-align:left}
+.cert-meta{font-size:13px;color:#4b656b;line-height:1.9}
+.cert-meta strong{color:var(--ink)}
+.cert-verify{font-size:12px;color:#7a9095;margin-top:6px;word-break:break-all}
+.cert-sig{text-align:center}
+.cert-sig img{height:56px}
+.cert-sigline{border-top:1px solid var(--line);padding-top:6px;margin-top:4px;font-size:13px;color:var(--ink);font-weight:700}
+.cert-sigline small{display:block;font-weight:400;color:#61787d;font-size:11px;margin-top:2px}
+.cert-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px;justify-content:center}
+.cert-actions button{font-size:14px;padding:11px 18px}
+
+/* --- Progress section --- */
+.progress-track{height:10px;border-radius:999px;background:#e2f1f1;overflow:hidden;margin:18px 0 26px}
+.progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--deep),var(--aqua));width:0;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.lessons-list{display:grid;gap:12px}
+.lesson-row{
+  display:flex;align-items:center;gap:16px;padding:16px;
+  border:1px solid var(--line);border-radius:16px;background:#f9fcfc;
+}
+.lesson-row.complete{border-color:var(--good);background:#f2faf7}
+.lesson-row.locked{opacity:.65}
+.lesson-badge{
+  min-width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  font-weight:900;background:#e3f3f3;color:var(--deep);flex-shrink:0;
+}
+.lesson-row.complete .lesson-badge{background:var(--good);color:#fff}
+.lesson-title{font-weight:800;flex:1}
+.lesson-status{font-size:13px;color:#61787d;font-weight:700}
+.lesson-row.complete .lesson-status{color:var(--good)}
+
+/* --- What's next --- */
+.next-box{
+  display:flex;gap:18px;align-items:flex-start;padding:22px;
+  border-left:5px solid var(--aqua);border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
+}
+.next-duration{
+  flex-shrink:0;min-width:92px;text-align:center;padding:10px 8px;
+  border-radius:12px;background:#fff;border:1px solid var(--line);
+}
+.next-duration strong{display:block;font-size:20px;color:var(--deep)}
+.next-duration span{font-size:11px;color:#61787d;text-transform:uppercase;letter-spacing:.04em}
+
+/* --- Main actions --- */
+.main-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:12px;margin-top:6px}
+.main-actions .secondary-group{display:flex;flex-wrap:wrap;gap:12px;flex:1}
+
+/* --- Promise --- */
+.promise-card{text-align:center;background:linear-gradient(135deg,var(--deep),var(--teal));color:#fff;box-shadow:none}
+.promise-card .kicker{color:var(--aqua)}
+.promise-card p{font-size:17px;max-width:640px;margin:10px auto 0;opacity:.95}
+
+/* --- Modal --- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(16,47,54,.55);
+  display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;
+}
+.modal-box{
+  background:#fff;border-radius:20px;padding:32px;max-width:420px;width:100%;
+  text-align:center;box-shadow:var(--shadow);
+}
+.modal-box h3{margin:6px 0 10px}
+.modal-box p{color:#405b62;font-size:15px}
+.modal-box .actions{margin-top:22px;display:flex;justify-content:center}
+
+@media(max-width:760px){
+  .topbar-inner{padding:10px 14px}
+  .logo{height:39px}
+  .brand span{display:none}
+  .achieve-grid{grid-template-columns:1fr 1fr}
+  .cert-footer{flex-direction:column;align-items:flex-start}
+  .cert-sig{align-self:stretch;text-align:left}
+  .main-actions{justify-content:stretch}
+  .main-actions .secondary-group{flex-direction:column}
+  .main-actions button{width:100%}
+  .next-box{flex-direction:column}
 }
 </style>
 </head>
 <body>
-<div class="page">
-<div class="inner">
-<img src="assets/turner-page-logo.png" class="logo">
-<div class="sub">Certificate of Achievement</div>
-<h1>Turner Page Academy</h1>
-<div class="body">This certifies that</div>
-<div class="name" id="learnerName">Learner Name</div>
-<div class="body">has successfully completed</div>
-<div class="course">Thinking Like a Data Migration Lead<br>Lesson 1</div>
-<div class="body">and demonstrated the judgement expected of a professional Data Migration Lead.</div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <img class="logo" src="assets/turner-page-logo.png" alt="Turner Page">
+    <div class="brand">
+      <strong>Data Migration Lead Foundation</strong>
+      <span>Lesson 1 of 4 complete</span>
+    </div>
+    <strong id="progressText">25% complete</strong>
+  </div>
+  <div class="progress-shell"><div id="topProgressBar" class="progress-bar"></div></div>
+</header>
+
+<main class="page">
+
+  <section class="card hero-card">
+    <div class="hero-icon fade-up" style="animation-delay:.05s">&#10003;</div>
+    <div class="kicker fade-up" style="animation-delay:.1s">Congratulations!</div>
+    <h1 class="fade-up" style="animation-delay:.18s">You have successfully completed</h1>
+    <div class="hero-course fade-up" style="animation-delay:.26s">Data Migration Lead Foundation</div>
+    <div class="hero-sub fade-up" style="animation-delay:.34s">Lesson 1 Certification</div>
+  </section>
+
+  <section class="card">
+    <div class="kicker">Achievement summary</div>
+    <h2>What you've unlocked</h2>
+    <div class="achieve-grid">
+      <div class="achieve-card"><div class="achieve-check">&#10003;</div><span>Lesson completed</span></div>
+      <div class="achieve-card"><div class="achieve-check">&#10003;</div><span>Assessment passed</span></div>
+      <div class="achieve-card"><div class="achieve-check">&#10003;</div><span>Certificate awarded</span></div>
+      <div class="achieve-card"><div class="achieve-check">&#10003;</div><span>Ready for the next lesson</span></div>
+    </div>
+  </section>
+
+  <section class="card cert-wrap">
+    <div class="kicker">Your certificate</div>
+    <h2>Certificate of Achievement</h2>
+    <div id="certificateCard" class="certificate scale-in" style="animation-delay:.15s">
+      <div class="watermark">TURNER PAGE &nbsp; TURNER PAGE</div>
+      <div class="cert-inner">
+        <div class="cert-kicker">Certificate of Achievement</div>
+        <div class="cert-academy">Turner Page Academy</div>
+        <p class="cert-lead">This certifies that</p>
+        <div class="cert-name" id="learnerName">Learner Name</div>
+        <p class="cert-lead">has successfully completed</p>
+        <div class="cert-course">Thinking Like a Data Migration Lead &mdash; Lesson 1</div>
+        <p class="cert-body">and demonstrated the judgement expected of a professional Data Migration Lead.</p>
+
+        <div class="cert-divider"></div>
+
+        <div class="cert-footer">
+          <div class="cert-meta">
+            <div><strong>Date:</strong> <span id="date"></span></div>
+            <div><strong>Score:</strong> <span id="score"></span></div>
+            <div><strong>Credential ID:</strong> <span id="cred"></span></div>
+            <div class="cert-verify">Verify at: <span id="verifyUrl"></span></div>
+          </div>
+          <div class="cert-sig">
+            <img src="assets/david-heath-signature.png" alt="Signature">
+            <div class="cert-sigline">David Heath<small>Founder, Turner Page Academy</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cert-actions">
+      <button class="secondary" onclick="downloadCertificatePDF()">Download Certificate PDF</button>
+      <button class="secondary" onclick="downloadCertificatePNG()">Download Certificate PNG</button>
+      <button class="secondary" onclick="shareOnLinkedIn()">Share on LinkedIn</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="kicker">Overall progress</div>
+    <h2>Your certification journey</h2>
+    <div class="progress-track"><div id="courseProgressFill" class="progress-fill"></div></div>
+    <div class="lessons-list">
+      <div class="lesson-row complete">
+        <div class="lesson-badge">&#10003;</div>
+        <div class="lesson-title">Lesson 1 &mdash; Thinking Like a Data Migration Lead</div>
+        <div class="lesson-status">Complete</div>
+      </div>
+      <div class="lesson-row locked">
+        <div class="lesson-badge">&#128274;</div>
+        <div class="lesson-title">Lesson 2</div>
+        <div class="lesson-status">Coming Soon</div>
+      </div>
+      <div class="lesson-row locked">
+        <div class="lesson-badge">&#128274;</div>
+        <div class="lesson-title">Lesson 3</div>
+        <div class="lesson-status">Coming Soon</div>
+      </div>
+      <div class="lesson-row locked">
+        <div class="lesson-badge">&#128274;</div>
+        <div class="lesson-title">Lesson 4</div>
+        <div class="lesson-status">Coming Soon</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="kicker">What's next</div>
+    <h2>Keep building your judgement</h2>
+    <div class="next-box">
+      <div class="next-duration"><strong>35&ndash;40</strong><span>Minutes</span></div>
+      <p class="lead" style="font-size:16px">
+        Lesson 2 moves from readiness judgement into assessing and communicating data quality risk &mdash;
+        building on the evidence-based thinking you've just demonstrated. It's released as soon as it's ready,
+        and you'll be notified the moment it opens.
+      </p>
+    </div>
+  </section>
+
+  <section class="main-actions">
+    <div class="secondary-group">
+      <button class="secondary fade-up" style="animation-delay:.1s" onclick="location.href='dashboard.html'">Return to Dashboard</button>
+    </div>
+    <button class="primary fade-up" style="animation-delay:.2s" onclick="continueLearning()">Continue Learning</button>
+  </section>
+
+  <section class="card promise-card">
+    <div class="kicker">The Turner Page promise</div>
+    <p>Every Turner Page certification is designed to develop professional judgement rather than simply test knowledge.</p>
+  </section>
+
+</main>
+
+<div id="comingSoonModal" class="modal-overlay hidden" onclick="if(event.target===this) hideComingSoonModal()">
+  <div class="modal-box">
+    <div class="kicker">Coming soon</div>
+    <h3>Lesson 2 isn't ready yet</h3>
+    <p>We're still building this lesson. You'll be notified as soon as it's available &mdash; in the meantime, your Lesson 1 certificate is ready to download and share.</p>
+    <div class="actions">
+      <button class="primary" onclick="hideComingSoonModal()">Got it</button>
+    </div>
+  </div>
 </div>
-<div class="footer">
-<div class="meta">
-<div><strong>Date:</strong> <span id="date"></span></div>
-<div><strong>Score:</strong> <span id="score"></span></div>
-<div><strong>Credential ID:</strong> <span id="cred"></span></div>
-</div>
-<div class="sig">
-<img src="assets/david-heath-signature.png" alt="Signature">
-<div class="sigline">David Heath<br>Founder, Turner Page Academy</div>
-</div>
-</div>
-</div>
+
 <script>
-const learner=JSON.parse(localStorage.getItem("tpCurrentLearner")||localStorage.getItem("tpLearner")||"{}");
-const result=JSON.parse(localStorage.getItem("tpAssessmentResult")||"{}");
-document.getElementById("learnerName").textContent=learner.name||"Learner";
-const d=result.completedAt?new Date(result.completedAt):new Date();
-document.getElementById("date").textContent=d.toLocaleDateString("en-GB");
-document.getElementById("score").textContent=(result.score!==undefined?result.score+"/"+(result.total||10):"Passed");
-document.getElementById("cred").textContent=result.certificateId||("TP-"+d.getFullYear()+"-"+Math.floor(Math.random()*90000+10000));
+/* ---------- Certificate data (preserves existing localStorage contract) ---------- */
+const learner = JSON.parse(localStorage.getItem("tpCurrentLearner") || localStorage.getItem("tpLearner") || "{}");
+const result = JSON.parse(localStorage.getItem("tpAssessmentResult") || "{}");
+
+const learnerName = learner.name || "Learner";
+const completedDate = result.completedAt ? new Date(result.completedAt) : new Date();
+const dateText = completedDate.toLocaleDateString("en-GB");
+const scoreText = result.score !== undefined ? result.score + "/" + (result.total || 10) : "Passed";
+const credText = result.certificateId || ("TP-" + completedDate.getFullYear() + "-" + Math.floor(Math.random() * 90000 + 10000));
+const verifyUrlText = "https://turnerpage.academy/verify/" + credText;
+
+document.getElementById("learnerName").textContent = learnerName;
+document.getElementById("date").textContent = dateText;
+document.getElementById("score").textContent = scoreText;
+document.getElementById("cred").textContent = credText;
+document.getElementById("verifyUrl").textContent = verifyUrlText;
+
+/* ---------- Entrance animation for the progress bars ---------- */
+window.addEventListener("load", () => {
+  requestAnimationFrame(() => {
+    document.getElementById("topProgressBar").style.width = "25%";
+    document.getElementById("courseProgressFill").style.width = "25%";
+  });
+});
+
+/* ---------- Continue learning: go to Lesson 2 if it exists, otherwise show the modal ---------- */
+async function continueLearning(){
+  try{
+    const res = await fetch("lesson2.html", { method:"HEAD" });
+    if(res.ok){
+      location.href = "lesson2.html";
+      return;
+    }
+  }catch(e){
+    /* lesson2.html not reachable (e.g. not yet published, or running from a local file) */
+  }
+  showComingSoonModal();
+}
+
+function showComingSoonModal(){
+  document.getElementById("comingSoonModal").classList.remove("hidden");
+}
+function hideComingSoonModal(){
+  document.getElementById("comingSoonModal").classList.add("hidden");
+}
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape") hideComingSoonModal();
+});
+
+/* ---------- Download Certificate PDF (native print, scoped to the certificate) ---------- */
+function downloadCertificatePDF(){
+  window.print();
+}
+
+/* ---------- Download Certificate PNG (self-contained canvas render, no external libraries) ---------- */
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function downloadCertificatePNG(){
+  const canvas = document.createElement("canvas");
+  canvas.width = 1400;
+  canvas.height = 940;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#0b7f8e";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(-18 * Math.PI / 180);
+  ctx.font = "700 150px Georgia";
+  ctx.fillStyle = "rgba(11,127,142,0.05)";
+  ctx.textAlign = "center";
+  ctx.fillText("TURNER PAGE", 0, 0);
+  ctx.restore();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#0b7f8e";
+  ctx.font = "700 20px Arial";
+  ctx.fillText("CERTIFICATE OF ACHIEVEMENT", canvas.width / 2, 110);
+
+  ctx.fillStyle = "#005f6c";
+  ctx.font = "700 44px Georgia";
+  ctx.fillText("Turner Page Academy", canvas.width / 2, 170);
+
+  ctx.fillStyle = "#405b62";
+  ctx.font = "20px Arial";
+  ctx.fillText("This certifies that", canvas.width / 2, 225);
+
+  ctx.fillStyle = "#102f36";
+  ctx.font = "700 54px Georgia";
+  ctx.fillText(learnerName, canvas.width / 2, 300);
+
+  ctx.fillStyle = "#405b62";
+  ctx.font = "20px Arial";
+  ctx.fillText("has successfully completed", canvas.width / 2, 348);
+
+  ctx.fillStyle = "#0b7f8e";
+  ctx.font = "700 30px Georgia";
+  ctx.fillText("Thinking Like a Data Migration Lead \u2014 Lesson 1", canvas.width / 2, 398);
+
+  ctx.fillStyle = "#405b62";
+  ctx.font = "17px Arial";
+  wrapCanvasText(ctx, "and demonstrated the judgement expected of a professional Data Migration Lead.", canvas.width / 2, 436, 680, 24);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#102f36";
+  ctx.font = "700 16px Arial";
+  ctx.fillText("Date: " + dateText, 90, canvas.height - 190);
+  ctx.fillText("Score: " + scoreText, 90, canvas.height - 160);
+  ctx.fillText("Credential ID: " + credText, 90, canvas.height - 130);
+  ctx.font = "13px Arial";
+  ctx.fillStyle = "#61787d";
+  ctx.fillText("Verify at: " + verifyUrlText, 90, canvas.height - 100);
+
+  try{
+    const sig = await loadImage("assets/david-heath-signature.png");
+    ctx.drawImage(sig, canvas.width - 380, canvas.height - 250, 220, 88);
+  }catch(e){
+    /* signature asset unavailable in this context; certificate still renders without it */
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#102f36";
+  ctx.font = "700 15px Arial";
+  ctx.fillText("David Heath", canvas.width - 270, canvas.height - 145);
+  ctx.font = "13px Arial";
+  ctx.fillStyle = "#61787d";
+  ctx.fillText("Founder, Turner Page Academy", canvas.width - 270, canvas.height - 126);
+
+  const link = document.createElement("a");
+  link.download = "TurnerPage-Certificate-" + credText + ".png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(" ");
+  let line = "";
+  let offsetY = y;
+  words.forEach((word) => {
+    const testLine = line + word + " ";
+    if(ctx.measureText(testLine).width > maxWidth && line !== ""){
+      ctx.fillText(line, x, offsetY);
+      line = word + " ";
+      offsetY += lineHeight;
+    }else{
+      line = testLine;
+    }
+  });
+  ctx.fillText(line, x, offsetY);
+}
+
+/* ---------- Share on LinkedIn (standard "Add to profile" certification link) ---------- */
+function shareOnLinkedIn(){
+  const params = new URLSearchParams({
+    startTask: "CERTIFICATION_NAME",
+    name: "Data Migration Lead Foundation \u2014 Lesson 1 Certification",
+    organizationName: "Turner Page Academy",
+    issueYear: String(completedDate.getFullYear()),
+    issueMonth: String(completedDate.getMonth() + 1),
+    certUrl: verifyUrlText,
+    certId: credText
+  });
+  window.open("https://www.linkedin.com/profile/add?" + params.toString(), "_blank");
+}
 </script>
+
+<style media="print">
+  body *{visibility:hidden}
+  #certificateCard, #certificateCard *{visibility:visible}
+  #certificateCard{
+    position:absolute;top:0;left:0;width:100%;margin:0;
+    border:2px solid #0b7f8e;box-shadow:none;animation:none;opacity:1;
+  }
+  @page{size:A4 portrait;margin:12mm}
+</style>
 </body>
 </html>
