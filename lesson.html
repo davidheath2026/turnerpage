@@ -148,6 +148,71 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
 .from-field audio{width:100%;margin:10px 0}
 .reflection{margin-top:12px;padding-top:10px;border-top:1px solid #dde}
 .reflection strong{color:#005f6c}
+
+/* Turner Page Readiness Model */
+.trm-card{padding:26px 22px 30px;overflow:visible}
+.trm-wrap{position:relative;width:100%;max-width:600px;aspect-ratio:1/1;margin:12px auto 6px}
+.trm-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.trm-line{stroke:var(--line);stroke-width:2;fill:none;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1s cubic-bezier(.2,.7,.3,1),stroke .3s ease,stroke-width .3s ease}
+.trm-line.drawn{stroke-dashoffset:0}
+.trm-line.active{stroke:var(--teal);stroke-width:3.5}
+.trm-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);width:clamp(132px,24vw,172px);height:clamp(132px,24vw,172px);border-radius:50%;background:linear-gradient(135deg,var(--deep),var(--teal));color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-weight:800;font-size:clamp(12px,1.6vw,14.5px);line-height:1.32;box-shadow:0 16px 34px rgba(0,95,108,.28);opacity:0;transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1),box-shadow .3s ease;z-index:3}
+.trm-center.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.trm-center.active{box-shadow:0 22px 46px rgba(0,95,108,.4);transform:translate(-50%,-50%) scale(1.06)}
+.trm-center-label{display:inline-block;transition:opacity .3s ease}
+.trm-center-label.fade{opacity:0}
+.trm-pillar{position:absolute;transform:translate(-50%,-50%);width:clamp(118px,19vw,172px);text-align:center;opacity:0;transition:opacity .5s ease;z-index:2;cursor:pointer;outline:none}
+.trm-pillar.active,.trm-pillar.pinned,.trm-pillar:focus-within{z-index:7}
+.trm-pillar.show{opacity:1}
+.trm-pillar-inner{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 10px;box-shadow:0 10px 24px rgba(9,68,78,.08);transition:.25s}
+.trm-pillar.active .trm-pillar-inner,.trm-pillar.pinned .trm-pillar-inner,.trm-pillar:focus-visible .trm-pillar-inner{border-color:var(--teal);box-shadow:0 16px 32px rgba(0,95,108,.18);transform:translateY(-3px)}
+.trm-icon{width:36px;height:36px;border-radius:50%;background:var(--soft);color:var(--teal);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;transition:.25s}
+.trm-icon svg{width:19px;height:19px}
+.trm-pillar.active .trm-icon,.trm-pillar.pinned .trm-icon{background:var(--teal);color:#fff}
+.trm-name{font-weight:800;font-size:13px;color:var(--deep);margin-bottom:3px;line-height:1.25}
+.trm-desc{font-size:11.5px;color:#5f777c;line-height:1.4}
+.trm-card-pop{position:absolute;left:50%;top:100%;transform:translate(-50%,8px);width:220px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;text-align:left;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:6}
+.trm-pillar.active .trm-card-pop,.trm-pillar.pinned .trm-card-pop{opacity:1;transform:translate(-50%,14px);pointer-events:auto}
+.trm-pillar[data-pop="up"] .trm-card-pop{top:auto;bottom:100%;transform:translate(-50%,-8px)}
+.trm-pillar[data-pop="up"].active .trm-card-pop,.trm-pillar[data-pop="up"].pinned .trm-card-pop{transform:translate(-50%,-14px)}
+.trm-pillar[data-pop="up"][data-side="left"] .trm-card-pop{left:auto;right:-10px;transform:translate(0,-8px)}
+.trm-pillar[data-pop="up"][data-side="left"].active .trm-card-pop,.trm-pillar[data-pop="up"][data-side="left"].pinned .trm-card-pop{transform:translate(0,-16px)}
+.trm-pillar[data-pop="up"][data-side="right"] .trm-card-pop{left:-10px;right:auto;transform:translate(0,-8px)}
+.trm-pillar[data-pop="up"][data-side="right"].active .trm-card-pop,.trm-pillar[data-pop="up"][data-side="right"].pinned .trm-card-pop{transform:translate(0,-16px)}
+.trm-card-pop strong{color:var(--deep);display:block;margin-bottom:4px;font-size:13px}
+.trm-card-pop p{margin:0;font-size:12.5px;color:#4c6469;line-height:1.5}
+#trmExploreBtn{margin:26px 0 4px}
+.trm-pillar-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 4px}
+.trm-pillar-cards[hidden]{display:none}
+.trm-detail-card{border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:18px;animation:trmCardIn .4s ease both}
+.trm-detail-card:nth-child(1){animation-delay:.02s}
+.trm-detail-card:nth-child(2){animation-delay:.08s}
+.trm-detail-card:nth-child(3){animation-delay:.14s}
+.trm-detail-card:nth-child(4){animation-delay:.2s}
+.trm-detail-card:nth-child(5){animation-delay:.26s}
+@keyframes trmCardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.trm-detail-icon{width:38px;height:38px;border-radius:50%;background:var(--soft);color:var(--teal);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.trm-detail-icon svg{width:20px;height:20px}
+.trm-detail-card h4{margin:0 0 8px}
+.trm-detail-card p{font-size:14px;color:#49636a;margin:0 0 12px}
+@media(prefers-reduced-motion:reduce){
+  .trm-line,.trm-center,.trm-pillar,.trm-pillar-inner,.trm-icon,.trm-card-pop,.trm-center-label{transition:none!important;animation:none!important}
+}
+@media(max-width:900px){
+  .trm-wrap{aspect-ratio:auto;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:0}
+  .trm-lines{display:none}
+  .trm-center{position:relative;left:auto;top:auto;transform:scale(.7);margin:0 auto 6px}
+  .trm-center.show{transform:scale(1)}
+  .trm-pillar{position:relative;left:auto!important;top:auto!important;transform:none;width:100%;max-width:300px;margin:0 auto;padding-top:24px}
+  .trm-pillar::before{content:"";position:absolute;left:50%;top:0;width:2px;height:22px;background:var(--line);transform:translateX(-50%);transition:background .25s ease}
+  .trm-pillar.active::before,.trm-pillar.pinned::before{background:var(--teal)}
+  .trm-card-pop{position:static;transform:none!important;opacity:1!important;pointer-events:auto!important;width:100%;max-height:0;overflow:hidden;padding:0 16px;margin-top:0;border-width:0;box-shadow:none;transition:max-height .3s ease,padding .3s ease,margin-top .3s ease}
+  .trm-pillar.active .trm-card-pop,.trm-pillar.pinned .trm-card-pop{max-height:220px;padding:12px 16px;margin-top:8px;border-width:1px}
+  .trm-pillar-cards{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .trm-pillar-cards{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -234,6 +299,44 @@ const fiveQuestions=[
     <div class="callout misconception"><div class="callout-label">Common trap</div><p>A high-priority defect automatically means No-Go.</p><p>Not necessarily. Severity labels are useful, but business impact is what matters. A reporting defect with a reliable workaround may be acceptable. A defect that prevents invoices being raised may not be.</p></div>
     <div class="principle"><strong>Key takeaway</strong><br>Good projects do not eliminate every risk. They understand and manage risk intelligently.</div>`
   }
+];
+
+const readinessPillars=[
+ {id:"data",name:"Data Quality",left:50,top:12.5,
+  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>`,
+  tag:"Is the data complete, accurate and understood?",
+  popText:"Data readiness is about usability and accepted risk, not a perfect load percentage.",
+  detail:"A successful load proves that records can move. It does not prove they are complete, accurate or usable. Turner Page leads ask whether known issues are understood, whether the affected data matters to the business, and whether the right people have accepted the consequences.",
+  bullets:["Completeness and accuracy checked","Mapping validated end-to-end","Known issues documented and accepted","Business impact of gaps understood"]
+ },
+ {id:"etl",name:"ETL & Migration",left:85.65,top:38.42,
+  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14.9 4"/><path d="M20 20v-5h-5"/></svg>`,
+  tag:"Has the build been rehearsed and proven end-to-end?",
+  popText:"A runbook records intent. A successful rehearsal provides evidence.",
+  detail:"Documentation matters, but a proven rehearsal is stronger evidence. It shows whether the process is repeatable, whether teams understand their roles, and whether it fits inside the available outage window.",
+  bullets:["Extract, transform and load logic tested","Full rehearsal completed in the outage window","Process proven to be repeatable","Roles and responsibilities understood"]
+ },
+ {id:"validation",name:"Validation & Reconciliation",left:72.05,top:80.33,pop:"up",side:"right",
+  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>`,
+  tag:"Can we prove the data landed correctly, not just assume it?",
+  popText:"A high validation percentage can still hide the records that matter most.",
+  detail:"Reconciliation turns a completed load into trusted evidence. Totals are checked, exceptions are investigated, and validation criteria are agreed before cutover, not improvised afterwards.",
+  bullets:["Reconciliation totals matched","Validation criteria agreed in advance","Exceptions investigated and explained","Evidence retained for governance"]
+ },
+ {id:"business",name:"Business Readiness",left:27.95,top:80.33,pop:"up",side:"left",
+  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M16 14.2c2.9.5 5 2.6 5 5.8"/></svg>`,
+  tag:"Can the organisation operate the moment migration ends?",
+  popText:"Migration success is measured by business continuity, not records loaded.",
+  detail:"A technically successful migration can still fail on Monday morning if users cannot work. Turner Page leads check that process changes, training and sign-off are in place before recommending Go.",
+  bullets:["Process changes agreed and communicated","Users trained and confident","Business owners have signed off","Support model ready for go-live"]
+ },
+ {id:"environment",name:"Environment",left:14.35,top:38.42,
+  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r=".6" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>`,
+  tag:"Is the technical landscape stable enough to support the business?",
+  popText:"Most environment failures come from overlooked dependencies, not missing servers.",
+  detail:"Environment readiness covers infrastructure, security, permissions, integrations and monitoring. The real question is whether the whole landscape can support the migration and the business immediately afterwards.",
+  bullets:["Infrastructure and performance proven","Access, security and permissions configured","Integrations and interfaces tested","Monitoring and support ready"]
+ }
 ];
 
 const blocks=[
@@ -402,14 +505,52 @@ const blocks=[
  <p>For each situation, decide whether it is primarily your responsibility, a shared responsibility, or owned elsewhere.</p>`
 },
 {
- id:"b7",nav:"How Turner Page leads think",title:"How Turner Page Data Migration Leads think",type:"content",
+ id:"b7",nav:"The readiness model",title:"The Turner Page Readiness Model™",type:"content",
  html:`<p class="lead">Technical ability gets you onto a migration project. Professional judgement earns the programme's trust.</p>
- <div class="behaviour"><h3>They seek evidence before making recommendations</h3><p>Opinions are useful. Evidence is essential.</p></div>
- <div class="behaviour"><h3>They communicate clearly</h3><p>Senior stakeholders need the decision, impact and risk, not a technical data dump.</p></div>
- <div class="behaviour"><h3>They surface problems early</h3><p>Bad news early is manageable. Bad news late becomes a crisis.</p></div>
- <div class="behaviour"><h3>They understand business impact</h3><p>Migration success is measured by the business operating successfully afterwards.</p></div>
- <div class="behaviour"><h3>They remain objective under pressure</h3><p>As go-live approaches, trusted leaders continue to assess the evidence honestly.</p></div>
- <div class="principle"><strong>Trusted Data Migration Leads are not the people with the most confident opinions.</strong><br>They are the people whose recommendations can be defended.</div>`
+ <p>Turner Page Data Migration Leads don't reach a recommendation from instinct or a single dashboard. Watch how a recommendation is actually built.</p>
+
+ <div class="visual-card trm-card">
+   <div class="visual-title">The Turner Page Readiness Model™</div>
+   <div class="trm-wrap" id="trmWrap">
+     <svg class="trm-lines" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+       ${readinessPillars.map(p=>`<line class="trm-line" data-pillar="${p.id}" pathLength="100" x1="300" y1="300" x2="${(p.left/100*600).toFixed(1)}" y2="${(p.top/100*600).toFixed(1)}"></line>`).join("")}
+     </svg>
+     <div class="trm-center" id="trmCenter"><span class="trm-center-label" id="trmCenterLabel">Collecting Evidence</span></div>
+     ${readinessPillars.map(p=>`
+       <div class="trm-pillar" data-pillar="${p.id}" data-pop="${p.pop||""}" data-side="${p.side||""}" style="left:${p.left}%;top:${p.top}%" tabindex="0" role="button" aria-expanded="false">
+         <div class="trm-pillar-inner">
+           <div class="trm-icon" aria-hidden="true">${p.icon}</div>
+           <div class="trm-name">${p.name}</div>
+           <div class="trm-desc">${p.tag}</div>
+         </div>
+         <div class="trm-card-pop">
+           <strong>${p.name}</strong>
+           <p>${p.popText}</p>
+         </div>
+       </div>`).join("")}
+   </div>
+ </div>
+
+ <div class="callout tp-insight">
+   <img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true">
+   <div class="tp-insight-content">
+     <div class="callout-label">The Turner Page Insight</div>
+     <p>“Professional Data Migration Leads don't make recommendations from instinct or a single dashboard. They combine evidence from five distinct areas before reaching a professional recommendation.”</p>
+   </div>
+ </div>
+
+ <button id="trmExploreBtn" class="btn secondary" type="button" aria-expanded="false">Explore the Five Pillars</button>
+ <div class="trm-pillar-cards" id="trmPillarCards" hidden>
+   ${readinessPillars.map(p=>`
+     <div class="trm-detail-card">
+       <div class="trm-detail-icon" aria-hidden="true">${p.icon}</div>
+       <h4>${p.name}</h4>
+       <p>${p.detail}</p>
+       <ul class="framework-checks">${p.bullets.map(b=>`<li>${b}</li>`).join("")}</ul>
+     </div>`).join("")}
+ </div>
+
+ <div class="principle"><strong>Trusted Data Migration Leads are not the people with the most confident opinions.</strong><br>They are the people whose recommendations can be defended, because they gathered evidence across all five pillars first.</div>`
 },
 {
  id:"b8",nav:"A new project",title:"A new project",type:"single",
@@ -508,6 +649,83 @@ const ownershipSituations=[
 
 const lesson=document.getElementById("lesson");
 const nav=document.getElementById("lessonNav");
+let trmOutsideHandler=null;
+
+function initReadinessModel(){
+ const wrap=document.getElementById("trmWrap");
+ if(!wrap)return;
+ const center=document.getElementById("trmCenter");
+ const centerLabel=document.getElementById("trmCenterLabel");
+ const pillars=[...wrap.querySelectorAll(".trm-pillar")];
+ const lines=[...wrap.querySelectorAll(".trm-line")];
+ const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ let pinned=null;
+
+ function highlight(name){
+   pillars.forEach(p=>p.classList.toggle("active",p.dataset.pillar===name));
+   lines.forEach(l=>l.classList.toggle("active",l.dataset.pillar===name));
+   center.classList.toggle("active",!!name);
+ }
+
+ pillars.forEach(p=>{
+   p.setAttribute("aria-expanded","false");
+   p.addEventListener("mouseenter",()=>{if(!pinned)highlight(p.dataset.pillar)});
+   p.addEventListener("mouseleave",()=>{if(!pinned)highlight(null)});
+   p.addEventListener("focus",()=>{if(!pinned)highlight(p.dataset.pillar)});
+   p.addEventListener("blur",()=>{if(!pinned)highlight(null)});
+   p.addEventListener("click",(e)=>{
+     e.stopPropagation();
+     if(pinned===p.dataset.pillar){
+       pinned=null;p.classList.remove("pinned");p.setAttribute("aria-expanded","false");highlight(null);
+     }else{
+       pillars.forEach(o=>{o.classList.remove("pinned");o.setAttribute("aria-expanded","false")});
+       pinned=p.dataset.pillar;p.classList.add("pinned");p.setAttribute("aria-expanded","true");highlight(pinned);
+     }
+   });
+   p.addEventListener("keydown",(e)=>{
+     if(e.key==="Enter"||e.key===" "){e.preventDefault();p.click()}
+   });
+ });
+
+ if(trmOutsideHandler)document.removeEventListener("click",trmOutsideHandler);
+ trmOutsideHandler=()=>{
+   if(pinned){
+     pinned=null;
+     pillars.forEach(o=>{o.classList.remove("pinned");o.setAttribute("aria-expanded","false")});
+     highlight(null);
+   }
+ };
+ document.addEventListener("click",trmOutsideHandler);
+
+ function run(){
+   center.classList.add("show");
+   pillars.forEach((p,idx)=>{
+     setTimeout(()=>p.classList.add("show"),reduced?0:380+idx*160);
+   });
+   const lineDelay=reduced?0:380+pillars.length*160+250;
+   setTimeout(()=>lines.forEach(l=>l.classList.add("drawn")),lineDelay);
+   const textDelay=lineDelay+(reduced?0:1150);
+   setTimeout(()=>{
+     centerLabel.classList.add("fade");
+     setTimeout(()=>{
+       centerLabel.textContent="Professional Judgement → Migration Recommendation";
+       centerLabel.classList.remove("fade");
+     },reduced?0:280);
+   },textDelay);
+ }
+ run();
+
+ const exploreBtn=document.getElementById("trmExploreBtn");
+ const cardsWrap=document.getElementById("trmPillarCards");
+ if(exploreBtn&&cardsWrap){
+   exploreBtn.onclick=()=>{
+     const opening=cardsWrap.hasAttribute("hidden");
+     if(opening)cardsWrap.removeAttribute("hidden");else cardsWrap.setAttribute("hidden","");
+     exploreBtn.textContent=opening?"Hide the Five Pillars":"Explore the Five Pillars";
+     exploreBtn.setAttribute("aria-expanded",opening?"true":"false");
+   };
+ }
+}
 
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
 function complete(id){if(!state.completed.includes(id))state.completed.push(id)}
@@ -785,6 +1003,8 @@ function render(){
      micStatus.textContent="Microphone input is not supported in this browser.";
    }
  }
+
+ if(b.id==="b7"){initReadinessModel()}
 
  document.getElementById("back").disabled=i===0;
  document.getElementById("back").onclick=()=>{if(i>0){state.index--;save();render();scrollTo({top:0,behaviour:"smooth"})}};
