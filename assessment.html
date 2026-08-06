@@ -98,6 +98,14 @@ h2{
   background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
   font-size:18px;
 }
+.type-hint{
+  color:var(--teal);
+  font-weight:800;
+  font-size:12.5px;
+  margin:-6px 0 16px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
 .options{
   display:grid;
   gap:12px;
@@ -115,6 +123,7 @@ h2{
   background:#fff;
   color:var(--ink);
   cursor:pointer;
+  font:inherit;
 }
 .option:hover{border-color:var(--teal)}
 .option.selected{
@@ -130,7 +139,79 @@ h2{
   background:#e3f3f3;
   color:var(--deep);
   font-weight:900;
+  flex-shrink:0;
 }
+.option.selected .badge{background:var(--teal);color:#fff}
+.match-instruction{
+  margin:22px 0 16px;
+  padding:16px 20px;
+  border-left:5px solid var(--aqua);
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
+  font-size:16px;
+}
+.match-list, .order-list{
+  display:grid;
+  gap:12px;
+  margin:22px 0;
+}
+.match-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  flex-wrap:wrap;
+}
+.match-row .situation{flex:1;min-width:220px}
+.match-row .situation strong{display:block;color:var(--deep);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.match-row select{
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#f9fcfc;
+  color:var(--ink);
+  font-weight:700;
+  font-size:15px;
+  min-width:220px;
+}
+.match-row select:focus{outline:2px solid var(--teal)}
+.order-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+}
+.order-pos{
+  min-width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#e3f3f3;
+  color:var(--deep);
+  font-weight:900;
+  flex-shrink:0;
+}
+.order-text{flex:1}
+.order-controls{display:flex;gap:6px}
+.order-btn{
+  border:0;
+  border-radius:10px;
+  padding:8px 12px;
+  font-weight:800;
+  background:#e7f5f5;
+  color:var(--deep);
+  cursor:pointer;
+  font-size:13px;
+}
+.order-btn:disabled{opacity:.35;cursor:not-allowed}
 .actions{
   display:flex;
   justify-content:space-between;
@@ -174,17 +255,29 @@ button:disabled{opacity:.42;cursor:not-allowed}
   margin:8px 0;
   color:#4b656b;
 }
+.answer-block ul{margin:6px 0;padding-left:20px}
 .explanation{
   margin-top:13px;
   padding-top:13px;
   border-top:1px solid var(--line);
 }
+.fb-line{margin:6px 0}
+.mentor-tip{
+  margin-top:13px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:#f3f9f9;
+  border:1px solid var(--line);
+}
+.mentor-tip strong{color:var(--deep)}
 .hidden{display:none}
 @media(max-width:760px){
   .assessment-facts{grid-template-columns:1fr 1fr}
   .topbar-inner{padding:10px 14px}
   .logo{height:39px}
   .brand span{display:none}
+  .match-row{flex-direction:column;align-items:stretch}
+  .match-row select{min-width:0;width:100%}
 }
 </style>
 </head>
@@ -211,7 +304,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
     </p>
 
     <div class="assessment-facts">
-      <div class="fact"><strong>10 questions</strong>Scenario-based</div>
+      <div class="fact"><strong>10 questions</strong>Mixed formats</div>
       <div class="fact"><strong>80% pass mark</strong>8 correct answers</div>
       <div class="fact"><strong>No feedback</strong>Until submission</div>
       <div class="fact"><strong>Unlimited attempts</strong>Review and retry</div>
@@ -230,136 +323,184 @@ button:disabled{opacity:.42;cursor:not-allowed}
 </main>
 
 <script>
+const ROLES = ["ETL Lead","Business Data Owner","Data Migration Lead","Steering Committee"];
+
 const questions = [
   {
-    title:"A confident status report",
-    scenario:`The Programme Manager says: “ETL is complete, validation is 97%, the environment is ready and there are no critical migration defects. Can I tell the Steering Committee that we are ready for the dress rehearsal?”`,
-    prompt:"What is your best response?",
-    options:[
-      "Yes. The available status indicates that the rehearsal should proceed.",
-      "No. Migration activity must reach 100% before any rehearsal can begin.",
-      "Not yet. I need evidence across data, process, business, environment and residual risk before making that recommendation.",
-      "Ask the ETL Lead to make the recommendation because the technical work is complete."
-    ],
-    answer:2,
-    explanation:"The status is encouraging, but it does not provide a complete readiness picture. A Turner Page Data Migration Lead gathers evidence across all five readiness areas before recommending."
-  },
-  {
-    title:"The missing 3%",
-    scenario:`Validation is reported as 97% complete. The Project Director says the remaining 3% is too small to affect the decision.`,
-    prompt:"What should concern you most?",
-    options:[
-      "The percentage itself, because validation should always reach exactly 100%.",
-      "Whether the remaining 3% contains business-critical records or balances.",
-      "Whether the validation team can work overtime to improve the percentage.",
-      "Whether the Steering Committee understands how percentages are calculated."
-    ],
-    answer:1,
-    explanation:"A percentage has little meaning without materiality. A small volume can contain the records with the greatest business impact."
-  },
-  {
-    title:"Successful migration, failed Monday morning",
-    scenario:`The rehearsal finishes on time. Every planned record is loaded and reconciled. On the following morning, users cannot process orders because required reference data was never approved.`,
-    prompt:"Which conclusion is strongest?",
-    options:[
-      "The migration was successful because all technical activities completed.",
-      "The environment was not ready because users could not process orders.",
-      "Business readiness was incomplete despite technical migration success.",
-      "The issue belongs entirely to the functional team and should not affect migration readiness."
-    ],
-    answer:2,
-    explanation:"Technical completion does not prove that the organisation can operate. Business readiness is part of the overall recommendation."
-  },
-  {
-    title:"The invoicing defect",
-    scenario:`Four days before go-live, a configuration defect prevents customer invoices from being raised. The defect is not caused by migrated data and does not affect the migration run itself.`,
-    prompt:"How should it influence your recommendation?",
-    options:[
-      "It should not influence it because the defect sits outside the migration workstream.",
-      "It automatically requires No-Go because invoice creation is business-critical.",
-      "Assess the operational impact, workaround, ownership and residual risk before recommending.",
-      "Recommend Go and ask Finance to resolve the issue during hypercare."
-    ],
-    answer:2,
-    explanation:"The Data Migration Lead should not judge migration in isolation. The correct response is to assess whether the business can operate and whether the risk is understood and accepted."
-  },
-  {
-    title:"Who owns duplicate customers?",
-    scenario:`Profiling identifies thousands of duplicate customer records. The Sales Director asks the migration team to select the correct record and remove the others before go-live.`,
+    type:"single",
+    title:"The final 2%",
+    scenario:`A dress rehearsal is due to begin in two hours. ETL is complete. The environment is signed off. There are no critical migration defects. Validation is reported as 98% complete.`,
     prompt:"What is the best response?",
     options:[
-      "Agree, because the Data Migration Lead owns every issue that affects migrated data.",
-      "Refuse, because data quality is never part of the migration workstream.",
-      "Provide evidence and options, but require the business data owner to make the business decisions.",
-      "Load every record and let users decide which records to use after go-live."
+      {text:"Yes. The remaining 2% is unlikely to matter.",
+       feedback:"A percentage close to complete can still hide a business-critical gap. Proceeding without checking what it represents is a judgement lapse, not confidence."},
+      {text:"Delay until 100%.",
+       feedback:"Waiting for a literal 100% is rarely necessary or realistic in migration delivery. The goal is understanding materiality, not chasing an arbitrary number."},
+      {text:"Confirm what remains unvalidated and whether it affects rehearsal objectives.",
+       feedback:"Percentages never make decisions on their own. Understanding what the remaining 2% represents is what should drive the rehearsal decision."},
+      {text:"Wait until every workstream confirms readiness.",
+       feedback:"Requiring universal sign-off from every workstream conflates process with judgement, and can stall delivery without adding real assurance."}
     ],
-    answer:2,
-    explanation:"Migration can analyse the problem and facilitate resolution, but it should not make business decisions about which customer records are valid."
+    correctIndex:2,
+    mentorTip:"Percentages never make decisions on their own. Understand what the remaining data represents."
   },
   {
-    title:"A completed runbook",
-    scenario:`The cutover runbook is fully documented, reviewed and approved. The final rehearsal was cancelled to protect the delivery date.`,
-    prompt:"What evidence is still missing?",
+    type:"single",
+    title:"A successful migration?",
+    scenario:`The cutover completes on schedule. Every planned record loads and reconciles exactly as expected. On the Monday morning after go-live, users cannot complete standard order processing because a required workflow step was never configured.`,
+    prompt:"Which conclusion is strongest?",
     options:[
-      "None. An approved runbook proves that the migration process is ready.",
-      "Evidence that the end-to-end process can be executed repeatedly within the available window.",
-      "Evidence that every individual task has a named owner.",
-      "Evidence that all technical resources have read the runbook."
+      {text:"The migration was technically successful, but operational readiness was not achieved — the two are not the same thing.",
+       feedback:"Migration success does not equal operational readiness. Data can be loaded and reconciled perfectly while the business is still unable to operate."},
+      {text:"The migration failed because users could not process orders.",
+       feedback:"The migration activity itself was completed as planned. Framing it as a migration failure blurs distinct causes and can misdirect corrective action."},
+      {text:"The workflow issue is unrelated to migration and should be dismissed.",
+       feedback:"Dismissing the issue as unrelated ignores that operational readiness sits alongside technical readiness in any credible go-live recommendation."},
+      {text:"Technical completion is sufficient evidence that go-live was ready.",
+       feedback:"Technical completion is necessary but not sufficient. Confusing the two is exactly the trap this scenario illustrates."}
     ],
-    answer:1,
-    explanation:"A runbook records intent. A rehearsal demonstrates execution, timing, coordination, reconciliation and repeatability."
+    correctIndex:0,
+    mentorTip:"Migration success does not equal operational readiness."
   },
   {
-    title:"A green dashboard",
-    scenario:`The migration dashboard is entirely green. When challenged, the team explains that it measures task completion, defect counts and environment availability. It does not measure user access, operational continuity or risk acceptance.`,
-    prompt:"What should you do?",
+    type:"multi",
+    title:"Responsibilities",
+    scenario:`Every Turner Page engagement draws a clear line between what the Data Migration Lead owns and what belongs to other roles.`,
+    prompt:"Which of the following are core responsibilities of a Data Migration Lead? Select ALL that apply.",
     options:[
-      "Recommend Go because governance has already agreed the dashboard measures.",
-      "Recommend No-Go because a dashboard that omits information cannot be trusted.",
-      "Explain that the dashboard shows status, not complete readiness, and gather the missing evidence.",
-      "Add an amber note to the dashboard but keep the overall recommendation green."
+      {text:"Communicate migration status", correct:true,
+       feedback:"Correct. Clear, honest status communication underpins every governance decision that follows."},
+      {text:"Make the final business Go/No-Go decision", correct:false,
+       feedback:"This sits with the Steering Committee, not the Data Migration Lead. The role informs the decision; it does not make it."},
+      {text:"Ensure reconciliation is completed", correct:true,
+       feedback:"Correct. Reconciliation is core evidence that migrated data is fit for use."},
+      {text:"Personally resolve data quality issues within source systems", correct:false,
+       feedback:"Data quality within source systems belongs to the Business Data Owner. The Data Migration Lead surfaces and escalates issues rather than owning their resolution."},
+      {text:"Guarantee zero defects at cutover", correct:false,
+       feedback:"No migration can honestly guarantee zero defects. The role is to understand, mitigate and communicate residual risk, not to promise perfection."},
+      {text:"Recommend readiness", correct:true,
+       feedback:"Correct. Providing an evidence-based readiness recommendation is central to the role."}
     ],
-    answer:2,
-    explanation:"Status reporting can look positive while omitting decisive evidence. The Data Migration Lead must understand what is measured and what is not."
+    mentorTip:"The Data Migration Lead recommends and communicates. The business decides and owns."
   },
   {
-    title:"Pressure for an immediate answer",
-    scenario:`During a Steering Committee meeting, the sponsor asks you for an immediate Go or No-Go recommendation. One country has not completed validation and you do not yet understand the affected data.`,
-    prompt:"What is the strongest professional response?",
+    type:"single",
+    title:"Knowing your role",
+    scenario:`Every role on a migration programme carries a distinct set of responsibilities, and it is easy for those boundaries to blur under delivery pressure.`,
+    prompt:"Which statement is LEAST consistent with the role of a Data Migration Lead?",
     options:[
-      "Recommend No-Go because incomplete validation always prevents go-live.",
-      "Recommend Go because the sponsor needs a clear answer.",
-      "State that you cannot yet make a defensible recommendation and specify the evidence required.",
-      "Abstain and ask the country lead to make the decision."
+      {text:"Understand what reported metrics do and do not tell you.",
+       feedback:"This is fully consistent with the role — understanding what metrics do and do not show underpins good judgement."},
+      {text:"Present recommendations together with assumptions and conditions.",
+       feedback:"This is fully consistent with the role — recommendations should always be presented with their assumptions and conditions made explicit."},
+      {text:"Resolve business ownership questions where no decision has been made.",
+       feedback:"One of the hardest disciplines is resisting the temptation to make business decisions for the business. Resolving ownership questions is not the Data Migration Lead's call to make."},
+      {text:"Challenge conclusions not supported by available information.",
+       feedback:"This is fully consistent with the role — challenging unsupported conclusions is exactly the scrutiny a Data Migration Lead should apply."}
     ],
-    answer:2,
-    explanation:"Confidence does not mean guessing. A professional response explains why the evidence is incomplete and what is needed to reach a defensible recommendation."
+    correctIndex:2,
+    mentorTip:"One of the hardest disciplines is resisting the temptation to make business decisions for the business."
   },
   {
-    title:"One high-priority defect",
-    scenario:`A high-priority reporting defect remains open. Purchasing uses the report daily, but a tested manual workaround is available for the first week after go-live.`,
-    prompt:"Which recommendation is most appropriate?",
-    options:[
-      "No-Go, because any high-priority defect is unacceptable.",
-      "Go, because reporting defects do not affect migrated data.",
-      "Assess the workaround, duration, business impact, ownership and formal acceptance before recommending.",
-      "Remove the high-priority label so that the project can proceed."
+    type:"matching",
+    title:"Who owns the decision?",
+    instruction:"Match each situation to the role that owns the decision. Use each role ONCE ONLY.",
+    roles:ROLES,
+    situations:[
+      {label:"Situation A", text:"Production cutover needs formal approval.", correctRole:3,
+       feedback:"Cutover approval is a governance decision made by the Steering Committee, informed by the migration recommendation."},
+      {label:"Situation B", text:"A migration recommendation needs to be prepared for governance.", correctRole:2,
+       feedback:"Preparing an evidence-based readiness recommendation is precisely the Data Migration Lead's role."},
+      {label:"Situation C", text:"A transformation fails during the load.", correctRole:0,
+       feedback:"Technical transformation failures are diagnosed and resolved by the ETL Lead, who owns the technical build."},
+      {label:"Situation D", text:"Profiling identifies duplicate supplier records.", correctRole:1,
+       feedback:"Decisions about which records are correct belong to the business, not migration. The Business Data Owner owns data quality decisions."}
     ],
-    answer:2,
-    explanation:"Severity labels support decision-making but do not replace it. The real questions concern impact, mitigation, ownership and accepted residual risk."
+    mentorTip:"Award one mark only if all four are matched correctly — each role carries a distinct, non-interchangeable responsibility."
   },
   {
-    title:"The final recommendation",
-    scenario:`All five readiness areas have been reviewed. Data quality issues are understood, the process has been rehearsed successfully, users can operate, environments are stable and the remaining risks have named owners and approved mitigations.`,
-    prompt:"What should your recommendation contain?",
+    type:"single",
+    title:"The Severity 1 defect",
+    scenario:`Two days before go-live, a defect is logged: customer records fail to load for one legal entity. The defect management tool automatically flags it as Severity 1 and blocking.`,
+    prompt:"What is the most appropriate response?",
     options:[
-      "A simple statement that migration is green.",
-      "A technical summary of the load statistics and defect count.",
-      "A clear recommendation supported by the evidence, conditions and residual risks governance must understand.",
-      "A promise that no migration-related issues will occur after go-live."
+      {text:"Accept the Severity 1 label and recommend No-Go immediately.",
+       feedback:"Severity labels support judgement. They do not replace judgement. Recommending No-Go purely because of a label skips the analysis a defensible decision requires."},
+      {text:"Investigate the defect's actual business impact, scope and available mitigation before it informs the recommendation.",
+       feedback:"Severity labels support judgement. They do not replace judgement. Understanding scope, impact and mitigation is what turns a label into a decision."},
+      {text:"Downgrade the severity so it does not block the go-live decision.",
+       feedback:"Changing the label to avoid an uncomfortable conversation hides risk rather than assessing it — the opposite of the transparency the role requires."},
+      {text:"Ignore the label, since severity classifications are not reliable.",
+       feedback:"Severity classifications are a useful starting signal, even if imperfect. Ignoring them entirely discards information rather than investigating it."}
     ],
-    answer:2,
-    explanation:"A professional recommendation is clear and defensible. It summarises the evidence, conditions and residual risks without pretending risk has been eliminated."
+    correctIndex:1,
+    mentorTip:"Severity labels support judgement. They do not replace judgement."
+  },
+  {
+    type:"ordering",
+    title:"The migration lifecycle",
+    prompt:"Use the arrows to place the following stages of the migration lifecycle in the correct order.",
+    items:["Dress Rehearsal","Initial Profiling","Production Cutover","Validation & Reconciliation"],
+    correctOrder:[1,3,0,2],
+    feedback:"Each stage builds the evidence the next one depends on. Profiling establishes what data exists, validation and reconciliation confirm it is fit for use, the dress rehearsal proves the process can be executed under real conditions, and only then is cutover approved.",
+    mentorTip:"Each stage exists to build the evidence the next stage depends on."
+  },
+  {
+    type:"single",
+    title:"The green dashboard",
+    scenario:`The migration dashboard reported to the Steering Committee is entirely green. When challenged, the team explains that it measures task completion, defect counts and environment availability — not user access, operational continuity or risk acceptance.`,
+    prompt:"Which response is LEAST appropriate?",
+    options:[
+      {text:"Present the dashboard as sufficient evidence of full readiness, since governance has already agreed what it measures.",
+       feedback:"Dashboards only report what they measure. Presenting an incomplete measure as sufficient evidence misrepresents readiness, even if governance agreed the metrics in advance."},
+      {text:"Explain clearly what the dashboard does and does not measure before it is used to support a recommendation.",
+       feedback:"This is an appropriate response — being transparent about scope and gaps is exactly what turns a status report into a trustworthy input."},
+      {text:"Gather the additional evidence needed to cover the gaps the dashboard does not address.",
+       feedback:"This is an appropriate response — closing evidence gaps before making a recommendation is core to the role."},
+      {text:"Flag to the Steering Committee that the dashboard shows status, not complete readiness.",
+       feedback:"This is an appropriate response — flagging the limits of what a dashboard shows protects the credibility of the recommendation."}
+    ],
+    correctIndex:0,
+    mentorTip:"Dashboards only report what they measure."
+  },
+  {
+    type:"multi",
+    title:"Building confidence",
+    scenario:`Governance keeps asking the same question before approving cutover: how do you actually know it's ready?`,
+    prompt:"Which of the following give genuine confidence that a migration is ready for go-live? Select ALL that apply.",
+    options:[
+      {text:"All defects have been closed", correct:false,
+       feedback:"Closure is rarely absolute, and severity labels support judgement rather than replace it. Zero open defects is not the same as zero risk."},
+      {text:"Reconciliation is completed", correct:true,
+       feedback:"Correct. Reconciliation is the core evidence that what was migrated matches what should have been migrated."},
+      {text:"The dashboard is entirely green", correct:false,
+       feedback:"A dashboard only reports what it is built to measure. An all-green dashboard is reassuring, not conclusive."},
+      {text:"Remaining risks are accepted", correct:true,
+       feedback:"Correct. Formal acceptance of residual risk by the right owner is what makes a recommendation defensible, not the absence of risk."},
+      {text:"ETL has finished running", correct:false,
+       feedback:"Technical completion is necessary but not sufficient — migration success does not equal operational readiness."},
+      {text:"Users can complete business processes", correct:true,
+       feedback:"Correct. This is direct evidence of operational readiness — data existing is not the same as the business being able to work with it."}
+    ],
+    mentorTip:"Confidence comes from evidence across data, process and people — not from any single green signal."
+  },
+  {
+    type:"single",
+    title:"The Steering Committee",
+    scenario:`Overall migration evidence is strong, but one non-critical reconciliation item remains open, with a clear owner and an agreed mitigation plan for hypercare.`,
+    prompt:"What is the most appropriate recommendation to the Steering Committee?",
+    options:[
+      {text:"Recommend Go with no conditions, since the outstanding item is not critical.",
+       feedback:"Omitting a known open item, even a minor one, understates the residual risk governance is entitled to see."},
+      {text:"Recommend No-Go until every reconciliation item, however minor, is closed.",
+       feedback:"Requiring absolute closure of every item regardless of materiality is not proportionate, and can stall delivery without adding real assurance."},
+      {text:"Avoid making a recommendation and ask the Steering Committee to decide without one.",
+       feedback:"Withholding a recommendation leaves the Steering Committee without the judgement they are relying on the Data Migration Lead to provide."},
+      {text:"Recommend a conditional Go, clearly stating the outstanding item, its owner and the agreed mitigation.",
+       feedback:"Recommendations can legitimately be conditional. Stating the item, owner and mitigation gives governance a clear, defensible basis for their decision."}
+    ],
+    correctIndex:3,
+    mentorTip:"Recommendations can legitimately be conditional."
   }
 ];
 
@@ -378,36 +519,138 @@ function startAssessment(){
   renderQuestion();
 }
 
+function isAnswered(q, ans){
+  if(ans===null || ans===undefined) return false;
+  if(q.type==="multi") return ans.length>0;
+  if(q.type==="matching") return ans.every(v=>v!==null);
+  return true;
+}
+
+function isCorrect(q, ans){
+  if(!isAnswered(q, ans)) return false;
+  if(q.type==="single") return ans===q.correctIndex;
+  if(q.type==="multi"){
+    const correctSet = q.options.map((o,i)=>o.correct?i:null).filter(i=>i!==null).sort();
+    const ansSet = [...ans].sort();
+    return JSON.stringify(correctSet)===JSON.stringify(ansSet);
+  }
+  if(q.type==="matching") return q.situations.every((s,i)=>ans[i]===s.correctRole);
+  if(q.type==="ordering") return JSON.stringify(ans)===JSON.stringify(q.correctOrder);
+  return false;
+}
+
 function renderQuestion(){
   const q = questions[current];
   const pct = Math.round((current/questions.length)*100);
   progressText.textContent = `Question ${current+1} of ${questions.length}`;
   progressBar.style.width = pct + "%";
 
+  if(answers[current]===null){
+    if(q.type==="multi") answers[current] = [];
+    else if(q.type==="matching") answers[current] = Array(q.situations.length).fill(null);
+    else if(q.type==="ordering") answers[current] = q.items.map((_,i)=>i);
+  }
+
+  let bodyHtml = "";
+
+  if(q.type==="single"){
+    bodyHtml = `
+      <div class="scenario">${q.scenario}</div>
+      <p><strong>${q.prompt}</strong></p>
+      <div class="options">
+        ${q.options.map((option,index)=>`
+          <button class="option ${answers[current]===index ? "selected" : ""}" onclick="selectSingle(${index})">
+            <span class="badge">${String.fromCharCode(65+index)}</span>
+            <span>${option.text}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="multi"){
+    bodyHtml = `
+      ${q.scenario ? `<div class="scenario">${q.scenario}</div>` : ""}
+      <p><strong>${q.prompt}</strong></p>
+      <div class="type-hint">Select all that apply</div>
+      <div class="options">
+        ${q.options.map((option,index)=>`
+          <button class="option ${answers[current].includes(index) ? "selected" : ""}" onclick="toggleMulti(${index})">
+            <span class="badge">${String.fromCharCode(65+index)}</span>
+            <span>${option.text}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="matching"){
+    bodyHtml = `
+      <div class="match-instruction">${q.instruction}</div>
+      <div class="match-list">
+        ${q.situations.map((s,index)=>`
+          <div class="match-row">
+            <div class="situation"><strong>${s.label}</strong>${s.text}</div>
+            <select onchange="selectMatch(${index}, this.value)">
+              <option value="" ${answers[current][index]===null ? "selected" : ""}>Choose a role...</option>
+              ${q.roles.map((role,roleIndex)=>`
+                <option value="${roleIndex}" ${answers[current][index]===roleIndex ? "selected" : ""}>${role}</option>
+              `).join("")}
+            </select>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="ordering"){
+    bodyHtml = `
+      <p><strong>${q.prompt}</strong></p>
+      <div class="type-hint">Use the arrows to reorder</div>
+      <div class="order-list">
+        ${answers[current].map((itemIndex,pos)=>`
+          <div class="order-row">
+            <span class="order-pos">${pos+1}</span>
+            <span class="order-text">${q.items[itemIndex]}</span>
+            <div class="order-controls">
+              <button type="button" class="order-btn" onclick="moveItem(${pos},-1)" ${pos===0 ? "disabled" : ""}>&uarr;</button>
+              <button type="button" class="order-btn" onclick="moveItem(${pos},1)" ${pos===answers[current].length-1 ? "disabled" : ""}>&darr;</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
   quiz.innerHTML = `
     <div class="kicker">Question ${current+1} of ${questions.length}</div>
     <h2>${q.title}</h2>
-    <div class="scenario">${q.scenario}</div>
-    <p><strong>${q.prompt}</strong></p>
-    <div class="options">
-      ${q.options.map((option,index)=>`
-        <button class="option ${answers[current]===index ? "selected" : ""}" onclick="selectAnswer(${index})">
-          <span class="badge">${String.fromCharCode(65+index)}</span>
-          <span>${option}</span>
-        </button>
-      `).join("")}
-    </div>
+    ${bodyHtml}
     <div class="actions">
       <button class="secondary" onclick="previousQuestion()" ${current===0 ? "disabled" : ""}>Previous</button>
-      <button class="primary" onclick="nextQuestion()" ${answers[current]===null ? "disabled" : ""}>
+      <button class="primary" onclick="nextQuestion()" ${isAnswered(q, answers[current]) ? "" : "disabled"}>
         ${current===questions.length-1 ? "Submit assessment" : "Next"}
       </button>
     </div>
   `;
 }
 
-function selectAnswer(index){
+function selectSingle(index){
   answers[current] = index;
+  renderQuestion();
+}
+
+function toggleMulti(index){
+  const set = answers[current];
+  const pos = set.indexOf(index);
+  if(pos===-1) set.push(index); else set.splice(pos,1);
+  renderQuestion();
+}
+
+function selectMatch(situationIndex, value){
+  answers[current][situationIndex] = value==="" ? null : Number(value);
+  renderQuestion();
+}
+
+function moveItem(pos, direction){
+  const arr = answers[current];
+  const target = pos + direction;
+  if(target<0 || target>=arr.length) return;
+  [arr[pos], arr[target]] = [arr[target], arr[pos]];
   renderQuestion();
 }
 
@@ -419,13 +662,72 @@ function previousQuestion(){
 }
 
 function nextQuestion(){
-  if(answers[current]===null) return;
+  if(!isAnswered(questions[current], answers[current])) return;
   if(current < questions.length-1){
     current++;
     renderQuestion();
   } else {
     submitAssessment();
   }
+}
+
+function formatSingleAnswer(q, index){
+  if(index===null || index===undefined) return "No answer selected";
+  return `${String.fromCharCode(65+index)}. ${q.options[index].text}`;
+}
+
+function formatMultiAnswer(q, indexes){
+  if(!indexes || indexes.length===0) return "No answer selected";
+  return `<ul>${[...indexes].sort((a,b)=>a-b).map(i=>`<li>${String.fromCharCode(65+i)}. ${q.options[i].text}</li>`).join("")}</ul>`;
+}
+
+function formatMatchingAnswer(q, roleIndexes, useCorrect){
+  return `<ul>${q.situations.map((s,i)=>{
+    const roleIndex = useCorrect ? s.correctRole : roleIndexes[i];
+    const roleText = (roleIndex===null || roleIndex===undefined) ? "Not answered" : q.roles[roleIndex];
+    return `<li>${s.label} &rarr; ${roleText}</li>`;
+  }).join("")}</ul>`;
+}
+
+function formatOrderingAnswer(q, order){
+  return `<ol>${order.map(i=>`<li>${q.items[i]}</li>`).join("")}</ol>`;
+}
+
+function getReviewParts(q, ans){
+  if(q.type==="single"){
+    return {
+      yourAnswer: formatSingleAnswer(q, ans),
+      correctAnswer: formatSingleAnswer(q, q.correctIndex),
+      feedback: `<div class="fb-line">${(ans!==null && ans!==undefined) ? q.options[ans].feedback : "No answer was selected for this question."}</div>`
+    };
+  }
+  if(q.type==="multi"){
+    const correctSet = q.options.map((o,i)=>o.correct?i:null).filter(i=>i!==null);
+    const relevant = new Set([...(ans||[]), ...correctSet]);
+    const feedback = [...relevant].sort((a,b)=>a-b).map(i=>`<div class="fb-line"><strong>${String.fromCharCode(65+i)}.</strong> ${q.options[i].feedback}</div>`).join("");
+    return {
+      yourAnswer: formatMultiAnswer(q, ans),
+      correctAnswer: formatMultiAnswer(q, correctSet),
+      feedback: feedback || "No answer was selected for this question."
+    };
+  }
+  if(q.type==="matching"){
+    const feedback = q.situations.map(s=>`<div class="fb-line"><strong>${s.label}:</strong> ${s.feedback}</div>`).join("");
+    return {
+      yourAnswer: formatMatchingAnswer(q, ans, false),
+      correctAnswer: formatMatchingAnswer(q, ans, true),
+      feedback
+    };
+  }
+  if(q.type==="ordering"){
+    const correctOrder = q.correctOrder;
+    return {
+      yourAnswer: formatOrderingAnswer(q, ans),
+      correctAnswer: formatOrderingAnswer(q, correctOrder),
+      feedback: `<div class="fb-line">${q.feedback}</div>`
+    };
+  }
+  return {yourAnswer:"", correctAnswer:"", feedback:""};
 }
 
 function submitAssessment(){
@@ -436,7 +738,7 @@ function submitAssessment(){
 
   let score = 0;
   questions.forEach((q,index)=>{
-    if(answers[index]===q.answer) score++;
+    if(isCorrect(q, answers[index])) score++;
   });
 
   const pass = score >= 8;
@@ -461,21 +763,27 @@ function submitAssessment(){
       <h2 class="${pass ? "status-pass" : "status-fail"}">${pass ? "Passed" : "Not passed this time"}</h2>
       <p class="lead">${pass
         ? "You have demonstrated the evidence-based judgement expected in Lesson 1."
-        : "Review the explanations below, revisit the lesson where necessary, and try again."}</p>
+        : "Review the mentor feedback below, revisit the lesson where necessary, and try again."}</p>
     </div>
 
     <h2>Review your answers</h2>
 
     ${questions.map((q,index)=>{
-      const correct = answers[index]===q.answer;
+      const ans = answers[index];
+      const correct = isCorrect(q, ans);
+      const parts = getReviewParts(q, ans);
       return `
         <article class="review ${correct ? "correct" : "incorrect"}">
           <div class="kicker">Question ${index+1}</div>
           <h3>${q.title}</h3>
-          <p>${q.scenario}</p>
-          <div class="answer-line"><strong>Your answer:</strong> ${String.fromCharCode(65+answers[index])}. ${q.options[answers[index]]}</div>
-          <div class="answer-line"><strong>Best answer:</strong> ${String.fromCharCode(65+q.answer)}. ${q.options[q.answer]}</div>
-          <div class="explanation"><strong>Why this is the best answer</strong><br>${q.explanation}</div>
+          ${q.scenario ? `<p>${q.scenario}</p>` : ""}
+          <div class="answer-line answer-block"><strong>Your answer:</strong> ${parts.yourAnswer}</div>
+          <div class="answer-line answer-block"><strong>Correct answer:</strong> ${parts.correctAnswer}</div>
+          <div class="explanation">
+            <strong>Mentor feedback</strong>
+            ${parts.feedback}
+          </div>
+          <div class="mentor-tip"><strong>Mentor tip:</strong> ${q.mentorTip}</div>
         </article>
       `;
     }).join("")}
