@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Owning the migration workstream</title>
+<style>
+:root{
+  --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
+  --mist:#f3f9f9; --paper:#ffffff; --line:#d8e9e9; --soft:#e9f5f5;
+  --good:#0b7d5b; --warn:#8a6113; --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behaviour:smooth}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);color:var(--ink);line-height:1.62}
+button,textarea{font:inherit}
+button{cursor:pointer}
+a{color:inherit}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(216,233,233,.9)}
+.topbar-inner{max-width:1240px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:24px}
+.brand-logo{height:46px;width:auto;display:block}
+.brand-copy{flex:1}
+.brand-copy strong{display:block;font-size:15px;letter-spacing:.01em}
+.brand-copy span{font-size:12px;color:#5f777c}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:width .3s ease}
+.layout{max-width:1240px;margin:auto;display:grid;grid-template-columns:290px minmax(0,1fr);gap:28px;padding:32px 24px 80px}
+.sidebar{position:sticky;top:92px;align-self:start}
+.panel{background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+.course-panel{padding:22px}
+.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.17em;color:var(--teal);font-weight:800}
+.course-panel h2{font-size:20px;line-height:1.25;margin:6px 0 8px}
+.meta{color:#647b80;font-size:14px}
+.progress-row{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px;font-size:14px}
+.lesson-nav{display:grid;gap:5px}
+.lesson-nav button{border:0;background:transparent;border-radius:12px;padding:10px 11px;text-align:left;color:#60777c;display:flex;gap:9px;align-items:center}
+.lesson-nav button::before{content:"○";color:#8ba4a8}
+.lesson-nav button.active{background:#e6f5f5;color:var(--deep);font-weight:800}
+.lesson-nav button.done::before{content:"✓";color:var(--good);font-weight:900}
+.lesson{padding:clamp(28px,5vw,58px)}
+.step{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--teal);font-weight:800}
+h1{font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-.035em;margin:10px 0 20px}
+h2{font-size:clamp(27px,3.5vw,42px);line-height:1.15;letter-spacing:-.025em;margin:10px 0 18px}
+h3{font-size:23px;line-height:1.25;margin:30px 0 10px}
+h4{font-size:18px;margin:20px 0 6px}
+.lead{font-size:20px;color:#3f5960;max-width:760px}
+p{max-width:820px}
+.quote{border-left:5px solid var(--aqua);background:linear-gradient(90deg,#ebf8f8,#f7fcfc);padding:20px 22px;border-radius:0 18px 18px 0;font-size:21px;font-weight:760;margin:24px 0}
+.status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}
+.status-card{border:1px solid var(--line);background:#fbfefe;border-radius:17px;padding:16px}
+.status-card strong{display:block;margin-bottom:3px}
+.options{display:grid;gap:11px;margin:18px 0}
+.option{display:flex;align-items:flex-start;gap:12px;width:100%;border:1px solid var(--line);background:white;border-radius:16px;padding:15px;text-align:left;color:var(--ink);transition:.15s}
+.option:hover{border-color:var(--teal);transform:translateY(-1px)}
+.option.selected{border:2px solid var(--teal);background:#edfafa}
+.option.disabled{opacity:.45;cursor:not-allowed}
+.option.disabled:hover{transform:none;border-color:var(--line)}
+.badge{min-width:30px;height:30px;border-radius:50%;background:#e3f3f3;color:var(--deep);display:grid;place-items:center;font-weight:900}
+.feedback{border:1px solid #b9e0e0;background:#eef9f9;border-radius:16px;padding:17px;margin:14px 0}
+.feedback.good{border-color:#a7dbc7;background:#edf8f2;color:#0a5d46}
+.feedback.warn{border-color:#ead7a8;background:#fff9ec;color:#684b0d}
+.principle{background:linear-gradient(135deg,#005f6c,#0b7f8e);color:white;border-radius:22px;padding:24px;margin:28px 0;box-shadow:0 14px 28px rgba(0,95,108,.18)}
+.principle strong{color:#a9eeee}
+.callout{border-radius:20px;padding:22px;margin:24px 0}
+.experience{background:#f7fbfb;border:1px solid #d9ecec}
+.misconception{background:#fffaf1;border:1px solid #ead7aa}
+.callout-label{font-size:11px;text-transform:uppercase;letter-spacing:.16em;font-weight:900;margin-bottom:8px}
+.promise{border:1px solid #cde6e6;background:linear-gradient(135deg,#f7fcfc,#eaf7f7);border-radius:24px;padding:26px;margin:26px 0 30px;box-shadow:0 12px 30px rgba(0,95,108,.08)}
+.promise h3{margin-top:0;color:var(--deep)}
+.footer-promise{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:#657d82;font-size:13px}
+.tp-insight .callout-label{color:var(--teal)}
+.misconception .callout-label{color:#8c651a}
+.visual-card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbfb);padding:22px;margin:28px 0;overflow:hidden}
+.visual-title{font-size:13px;text-transform:uppercase;letter-spacing:.13em;color:#5f777c;font-weight:800;margin-bottom:16px}
+.framework-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.framework-checks{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.framework-checks li{position:relative;padding-left:19px;font-size:13px;line-height:1.4;color:#49636a}
+.framework-checks li::before{content:"✓";position:absolute;left:0;top:0;color:var(--accent,var(--teal));font-weight:900}
+.tp-insight{display:grid;grid-template-columns:48px 1fr;gap:16px;align-items:start;background:#f8fbfb;border:1px solid var(--line);padding:20px 22px}
+.tp-insight-mark{display:block;width:44px;height:44px;object-fit:contain}
+.tp-insight-content p{margin:0}
+.tp-insight-content p+p{margin-top:10px}
+.framework-detail{border:1px solid var(--line);border-radius:20px;background:#fbfefe;padding:20px;margin:14px 0}
+.framework-detail button{margin-top:10px}
+.ownership-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
+.ownership-card{border:1px solid var(--line);border-radius:20px;background:#fbfefe;padding:18px}
+.ownership-card h3{margin-top:0}
+.behaviour{border-left:4px solid var(--teal);padding:9px 0 9px 18px;margin:18px 0}
+textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);border-radius:16px;resize:vertical;color:var(--ink);background:white}
+.voice-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.analysis-state{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#f7fbfb;border-radius:16px;padding:16px;margin-top:18px}
+.spinner{width:20px;height:20px;border:3px solid #cfe5e5;border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.score-card{display:flex;align-items:center;gap:18px;border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:18px;margin:16px 0}
+.score{font-size:34px;font-weight:900;color:var(--deep);min-width:90px}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:24px;border-top:1px solid #e6f0f0}
+.btn{border:0;border-radius:14px;padding:12px 19px;font-weight:800}
+.primary{background:var(--deep);color:white}
+.secondary{background:#e7f5f5;color:var(--deep)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.complete{text-align:center;padding:20px 0}
+.tick{font-size:60px;color:var(--good)}
+.small{font-size:13px;color:#6c8287}
+@media(max-width:980px){
+  .layout{grid-template-columns:1fr;padding:20px 14px 60px}
+  .sidebar{position:static}
+  .lesson-nav{display:none}
+  .framework-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tp-insight{grid-template-columns:40px 1fr;padding:18px}
+  .tp-insight-mark{width:36px;height:36px}
+}
+@media(max-width:680px){
+  .topbar-inner{padding:10px 14px}
+  .brand-logo{height:38px}
+  .brand-copy{display:none}
+  .lesson{padding:24px 18px}
+  .status-grid,.ownership-grid,.framework-grid{grid-template-columns:1fr}
+  h1{font-size:36px}
+}
+
+/* Lesson 2 v2 additions */
+.lesson-outcomes li{font-size:15.5px;padding-left:26px}
+.lesson-outcomes li::before{top:1px}
+
+details.tp-details{border:1px solid var(--line);background:#fbfefe;border-radius:16px;padding:16px 20px;margin:18px 0}
+details.tp-details summary{cursor:pointer;font-weight:800;color:var(--deep);list-style:none;display:flex;align-items:center;gap:10px}
+details.tp-details summary::-webkit-details-marker{display:none}
+details.tp-details summary::before{content:"+";flex:0 0 auto;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--soft);color:var(--teal);font-weight:900;font-size:15px}
+details.tp-details[open] summary::before{content:"–"}
+details.tp-details .tp-details-body{margin-top:14px}
+
+.mini-question{margin:18px 0}
+.mini-question h4{margin:0 0 10px;font-size:15.5px}
+.mini-options{display:flex;flex-wrap:wrap;gap:9px}
+.mini-option{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 18px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;transition:.15s}
+.mini-option:hover{border-color:var(--teal);transform:translateY(-1px)}
+.mini-option.selected{background:var(--deep);color:#fff;border-color:var(--deep)}
+
+.checkpoint-card{border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:20px 22px;margin-top:18px}
+.checkpoint-card h4{margin:6px 0 12px}
+.checkpoint-card .feedback{margin-top:14px}
+
+.dq-loop{position:relative;padding-left:54px;margin:26px 0}
+.dq-loop::before{content:"";position:absolute;left:23px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.dq-item{position:relative;margin-bottom:18px}
+.dq-item:last-child{margin-bottom:0}
+.dq-num{position:absolute;left:-54px;top:0;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--deep),var(--teal));color:#fff;display:grid;place-items:center;font-weight:900;font-size:17px;box-shadow:0 10px 22px rgba(0,95,108,.22)}
+.dq-body{border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:16px 20px}
+.dq-body h4{margin:0 0 2px;font-size:17px}
+.dq-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:#49636a;font-size:14.5px;line-height:1.6}
+.dq-ask{margin-top:10px;font-style:italic;color:var(--deep);font-weight:700}
+.dq-body button{margin-top:12px}
+@media(max-width:680px){
+  .dq-loop{padding-left:46px}
+  .dq-loop::before{left:19px}
+  .dq-num{left:-46px;width:38px;height:38px;font-size:14px}
+}
+
+.triangle-interactive{display:grid;grid-template-columns:1fr;gap:18px}
+.triangle-svg-wrap{display:flex;justify-content:center}
+.triangle-svg-wrap svg{width:100%;max-width:360px;height:auto}
+.tri-node{cursor:pointer;outline:none}
+.tri-node circle{fill:url(#triNode2);transition:.25s;stroke:transparent;stroke-width:0}
+.tri-node text{pointer-events:none}
+.tri-node:hover circle{filter:drop-shadow(0 10px 20px rgba(0,95,108,.35))}
+.tri-node.active circle{stroke:#ffffff;stroke-width:3;filter:drop-shadow(0 12px 24px rgba(0,95,108,.45))}
+.tri-node:focus-visible circle{stroke:#0b7f8e;stroke-width:3}
+.tri-detail{border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:20px 22px;min-height:150px}
+.tri-detail .kicker{margin-bottom:6px}
+.tri-detail h4{margin:0 0 8px;font-size:16px}
+.tri-detail ul{margin:10px 0}
+.tri-detail p{margin:0 0 8px}
+.tri-hint{text-align:center;color:#6c8287;font-size:13px;margin:14px 0 0}
+.tri-progress{display:flex;justify-content:center;gap:8px}
+.tri-progress span{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.2s}
+.tri-progress span.done{background:var(--teal)}
+
+.guided-steps{display:grid;gap:16px;margin:20px 0}
+.guided-step{border:1px solid var(--line);background:#fbfefe;border-radius:18px;padding:20px 22px;animation:fadeInUp .4s ease both}
+.guided-step h4{margin:2px 0 10px}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.guided-reveal-btn{margin-top:4px}
+
+.num-steps{list-style:none;counter-reset:numstep;display:grid;gap:12px;padding:0;margin:18px 0}
+.num-steps li{position:relative;padding:14px 18px 14px 56px;border:1px solid var(--line);background:#fbfefe;border-radius:14px;font-size:15px}
+.num-steps li::before{counter-increment:numstep;content:counter(numstep);position:absolute;left:14px;top:12px;width:27px;height:27px;border-radius:50%;background:var(--deep);color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center}
+
+.view-tag{display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:900;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.view-tag.good{background:#dcf3e8;color:#0a5d46}
+.view-tag.neutral{background:#eef2fb;color:#2f4f8c}
+.view-tag.warn{background:#fbe7cf;color:#8c4a13}
+.select-progress{font-size:13px;color:#5f777c;font-weight:700;margin:6px 0 4px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" aria-label="Return to home"><img class="brand-logo" src="assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="brand-copy">
+      <strong>Data Migration Lead Programme</strong>
+      <span>Professional training and certification</span>
+    </div>
+    <strong id="progressText">0%</strong>
+  </div>
+  <div class="progress-shell"><div id="topProgress" class="progress-bar"></div></div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="panel course-panel">
+      <div class="kicker">Module 1</div>
+      <h2>The Data Migration Lead mindset</h2>
+      <p class="meta">Lesson 2: Owning the migration workstream<br><span class="small">From mindset to accountability</span></p>
+      <div class="progress-row"><span>Lesson progress</span><strong id="sideProgress">0%</strong></div>
+      <div class="lesson-nav" id="lessonNav"></div>
+    </div>
+  </aside>
+
+  <main class="panel lesson" id="lesson"></main>
+</div>
+
+<script>
+const STORAGE_KEY="tp_lesson2_premium_v2";
+let state=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"index":0,"completed":[],"answers":{},"reflection":"","valuable":""}');
+
+const situations2=[
+ {
+   title:"Situation 1",
+   question:"The Product team has not completed three mapping documents. What is your first concern?",
+   options:[
+     {label:"Chase the team to finish the mappings.",correct:false,
+      feedback:"Reasonable, but incomplete. Completing the mappings isn't the objective. Understanding their impact on delivery comes first."},
+     {label:"Understand whether the delay threatens the next migration milestone.",correct:true,
+      feedback:"Correct. A Data Migration Lead always considers the consequence before deciding the response."},
+     {label:"Escalate immediately to the Steering Committee.",correct:false,
+      feedback:"Escalation may become necessary, but only after you've understood the actual risk."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"Your weekly dashboard shows 95% of migration tasks complete. What question should you ask next?",
+   options:[
+     {label:"Are we genuinely ready for the next migration cycle?",correct:true,
+      feedback:"Correct. Progress and readiness are not the same thing."},
+     {label:"Can I report 95% complete?",correct:false,
+      feedback:"Executives don't buy percentages. They buy confidence."},
+     {label:"How many tasks can we finish this week?",correct:false,
+      feedback:"Throughput is useful. Readiness is what matters."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"A developer asks you to fix an ETL transformation. What should you do first?",
+   options:[
+     {label:"Solve the technical problem yourself.",correct:false,
+      feedback:"Many new Data Migration Leads fall into this trap. Being the best technician rarely makes you the best leader."},
+     {label:"Understand the business impact and assign the right person.",correct:true,
+      feedback:"Correct. Leadership is about ensuring problems are solved, not solving every problem personally."},
+     {label:"Delay the migration until everything is fixed.",correct:false,
+      feedback:"Sometimes delays are unavoidable. But first you need evidence that the issue genuinely threatens delivery."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"The Project Manager asks: “Are we on track?” Which answer demonstrates workstream ownership?",
+   options:[
+     {label:"“We've completed most of our migration tasks.”",correct:false,
+      feedback:"That's activity, not leadership."},
+     {label:"“We've closed twelve risks.”",correct:false,
+      feedback:"Risk closure is useful. It still doesn't tell the Project Manager whether the migration is healthy."},
+     {label:"“We're on track for Mock Migration 2. The biggest remaining concern is product data quality, and we've agreed mitigation with the business.”",correct:true,
+      feedback:"Correct. This answer demonstrates ownership, judgement and confidence."}
+   ]
+ }
+];
+
+const dailyQuestions2=[
+ {num:1,title:"Has our migration scope changed?",
+  detail:"Projects rarely stand still. Requirements evolve. Business priorities change. New requests appear. Assumptions are challenged.",
+  ask:"“Has anything changed that could affect what we're migrating or how we're migrating it?”"},
+ {num:2,title:"What is currently on the critical path?",
+  detail:"The critical path is constantly changing. Yesterday's priority may no longer be today's. One delayed approval, one unstable environment or one poor-quality data object can suddenly become the biggest threat to delivery.",
+  ask:"“If one thing slips today, what is most likely to delay the next migration milestone?”"},
+ {num:3,title:"Which delivery risk concerns me most?",
+  detail:"Every migration has risks. Your job is not to eliminate them all. Your job is to understand them, reduce them where possible and make sure the right people are aware of them. A hidden risk is usually far more dangerous than a known one.",
+  ask:"“If I were presenting to the Steering Committee this afternoon, which risk would I be talking about first?”"},
+ {num:4,title:"What important decision is waiting to be made?",
+  detail:"Many migrations are delayed, not because people are working slowly, but because nobody has made an important decision. Typical examples include historical data scope, data ownership, sign-off responsibilities, archive strategy, data quality acceptance and cutover approach. Good Data Migration Leads identify these decisions early and drive them to closure.",
+  ask:null},
+ {num:5,title:"Are we more ready today than we were yesterday?",
+  detail:"This is perhaps the most important question of all. Migration success is rarely achieved through one huge breakthrough. Instead, it comes from hundreds of small improvements that steadily increase confidence in the workstream. Every day should move the migration closer to a successful go-live. If it doesn't, understand why.",
+  ask:null}
+];
+const checkpointOptions=["Scope changes","Critical path","Delivery risks","Outstanding decisions","Overall readiness"];
+
+const triangleNodes=[
+ {id:"time",
+  detailHtml:`<div class="kicker">If Time reduces…</div><h4>Go-live brought forward by two weeks</h4><p>Go-live has been brought forward by two weeks. Something has to give.</p><ul class="framework-checks lesson-outcomes"><li>Reduce migration scope.</li><li>Increase delivery capacity.</li><li>Simplify reconciliation activities.</li><li>Delay non-essential data.</li></ul><p class="small">Ignoring the change is not a strategy.</p>`},
+ {id:"scope",
+  detailHtml:`<div class="kicker">If Scope increases…</div><h4>An additional five years of historical sales data</h4><p>The business decides it now wants to migrate an additional five years of historical sales data. Something else has to change.</p><ul class="framework-checks lesson-outcomes"><li>Extend the timeline.</li><li>Add more people.</li><li>Reduce quality expectations elsewhere.</li><li>Remove lower-priority objects.</li></ul><p class="small">Doing nothing simply creates more risk.</p>`},
+ {id:"quality",
+  detailHtml:`<div class="kicker">If Quality expectations increase…</div><h4>100% reconciliation before sign-off</h4><p>Finance now requires 100% reconciliation for every migrated object before sign-off. Excellent. But achieving a higher quality standard requires additional effort.</p><p>That may affect:</p><ul class="framework-checks lesson-outcomes"><li>Timeline.</li><li>Available resources.</li><li>Migration scope.</li></ul>`}
+];
+const triangleChallenge={
+ options:[
+  {label:"“Yes, we'll make it happen.”",correct:false,
+   feedback:"This is an understandable reaction. Unfortunately, projects fail when commitments are made before understanding the consequences."},
+  {label:"“We'll need to understand which constraint can change. We cannot increase scope, reduce time and improve quality without changing something else.”",correct:true,
+   feedback:"Correct. Experienced Data Migration Leads understand that every significant change affects the delivery balance. Your role is to help the project make informed decisions, not impossible promises."},
+  {label:"“We'll ask the team to work harder.”",correct:false,
+   feedback:"Working harder may help in the short term. It rarely solves structural delivery problems."},
+  {label:"“We'll decide during testing.”",correct:false,
+   feedback:"Waiting creates uncertainty. Leadership means identifying trade-offs early enough for the project to make informed decisions."}
+ ]
+};
+
+const guidedStepsData=[
+ {html:`<h4>Ignore the noise</h4><p>A new Data Migration Lead often reacts to the first thing they see. For example:</p><div class="quote">“We need to finish Product Mapping.”</div><p>That may be true. But it probably isn't the biggest issue. Experienced Data Migration Leads don't react to activity. They assess the workstream.</p>`},
+ {html:`<h4>Look for delivery threats</h4><p>Ask yourself:</p><ul class="framework-checks lesson-outcomes"><li>What could delay the next milestone?</li><li>Which business decisions remain outstanding?</li><li>Has our scope changed?</li><li>Has anything altered the critical path?</li></ul><p>Immediately, several concerns stand out:</p><ul class="framework-checks lesson-outcomes"><li>The scope has increased.</li><li>A critical business decision is still outstanding.</li><li>An environment issue could delay further migration cycles.</li></ul><p>These are far more significant than simply having one mapping document left to complete.</p>`},
+ {html:`<h4>Prioritise</h4><p>An experienced Data Migration Lead would probably tackle the work in this order:</p><ol class="num-steps"><li>Resolve the outstanding business decision on Finance reconciliation. Without agreement, later testing and sign-off become uncertain.</li><li>Understand whether the environment issue threatens the next migration cycle. If it does, mitigation needs to begin immediately.</li><li>Assess the impact of the additional historical data request. Can the project absorb it? Should it be deferred? What changes elsewhere if it is accepted?</li><li>Continue driving Product Mapping to completion. Still important, just not necessarily the biggest delivery risk.</li></ol>`}
+];
+const guidedClosingHtml=`<div class="principle"><strong>The key lesson</strong><br>None of these priorities were chosen simply because they appeared highest on a task list. They were chosen because they affect migration readiness.</div>
+<div class="quote">Turner Page coaching point: When you're unsure what to do next, stop asking “What should I work on?” Instead ask “What most threatens successful delivery?”</div>`;
+
+const selectOptions2=[
+ {title:"Review the two open Critical Risks.",verdict:"Excellent priority",strength:"good",
+  view:"Critical Risks already threaten successful delivery. Ignoring them would be poor workstream leadership."},
+ {title:"Finish Product Mapping.",verdict:"Investigate first",strength:"neutral",
+  view:"Important, but first determine whether the remaining work actually threatens the next migration milestone. Don't confuse unfinished work with the biggest delivery risk."},
+ {title:"Meet Finance to obtain agreement on opening balances.",verdict:"Excellent priority",strength:"good",
+  view:"Outstanding business decisions frequently delay projects far more than technical work."},
+ {title:"Understand the impact of adding two legal entities.",verdict:"Excellent priority",strength:"good",
+  view:"Every scope change should immediately trigger questions about timeline, quality and delivery risk."},
+ {title:"Meet the Test Manager to understand why another mock migration is required.",verdict:"Good choice",strength:"good",
+  view:"Understanding why another migration cycle is needed may reveal risks that aren't yet visible elsewhere."},
+ {title:"Review the environment risk with Infrastructure.",verdict:"Excellent priority",strength:"good",
+  view:"Environment stability underpins every migration cycle. A technical dependency can quickly become a programme risk."},
+ {title:"Prepare this week's Steering Committee presentation.",verdict:"Necessary, not sufficient",strength:"neutral",
+  view:"Necessary, but reporting should communicate your analysis, not replace it."},
+ {title:"Ask the team to increase productivity.",verdict:"Rarely the right first move",strength:"warn",
+  view:"This is rarely the correct first response. Outstanding Data Migration Leads solve delivery problems. They don't simply increase pressure on the team."}
+];
+const selectThreeClosingHtml=`<h3>Turner Page recommendation</h3>
+<p>An experienced Data Migration Lead would probably prioritise:</p>
+<ol class="num-steps">
+  <li>Outstanding business decisions.</li>
+  <li>Critical Risks.</li>
+  <li>Scope changes.</li>
+  <li>Environment stability.</li>
+  <li>Readiness for the next migration milestone.</li>
+</ol>
+<p>Notice that only one of those priorities is an actual task. Everything else is about protecting successful delivery.</p>
+<div class="principle"><strong>Final thought before reflection</strong><br>You have now seen the difference between completing work and leading a migration. The difference is not technical knowledge. It is judgement.</div>`;
+
+const quickQuestions=[
+ {title:"When somebody asked you for a migration update, what did you usually report?",
+  options:["Completed tasks and outstanding actions.","Readiness, risks and delivery confidence.","A mixture of both."]},
+ {title:"When a major issue occurred, what was your normal reaction?",
+  options:["Solve it myself.","Find the right person to solve it.","Understand the impact before deciding what to do."]},
+ {title:"Thinking about your last project, how often did you consciously ask: “Are we genuinely more ready today than we were yesterday?”",
+  options:["Every day","Every week","Occasionally","Almost never"]}
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Welcome",title:"Owning the migration workstream",type:"content",
+ html:`<p class="lead">In Lesson 1, you learned how successful Data Migration Leads think.</p>
+ <p>Now it's time to explore what they actually own.</p>
+ <p>Many people believe the role is about organising meetings, chasing actions and reporting progress.</p>
+ <p>Those activities matter. But they are not the job.</p>
+ <p>A Data Migration Lead owns the successful delivery of the migration workstream.</p>
+ <p>That means taking responsibility for readiness, quality, governance, communication, risk and successful delivery, not simply ensuring that tasks are completed.</p>
+ <div class="promise">
+  <div class="kicker">By the end of this lesson</div>
+  <h3>You will be able to</h3>
+  <ul class="framework-checks lesson-outcomes">
+    <li>Explain the difference between managing tasks and owning a workstream.</li>
+    <li>Understand what a Data Migration Lead is accountable for.</li>
+    <li>Make better decisions when balancing scope, time and quality.</li>
+    <li>Think like a workstream owner rather than a task manager.</li>
+  </ul>
+ </div>`
+},
+{
+ id:"b2",nav:"The challenge",title:"Who owns this problem?",type:"mcq",
+ html:`<p class="lead">Imagine it is Monday morning.</p>
+ <p>Your Project Manager asks:</p>
+ <div class="quote">“Are we ready for Mock Migration 2?”</div>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customer mapping</strong>Complete</div>
+   <div class="status-card"><strong>Supplier mapping</strong>Complete</div>
+   <div class="status-card"><strong>Product mapping</strong>90% complete</div>
+   <div class="status-card"><strong>Reconciliation accuracy</strong>96%</div>
+   <div class="status-card"><strong>Critical risks</strong>Two remain open</div>
+   <div class="status-card"><strong>Finance approval</strong>Historical balances not approved</div>
+   <div class="status-card"><strong>SIT</strong>Starts next Monday</div>
+ </div>
+ <div class="quote">What concerns you most?</div>`,
+ options:[
+   {label:"Product mapping isn't finished.",correct:false,
+    feedback:"Product mapping matters. But before reacting to individual tasks, consider whether they genuinely threaten delivery."},
+   {label:"Finance hasn't approved historical balances.",correct:false,
+    feedback:"This is important. However, one outstanding approval alone doesn't tell you whether the workstream is healthy."},
+   {label:"The combination of outstanding risks, business decisions and readiness for the next migration milestone.",correct:true,
+    feedback:"Correct. A Data Migration Lead looks at the whole workstream. Your responsibility is understanding whether the migration is genuinely ready to move forward."},
+   {label:"Reconciliation isn't yet 100%.",correct:false,
+    feedback:"Quality is essential. However, one metric never tells the whole story. Leadership comes from seeing the complete picture."}
+ ]
+},
+{
+ id:"b3",nav:"Explore",title:"From task manager to workstream owner",type:"content",
+ html:`<p class="lead">The biggest transition you'll make as a Data Migration Lead is changing how you measure success.</p>
+ <p>A task manager asks:</p>
+ <div class="quote">“What have we completed today?”</div>
+ <p>A Data Migration Lead asks:</p>
+ <div class="quote">“Are we more ready today than we were yesterday?”</div>
+ <p>That difference sounds small.</p>
+ <p>In reality, it changes almost every decision you make.</p>
+
+ <h3>What do you actually own?</h3>
+ <p>Although other specialists perform much of the migration work, you remain accountable for the overall health of the workstream.</p>
+ <p>You own:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Migration scope.</li>
+   <li>Governance and decision making.</li>
+   <li>Delivery risks.</li>
+   <li>The critical path.</li>
+   <li>Migration quality.</li>
+   <li>Executive reporting.</li>
+   <li>Overall migration readiness.</li>
+ </ul>
+ <p>Notice something important.</p>
+ <p>You do not need to complete every activity yourself. Instead, your responsibility is ensuring the right work happens, at the right time, by the right people, while continually moving the migration towards a successful go-live.</p>
+
+ <h3>Think one level higher</h3>
+ <p>Imagine an ETL developer reports:</p>
+ <div class="quote">“The Customer load failed.”</div>
+ <p>A technical consultant immediately asks:</p>
+ <div class="quote">“Why did it fail?”</div>
+ <p>A Data Migration Lead first asks:</p>
+ <div class="quote">“What impact does this have on the project?”</div>
+ <p>That question changes everything.</p>
+
+ <details class="tp-details">
+   <summary>See how a Data Migration Lead thinks this through</summary>
+   <div class="tp-details-body">
+     <p>Perhaps:</p>
+     <ul class="framework-checks lesson-outcomes">
+       <li>SIT can still continue.</li>
+       <li>Another object can be migrated first.</li>
+       <li>The failure only affects one country.</li>
+       <li>The critical path remains unchanged.</li>
+     </ul>
+     <p>Or perhaps none of those are true. Your role is to understand the consequence before deciding the response.</p>
+   </div>
+ </details>
+
+ <h3>The mindset shift</h3>
+ <p>Instead of asking:</p>
+ <div class="quote">Which task is late?</div>
+ <p>Start asking:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Which milestone is threatened?</li>
+   <li>Which business decision is outstanding?</li>
+   <li>Which dependency worries me most?</li>
+   <li>What does the Steering Committee need to know?</li>
+ </ul>
+ <p>That is the difference between managing migration activities and leading a migration workstream.</p>
+ <div class="principle"><strong>Turner Page insight</strong><br>Outstanding Data Migration Leads spend less time managing today's tasks and more time ensuring tomorrow's migration succeeds.</div>`
+},
+{
+ id:"b4",nav:"Recognition exercise",title:"Task management or workstream ownership?",type:"situations",
+ html:`<p class="lead">Every day, a Data Migration Lead makes dozens of decisions.</p>
+ <p>Some are simply about managing work. Others are about leading the migration workstream.</p>
+ <p>Can you recognise the difference?</p>`
+},
+{
+ id:"b5",nav:"Five Daily Questions",title:"The Five Daily Questions™",type:"dailyLoop",
+ html:`<p class="lead">One of the quickest ways to distinguish an experienced Data Migration Lead from someone who is simply managing migration tasks is by listening to the questions they ask.</p>
+ <p>Experienced Data Migration Leads don't wait for problems to appear. They actively look for them.</p>
+ <p>Before your first meeting each morning, ask yourself these five questions. Explore each one.</p>`
+},
+{
+ id:"b6",nav:"Decision Triangle",title:"The Migration Decision Triangle™",type:"triangle",
+ html:`<p class="lead">One of the most common mistakes made by inexperienced Data Migration Leads is believing they can satisfy every request.</p>
+ <p>In reality, every significant decision changes something else.</p>
+ <p>Think about these three factors:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li><strong>Scope</strong> — what are we migrating?</li>
+   <li><strong>Time</strong> — when must we deliver it?</li>
+   <li><strong>Quality</strong> — what standard must we achieve?</li>
+ </ul>
+ <p>These three are constantly in balance.</p>
+
+ <div class="visual-card">
+   <div class="visual-title">The Migration Decision Triangle™</div>
+   <div class="triangle-interactive">
+     <div class="triangle-svg-wrap">
+       <svg viewBox="0 0 420 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A triangle with Time, Scope and Quality at each corner. Select a corner to explore its trade-offs.">
+         <defs>
+           <linearGradient id="triFill2" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0" stop-color="#0b7f8e" stop-opacity=".14"/>
+             <stop offset="1" stop-color="#0b7f8e" stop-opacity=".04"/>
+           </linearGradient>
+           <linearGradient id="triNode2" x1="0" y1="0" x2="1" y2="1">
+             <stop offset="0" stop-color="#005f6c"/>
+             <stop offset="1" stop-color="#0b7f8e"/>
+           </linearGradient>
+         </defs>
+         <polygon points="210,40 70,330 350,330" fill="url(#triFill2)" stroke="#0b7f8e" stroke-width="2.5" stroke-linejoin="round"/>
+         <g class="tri-node" data-node="time" tabindex="0" role="button" aria-label="Time — click to explore">
+           <circle cx="210" cy="40" r="40"/>
+           <text x="210" y="46" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="800" fill="#ffffff">TIME</text>
+         </g>
+         <g class="tri-node" data-node="scope" tabindex="0" role="button" aria-label="Scope — click to explore">
+           <circle cx="70" cy="330" r="40"/>
+           <text x="70" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#ffffff">SCOPE</text>
+         </g>
+         <g class="tri-node" data-node="quality" tabindex="0" role="button" aria-label="Quality — click to explore">
+           <circle cx="350" cy="330" r="40"/>
+           <text x="350" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#ffffff">QUALITY</text>
+         </g>
+       </svg>
+     </div>
+     <div class="tri-detail" id="triDetail"><p class="small">Click a corner — Scope, Time or Quality — to see what typically has to change elsewhere.</p></div>
+     <div class="tri-progress" id="triProgress">
+       <span data-node="time"></span><span data-node="scope"></span><span data-node="quality"></span>
+     </div>
+   </div>
+   <p class="tri-hint" id="triHint">Click a corner to see what happens when it changes.</p>
+ </div>
+
+ <h3>Interactive challenge</h3>
+ <p>Your Project Sponsor says:</p>
+ <div class="quote">“We need to bring go-live forward by three weeks, include two additional business units and improve reconciliation accuracy.”</div>
+ <p>What is your response?</p>
+ <div class="options" id="triMcqOptions">
+   <button class="option" type="button"><span class="badge">A</span><span>“Yes, we'll make it happen.”</span></button>
+   <button class="option" type="button"><span class="badge">B</span><span>“We'll need to understand which constraint can change. We cannot increase scope, reduce time and improve quality without changing something else.”</span></button>
+   <button class="option" type="button"><span class="badge">C</span><span>“We'll ask the team to work harder.”</span></button>
+   <button class="option" type="button"><span class="badge">D</span><span>“We'll decide during testing.”</span></button>
+ </div>
+ <div id="triMcqFeedback"></div>
+ <div id="triClosingWrap"></div>`
+},
+{
+ id:"b7",nav:"Guided example",title:"Let's think like a Data Migration Lead",type:"guidedSteps",
+ html:`<p class="lead">Before you tackle a realistic migration scenario yourself, let's walk through one together.</p>
+ <p>This is how an experienced Data Migration Lead would analyse the situation.</p>
+ <h3>The situation</h3>
+ <p>You are 10 weeks from go-live. Your weekly status meeting has just finished. You know the following:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Customer, Supplier and Finance mappings are complete.</li>
+   <li>Product mappings are only 80% complete.</li>
+   <li>Mock Migration 1 completed successfully.</li>
+   <li>Reconciliation accuracy reached 98%.</li>
+   <li>One critical environment issue remains unresolved.</li>
+   <li>The business has requested two additional years of historical sales data.</li>
+   <li>Finance still hasn't approved the opening balance reconciliation approach.</li>
+ </ul>
+ <p>The Project Manager turns to you and asks:</p>
+ <div class="quote">“What's your assessment?”</div>`
+},
+{
+ id:"b8",nav:"Your turn",title:"You're now the Data Migration Lead",type:"selectThree",
+ html:`<p class="lead">Everything you've learned so far now comes together.</p>
+ <p>This is a realistic project situation. There isn't a single perfect answer. Your job is to think like a Data Migration Lead and decide what matters most.</p>
+ <h3>The project</h3>
+ <p>The project is eight weeks from go-live. Latest migration status:</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customer Data</strong>Complete</div>
+   <div class="status-card"><strong>Supplier Data</strong>Complete</div>
+   <div class="status-card"><strong>Product Data</strong>90% complete</div>
+   <div class="status-card"><strong>Finance Data</strong>In progress</div>
+   <div class="status-card"><strong>Mock Migration 1</strong>Completed</div>
+   <div class="status-card"><strong>Mock Migration 2</strong>Starts next week</div>
+   <div class="status-card"><strong>Reconciliation accuracy</strong>98.2%</div>
+   <div class="status-card"><strong>Critical risks</strong>2 open</div>
+   <div class="status-card"><strong>Business decisions</strong>3 outstanding</div>
+ </div>
+ <h3>New information arrives</h3>
+ <ul class="framework-checks lesson-outcomes">
+   <li>The business wants to include two additional legal entities.</li>
+   <li>The Test Manager has requested another mock migration.</li>
+   <li>Finance still hasn't approved opening balances.</li>
+   <li>The infrastructure team has warned of possible environment downtime next week.</li>
+   <li>One senior mapping consultant is on annual leave for two weeks.</li>
+ </ul>
+ <p>The Project Manager asks:</p>
+ <div class="quote">“What should we focus on first?”</div>
+ <div class="quote">You can choose only THREE priorities.</div>`
+},
+{
+ id:"b9",nav:"Reflection",title:"Pause and reflect",type:"reflection",
+ html:`<p class="lead">You've now explored what it really means to own a migration workstream.</p>
+ <p>Before moving on, take a few minutes to think about your own experience. There are no right or wrong answers.</p>
+ <p>The purpose is to help you connect today's learning to your own projects.</p>
+ <div id="quickQuestions"></div>
+ <h3>Your reflection</h3>
+ <p>In your own words: What is the single biggest difference between managing migration tasks and leading a migration workstream?</p>
+ <textarea id="reflection" placeholder="The biggest difference is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`
+},
+{
+ id:"b10",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Owning the migration workstream.</strong></p>
+ <p>You've now explored what it really means to own a migration workstream, not simply manage its tasks.</p>
+ </div>
+ <div class="promise">
+ <div class="kicker">The Turner Page Promise</div>
+ <h3>Learning that improves professional judgement</h3>
+ <p>Everything in this lesson was selected because it can improve the decisions you make on a real ERP project.</p>
+ </div>
+ <h3>Personal action</h3>
+ <p>Before you leave this lesson, complete this sentence:</p>
+ <div class="quote">“On my next project, I will…”</div>
+ <textarea id="valuableReflection" placeholder="On my next project, I will..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p>You've now completed the learning content for Lesson 2. The final step is to test your understanding.</p>`
+}
+];
+
+const lesson=document.getElementById("lesson");
+const nav=document.getElementById("lessonNav");
+
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function complete(id){if(!state.completed.includes(id))state.completed.push(id)}
+function percentage(){return Math.round(state.completed.length/blocks.length*100)}
+function updateChrome(){
+ const p=percentage();
+ document.getElementById("topProgress").style.width=p+"%";
+ document.getElementById("progressText").textContent=p+"%";
+ document.getElementById("sideProgress").textContent=p+"%";
+ [...nav.children].forEach((el,i)=>{
+   el.classList.toggle("active",i===state.index);
+   el.classList.toggle("done",state.completed.includes(blocks[i].id));
+ });
+}
+function renderNav(){
+ nav.innerHTML="";
+ blocks.forEach((b,i)=>{
+   const btn=document.createElement("button");
+   btn.textContent=(i+1)+". "+b.nav;
+   btn.onclick=()=>{if(i<=state.index||state.completed.includes(b.id)){state.index=i;save();render()}};
+   nav.appendChild(btn);
+ });
+}
+function shell(b,i){
+ return `<div class="step">Lesson 2 · Section ${i+1} of ${blocks.length}</div><h2>${b.title}</h2>${b.html}<div id="dynamic"></div><div class="actions"><button id="back" class="btn secondary">Back</button><button id="next" class="btn primary">Continue</button></div><div class="footer-promise"><strong>The Turner Page Promise</strong><br>Helping Data Migration Leads make better decisions on real ERP projects.</div>`;
+}
+
+function initTriangle(b){
+ const root=document.getElementById("lesson");
+ const nodes=[...root.querySelectorAll(".tri-node")];
+ const detail=document.getElementById("triDetail");
+ const hint=document.getElementById("triHint");
+ const dots=[...root.querySelectorAll(".tri-progress span")];
+ const mcqWrap=document.getElementById("triMcqOptions");
+ const mcqFeedback=document.getElementById("triMcqFeedback");
+ const closingWrap=document.getElementById("triClosingWrap");
+ const next=document.getElementById("next");
+ if(!nodes.length||!mcqWrap)return;
+
+ const st=state.answers[b.id]||{corners:[]};
+ st.corners=st.corners||[];
+ state.answers[b.id]=st;
+
+ function paintTriangle(){
+   nodes.forEach(n=>n.classList.toggle("active",n.dataset.node===st.lastNode));
+   dots.forEach(d=>d.classList.toggle("done",st.corners.includes(d.dataset.node)));
+   if(st.lastNode){
+     const data=triangleNodes.find(x=>x.id===st.lastNode);
+     if(data)detail.innerHTML=data.detailHtml;
+   }
+   hint.textContent = st.corners.length>=3 ? "You've explored all three corners." : "Click a corner to see what happens when it changes.";
+ }
+ nodes.forEach(n=>{
+   n.addEventListener("click",()=>{
+     const id=n.dataset.node;
+     const s=new Set(st.corners);s.add(id);st.corners=[...s];st.lastNode=id;
+     state.answers[b.id]=st;save();paintTriangle();checkReady();
+   });
+   n.addEventListener("keydown",(e)=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();n.click();}});
+ });
+ paintTriangle();
+
+ function paintMcq(){
+   [...mcqWrap.children].forEach((btn,j)=>btn.classList.toggle("selected",st.mcq===j));
+   if(st.mcq!==undefined){
+     const opt=triangleChallenge.options[st.mcq];
+     mcqFeedback.innerHTML=`<div class="feedback ${opt.correct?"good":"warn"}">${opt.feedback}</div>`;
+   }
+ }
+ [...mcqWrap.children].forEach((btn,j)=>{
+   btn.addEventListener("click",()=>{
+     st.mcq=j;state.answers[b.id]=st;save();paintMcq();checkReady();
+   });
+ });
+ paintMcq();
+
+ function checkReady(){
+   const ready=st.corners.length>=3 && st.mcq!==undefined;
+   if(next)next.disabled=!ready;
+   if(ready && !document.getElementById("triClosing")){
+     closingWrap.innerHTML=`<div class="principle" id="triClosing"><strong>Turner Page insight</strong><br>Outstanding Data Migration Leads don't simply accept change. They help the project understand the cost of change.</div>`;
+   }
+ }
+ checkReady();
+}
+
+function render(){
+ const b=blocks[state.index], i=state.index;
+ lesson.innerHTML=shell(b,i);
+ const dynamic=document.getElementById("dynamic");
+ const next=document.getElementById("next");
+ next.textContent=i===blocks.length-1?"Continue to the Lesson 2 assessment →":"Continue";
+ let ready=b.type==="content";
+
+ if(b.type==="mcq"){
+   const selected=state.answers[b.id];
+   const wrap=document.createElement("div");wrap.className="options";
+   b.options.forEach((opt,j)=>{
+     const btn=document.createElement("button");
+     btn.className="option"+(selected===j?" selected":"");
+     btn.innerHTML=`<span class="badge">${String.fromCharCode(65+j)}</span><span>${opt.label}</span>`;
+     btn.onclick=()=>{state.answers[b.id]=j;save();render()};
+     wrap.appendChild(btn);
+   });
+   dynamic.appendChild(wrap);
+   if(selected!==undefined){
+     const opt=b.options[selected];
+     dynamic.insertAdjacentHTML("beforeend",`<div class="feedback ${opt.correct?"good":"warn"}">${opt.feedback}</div>`);
+     ready=true;
+   } else ready=false;
+ }
+
+ if(b.type==="situations"){
+   const answers=state.answers[b.id]||{};
+   situations2.forEach((s,j)=>{
+     const box=document.createElement("div");box.className="framework-detail";
+     box.innerHTML=`<div class="kicker">${s.title}</div><h3>${s.question}</h3>`;
+     const optWrap=document.createElement("div");optWrap.className="options";
+     s.options.forEach((opt,k)=>{
+       const btn=document.createElement("button");
+       btn.className="option"+(answers[j]===k?" selected":"");
+       btn.innerHTML=`<span class="badge">${String.fromCharCode(65+k)}</span><span>${opt.label}</span>`;
+       btn.onclick=()=>{answers[j]=k;state.answers[b.id]=answers;save();render()};
+       optWrap.appendChild(btn);
+     });
+     box.appendChild(optWrap);
+     if(answers[j]!==undefined){
+       const opt=s.options[answers[j]];
+       box.insertAdjacentHTML("beforeend",`<div class="feedback ${opt.correct?"good":"warn"}">${opt.feedback}</div>`);
+     }
+     dynamic.appendChild(box);
+   });
+   ready=Object.keys(answers).length===situations2.length;
+   if(ready)dynamic.insertAdjacentHTML("beforeend",`<div class="principle"><strong>Lesson takeaway</strong><br>Task managers measure activity. Data Migration Leads measure readiness.</div>`);
+ }
+
+ if(b.type==="dailyLoop"){
+   const st=state.answers[b.id]||{open:[]};
+   st.open=st.open||[];
+   const loop=document.createElement("div");loop.className="dq-loop";
+   dailyQuestions2.forEach((q,j)=>{
+     const item=document.createElement("div");item.className="dq-item";
+     item.innerHTML=`<div class="dq-num">${q.num}</div><div class="dq-body"><h4>${q.title}</h4>${st.open.includes(j)?`<div class="dq-detail">${q.detail}${q.ask?`<div class="dq-ask">${q.ask}</div>`:""}</div>`:""}<button class="btn secondary" type="button">${st.open.includes(j)?"Hide detail":"Explore"}</button></div>`;
+     item.querySelector("button").onclick=()=>{
+       const s=new Set(st.open);s.has(j)?s.delete(j):s.add(j);st.open=[...s];state.answers[b.id]=st;save();render();
+     };
+     loop.appendChild(item);
+   });
+   dynamic.appendChild(loop);
+
+   const allOpen=st.open.length===dailyQuestions2.length;
+   if(allOpen){
+     const cpWrap=document.createElement("div");cpWrap.className="checkpoint-card";
+     cpWrap.innerHTML=`<div class="kicker">Interactive checkpoint</div><h4>Which of these five questions do you think experienced Data Migration Leads overlook least often?</h4><div class="mini-options">${checkpointOptions.map((o,k)=>`<button class="mini-option${st.checkpoint===k?" selected":""}" type="button" data-k="${k}">${o}</button>`).join("")}</div>${st.checkpoint!==undefined?`<div class="feedback">Different projects place different emphasis on each question, but experienced Data Migration Leads consciously consider all five every day.</div>`:""}`;
+     dynamic.appendChild(cpWrap);
+     cpWrap.querySelectorAll(".mini-option").forEach(btn=>{
+       btn.onclick=()=>{st.checkpoint=parseInt(btn.dataset.k,10);state.answers[b.id]=st;save();render();};
+     });
+   }
+   state.answers[b.id]=st;
+   ready = allOpen && st.checkpoint!==undefined;
+   if(ready) dynamic.insertAdjacentHTML("beforeend",`<div class="principle"><strong>Turner Page takeaway</strong><br>These aren't just good questions. They are daily habits. If you consistently ask and answer these five questions, you'll naturally begin thinking like a workstream owner instead of a task manager.</div>`);
+ }
+
+ if(b.type==="triangle"){
+   const st=state.answers[b.id];
+   ready = !!(st && st.corners && st.corners.length>=3 && st.mcq!==undefined);
+ }
+
+ if(b.type==="guidedSteps"){
+   const revealed=state.answers[b.id]||0;
+   const wrap=document.createElement("div");wrap.className="guided-steps";
+   guidedStepsData.forEach((step,j)=>{
+     if(j<revealed){
+       const el=document.createElement("div");el.className="guided-step";
+       el.innerHTML=`<div class="kicker">Step ${j+1}</div>${step.html}`;
+       wrap.appendChild(el);
+     }
+   });
+   dynamic.appendChild(wrap);
+   if(revealed<guidedStepsData.length){
+     const btn=document.createElement("button");
+     btn.className="btn primary guided-reveal-btn";
+     btn.type="button";
+     btn.textContent=revealed===0?"Walk through Step 1":`Reveal Step ${revealed+1}`;
+     btn.onclick=()=>{state.answers[b.id]=revealed+1;save();render()};
+     dynamic.appendChild(btn);
+   } else {
+     dynamic.insertAdjacentHTML("beforeend",guidedClosingHtml);
+   }
+   ready=revealed>=guidedStepsData.length;
+ }
+
+ if(b.type==="selectThree"){
+   const selected=state.answers[b.id]||[];
+   const wrap=document.createElement("div");wrap.className="options";
+   selectOptions2.forEach((opt,j)=>{
+     const chosen=selected.includes(j);
+     const disabled=!chosen&&selected.length>=3;
+     const holder=document.createElement("div");
+     const btn=document.createElement("button");
+     btn.className="option"+(chosen?" selected":"")+(disabled?" disabled":"");
+     btn.type="button";
+     btn.innerHTML=`<span class="badge">${chosen?"✓":j+1}</span><span>${opt.title}</span>`;
+     btn.onclick=()=>{
+       if(disabled)return;
+       const s=new Set(selected);s.has(j)?s.delete(j):s.add(j);state.answers[b.id]=[...s];save();render();
+     };
+     holder.appendChild(btn);
+     if(chosen)holder.insertAdjacentHTML("beforeend",`<div class="feedback ${opt.strength==="good"?"good":opt.strength==="warn"?"warn":""}"><span class="view-tag ${opt.strength}">${opt.verdict}</span><p>${opt.view}</p></div>`);
+     wrap.appendChild(holder);
+   });
+   dynamic.appendChild(wrap);
+   dynamic.insertAdjacentHTML("beforeend",`<p class="select-progress">${selected.length} of 3 selected</p>`);
+   ready=selected.length===3;
+   if(ready){
+     dynamic.insertAdjacentHTML("beforeend",`<div class="principle"><strong>Mentor feedback</strong><br>A good Data Migration Lead does not simply react to the loudest problem. You establish the current readiness position, identify what genuinely threatens the next gate, and focus attention where it changes the delivery outcome. What matters is whether your reasoning is anchored in impact, evidence and dates.</div>`);
+     dynamic.insertAdjacentHTML("beforeend",selectThreeClosingHtml);
+   }
+ }
+
+ if(b.type==="reflection"){
+   const qqRoot=document.getElementById("quickQuestions");
+   const qState=state.answers[b.id+"_quick"]||{};
+   if(qqRoot){
+     qqRoot.innerHTML=quickQuestions.map((q,qi)=>`
+       <div class="mini-question">
+         <h4>${q.title}</h4>
+         <div class="mini-options" data-qi="${qi}">
+           ${q.options.map((o,oi)=>`<button class="mini-option${qState[qi]===oi?" selected":""}" type="button" data-oi="${oi}">${o}</button>`).join("")}
+         </div>
+       </div>`).join("");
+     qqRoot.querySelectorAll(".mini-options").forEach(group=>{
+       const qi=group.dataset.qi;
+       group.querySelectorAll(".mini-option").forEach(btn=>{
+         btn.onclick=()=>{
+           qState[qi]=parseInt(btn.dataset.oi,10);
+           state.answers[b.id+"_quick"]=qState;
+           save();
+           group.querySelectorAll(".mini-option").forEach(o=>o.classList.remove("selected"));
+           btn.classList.add("selected");
+         };
+       });
+     });
+   }
+
+   const area=document.getElementById("reflection");
+   const feedback=document.getElementById("reflectionFeedback");
+   const analyseButton=document.getElementById("analyseButton");
+   const micButton=document.getElementById("micButton");
+   const micStatus=document.getElementById("micStatus");
+   area.value=state.reflection||"";
+
+   area.oninput=()=>{
+     state.reflection=area.value;
+     save();
+     feedback.innerHTML="";
+     analyseButton.disabled=area.value.trim().length<40;
+   };
+
+   analyseButton.disabled=area.value.trim().length<40;
+
+   const analyseResponse=()=>{
+     const t=area.value.toLowerCase();
+     const strengths=[];
+     const gaps=[];
+
+     const readiness=/readiness|ready|confidence/.test(t);
+     const criticalPath=/critical path|milestone|gate|dependenc/.test(t);
+     const decision=/decision|decide|escalat/.test(t);
+     const risk=/risk|impact|mitigat/.test(t);
+     const altitude=/right people|mobilis|mobiliz|delegat|ownership|accountab|assign/.test(t);
+     const evidence=/evidence|reconcil|data quality/.test(t);
+     const tradeoff=/trade.?off|scope|time|quality|balance/.test(t);
+
+     if(readiness)strengths.push("You framed the difference around readiness rather than only completed activity.");
+     if(criticalPath)strengths.push("You referred to the critical path or the next milestone, not just today's task list.");
+     if(decision)strengths.push("You connected the situation to a decision, a deadline or an escalation.");
+     if(risk)strengths.push("You considered risk and its impact rather than treating it as a label.");
+     if(altitude)strengths.push("You recognised the value of assigning the right person rather than solving everything yourself.");
+     if(evidence)strengths.push("You anchored your answer in evidence rather than optimism.");
+     if(tradeoff)strengths.push("You made a scope, time or quality trade-off visible.");
+
+     if(!readiness)gaps.push("Make readiness, not just progress, the centre of your answer.");
+     if(!criticalPath)gaps.push("Name what is currently on the critical path or blocking the next milestone.");
+     if(!decision)gaps.push("Identify the decision, owner or deadline involved.");
+     if(!risk)gaps.push("Explain how you would assess and translate the risk.");
+     if(!altitude)gaps.push("Describe how you would mobilise the right people rather than solving it yourself.");
+     if(!evidence)gaps.push("Show how evidence, not confidence alone, would support your view.");
+
+     const score=Math.max(4,Math.min(10,Math.round((strengths.length/7)*10*10)/10));
+
+     feedback.innerHTML=`
+       <div class="score-card">
+         <div class="score">${score.toFixed(1)}/10</div>
+         <div><strong>Indicative assessment</strong><br><span class="small">Based on the breadth and quality of the reasoning in this response.</span></div>
+       </div>
+       <div class="feedback good">
+         <strong>Strong points</strong>
+         <ul>${(strengths.length?strengths:["You gave a direct, honest answer and engaged with the question."]).map(x=>`<li>${x}</li>`).join("")}</ul>
+       </div>
+       <div class="feedback">
+         <strong>You could strengthen your answer by discussing</strong>
+         <ul>${(gaps.length?gaps:["No major gaps detected."]).map(x=>`<li>${x}</li>`).join("")}</ul>
+       </div>
+       <div class="principle"><strong>Mentor feedback</strong><br>Many experienced consultants discover that they've spent years managing migration activities without truly leading the migration workstream. The transition begins when you stop measuring activity and start measuring readiness. Every project gives you another opportunity to improve that judgement. Don't aim to become the busiest person on the project. Aim to become the person who best understands whether the migration will succeed.</div>
+     `;
+     ready=true;
+     next.disabled=false;
+   };
+
+   analyseButton.onclick=()=>{
+     if(area.value.trim().length<40)return;
+     feedback.innerHTML=`<div class="analysis-state"><div class="spinner"></div><div><strong>Analysing your response</strong><br><span class="small">Reviewing your reasoning against the Turner Page ownership framework.</span></div></div>`;
+     analyseButton.disabled=true;
+     setTimeout(()=>{analyseResponse();analyseButton.disabled=false;analyseButton.textContent="Analyse revised answer";},2200);
+   };
+
+   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+   if(SpeechRecognition){
+     const recognition=new SpeechRecognition();
+     recognition.lang="en-GB";
+     recognition.continuous=true;
+     recognition.interimResults=true;
+     let listening=false;
+     let baseText=area.value;
+
+     recognition.onstart=()=>{
+       listening=true;
+       baseText=area.value;
+       micButton.textContent="Stop microphone";
+       micStatus.textContent="Listening...";
+     };
+     recognition.onresult=(event)=>{
+       let transcript="";
+       for(let i=event.resultIndex;i<event.results.length;i++){
+         transcript+=event.results[i][0].transcript;
+       }
+       area.value=(baseText+" "+transcript).trim();
+       state.reflection=area.value;
+       save();
+       analyseButton.disabled=area.value.trim().length<40;
+     };
+     recognition.onend=()=>{
+       listening=false;
+       baseText=area.value;
+       micButton.textContent="Use microphone";
+       micStatus.textContent="";
+     };
+     recognition.onerror=()=>{
+       micStatus.textContent="Microphone input was not available.";
+     };
+     micButton.onclick=()=>{listening?recognition.stop():recognition.start()};
+   }else{
+     micButton.disabled=true;
+     micStatus.textContent="Microphone input is not supported in this browser.";
+   }
+
+   ready=false;
+ }
+
+ if(b.type==="valuable"){
+   const area=document.getElementById("valuableReflection");
+   const feedback=document.getElementById("valuableFeedback");
+   const micButton=document.getElementById("valuableMicButton");
+   const micStatus=document.getElementById("valuableMicStatus");
+   area.value=state.valuable||"";
+
+   const updateValuable=()=>{
+     state.valuable=area.value;
+     save();
+     const ok=area.value.trim().length>=15;
+     next.disabled=!ok;
+     feedback.innerHTML=ok
+       ? `<div class="feedback"><strong>Your commitment has been saved.</strong><br>Return to it before your next Steering Committee update and ask how it should change your behaviour.</div>`
+       : "";
+   };
+   area.oninput=updateValuable;
+   ready=(state.valuable||"").trim().length>=15;
+   if(ready)updateValuable();
+
+   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+   if(SpeechRecognition){
+     const recognition=new SpeechRecognition();
+     recognition.lang="en-GB";
+     recognition.continuous=true;
+     recognition.interimResults=true;
+     let listening=false;
+     let baseText=area.value;
+
+     recognition.onstart=()=>{
+       listening=true;
+       baseText=area.value;
+       micButton.textContent="Stop microphone";
+       micStatus.textContent="Listening...";
+     };
+     recognition.onresult=(event)=>{
+       let transcript="";
+       for(let k=event.resultIndex;k<event.results.length;k++){
+         transcript+=event.results[k][0].transcript;
+       }
+       area.value=(baseText+" "+transcript).trim();
+       updateValuable();
+     };
+     recognition.onend=()=>{
+       listening=false;
+       baseText=area.value;
+       micButton.textContent="Use microphone";
+       micStatus.textContent="";
+     };
+     recognition.onerror=()=>{micStatus.textContent="Microphone input was not available.";};
+     micButton.onclick=()=>{listening?recognition.stop():recognition.start();};
+   } else {
+     micButton.disabled=true;
+     micStatus.textContent="Microphone input is not supported in this browser.";
+   }
+ }
+
+ document.getElementById("back").disabled=i===0;
+ document.getElementById("back").onclick=()=>{if(i>0){state.index--;save();render();scrollTo({top:0,behaviour:"smooth"})}};
+ next.disabled=!ready;
+ next.onclick=()=>{
+   if(next.disabled)return;
+   complete(b.id);
+   if(i<blocks.length-1){
+     state.index++;
+     save();
+     render();
+     scrollTo({top:0,behaviour:"smooth"});
+   } else {
+     complete(b.id);
+     save();
+     updateChrome();
+     window.location.href="lesson2-assessment.html";
+   }
+ };
+ updateChrome();
+
+ if(b.id==="b6"){initTriangle(b)}
+}
+renderNav();render();
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
