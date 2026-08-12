@@ -160,6 +160,11 @@ const blocks=[
     <li>Make better decisions when balancing scope, time and quality.</li>
     <li>Think like a workstream owner rather than a task manager.</li>
   </ul>
+ </div>
+ <div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>This lesson moves quickly. From the next screen onwards, you'll be making real judgement calls, not just reading about them.</p>
+ <p>By the end, you should notice yourself asking different questions than you did at the start.</p>
  </div>`
 },
 {
@@ -261,6 +266,11 @@ const blocks=[
  layout:"loop",
  html:`<p class="lead">One of the quickest ways to distinguish an experienced Data Migration Lead from someone who is simply managing migration tasks is by listening to the questions they ask.</p>
  <p>Experienced Data Migration Leads don't wait for problems to appear. They actively look for them.</p>
+ ${TPKit.fromField({
+   title:"The Question I Almost Skipped", name:"Priya", role:"Data Migration Lead", project:"Healthcare ERP",
+   src:"assets/audio/lesson2-fivequestions-priya.mp3",
+   reflection:"Which of the five questions do you tend to skip when you're under pressure?"
+ })}
  <p>Before your first meeting each morning, ask yourself these five questions. Explore each one.</p>`,
  items: dailyQuestions2,
  checkpoint: {
@@ -312,6 +322,12 @@ const blocks=[
    </div>
    <p class="tri-hint">Click a corner to see what happens when it changes.</p>
  </div>
+
+ ${TPKit.fromField({
+   title:"The Sponsor Wanted All Three", name:"Marcus", role:"Data Migration Lead", project:"Logistics ERP",
+   src:"assets/audio/lesson2-decisiontriangle-marcus.mp3",
+   reflection:"How would you have responded if the request came to you directly?"
+ })}
 
  <h3>Interactive challenge</h3>
  <p>Your Project Sponsor says:</p>
@@ -387,6 +403,11 @@ const blocks=[
  </ul>
  <p>The Project Manager asks:</p>
  <div class="quote">“What should we focus on first?”</div>
+ ${TPKit.fromField({
+   title:"Twenty Minutes to Decide", name:"Sam", role:"Data Migration Lead", project:"Energy ERP",
+   src:"assets/audio/lesson2-yourturn-sam.mp3",
+   reflection:"Would your first three priorities have matched mine?"
+ })}
  <div class="quote">You can choose only THREE priorities.</div>`,
  n:3,
  options: selectOptions2,
