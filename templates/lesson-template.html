@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | LESSON TITLE HERE</title>
+<link rel="stylesheet" href="shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="shared/footer-config.js"></script>
+<script src="shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON CONFIG
+   Copy this file, rename it lessonN.html, and edit everything
+   between here and TPKit.mount() at the bottom. Everything else
+   (chrome, styling, footer wording, engine behaviour) is shared —
+   see AUTHORING-GUIDE.md for the full block-type catalogue.
+============================================================== */
+
+const LESSON_CONFIG = {
+  // --- Identity -------------------------------------------------
+  moduleKicker: "Module 1",
+  moduleTitle: "The Data Migration Lead mindset",
+  lessonLabel: "Lesson 3: REPLACE WITH LESSON TITLE",
+  lessonTagline: "Short subtitle for the sidebar",
+
+  // --- Storage / navigation --------------------------------------
+  // Bump the version suffix (v1, v2...) if you republish a lesson
+  // with a materially different block structure, so old learner
+  // progress doesn't collide with the new shape.
+  storageKey: "tp_lesson3_v1",
+  // Where "Continue" on the final screen sends the learner:
+  nextUrl: "lesson3-assessment.html",
+  finalButtonLabel: "Continue to the Lesson 3 assessment →",
+
+  // --- Blocks: one entry per screen -------------------------------
+  blocks: [
+
+    // 1. CONTENT — plain screen, no gating, Continue always enabled.
+    {
+      id: "b1", nav: "Welcome", title: "Lesson title as an H2", type: "content",
+      html: `<p class="lead">Opening hook sentence.</p>
+      <p>A short paragraph or two of framing.</p>
+      <div class="promise">
+        <div class="kicker">By the end of this lesson</div>
+        <h3>You will be able to</h3>
+        <ul class="framework-checks lesson-outcomes">
+          <li>Outcome one.</li>
+          <li>Outcome two.</li>
+        </ul>
+      </div>`
+    },
+
+    // 2. MCQ — single-select, 2-4 options, correct/incorrect feedback.
+    {
+      id: "b2", nav: "The challenge", title: "A scenario question", type: "mcq",
+      html: `<p class="lead">Set the scene here.</p>
+      <div class="quote">“A stakeholder asks a pointed question.”</div>`,
+      options: [
+        { label: "Option A", correct: false, feedback: "Why this is incomplete." },
+        { label: "Option B", correct: true,  feedback: "Correct — why this is right." },
+        { label: "Option C", correct: false, feedback: "Why this misses the point." }
+      ]
+    },
+
+    // 3. SITUATIONS — several mini-scenarios, each its own MCQ.
+    {
+      id: "b3", nav: "Recognition exercise", title: "Can you spot the difference?", type: "situations",
+      html: `<p class="lead">Framing sentence for the set of situations.</p>`,
+      items: [
+        {
+          title: "Situation 1", question: "What matters most here?",
+          options: [
+            { label: "Option A", correct: false, feedback: "Feedback for A." },
+            { label: "Option B", correct: true,  feedback: "Feedback for B." }
+          ]
+        }
+      ],
+      takeawayHtml: `<div class="principle"><strong>Lesson takeaway</strong><br>One-line summary.</div>`
+    },
+
+    // 4. EXPANDABLE LIST — click-to-reveal cards. layout:"loop" (vertical
+    // timeline, e.g. Five Daily Questions) or "grid" (5-across cards).
+    // Optional trailing "checkpoint" opinion question with one universal
+    // feedback message (no right/wrong).
+    {
+      id: "b4", nav: "Key questions", title: "A named framework™", type: "expandableList",
+      layout: "loop",
+      html: `<p class="lead">Framing sentence.</p>`,
+      items: [
+        { title: "Question one?", detail: "Explanatory paragraph.", ask: "“A reflective prompt in quotes.”" },
+        { title: "Question two?", detail: "Explanatory paragraph." }
+      ],
+      checkpoint: {
+        question: "An opinion question with no single right answer.",
+        options: ["Option A", "Option B", "Option C"],
+        feedback: "A short piece of universal mentor commentary shown after any choice."
+      },
+      takeawayHtml: `<div class="principle"><strong>Turner Page takeaway</strong><br>Closing line.</div>`
+    },
+
+    // 5. TRADEOFF TRIANGLE — interactive 3-corner SVG. The SVG markup
+    // and challenge MCQ live directly in `html` (see the exact
+    // required class names below); TPKit only wires the interactivity.
+    // Corner ids in `corners` must match the data-node attributes.
+    {
+      id: "b5", nav: "Trade-offs", title: "The [Name] Triangle™", type: "tradeoffTriangle",
+      html: `<p class="lead">Framing sentence about competing constraints.</p>
+      <div class="visual-card">
+        <div class="visual-title">The [Name] Triangle™</div>
+        <div class="triangle-interactive">
+          <div class="triangle-svg-wrap">
+            <svg viewBox="0 0 420 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three corners; select each to explore its trade-offs.">
+              <defs>
+                <linearGradient id="triNodeGradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#005f6c"/><stop offset="1" stop-color="#0b7f8e"/>
+                </linearGradient>
+              </defs>
+              <polygon points="210,40 70,330 350,330" fill="#0b7f8e" fill-opacity=".08" stroke="#0b7f8e" stroke-width="2.5" stroke-linejoin="round"/>
+              <g class="tri-node" data-node="cornerA" tabindex="0" role="button" aria-label="Corner A">
+                <circle cx="210" cy="40" r="40"/>
+                <text x="210" y="46" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#fff">A</text>
+              </g>
+              <g class="tri-node" data-node="cornerB" tabindex="0" role="button" aria-label="Corner B">
+                <circle cx="70" cy="330" r="40"/>
+                <text x="70" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#fff">B</text>
+              </g>
+              <g class="tri-node" data-node="cornerC" tabindex="0" role="button" aria-label="Corner C">
+                <circle cx="350" cy="330" r="40"/>
+                <text x="350" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#fff">C</text>
+              </g>
+            </svg>
+          </div>
+          <div class="tri-detail"><p class="small">Click a corner to see what typically has to change elsewhere.</p></div>
+          <div class="tri-progress"><span data-node="cornerA"></span><span data-node="cornerB"></span><span data-node="cornerC"></span></div>
+        </div>
+        <p class="tri-hint">Click a corner to see what happens when it changes.</p>
+      </div>
+      <h3>Interactive challenge</h3>
+      <p>Set up a short scenario, then present the options below.</p>
+      <div class="options tri-challenge-options">
+        <button class="option" type="button"><span class="badge">A</span><span>Option A</span></button>
+        <button class="option" type="button"><span class="badge">B</span><span>Option B (correct)</span></button>
+      </div>
+      <div class="tri-challenge-feedback"></div>
+      <div class="tri-closing"></div>`,
+      corners: [
+        { id: "cornerA", detailHtml: `<div class="kicker">If A changes…</div><h4>Headline</h4><p>Explanatory paragraph.</p>` },
+        { id: "cornerB", detailHtml: `<div class="kicker">If B changes…</div><h4>Headline</h4><p>Explanatory paragraph.</p>` },
+        { id: "cornerC", detailHtml: `<div class="kicker">If C changes…</div><h4>Headline</h4><p>Explanatory paragraph.</p>` }
+      ],
+      challenge: {
+        options: [
+          { label: "Option A", correct: false, feedback: "Why this is weaker." },
+          { label: "Option B (correct)", correct: true, feedback: "Why this is right." }
+        ]
+      },
+      insightHtml: `<div class="principle"><strong>Turner Page insight</strong><br>Closing line once fully explored.</div>`
+    },
+
+    // 6. GUIDED STEPS — sequential progressive reveal, for a worked
+    // example the learner should walk through before attempting a
+    // harder scenario themselves.
+    {
+      id: "b6", nav: "Guided example", title: "Let's work through one together", type: "guidedSteps",
+      html: `<p class="lead">Set up the scenario the steps will analyse.</p>`,
+      steps: [
+        { html: `<h4>Step name</h4><p>Explanatory paragraph.</p>` },
+        { html: `<h4>Step name</h4><p>Explanatory paragraph.</p>` },
+        { html: `<h4>Step name</h4><p>Explanatory paragraph.</p>` }
+      ],
+      closingHtml: `<div class="principle"><strong>The key lesson</strong><br>Summary line.</div>`
+    },
+
+    // 7. SELECT-N — pick exactly N options from a longer list, each
+    // with its own mentor view; optional closingHtml revealed once
+    // the learner has chosen (e.g. a "what we'd prioritise" reveal).
+    {
+      id: "b7", nav: "Your turn", title: "Now you decide", type: "selectN",
+      html: `<p class="lead">Present the fuller scenario here.</p>
+      <div class="quote">You can choose only THREE priorities.</div>`,
+      n: 3,
+      options: [
+        { title: "Priority option 1", verdict: "Excellent priority", strength: "good", view: "Why this matters." },
+        { title: "Priority option 2", verdict: "Investigate first", strength: "neutral", view: "Why this needs care." },
+        { title: "Priority option 3", verdict: "Rarely the right first move", strength: "warn", view: "Why this is a weaker choice." }
+      ],
+      mentorFeedbackHtml: `<div class="principle"><strong>Mentor feedback</strong><br>General closing coaching note.</div>`,
+      closingHtml: `<h3>Turner Page recommendation</h3><p>Reveal the "expert" ranked answer here.</p>`
+    },
+
+    // 8. REFLECTION — optional quick opinion pills, then a graded
+    // free-text + microphone response with keyword-based coaching.
+    {
+      id: "b8", nav: "Reflection", title: "Pause and reflect", type: "reflection",
+      html: `<p class="lead">Framing sentence.</p>
+      <div id="quickQuestions"></div>
+      <h3>Your reflection</h3>
+      <p>The open reflection question goes here.</p>
+      <textarea id="reflection" placeholder="Start typing..."></textarea>
+      <div class="voice-row">
+        <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+        <span id="micStatus" class="small"></span>
+      </div>
+      <div style="margin-top:16px"><button id="analyseButton" class="btn primary" type="button">Get AI feedback</button></div>
+      <div id="reflectionFeedback"></div>`,
+      quickQuestions: [
+        { title: "A quick self-assessment question?", options: ["Option A", "Option B", "Option C"] }
+      ],
+      minLength: 40,
+      checks: [
+        { test: /readiness|ready/i, strength: "Strength text if this theme is present.", gap: "Gap text if this theme is missing." }
+      ],
+      mentorFeedbackHtml: `<div class="principle"><strong>Mentor feedback</strong><br>Fixed closing coaching paragraph.</div>`
+    },
+
+    // 9. VALUABLE — the closing screen: completion state, a short
+    // personal-commitment text box + microphone, then redirects to
+    // config.nextUrl. Always make this the LAST block.
+    {
+      id: "b9", nav: "Lesson complete", title: "Lesson complete", type: "valuable",
+      html: `<div class="complete"><div class="tick">✓</div>
+        <p class="lead"><strong>You have completed LESSON TITLE.</strong></p></div>
+        ${TPKit.promiseCard()}
+        <h3>Personal action</h3>
+        <p>Before you leave this lesson, complete this sentence:</p>
+        <div class="quote">“On my next project, I will…”</div>
+        <textarea id="valuableReflection" placeholder="On my next project, I will..."></textarea>
+        <div class="voice-row">
+          <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+          <span id="valuableMicStatus" class="small"></span>
+        </div>
+        <div id="valuableFeedback"></div>
+        <h3>Next</h3>
+        <p>You've now completed the learning content for this lesson. The final step is to test your understanding.</p>`,
+      minLength: 15
+    }
+  ]
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+</body>
+</html>
