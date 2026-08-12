@@ -114,24 +114,62 @@ function wireMic({button, status, textarea, onChange}){
 ----------------------------------------------------------------------- */
 const renderers = {};
 
+// Supports two shapes of b.options:
+//  - graded:   [{label, correct, feedback}, ...]  → feedback coloured good/warn
+//  - ungraded: ["label", "label", ...] + a parallel b.feedback array
+//              → every choice is a legitimate answer, feedback is neutral
+//              (use this when there's no single "right" response, only
+//              stronger and weaker ones — e.g. an opening judgement call).
 renderers.mcq = ({ b, dynamic, state, save, renderCurrent }) => {
+  const graded = typeof b.options[0] === "object";
   const selected = state.answers[b.id];
   const wrap = document.createElement("div"); wrap.className = "options";
   b.options.forEach((opt, j) => {
+    const label = graded ? opt.label : opt;
     const btn = document.createElement("button");
     btn.className = "option" + (selected === j ? " selected" : "");
     btn.type = "button";
-    btn.innerHTML = `<span class="badge">${String.fromCharCode(65+j)}</span><span>${opt.label}</span>`;
+    btn.innerHTML = `<span class="badge">${String.fromCharCode(65+j)}</span><span>${label}</span>`;
     btn.onclick = () => { state.answers[b.id] = j; save(); renderCurrent(); };
     wrap.appendChild(btn);
   });
   dynamic.appendChild(wrap);
   if(selected !== undefined){
-    const opt = b.options[selected];
-    dynamic.insertAdjacentHTML("beforeend", `<div class="feedback ${opt.correct?"good":"warn"}">${opt.feedback}</div>`);
+    if(graded){
+      const opt = b.options[selected];
+      dynamic.insertAdjacentHTML("beforeend", `<div class="feedback ${opt.correct?"good":opt.correct===false?"warn":""}">${opt.feedback}</div>`);
+    } else {
+      dynamic.insertAdjacentHTML("beforeend", `<div class="feedback">${b.feedback[selected]}</div>`);
+    }
     return true;
   }
   return false;
+};
+
+// Select EVERY option (not a capped N) before continuing — each choice
+// reveals its own coaching note immediately. Use for "explore every
+// piece of evidence" style exercises. For "pick your top N", use
+// selectN instead.
+renderers.selectAll = ({ b, dynamic, state, save, renderCurrent }) => {
+  const selected = state.answers[b.id] || [];
+  const wrap = document.createElement("div"); wrap.className = "options";
+  b.options.forEach((option, j) => {
+    const chosen = selected.includes(j);
+    const holder = document.createElement("div");
+    const btn = document.createElement("button");
+    btn.className = "option" + (chosen ? " selected" : "");
+    btn.type = "button";
+    btn.innerHTML = `<span class="badge">${chosen?"✓":"+"}</span><span>${option}</span>`;
+    btn.onclick = () => { const s = new Set(selected); s.has(j)?s.delete(j):s.add(j); state.answers[b.id] = [...s]; save(); renderCurrent(); };
+    holder.appendChild(btn);
+    if(chosen) holder.insertAdjacentHTML("beforeend", `<div class="feedback">${b.coaching[j]}</div>`);
+    wrap.appendChild(holder);
+  });
+  dynamic.appendChild(wrap);
+  const ready = selected.length === b.options.length;
+  if(ready && b.closingHtml) dynamic.insertAdjacentHTML("beforeend", b.closingHtml);
+  else dynamic.insertAdjacentHTML("beforeend", `<p class="small">${b.hint || "Explore every option before continuing."}</p>`);
+  return ready;
 };
 
 renderers.situations = ({ b, dynamic, state, save, renderCurrent }) => {
@@ -171,7 +209,7 @@ renderers.expandableList = ({ b, dynamic, state, save, renderCurrent }) => {
       const open = st.open.includes(j);
       const card = document.createElement("article"); card.className = "framework-node";
       card.innerHTML = `<div class="framework-head"><div class="framework-icon">${q.icon||(j+1)}</div><span class="num">0${j+1}</span></div>
-        <h4>${q.title}</h4>
+        <h4>${q.title}</h4>${q.short?`<p class="small">${q.short}</p>`:""}
         ${open?`<div class="dq-detail">${q.detail}${q.ask?`<div class="dq-ask">${q.ask}</div>`:""}</div>`:""}
         <button class="btn secondary" type="button">${open?"Hide detail":"Explore"}</button>`;
       card.querySelector("button").onclick = () => {
@@ -185,7 +223,7 @@ renderers.expandableList = ({ b, dynamic, state, save, renderCurrent }) => {
     b.items.forEach((q, j) => {
       const open = st.open.includes(j);
       const item = document.createElement("div"); item.className = "dq-item";
-      item.innerHTML = `<div class="dq-num">${j+1}</div><div class="dq-body"><h4>${q.title}</h4>${open?`<div class="dq-detail">${q.detail}${q.ask?`<div class="dq-ask">${q.ask}</div>`:""}</div>`:""}<button class="btn secondary" type="button">${open?"Hide detail":"Explore"}</button></div>`;
+      item.innerHTML = `<div class="dq-num">${j+1}</div><div class="dq-body"><h4>${q.title}</h4>${q.short?`<p class="small">${q.short}</p>`:""}${open?`<div class="dq-detail">${q.detail}${q.ask?`<div class="dq-ask">${q.ask}</div>`:""}</div>`:""}<button class="btn secondary" type="button">${open?"Hide detail":"Explore"}</button></div>`;
       item.querySelector("button").onclick = () => {
         const s = new Set(st.open); s.has(j) ? s.delete(j) : s.add(j); st.open = [...s]; state.answers[b.id] = st; save(); renderCurrent();
       };
@@ -382,6 +420,9 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
     });
     const denom = (b.checks || []).length || 1;
     const score = Math.max(4, Math.min(10, Math.round((strengths.length/denom)*10*10)/10));
+    // mentorFeedbackHtml can be a fixed string, or a function(score) => html
+    // if the coaching tone should vary with how complete the answer was.
+    const mentorHtml = typeof b.mentorFeedbackHtml === "function" ? b.mentorFeedbackHtml(score) : (b.mentorFeedbackHtml || "");
     feedback.innerHTML = `
       <div class="score-card"><div class="score">${score.toFixed(1)}/10</div>
         <div><strong>Indicative assessment</strong><br><span class="small">Based on the breadth and quality of the reasoning in this response.</span></div></div>
@@ -389,7 +430,8 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
         <ul>${(strengths.length?strengths:["You gave a direct, honest answer and engaged with the question."]).map(x=>`<li>${x}</li>`).join("")}</ul></div>
       <div class="feedback"><strong>You could strengthen your answer by discussing</strong>
         <ul>${(gaps.length?gaps:["No major gaps detected."]).map(x=>`<li>${x}</li>`).join("")}</ul></div>
-      ${b.mentorFeedbackHtml || ""}`;
+      ${b.modelAnswerHtml || ""}
+      ${mentorHtml}`;
     next.disabled = false;
   };
 
@@ -489,7 +531,8 @@ function mount(root, config){
 
   function shell(b, i){
     const f = window.TP_FOOTER || {label:"The Turner Page Promise", text:""};
-    return `<div class="step">${config.lessonLabel} · Section ${i+1} of ${blocks.length}</div>
+    const stepLabel = config.lessonShortLabel || config.lessonLabel;
+    return `<div class="step">${stepLabel} · Section ${i+1} of ${blocks.length}</div>
       <h2>${b.title}</h2>${b.html||""}<div id="dynamic"></div>
       <div class="actions"><button id="back" class="btn secondary">Back</button><button id="next" class="btn primary">Continue</button></div>
       <div class="footer-promise"><strong>${f.label}</strong><br>${f.text}</div>`;
@@ -508,6 +551,15 @@ function mount(root, config){
     if(renderer){
       const result = renderer({ b, i, dynamic, next, lesson, state, save, renderCurrent: render });
       if(typeof result === "boolean") ready = result;
+    }
+
+    // Escape hatch for a genuinely one-off visual a generic block type
+    // doesn't cover (e.g. a bespoke diagram used in a single lesson).
+    // Define b.onMount(ctx) in the lesson file itself — no kit changes
+    // needed. Runs after the block's own renderer, so any DOM it needs
+    // already exists.
+    if(typeof b.onMount === "function"){
+      b.onMount({ b, i, lesson, state, save, next, root });
     }
 
     lesson.querySelector("#back").disabled = i === 0;
