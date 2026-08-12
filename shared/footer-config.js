@@ -18,7 +18,7 @@
  
 window.TP_FOOTER = {
   // Short label shown in small caps above the promise text.
-  label: "The Turner Page Promise",
+  label: "The Turner Page Mission",
  
   // The promise wording itself. Plain text or simple HTML.
   // CURRENT WORDING — replace with the updated copy when ready.
