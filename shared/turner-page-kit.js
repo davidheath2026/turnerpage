@@ -314,9 +314,15 @@ renderers.tradeoffTriangle = ({ b, lesson, state, save, next }) => {
       closingWrap.innerHTML = b.insightHtml;
       closingWrap.dataset.filled = "1";
     }
+    return ready;
   }
-  checkReady();
-  return false; // readiness is managed live above, not via return value
+  // Return the REAL current readiness (not a placeholder) so that
+  // revisiting this screen after already completing it — via Back,
+  // or jumping in from the sidebar — doesn't get its Continue button
+  // force-disabled again by the generic wiring below. checkReady()
+  // still runs on every click for live updates; this just makes the
+  // very first paint on (re)entry correct too.
+  return checkReady();
 };
 
 renderers.guidedSteps = ({ b, dynamic, state, save, renderCurrent }) => {
@@ -433,6 +439,11 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
       ${b.modelAnswerHtml || ""}
       ${mentorHtml}`;
     next.disabled = false;
+    // Persist that this response has been analysed, so revisiting this
+    // screen later (Back button, sidebar jump) can restore the result
+    // immediately instead of appearing to reset and re-disable Continue.
+    state.answers[b.id + "_answered"] = true;
+    save();
   };
 
   analyseButton.onclick = () => {
@@ -443,7 +454,17 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
   };
 
   wireMic({ button: micButton, status: micStatus, textarea: area, onChange });
-  return false;
+
+  // Restore a completed analysis immediately on (re)entry — no spinner,
+  // no re-click needed — rather than returning a placeholder `false`
+  // that would force Continue to disable again every time this screen
+  // is rendered, even after the learner already finished it.
+  const alreadyAnswered = !!state.answers[b.id + "_answered"] && area.value.trim().length >= minLength;
+  if(alreadyAnswered){
+    analyseResponse();
+    analyseButton.textContent = "Analyse revised answer";
+  }
+  return alreadyAnswered;
 };
 
 renderers.valuable = ({ b, lesson, state, save, next }) => {
