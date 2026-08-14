@@ -22,6 +22,6 @@ window.TP_FOOTER = {
  
   // The promise wording itself. Plain text or simple HTML.
   // CURRENT WORDING — replace with the updated copy when ready.
-  text: "Helping Data Migration Leads make better decisions on real ERP projects."
+  text: "To develop the next generation of trusted Data Migration professionals through practical learning, sound judgement and real-world thinking."
 };
  
