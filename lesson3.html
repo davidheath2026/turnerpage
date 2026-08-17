@@ -10,18 +10,35 @@
    rather than added to the shared kit, same approach as Lesson 1's
    Readiness Model diagram. */
 .pillars-wrap{margin:18px 0 8px;text-align:center}
-.pillars-svg{width:100%;max-width:640px;height:auto}
-.pillar-col{fill:var(--soft,#eef6f7);stroke:var(--teal,#0b7f8e);stroke-width:1.5;transition:fill .25s ease,stroke .25s ease}
-.pillar-node{cursor:pointer;outline:none}
-.pillar-node:hover .pillar-col,.pillar-node:focus .pillar-col{stroke-width:2.5}
-.pillar-node.lit .pillar-col{fill:url(#pillarGradient)}
+.pillars-svg{width:100%;max-width:640px;height:auto;overflow:visible}
+.pillar-col{fill:var(--soft,#eef6f7);stroke:var(--teal,#0b7f8e);stroke-width:1.5;filter:drop-shadow(0 6px 10px rgba(10,74,82,.12));transition:fill .3s ease,stroke .3s ease,filter .3s ease}
+.pillar-node{cursor:pointer;outline:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.pillar-node:hover,.pillar-node:focus{transform:translateY(-6px)}
+.pillar-node.lit .pillar-col{fill:url(#pillarGradient);stroke:var(--deep,#0a4a52);filter:drop-shadow(0 12px 20px rgba(10,74,82,.28))}
+.pillar-node.lit{transform:translateY(-3px)}
+.pillar-num{font-size:21px;font-weight:800;fill:var(--teal,#0b7f8e);transition:fill .3s ease}
+.pillar-title-a,.pillar-title-b{font-size:12.5px;font-weight:600;fill:var(--deep,#0a4a52);transition:fill .3s ease}
 .pillar-node.lit .pillar-num,.pillar-node.lit .pillar-title-a,.pillar-node.lit .pillar-title-b{fill:#fff}
-.pillar-num{font-size:20px;font-weight:800;fill:var(--teal,#0b7f8e)}
-.pillar-title-a,.pillar-title-b{font-size:12.5px;font-weight:600;fill:var(--deep,#0a4a52)}
-.pillar-beam{fill:var(--deep,#0a4a52)}
+.pillar-beam{fill:var(--deep,#0a4a52);filter:drop-shadow(0 4px 8px rgba(10,74,82,.2))}
 .pillar-beam-label{font-size:13px;font-weight:700;fill:#fff;letter-spacing:.03em}
-.pillars-progress{font-size:.85rem;color:var(--teal,#0b7f8e);font-weight:600;margin-top:6px}
+.pillars-progress{font-size:.85rem;color:var(--teal,#0b7f8e);font-weight:600;margin-top:10px}
 .pillars-hint{font-size:.85rem;color:#667;margin-top:2px}
+.pillars-detail{margin-top:22px;display:grid;gap:12px;text-align:left}
+.pillar-card{border:1px solid #dfe9ea;border-radius:14px;padding:16px 18px;background:#fff;box-shadow:0 2px 8px rgba(10,74,82,.05);cursor:pointer;transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease}
+.pillar-card:hover{box-shadow:0 8px 20px rgba(10,74,82,.12);transform:translateY(-2px)}
+.pillar-card.open{border-color:var(--teal,#0b7f8e);box-shadow:0 10px 24px rgba(10,74,82,.14)}
+.pillar-card-head{display:flex;align-items:center;gap:14px}
+.pillar-card-num{width:36px;height:36px;border-radius:50%;background:var(--soft,#eef6f7);color:var(--teal,#0b7f8e);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;transition:background .25s ease,color .25s ease}
+.pillar-card.open .pillar-card-num{background:linear-gradient(135deg,var(--teal,#0b7f8e),var(--deep,#0a4a52));color:#fff}
+.pillar-card-titles{flex:1}
+.pillar-card-title{font-weight:700;color:var(--deep,#0a4a52)}
+.pillar-card-short{font-size:.85rem;color:#667;margin-top:1px}
+.pillar-card-chevron{transition:transform .25s ease;color:var(--teal,#0b7f8e);font-size:.8rem}
+.pillar-card.open .pillar-card-chevron{transform:rotate(180deg)}
+.pillar-card-detail{overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.2,.8,.2,1)}
+.pillar-card.open .pillar-card-detail{max-height:420px}
+.pillar-card-detail-inner{padding:14px 2px 2px 50px;font-size:.93rem;line-height:1.55;color:#334}
+.dq-loop{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 </style>
 </head>
 <body>
@@ -144,7 +161,7 @@ const blocks=[
 {
  id:"b4",nav:"The four pillars",title:"The four pillars of a defensible scope boundary",type:"expandableList",
  layout:"loop",
- html:`<p class="lead">A scope statement that can't be defended in a steering meeting isn't a scope statement — it's a hope.</p>
+ html:`<p class="lead">A scope statement that can't be defended in a steering meeting isn't a scope statement — it's a hope statement.</p>
  <div class="pillars-wrap">
    <svg class="pillars-svg" viewBox="0 0 720 300" role="img" aria-label="Four pillars supporting a defensible scope boundary">
      <defs>
@@ -181,26 +198,50 @@ const blocks=[
      </g>
    </svg>
    <div class="pillars-progress">0 of 4 explored</div>
-   <div class="pillars-hint">Click a pillar — or the matching card below — to open it.</div>
+   <div class="pillars-hint">Click a pillar to expand it.</div>
+   <div class="pillars-detail"></div>
  </div>
  <p>A Turner Page scope boundary always covers the same four things, documented and signed off by the programme manager and data owners.</p>`,
  items: boundaryPillars,
  onMount: ({ b, lesson, state }) => {
    const svg = lesson.querySelector(".pillars-svg");
-   if(!svg) return;
+   const detailWrap = lesson.querySelector(".pillars-detail");
+   if(!svg || !detailWrap) return;
    const st = state.answers[b.id] || { open: [] };
    const openSet = new Set(st.open || []);
    const nodes = [...svg.querySelectorAll(".pillar-node")];
+
+   function toggle(idx){
+     const btns = lesson.querySelectorAll(".dq-loop .btn.secondary");
+     if(btns[idx]) btns[idx].click();
+   }
+
    nodes.forEach((n, idx) => {
      n.classList.toggle("lit", openSet.has(idx));
-     n.onclick = () => {
-       const btns = lesson.querySelectorAll(".dq-item .btn.secondary");
-       if(btns[idx]) btns[idx].click();
-     };
-     n.onkeydown = (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); n.click(); } };
+     n.onclick = () => toggle(idx);
+     n.onkeydown = (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(idx); } };
    });
+
    const prog = lesson.querySelector(".pillars-progress");
    if(prog) prog.textContent = `${openSet.size} of ${nodes.length} explored`;
+
+   detailWrap.innerHTML = b.items.map((it, idx) => {
+     const open = openSet.has(idx);
+     return `<div class="pillar-card${open ? " open" : ""}" data-idx="${idx}">
+       <div class="pillar-card-head">
+         <div class="pillar-card-num">0${idx + 1}</div>
+         <div class="pillar-card-titles">
+           <div class="pillar-card-title">${it.title}</div>
+           <div class="pillar-card-short">${it.short || ""}</div>
+         </div>
+         <div class="pillar-card-chevron">\u25BC</div>
+       </div>
+       <div class="pillar-card-detail"><div class="pillar-card-detail-inner">${it.detail}</div></div>
+     </div>`;
+   }).join("");
+   detailWrap.querySelectorAll(".pillar-card").forEach(card => {
+     card.onclick = () => toggle(parseInt(card.dataset.idx, 10));
+   });
  }
 },
 {
