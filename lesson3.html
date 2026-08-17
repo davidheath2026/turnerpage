@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turner Page | Defending the scope boundary</title>
 <link rel="stylesheet" href="shared/turner-page-kit.css">
+<style>
+/* Bespoke "Four Pillars" diagram for this lesson only — scoped here
+   rather than added to the shared kit, same approach as Lesson 1's
+   Readiness Model diagram. */
+.pillars-wrap{margin:18px 0 8px;text-align:center}
+.pillars-svg{width:100%;max-width:640px;height:auto}
+.pillar-col{fill:var(--soft,#eef6f7);stroke:var(--teal,#0b7f8e);stroke-width:1.5;transition:fill .25s ease,stroke .25s ease}
+.pillar-node{cursor:pointer;outline:none}
+.pillar-node:hover .pillar-col,.pillar-node:focus .pillar-col{stroke-width:2.5}
+.pillar-node.lit .pillar-col{fill:url(#pillarGradient)}
+.pillar-node.lit .pillar-num,.pillar-node.lit .pillar-title-a,.pillar-node.lit .pillar-title-b{fill:#fff}
+.pillar-num{font-size:20px;font-weight:800;fill:var(--teal,#0b7f8e)}
+.pillar-title-a,.pillar-title-b{font-size:12.5px;font-weight:600;fill:var(--deep,#0a4a52)}
+.pillar-beam{fill:var(--deep,#0a4a52)}
+.pillar-beam-label{font-size:13px;font-weight:700;fill:#fff;letter-spacing:.03em}
+.pillars-progress{font-size:.85rem;color:var(--teal,#0b7f8e);font-weight:600;margin-top:6px}
+.pillars-hint{font-size:.85rem;color:#667;margin-top:2px}
+</style>
 </head>
 <body>
 <div id="tpRoot"></div>
@@ -127,8 +145,63 @@ const blocks=[
  id:"b4",nav:"The four pillars",title:"The four pillars of a defensible scope boundary",type:"expandableList",
  layout:"loop",
  html:`<p class="lead">A scope statement that can't be defended in a steering meeting isn't a scope statement — it's a hope.</p>
- <p>A Turner Page scope boundary always covers the same four things, documented and signed off by the programme manager and data owners. Open each one.</p>`,
- items: boundaryPillars
+ <div class="pillars-wrap">
+   <svg class="pillars-svg" viewBox="0 0 720 300" role="img" aria-label="Four pillars supporting a defensible scope boundary">
+     <defs>
+       <linearGradient id="pillarGradient" x1="0" y1="0" x2="0" y2="1">
+         <stop offset="0%" stop-color="var(--teal,#0b7f8e)"/>
+         <stop offset="100%" stop-color="var(--deep,#0a4a52)"/>
+       </linearGradient>
+     </defs>
+     <rect x="40" y="40" width="640" height="34" rx="4" class="pillar-beam"/>
+     <text x="360" y="62" text-anchor="middle" class="pillar-beam-label">A DEFENSIBLE SCOPE BOUNDARY</text>
+     <g class="pillar-node" data-index="0" tabindex="0" role="button" aria-label="Migration objects and scenarios">
+       <rect x="40" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="105" y="122" text-anchor="middle" class="pillar-num">01</text>
+       <text x="105" y="270" text-anchor="middle" class="pillar-title-a">Migration objects</text>
+       <text x="105" y="286" text-anchor="middle" class="pillar-title-b">and scenarios</text>
+     </g>
+     <g class="pillar-node" data-index="1" tabindex="0" role="button" aria-label="Non-migration data">
+       <rect x="210" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="275" y="122" text-anchor="middle" class="pillar-num">02</text>
+       <text x="275" y="270" text-anchor="middle" class="pillar-title-a">Non-migration</text>
+       <text x="275" y="286" text-anchor="middle" class="pillar-title-b">data</text>
+     </g>
+     <g class="pillar-node" data-index="2" tabindex="0" role="button" aria-label="The quality bar">
+       <rect x="380" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="445" y="122" text-anchor="middle" class="pillar-num">03</text>
+       <text x="445" y="270" text-anchor="middle" class="pillar-title-a">The quality</text>
+       <text x="445" y="286" text-anchor="middle" class="pillar-title-b">bar</text>
+     </g>
+     <g class="pillar-node" data-index="3" tabindex="0" role="button" aria-label="Cutover readiness gates">
+       <rect x="550" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="615" y="122" text-anchor="middle" class="pillar-num">04</text>
+       <text x="615" y="270" text-anchor="middle" class="pillar-title-a">Cutover</text>
+       <text x="615" y="286" text-anchor="middle" class="pillar-title-b">readiness gates</text>
+     </g>
+   </svg>
+   <div class="pillars-progress">0 of 4 explored</div>
+   <div class="pillars-hint">Click a pillar — or the matching card below — to open it.</div>
+ </div>
+ <p>A Turner Page scope boundary always covers the same four things, documented and signed off by the programme manager and data owners.</p>`,
+ items: boundaryPillars,
+ onMount: ({ b, lesson, state }) => {
+   const svg = lesson.querySelector(".pillars-svg");
+   if(!svg) return;
+   const st = state.answers[b.id] || { open: [] };
+   const openSet = new Set(st.open || []);
+   const nodes = [...svg.querySelectorAll(".pillar-node")];
+   nodes.forEach((n, idx) => {
+     n.classList.toggle("lit", openSet.has(idx));
+     n.onclick = () => {
+       const btns = lesson.querySelectorAll(".dq-item .btn.secondary");
+       if(btns[idx]) btns[idx].click();
+     };
+     n.onkeydown = (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); n.click(); } };
+   });
+   const prog = lesson.querySelector(".pillars-progress");
+   if(prog) prog.textContent = `${openSet.size} of ${nodes.length} explored`;
+ }
 },
 {
  id:"b5",nav:"Build one yourself",title:"Building a defensible scope entry",type:"guidedSteps",
@@ -144,9 +217,26 @@ const blocks=[
  <div class="principle"><strong>Key takeaway</strong><br>A scope entry built this way settles most disputes before they start, because the trade-off is visible rather than argued about from memory.</div>`
 },
 {
+ id:"pmoIntro",nav:"What is the PMO?",title:"What the PMO actually is, and what it owns",type:"content",
+ html:`<p class="lead">Before you can work with the PMO well, it helps to be precise about what it actually is \u2014 most new DMLs have a vague sense of it as \u201cthe people who chase status updates,\u201d which massively understates the role.</p>
+ <p>A <strong>Programme Management Office (PMO)</strong> is the function that runs the overall programme's plumbing: the master schedule, the governance cadence, the consolidated risk position, and the reporting that goes up to steering and sponsors. On a small programme, that might be one experienced coordinator wearing several hats. On a large ERP transformation, it's often a team of five or more \u2014 a scheduler, a RAID/reporting analyst, a governance lead running the meeting cadence, sometimes a dedicated finance/benefits tracker.</p>
+ <p>Whatever its size, the PMO's job is to see across every workstream at once \u2014 migration, functional build, testing, training, cutover, hypercare \u2014 and turn a dozen separate pictures into one coherent view the sponsor can actually act on. That's a structurally different job from yours. You go deep on one workstream; the PMO goes wide across all of them.</p>
+ <div class="visual-card">
+   <div class="visual-title">Who owns what</div>
+   <div class="flow">
+     <div class="flow-box"><div><strong>The PMO owns</strong><span class="small">Master schedule · consolidated RAID · governance cadence · steering reporting · cross-workstream dependencies</span></div></div>
+     <div class="flow-box"><div><strong>You own</strong><span class="small">Migration workstream plan · migration-specific RAID · data readiness evidence · feeding accurate status upward</span></div></div>
+   </div>
+ </div>
+ <p>The friction most new DMLs hit isn't malicious gatekeeping \u2014 it's a mismatch of altitude. You're reasoning about a specific mapping defect; the PMO is reasoning about whether the whole programme still lands on budget and on date. An update that's perfectly clear at your altitude can look like noise at theirs, unless it's translated into what it means for the schedule and the risk position they're managing.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Migration is very often the workstream a PMO worries about most \u2014 not because migration teams are less capable, but because data problems tend to surface late and are expensive to unwind once they do. That extra scrutiny isn't personal. It's a rational response to where the programme's real risk usually lives.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>The PMO isn't checking up on you. It's trying to keep one honest, current picture of a programme with a dozen moving parts \u2014 and your workstream is usually the one it trusts least by default, until you give it reason to trust it more.</div>`
+},
+{
  id:"b6",nav:"Working with the PMO",title:"Working with the PMO",type:"content",
  html:`<p class="lead">The PMO isn't a layer of bureaucracy above you. It's the team that controls the calendar your whole workstream depends on.</p>
  <p>Environment refreshes, test windows, mock cutovers, sign-off gates — none of these are yours to move unilaterally. Get the PMO relationship right and your dates hold. Get it wrong and you spend the programme discovering changes after they've already happened.</p>
+ <p>In practice, that relationship runs on a cadence, not a single conversation. Most programmes settle into something like: a weekly RAG (red/amber/green) submission from your workstream, a fortnightly or monthly steering pack the PMO compiles from every workstream's input, and ad-hoc escalations in between when a hard trigger is hit. Learn that rhythm early \u2014 what's due when, in what format \u2014 and you stop being the workstream the PMO has to chase.</p>
  <div class="visual-card">
    <div class="visual-title">Speak the PMO's language</div>
    <div class="flow">
@@ -156,7 +246,8 @@ const blocks=[
    </div>
  </div>
  <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Maintaining your own, more accurate migration plan.</strong></p><p>A better private plan is still a private plan. If it isn't in the PMO's tool, it doesn't exist as far as the rest of the programme is concerned.</p></div>
- <div class="principle"><strong>Key takeaway</strong><br>The PMO's plan is the master. Your job is to keep it right, not to keep a better one on the side.</div>`
+ <p>The relationship itself is worth building before you need anything from it. A five-minute conversation with the PMO lead in week one \u2014 how they like status framed, what their steering pack actually needs, who else is watching migration closely \u2014 pays back tenfold the first time you need a fast decision on a tight date.</p>
+ <div class="principle"><strong>Key takeaway</strong><br>The PMO's plan is the master. Your job is to keep it right, not to keep a better one on the side — and to build the relationship before the week you urgently need it.</div>`
 },
 {
  id:"b7",nav:"Reading the situation",title:"Reading the situation",type:"situations",
