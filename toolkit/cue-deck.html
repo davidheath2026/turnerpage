@@ -1,0 +1,774 @@
+<title>The Cue Deck</title>
+<style>
+  /* Palette matches the established Turner Page brand tokens
+     (see home.html / login.html / welcome.html / enrol.html).
+     Dark-mode variant removed for brand consistency. */
+  :root{
+    --tp-ink:#102f36; --tp-ink-soft:#50686e; --tp-muted:#657d82;
+    --tp-bg:#f3f9f9; --tp-surface:#FFFFFF; --tp-border:#d8e9e9; --tp-border-soft:#e9f5f5;
+    --tp-teal-900:#005f6c; --tp-teal-700:#0b7f8e; --tp-aqua-500:#7dd8d8; --tp-aqua-100:#e9f5f5; --tp-aqua-050:#f3f9f9;
+    --status-conditional:#B4791A; --status-conditional-bg:#FBF0DC;
+    --shadow-card:0 1px 2px rgba(14,76,83,.06), 0 8px 24px -16px rgba(14,76,83,.18);
+    --shadow-lift:0 4px 10px rgba(14,76,83,.1), 0 16px 32px -18px rgba(14,76,83,.28);
+    color-scheme:light;
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--tp-bg); color:var(--tp-ink); font-family:Inter,Segoe UI,Arial,sans-serif;}
+  h1,h2,h3{font-family:Inter,Segoe UI,Arial,sans-serif; text-wrap:balance;}
+  ::selection{background:var(--tp-aqua-100);}
+  :focus-visible{outline:2px solid var(--tp-aqua-500); outline-offset:2px; border-radius:4px;}
+
+  .tp-app{max-width:1160px; margin:0 auto; padding:28px 24px 64px;}
+
+  .tp-topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:18px; margin-bottom:20px; border-bottom:1px solid var(--tp-border); flex-wrap:wrap;}
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-logo-wrap{background:#fff; border:1px solid var(--tp-border); border-radius:10px; padding:6px 12px; display:inline-flex; align-items:center; box-shadow:var(--shadow-card); flex-shrink:0;}
+  .brand-logo{height:28px; width:auto; display:block;}
+  .tool-badge{display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:var(--tp-aqua-100); color:var(--tp-teal-900); border-radius:100px; font-size:12px; font-weight:600;}
+  .tool-badge svg{width:14px; height:14px;}
+  .count-pill{font-size:12px; color:var(--tp-muted);}
+
+  .intro{font-size:13.5px; color:var(--tp-ink-soft); line-height:1.6; max-width:74ch; margin:0 0 22px;}
+
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:14px; flex-wrap:wrap;}
+  .mode-tabs{display:inline-flex; background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:100px; padding:3px; flex-shrink:0;}
+  .mode-tab{border:none; background:none; color:var(--tp-muted); font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:100px; cursor:pointer; font-family:inherit;}
+  .mode-tab.active{background:var(--tp-teal-900); color:#fff;}
+  .search-wrap{position:relative; flex:1; min-width:180px; max-width:280px;}
+  .search-wrap svg{position:absolute; left:11px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--tp-muted); pointer-events:none;}
+  .search-wrap input{
+    width:100%; border:1px solid var(--tp-border); background:var(--tp-surface); color:var(--tp-ink); border-radius:100px;
+    padding:8px 12px 8px 32px; font-size:12.5px; font-family:inherit;
+  }
+  .search-wrap input:focus{border-color:var(--tp-aqua-500);}
+
+  .filters{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px;}
+  .filter-chip{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--tp-border); background:var(--tp-surface);
+    color:var(--tp-ink-soft); border-radius:100px; padding:6px 13px 6px 10px; font-size:12px; cursor:pointer; font-family:inherit;
+  }
+  .filter-chip svg{width:14px; height:14px;}
+  .filter-chip .fc-count{color:var(--tp-muted); font-variant-numeric:tabular-nums;}
+  .filter-chip:hover{border-color:var(--tp-aqua-500);}
+  .filter-chip.active{background:var(--tp-teal-900); border-color:var(--tp-teal-900); color:#fff;}
+  .filter-chip.active .fc-count{color:rgba(255,255,255,.7);}
+
+  .no-results{font-size:13px; color:var(--tp-muted); padding:30px 0; text-align:center;}
+
+  /* ---- Browse grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px;}
+  .card{perspective:1400px; height:280px; cursor:pointer;}
+  .card-inner{position:relative; width:100%; height:100%; transition:transform .5s cubic-bezier(.4,.1,.2,1); transform-style:preserve-3d;}
+  .card.flipped .card-inner{transform:rotateY(180deg);}
+  .card-face{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:16px; border:1px solid var(--tp-border);
+    background:var(--tp-surface); box-shadow:var(--shadow-card); padding:20px; display:flex; flex-direction:column;
+  }
+  .card-back{transform:rotateY(180deg); overflow-y:auto;}
+  .card-cat{display:inline-flex; align-items:center; gap:6px; align-self:flex-start; background:var(--tp-aqua-100); color:var(--tp-teal-900); border-radius:100px; padding:4px 10px 4px 7px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+  .card-cat svg{width:13px; height:13px;}
+  .card-quote{font-family:Inter,Segoe UI,Arial,sans-serif; font-weight:600; font-size:16px; line-height:1.4; color:var(--tp-ink); margin:16px 0 auto; flex:1; display:flex; align-items:center;}
+  .card-quote::before{content:"\201C";} .card-quote::after{content:"\201D";}
+  .card-hint{font-size:11px; color:var(--tp-muted); text-align:center;}
+
+  .back-label{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--tp-teal-700); margin:0 0 4px;}
+  .back-why{font-size:12px; color:var(--tp-ink-soft); line-height:1.5; margin:0 0 12px;}
+  .back-response{
+    font-size:12.5px; color:var(--tp-ink-soft); line-height:1.55; background:var(--tp-aqua-050); border-radius:10px;
+    padding:10px 12px; margin:0 0 12px; font-style:italic;
+  }
+  .back-watch{font-size:11px; color:var(--status-conditional); line-height:1.5; margin:0;}
+  .back-watch strong{text-transform:uppercase; letter-spacing:.04em; font-size:9.5px;}
+
+  .grid[hidden], .practice[hidden]{display:none;}
+
+  /* ---- Practice mode ---- */
+  .practice{display:flex; flex-direction:column; align-items:center; gap:18px;}
+  .practice-progress{font-size:12px; color:var(--tp-muted);}
+  .practice-card{width:100%; max-width:460px; height:340px; perspective:1400px; cursor:pointer;}
+  .practice-card .card-face{padding:26px;}
+  .practice-card .card-quote{font-size:19px;}
+  .practice-controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;}
+  .pc-btn{border:1px solid var(--tp-border); background:var(--tp-surface); color:var(--tp-ink-soft); border-radius:10px; padding:10px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;}
+  .pc-btn:hover{border-color:var(--tp-aqua-500); color:var(--tp-teal-700);}
+  .pc-btn.primary{background:var(--tp-teal-900); color:#fff; border-color:var(--tp-teal-900);}
+  .pc-btn.primary:hover{background:var(--tp-teal-700);}
+
+  .print-only{display:none;}
+
+  @media (prefers-reduced-motion:reduce){ .card-inner{transition:none !important;} }
+
+  @media print{
+    body{background:#fff;}
+    .tp-topbar > .brand > .tool-badge, .tp-topbar .count-pill, .toolbar, .filters, .grid, .practice, .intro, .no-results{display:none !important;}
+    .print-only{display:block;}
+    .print-cat{margin:0 0 22px; break-inside:avoid-page;}
+    .print-cat h2{font-size:15px; margin:0 0 10px; padding-bottom:4px; border-bottom:1px solid var(--tp-border);}
+    .print-card{display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:12px 0; border-bottom:1px dashed var(--tp-border); break-inside:avoid;}
+    .print-card .card-quote{font-family:Inter,Segoe UI,Arial,sans-serif; font-weight:600; font-size:13px; margin:0 0 6px;}
+    .print-card .back-why, .print-card .back-response, .print-card .back-watch{font-size:11px;}
+  }
+</style>
+
+<div class="tp-app">
+  <header class="tp-topbar">
+    <div class="brand">
+      <div class="brand-logo-wrap"><img class="brand-logo" src="/assets/turner-page-logo.png" alt="Turner Page"></div>
+      <span class="tool-badge">
+        <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="8" rx="1.3" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="8" width="12" height="8" rx="1.3" fill="var(--tp-bg)" stroke="currentColor" stroke-width="1.4"/></svg>
+        The Cue Deck
+      </span>
+    </div>
+    <span class="count-pill" id="count-pill"></span>
+  </header>
+
+  <p class="intro">A hundred moments a Data Migration Lead or Consultant runs into sooner or later, across twelve situations &mdash; what gets said, why it's really being said, and a steady way to respond. Search or filter to find one fast, or switch to practice mode and talk it through out loud before it happens for real.</p>
+
+  <div class="toolbar">
+    <div class="mode-tabs" id="mode-tabs">
+      <button class="mode-tab active" data-mode="browse">Browse</button>
+      <button class="mode-tab" data-mode="practice">Practice</button>
+    </div>
+    <div class="search-wrap" id="search-wrap">
+      <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="13" x2="17.5" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input id="search-input" type="text" placeholder="Search cards&hellip;">
+    </div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+
+  <div class="grid" id="grid"></div>
+  <p class="no-results" id="no-results" hidden>No cards match that search or filter.</p>
+
+  <div class="practice" id="practice" hidden>
+    <div class="practice-progress" id="practice-progress"></div>
+    <div class="practice-card" id="practice-card"></div>
+    <div class="practice-controls">
+      <button class="pc-btn" id="practice-prev">&larr; Previous</button>
+      <button class="pc-btn primary" id="practice-flip">Flip card</button>
+      <button class="pc-btn" id="practice-shuffle">Shuffle</button>
+      <button class="pc-btn" id="practice-next">Next &rarr;</button>
+    </div>
+  </div>
+
+  <div class="print-only" id="print-only"></div>
+  <footer class="tp-footer" style="margin-top:32px; padding-top:16px; border-top:1px solid var(--tp-border); font-size:11.5px; color:var(--tp-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>© Turner Page Training &amp; Certification Ltd &middot; The Cue Deck, part of the Turner Page Delivery Toolkit</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var categories = [
+    { key:"scope", label:"Scope & Timeline", icon:'<circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 5.5v4.8l3.2 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' },
+    { key:"trust", label:"Blame & Trust", icon:'<path d="M10 2.5 L16.5 5 V9.5 C16.5 13.5 13.7 16.3 10 17.5 C6.3 16.3 3.5 13.5 3.5 9.5 V5 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>' },
+    { key:"data", label:"Data & Decisions", icon:'<ellipse cx="10" cy="5" rx="6" ry="2.3" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M4 5v4.5c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M4 9.5V14c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V9.5" stroke="currentColor" stroke-width="1.5" fill="none"/>' },
+    { key:"budget", label:"Budget & Change", icon:'<path d="M3 3h6l8 8-6 6-8-8V3Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="6.5" cy="6.5" r="1.1" fill="currentColor"/>' },
+    { key:"confidence", label:"Confidence & Escalation", icon:'<circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 13.5V6.5M7 9.3 10 6.3 13 9.3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' },
+    { key:"uat", label:"UAT & Testing", icon:'<circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5" fill="none"/><polyline points="6.5,10.3 9,12.8 13.5,7.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' },
+    { key:"cutover", label:"Cutover & Go-Live", icon:'<line x1="5" y1="2.5" x2="5" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 3.5 H16 L13 7.5 L16 11.5 H5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>' },
+    { key:"resourcing", label:"Client Resourcing", icon:'<circle cx="7.5" cy="6.5" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M2.5 17c0-4.2 2.5-6.5 5-6.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><circle cx="14" cy="13.5" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M14 11.2v2.3l1.7 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
+    { key:"technical", label:"Technical & IT", icon:'<circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.4" fill="none"/><circle cx="10" cy="10" r="1.3" fill="currentColor"/><rect x="9" y="1.5" width="2" height="3" rx="0.6" fill="currentColor"/><rect x="9" y="15.5" width="2" height="3" rx="0.6" fill="currentColor"/><rect x="1.5" y="9" width="3" height="2" rx="0.6" fill="currentColor"/><rect x="15.5" y="9" width="3" height="2" rx="0.6" fill="currentColor"/>' },
+    { key:"communication", label:"Communication", icon:'<path d="M3 4.5h14a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 1.5H9.5L5.5 17v-3H3A1.5 1.5 0 0 1 1.5 12.5V6A1.5 1.5 0 0 1 3 4.5Z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>' },
+    { key:"hypercare", label:"Post Go-Live", icon:'<circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="10" y1="2.5" x2="10" y2="6.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="10" y1="13.4" x2="10" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2.5" y1="10" x2="6.6" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="13.4" y1="10" x2="17.5" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' },
+    { key:"internal", label:"Internal & Delivery Team", icon:'<circle cx="7" cy="6.5" r="2.6" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M2.3 16.7c0-3.3 2-5.3 4.7-5.3s4.7 2 4.7 5.3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="14.5" cy="7" r="2.3" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M12 16.7c.2-2.7 1.8-4.3 4-4.3s3.7 1.6 4 4.3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>' }
+  ];
+  var catByKey = {}; categories.forEach(function(c){ catByKey[c.key] = c; });
+
+  var cards = [
+    // --- Scope & Timeline ---
+    { cat:"scope", cue:"Can we just skip UAT? We're confident it'll be fine.",
+      why:"Usually comes from time pressure, or a genuine belief the data is simple. They're not trying to be reckless, they just don't see UAT as adding value yet.",
+      response:"I get wanting to move faster, and I want that too. UAT is really the only stage where your team checks the data actually works the way your business needs it to, not just that it loaded. If we skip it and something's wrong, we'll find out from your customers instead of a test script. Can we look at trimming UAT to the highest-risk areas instead of cutting it?",
+      watch:"Don't just say no flatly. Offer a scaled-down alternative so it doesn't feel like a wall." },
+    { cat:"scope", cue:"Why is this taking so long? Our old vendor said six weeks.",
+      why:"They're comparing quotes, not projects. The six weeks almost never included the same scope.",
+      response:"I can't speak to what was scoped in that estimate, but I can walk you through exactly what's in ours and why each stage is there. If it would help, let's go through the plan together and flag anything you think we can genuinely compress.",
+      watch:"Resist getting defensive about the estimate. Make it about scope and shared understanding, not defending the number." },
+    { cat:"scope", cue:"Can you just push the go-live date? Our board meeting moved.",
+      why:"Often a real, reasonable business constraint, not a sign the project is in trouble.",
+      response:"Thanks for the heads up, that's genuinely useful to know early. Let me check what moving the date does to cutover and testing, and I'll come back to you within a day with the impact and the options.",
+      watch:"Don't agree or refuse on the spot. A quick, informed answer beats a fast uninformed one." },
+    { cat:"scope", cue:"Can we run two workstreams in parallel to save time?",
+      why:"A natural instinct when a date feels tight, but migration stages often depend on each other in ways that aren't obvious from outside.",
+      response:"Let's look at exactly where they could overlap safely and where one genuinely depends on the other finishing first. I'd rather show you the real dependencies than just say yes or no.",
+      watch:"Don't agree to parallel-run stages that share the same data or environment without checking for conflicts first." },
+    { cat:"scope", cue:"The project plan looks the same as last month. Are we actually making progress?",
+      why:"Milestones in a migration can look static for weeks while a lot of unglamorous groundwork happens underneath.",
+      response:"Fair question, the plan itself won't move much day to day. Let me show you what's actually happened underneath it this month, like the cleansing rules agreed and the mapping signed off.",
+      watch:"Don't rely on the Gantt chart alone to show progress. Pair it with concrete, visible outputs." },
+    { cat:"scope", cue:"Can we do a soft go-live and finish the rest afterward?",
+      why:"A tempting compromise when a deadline is looming, but a partial go-live can create more risk than it removes.",
+      response:"Let's separate what's genuinely safe to defer from what isn't. Some things can wait until after go-live, but anything that affects data integrity or reporting accuracy usually can't.",
+      watch:"Get specific about exactly what's being deferred and who's accountable for finishing it, in writing." },
+    { cat:"scope", cue:"Our internal deadline is fixed, so the plan needs to fit around it.",
+      why:"Often comes from a commitment made above the project team's control, like a board date or contract renewal.",
+      response:"Understood, and I want to help you hit it. Let's work backward from that date honestly and see what has to be true for it to work, and flag now if something has to give.",
+      watch:"Don't just nod along to an unrealistic date. Show the trade-offs plainly, even if it's an uncomfortable conversation." },
+    { cat:"scope", cue:"Why do we need a whole extra week just for cutover rehearsal?",
+      why:"Rehearsals can look like doing the same thing twice from outside the delivery team.",
+      response:"It probably does look repetitive from the outside. The rehearsal is what turns cutover from a guess into a timed, tested plan, so the real thing goes smoothly instead of being the first attempt.",
+      watch:"Have a concrete example ready of something a rehearsal caught on a past project, it lands better than the theory." },
+
+    // --- Blame & Trust ---
+    { cat:"trust", cue:"The last vendor said this data was fine. Why are you saying it's not?",
+      why:"They feel caught in the middle, and may worry it reflects badly on decisions they made earlier.",
+      response:"That's a fair question. Different projects often check different things, so it's possible both were true at the time. What matters now is getting it right before it moves into the new system. Can I show you specifically what we're seeing?",
+      watch:"Never criticize the previous vendor. It reads as self-serving and erodes trust either way." },
+    { cat:"trust", cue:"Nothing was wrong before you started migrating it.",
+      why:"A migration is often the first time anyone's looked closely at the data in years. It surfaces old problems, it doesn't create them.",
+      response:"That's actually really common. A lot of this has probably been sitting quietly in the old system for years. The migration is what's surfacing it now, while we still have time to fix it properly.",
+      watch:"Say this early and often through the project, not just when it comes up defensively." },
+    { cat:"trust", cue:"Our team doesn't have time for this. Can't you just handle it?",
+      why:"Usually genuine capacity pressure, not disengagement.",
+      response:"I hear you, and I'll take as much off your plate as I can. The pieces I can't do without you are the ones only your team can judge, like which record is the correct one. Can we agree a short, protected slot each week just for those?",
+      watch:"Be specific about what you genuinely can't do without them. A vague “we need your help” is easy to deprioritize." },
+    { cat:"trust", cue:"You people always find more problems than you fix.",
+      why:"Frustration that's really about the volume of issues surfacing, not necessarily doubt in your competence.",
+      response:"That's fair to notice, and I want to change that feeling. Let's look at the numbers together, how many we've actually closed versus what's still open, so we're working from the same picture.",
+      watch:"Don't get defensive about the ratio. Bring the data and let it do the talking." },
+    { cat:"trust", cue:"How do we know you're not just telling us what we want to hear?",
+      why:"A test of whether you'll give an honest answer under a bit of pressure.",
+      response:"You don't, except by watching whether I keep telling you the same thing when it's inconvenient. Right now, honestly, here's what I'm actually worried about.",
+      watch:"Never use this moment to soften a real concern. It's exactly when honesty matters most." },
+    { cat:"trust", cue:"Someone on your team said something different last week.",
+      why:"Usually a genuine inconsistency, not a conspiracy, migrations involve a lot of people saying things in different meetings.",
+      response:"Thanks for flagging that, inconsistent messaging is on me to fix. Let me find out exactly what was said and get back to you with one clear answer.",
+      watch:"Actually close the loop. A promise to look into it that goes nowhere does more damage than the original inconsistency." },
+    { cat:"trust", cue:"We feel like we're the only ones who care about getting this right.",
+      why:"Comes from a client who's invested a lot of personal effort and doesn't feel it's matched.",
+      response:"I hear that, and I don't want you carrying this alone. Tell me specifically where it's felt that way, so I can see what we need to change on our side.",
+      watch:"Take this seriously even if it feels unfair. Perception of effort matters as much as actual effort." },
+    { cat:"trust", cue:"Can we get this in writing? We've been burned before.",
+      why:"A completely reasonable ask, often shaped by a bad experience with a previous vendor or project.",
+      response:"Of course, that's a good instinct and I'm happy to put it in writing. I'll send a short summary of what we've agreed after this call.",
+      watch:"Follow through the same day. A delayed written summary undermines the trust you just tried to build." },
+
+    // --- Data & Decisions ---
+    { cat:"data", cue:"We don't know which of these duplicate records is correct. Just pick one.",
+      why:"Decision fatigue, or a belief it doesn't really matter.",
+      response:"I can make a call, but if it turns out to be wrong, it can be a lot harder to unwind once it's live. Can we agree a simple rule together now, like most recently used wins, so I can apply it consistently rather than guessing case by case?",
+      watch:"Avoid actually guessing silently. An agreed rule protects everyone, including you." },
+    { cat:"data", cue:"This field doesn't matter. Don't worry about mapping it.",
+      why:"Might genuinely be true, or might be someone assuming without checking.",
+      response:"Good to know, that saves us some time. Can you confirm nothing downstream, like reporting or an integration, relies on it? I'd rather ask now than find out after go-live.",
+      watch:"Get this in writing somewhere, even just an email. Verbal “it doesn't matter” calls are the first thing forgotten." },
+    { cat:"data", cue:"We don't have anyone who understands the old system anymore.",
+      why:"Genuinely difficult, and a real risk to the project, worth naming plainly.",
+      response:"Okay, that changes things a bit, so let's be honest about it. We'll need to rely more on what the data itself tells us, and treat our assumptions as things to test rather than facts. Let's flag this as a risk so it's visible, not something we're quietly working around.",
+      watch:"Don't downplay this to keep things smooth. It's a real risk and belongs on the RAID log, not just in conversation." },
+    { cat:"data", cue:"Just use your best judgment, we trust you.",
+      why:"Sounds like a compliment, but it can quietly transfer a business decision onto someone who shouldn't be making it alone.",
+      response:"I appreciate that, and I can absolutely make a technical call. For anything that changes what the business sees though, like which record wins, I'd rather we agree it together so it's not just my guess.",
+      watch:"Don't accept unlimited discretion on decisions with real business consequences, even when it's offered generously." },
+    { cat:"data", cue:"Why can't the system just figure out which record is right?",
+      why:"A natural assumption that smart software should handle ambiguity that actually needs human judgment.",
+      response:"It can flag likely duplicates really well, but deciding which one reflects the real customer usually needs someone who knows the history. I can show you exactly what it's flagged so far.",
+      watch:"Demonstrate the tooling's actual output rather than just explaining the limitation in the abstract." },
+    { cat:"data", cue:"We don't have time to review every exception.",
+      why:"The exception list can look intimidatingly long even when most items are quick, low-risk calls.",
+      response:"Let's sort them by how much they actually matter first. A lot of these will be a thirty-second decision once you see them grouped, I don't think all of them need your full attention.",
+      watch:"Do the sorting and prioritization yourself before asking for their time, don't hand over a raw list." },
+    { cat:"data", cue:"This data has always been wrong, don't worry about it.",
+      why:"Long-standing known issues sometimes get waved off because the business has built workarounds around them.",
+      response:"Good to know it's a known issue. Can you tell me what the workaround has been? If we carry the same problem into the new system, I want us to carry the fix too, not just the bug.",
+      watch:"A known issue is still worth documenting. It often resurfaces as a surprise for someone else later." },
+    { cat:"data", cue:"Can you just merge these two systems' data together automatically?",
+      why:"Merging data from two sources sounds like a technical formality, but it usually hides real business rule decisions.",
+      response:"We can automate a lot of it, but wherever the two systems disagree, like different addresses for the same customer, someone needs to decide which one wins. Let's agree those rules before we run it.",
+      watch:"Get the conflict-resolution rules agreed and written down before the merge runs, not after." },
+    { cat:"data", cue:"We'll clean it up after go-live, don't hold up the migration for it.",
+      why:"A reasonable-sounding trade-off that can quietly become permanent once go-live pressure passes.",
+      response:"That can work for some things, and I'd rather be honest about which. Let's agree specifically what's deferred and put an owner and a date on the clean-up, so it doesn't just disappear after go-live.",
+      watch:"We'll fix it later without an owner and a date almost never actually happens." },
+
+    // --- Budget & Change ---
+    { cat:"budget", cue:"Can you also migrate this other system while you're at it? Shouldn't take long.",
+      why:"From the outside, just one more system sounds small.",
+      response:"Happy to look at it properly. Adding a system usually touches mapping, cleansing, and testing, not just the load, so let me size it honestly rather than guessing. I'll come back with what it adds to timeline and cost.",
+      watch:"Never estimate scope changes off the cuff, even informally. It sets an expectation that's hard to walk back." },
+    { cat:"budget", cue:"We didn't budget for this many cleansing exceptions.",
+      why:"Cleansing volume is genuinely hard to predict before discovery is done.",
+      response:"That's a fair concern, and it's exactly why we flagged cleansing as a variable early on. Let's look at the exceptions together and prioritize the ones that actually affect go-live, so we're not treating every one as equally urgent.",
+      watch:"Don't let we didn't budget for it become so we'll just skip it. Prioritize, don't ignore." },
+    { cat:"budget", cue:"This should be a quick change, it's basically the same as what you're already doing.",
+      why:"From outside, small changes often look like they reuse existing work when they don't.",
+      response:"I understand why it looks that way. Let me break down what's actually involved so you can see where the extra effort comes from, then we can decide together if it's worth it.",
+      watch:"Show your working, don't just state a bigger number, it invites pushback without it." },
+    { cat:"budget", cue:"Can we get a discount since we're recommending you to another team?",
+      why:"A genuine attempt to build a relationship, sometimes also a soft negotiating tactic.",
+      response:"I really appreciate that, and I'll make sure that's known internally. Pricing conversations aren't mine to make on the spot, but I'll flag it to the right person to look at properly.",
+      watch:"Don't make commercial commitments you're not authorized to make, even informally." },
+    { cat:"budget", cue:"We've already told our board this won't cost more.",
+      why:"A sign of real internal pressure the client is carrying, not necessarily unwillingness to pay.",
+      response:"That's a tough spot to be in, thank you for telling me. Let's look honestly at what's driving the extra cost and see if there's a way to phase it or trim scope elsewhere to help you stay within that number.",
+      watch:"Treat this as a joint problem to solve, not a wall to push against." },
+    { cat:"budget", cue:"Why does every change request seem to cost extra?",
+      why:"Change requests can feel like a pattern of nickel-and-diming rather than genuine new scope.",
+      response:"That's worth addressing directly. Let's go back through the change requests together so you can see what was originally scoped versus what's genuinely new, and I'll be upfront if any of them shouldn't have been billed separately.",
+      watch:"Actually audit them honestly. If one was a scoping miss on your side, own it." },
+    { cat:"budget", cue:"Can we pause the project to save budget and pick it back up later?",
+      why:"Usually a real financial constraint, sometimes a signal of cooling confidence.",
+      response:"I want to understand what's driving that before we talk logistics. If it's budget, let's talk about what a pause actually costs in restart time and risk, so it's a fully informed choice.",
+      watch:"A pause is rarely free. Make the real cost of restarting visible before they decide." },
+    { cat:"budget", cue:"We assumed this was included in the original quote.",
+      why:"Scope boundaries are genuinely easy to misremember months into a project.",
+      response:"I understand the confusion, let me pull up exactly what was scoped originally so we're both looking at the same thing. If it's genuinely ambiguous, I'd rather resolve it fairly than argue the letter of it.",
+      watch:"Go back to the actual document, don't rely on memory on either side." },
+
+    // --- Confidence & Escalation ---
+    { cat:"confidence", cue:"Are you sure this is going to work?",
+      why:"Often just anxiety looking for reassurance, especially close to go-live.",
+      response:"Honestly, I'm confident in the plan, and here's specifically why: name two or three things actually derisking it, like rehearsals or sign-offs. I'll tell you straight away if that confidence changes.",
+      watch:"Don't just say yes, trust me. The specific reasons are far more reassuring than a flat yes." },
+    { cat:"confidence", cue:"I want to speak to someone more senior about this.",
+      why:"Sometimes a genuine escalation need, sometimes a test of whether you'll get defensive.",
+      response:"Of course, that's completely fair. Let me set that up, and I'll make sure they're fully briefed beforehand so you're not starting the conversation from scratch.",
+      watch:"Never take this personally or treat it as a loss. Escalating quickly and gracefully builds more trust than resisting it." },
+    { cat:"confidence", cue:"We're thinking of pausing the project.",
+      why:"Usually the visible tip of a deeper concern: cost, confidence, or competing priorities.",
+      response:"I appreciate you telling me directly. Before anything else, can you help me understand what's driving that? I want to make sure we're solving the actual problem, not just reacting to the idea of pausing.",
+      watch:"Resist jumping straight to persuading them not to pause. Understand the real reason first." },
+    { cat:"confidence", cue:"This feels like it's spiraling out of control.",
+      why:"Usually said when several small issues have piled up close together, even if none individually is severe.",
+      response:"I can see why it feels that way with everything landing at once. Let's separate what's actually happening from how it feels right now, issue by issue, so we can see the real picture together.",
+      watch:"Don't dismiss the feeling even if the facts are less dramatic. Address both." },
+    { cat:"confidence", cue:"Every other project we've run has been smoother than this.",
+      why:"Comparisons to other, unrelated projects rarely account for genuinely different complexity or data quality.",
+      response:"That's useful context, thank you. Every project's different underneath, so let's focus on what's specifically making this one harder, rather than the comparison itself.",
+      watch:"Resist the urge to argue the comparison is unfair. Redirect to the specifics instead." },
+    { cat:"confidence", cue:"I don't think you fully understand our business.",
+      why:"A sign that recommendations have felt generic rather than tailored to their reality.",
+      response:"That's fair, and I'd rather you tell me than assume I've got it. Walk me through what I'm missing, I want the plan to actually reflect how you work, not a generic version of it.",
+      watch:"Actually change something visible afterward. Listening without a visible change reads as empty." },
+    { cat:"confidence", cue:"We're getting nervous this won't be ready in time.",
+      why:"Anxiety that tends to peak in the weeks before go-live, even on projects that are genuinely on track.",
+      response:"That's a completely normal feeling this close to go-live, and I'd rather you tell me than sit with it quietly. Here's exactly where we stand against the plan, and here's what would have to go wrong for that date to slip.",
+      watch:"Bring the actual status, not just reassurance. Specifics calm nerves better than tone does." },
+    { cat:"confidence", cue:"Can someone independent review what you've done so far?",
+      why:"A reasonable request for assurance, not necessarily a sign of distrust in you specifically.",
+      response:"Absolutely, that's a completely fair ask and I'd welcome it. Let's agree what they should look at and I'll make sure they get full access and my time to walk them through it.",
+      watch:"Never treat an independent review as an attack. Being open to it builds more trust than resisting it." },
+
+    // --- UAT & Testing ---
+    { cat:"uat", cue:"We don't have enough people to properly test this.",
+      why:"UAT often lands during a period when the client's day-to-day work hasn't paused for the project.",
+      response:"Let's be realistic about who you actually have and focus their time on the highest-risk areas first. A smaller, well-targeted test beats a rushed attempt to cover everything.",
+      watch:"Don't let not enough people quietly become no testing. Agree a minimum viable scope instead." },
+    { cat:"uat", cue:"It worked in the demo, why do we need to test it again ourselves?",
+      why:"A demo shows the system can work, not that it works correctly with their real data and real scenarios.",
+      response:"The demo shows the mechanics work. UAT is where we prove it works with your actual data and your actual day-to-day scenarios, which is what really matters once you're live.",
+      watch:"Have a concrete example ready of something that worked in a demo but needed adjustment for real data." },
+    { cat:"uat", cue:"We found a bug, doesn't that mean the whole system is broken?",
+      why:"Finding any issue during testing can feel alarming, even though that's precisely what testing is for.",
+      response:"Finding this now is exactly what UAT is supposed to do, it's much better here than after go-live. Let's log it properly and I'll walk you through how we prioritize and fix issues like this.",
+      watch:"Don't let one bug undermine confidence in the whole system. Reframe it as the process working." },
+    { cat:"uat", cue:"Can we just test the happy path and skip the edge cases?",
+      why:"Edge cases can feel like rare, low-value scenarios not worth the testing time.",
+      response:"Some edge cases really are low priority, and I'm happy to deprioritize those. But a few of them touch real financial or compliance risk, so let's agree which ones stay in scope rather than cutting the whole category.",
+      watch:"Get specific about which edge cases are being dropped, don't accept a blanket skip." },
+    { cat:"uat", cue:"Our testers keep finding the same issues we already told you about.",
+      why:"Sometimes a genuine gap where a reported fix wasn't actually deployed to the test environment yet.",
+      response:"That shouldn't be happening, let me check whether the fix actually made it into the environment they're testing against. I'll come back to you today with what I find.",
+      watch:"Verify the environment and version before assuming the fix itself was wrong." },
+    { cat:"uat", cue:"We don't understand what we're actually supposed to be checking.",
+      why:"Test scripts can be written in a way that makes sense to the delivery team but not to business users.",
+      response:"That's on us to make clearer. Let me walk through a couple of scenarios with you directly so you can see what correct looks like, then the rest should click into place.",
+      watch:"Sit with them for the first scenario rather than just handing over a document and leaving." },
+    { cat:"uat", cue:"This is taking way longer to test than we expected.",
+      why:"Business users often underestimate how much of their day testing actually consumes, especially alongside their normal job.",
+      response:"That's a common surprise, testing properly does take real time. Let's see if we can split it across a couple more people, or narrow it to what matters most for go-live.",
+      watch:"Don't just sympathize, come with a concrete option to reduce the burden." },
+    { cat:"uat", cue:"Can we sign off UAT now and finish testing the rest after go-live?",
+      why:"Sign-off can feel like a formality once most testing feels done, even with gaps remaining.",
+      response:"Let's be precise about what's actually been tested versus what hasn't, so the sign-off reflects reality. I'd rather record known gaps honestly than have a sign-off that isn't quite true.",
+      watch:"A sign-off on incomplete testing should explicitly list what's outstanding, not imply everything passed." },
+    { cat:"uat", cue:"Why do we need to retest after every small fix?",
+      why:"Regression testing after a fix can feel like unnecessary repetition for what seems like a tiny change.",
+      response:"Small changes can affect things that aren't obvious from the outside, that's exactly what regression testing catches. I'll keep the retest scope tight to just what's affected, not the whole system again.",
+      watch:"Actually scope the retest down to the affected area, don't ask for a full retest every time or it erodes goodwill." },
+
+    // --- Cutover & Go-Live ---
+    { cat:"cutover", cue:"Can we do the cutover during business hours instead of the weekend?",
+      why:"Weekend work is inconvenient for the client team too, and the reason for it isn't always obvious from outside.",
+      response:"I understand wanting to avoid the weekend. The reason we plan it then is so the business isn't affected while the final load runs, let me show you what's actually happening during that window so it's clear why.",
+      watch:"Explain the real risk of a live-hours cutover concretely, not just that's how it's done." },
+    { cat:"cutover", cue:"What happens if something goes wrong during cutover?",
+      why:"A completely reasonable question, especially from someone who hasn't been through a migration before.",
+      response:"Good question, and we've planned for that. We have a rollback plan and clear decision points during the weekend, so if something's not right, we know exactly what happens next rather than improvising.",
+      watch:"Actually have a real rollback plan to point to, not just a reassuring tone." },
+    { cat:"cutover", cue:"Can we delay the decision on go or no-go until the morning of cutover?",
+      why:"Understandable instinct to keep options open as long as possible.",
+      response:"I get wanting maximum information before deciding. The risk is that a late no-go leaves no time to stand people down or adjust, so let's agree a slightly earlier checkpoint with the clearest information we'll realistically have.",
+      watch:"A go or no-go decision needs enough lead time to actually act on a no-go, not just to announce one." },
+    { cat:"cutover", cue:"Our key people are unavailable for part of the cutover weekend.",
+      why:"Personal commitments and calendars are often set well before a cutover date is finalized.",
+      response:"Thanks for telling me now rather than that weekend. Let's see exactly which parts of the plan need them, and whether we can shift timing or line up a backup for those windows.",
+      watch:"Identify a named backup for every critical role, don't just hope the gap doesn't matter." },
+    { cat:"cutover", cue:"Why can't we just go live gradually, system by system?",
+      why:"A phased go-live sounds lower risk on the surface, though it isn't always possible with shared data.",
+      response:"For some systems that can genuinely work. Where data is shared across systems though, a partial go-live can actually create more inconsistency, not less, so let's look at where phasing is safe and where it isn't.",
+      watch:"Check for shared data and integrations before agreeing to any phased approach." },
+    { cat:"cutover", cue:"Can we just extend the cutover window if we're not done in time?",
+      why:"Feels like a safe fallback, but every extra hour usually has a real downstream cost.",
+      response:"We can build in some contingency time, and I'd rather we plan for that honestly upfront than assume we'll just extend on the day. Let's agree now what the hard stop actually is and what happens if we hit it.",
+      watch:"An open-ended we'll just extend it is how cutover weekends spiral. Set a real hard stop." },
+    { cat:"cutover", cue:"The business really can't afford any downtime at all.",
+      why:"Often stated as an absolute, even though some minimal downtime is usually unavoidable in a cutover.",
+      response:"I hear that it matters a lot, let's talk about what downtime actually means for your business, minutes versus hours can be very different asks. I want to understand the real constraint so we can design around it properly.",
+      watch:"Don't accept zero downtime as a target without exploring what's actually driving it and whether it's truly zero." },
+    { cat:"cutover", cue:"Can we just skip the dress rehearsal, we're confident in the plan?",
+      why:"A rehearsal can feel like an unnecessary extra step once the plan looks solid on paper.",
+      response:"The plan looking solid on paper is exactly why the rehearsal matters, it's where we find out what paper doesn't show us. I'd really push to keep this one, even a lighter version of it.",
+      watch:"If it truly has to be trimmed, agree specifically what stays in scope rather than dropping it entirely." },
+    { cat:"cutover", cue:"Who's actually in charge if something goes wrong on the day?",
+      why:"A genuinely important question that's easy to leave implicit until it's suddenly urgent.",
+      response:"Good question, and it should be crystal clear before the day, not figured out on it. Here's exactly who makes which calls and how we escalate, let me send that to everyone involved.",
+      watch:"Put this in writing and share it with the whole cutover team in advance, not just verbally on the day." },
+
+    // --- Client Resourcing ---
+    { cat:"resourcing", cue:"Our SME is on leave next week, can everything just wait?",
+      why:"A single point of knowledge going offline can feel like a full stop, even when only part of the work depends on them.",
+      response:"Let's look at exactly what needs them specifically versus what we can keep moving on. If it's a true single point of failure, that's worth flagging as a risk regardless of this week.",
+      watch:"A single-person dependency is worth raising as an ongoing risk, not just working around quietly each time it happens." },
+    { cat:"resourcing", cue:"We didn't realize this would need so much of our time.",
+      why:"The time commitment can be genuinely underestimated at the start of a project, especially by people not involved day to day.",
+      response:"That's a fair reaction, it is a real commitment. Let's look at what's coming up and see if we can spread it across more people or trim it to what's essential from your side.",
+      watch:"Come with a specific plan to reduce the load, not just acknowledgment that it's a lot." },
+    { cat:"resourcing", cue:"Can someone more junior handle this instead of our lead person?",
+      why:"Often a genuine attempt to protect a busy senior person's time, not a lack of seriousness about the task.",
+      response:"For some of this, that could work well. For the decisions that need real business context though, I'd want whoever has that context, junior or senior. Let's split it by what actually needs seniority.",
+      watch:"Be specific about which tasks genuinely need the senior person's judgment versus which don't." },
+    { cat:"resourcing", cue:"We've lost our main contact, they've left the company.",
+      why:"A disruptive, sometimes destabilizing moment, especially if that person held a lot of undocumented context.",
+      response:"That's a real loss of continuity, I'm sorry to hear it. Let's move quickly to capture what they knew from whoever's left, and get their replacement up to speed as fast as we can.",
+      watch:"Move fast here, undocumented knowledge tends to fade quickly once the person who held it is gone." },
+    { cat:"resourcing", cue:"Everyone on our side is stretched across three other projects too.",
+      why:"Competing priorities are the norm, not the exception, in most client organizations.",
+      response:"That's really useful to know, let's plan around it honestly rather than assuming full availability. What's the smallest, highest-value ask we can make of your time each week?",
+      watch:"Design the engagement model around realistic availability, don't just keep asking for more." },
+    { cat:"resourcing", cue:"Can you just make the decisions our team would normally make?",
+      why:"Sometimes genuine trust, sometimes a symptom of the client team being stretched too thin to engage properly.",
+      response:"I can absolutely handle the technical decisions. For anything that changes what the business actually does though, I'd rather it come from you, even quickly, so it's the right call and not just mine.",
+      watch:"Watch for this becoming a pattern. Repeated requests to decide on their behalf is often a resourcing problem worth naming directly." },
+    { cat:"resourcing", cue:"We keep sending different people to the same meetings.",
+      why:"Often reflects genuine scheduling conflicts rather than a lack of care about consistency.",
+      response:"I've noticed that too, and it's making it harder to build momentum. Could we agree one or two consistent people for the core sessions, even if others join for specific topics?",
+      watch:"Raise this early. Inconsistent attendance compounds into real knowledge gaps over time." },
+    { cat:"resourcing", cue:"Our new starter doesn't know the history, can you catch them up?",
+      why:"A reasonable request, but the delivery team often only has partial visibility into the client's own history.",
+      response:"I can share everything from our side gladly. For the parts specific to your business before this project started, I'd need someone from your team to fill in those gaps alongside me.",
+      watch:"Be clear about what you can and can't brief on. Presenting yourself as the sole source of history sets a bad precedent." },
+
+    // --- Technical & IT ---
+    { cat:"technical", cue:"Our security team says they need to review everything before we give you access.",
+      why:"A legitimate, often lengthy process that's easy to underestimate the timeline for.",
+      response:"That's completely reasonable, and I'd rather build the time in properly than rush it. Can you help me understand their process so we can plan around it realistically from the start?",
+      watch:"Get this into the plan as early as possible, security review timelines are a common, avoidable cause of delay." },
+    { cat:"technical", cue:"Our IT team doesn't think this integration is necessary.",
+      why:"Sometimes a genuine technical disagreement, sometimes a sign they weren't looped in on why it's needed.",
+      response:"I'd like to understand their concern properly, they might be seeing something we're not. Can we get everyone in a room together so it's a real technical conversation, not a message passed back and forth?",
+      watch:"Don't treat pushback from technical people as an obstacle to route around, it often carries real information." },
+    { cat:"technical", cue:"Why do you need admin access to our production environment?",
+      why:"A fair and important question, access requests should never be waved through without explanation.",
+      response:"Good question, let me be specific about exactly what we need it for and for how long, and I'm happy to have it time-boxed or supervised if that's more comfortable.",
+      watch:"Only ever ask for the access actually needed, and be ready to justify each piece of it specifically." },
+    { cat:"technical", cue:"Our infrastructure team says the environment won't be ready on time.",
+      why:"Environment provisioning often depends on teams and processes outside the migration project's direct control.",
+      response:"Thanks for flagging this early, that gives us room to plan around it. Let's understand exactly what's blocking them and see what we can do to help unblock it, or adjust our plan if the date genuinely can't move.",
+      watch:"Treat this as a shared problem to solve together, not something to simply wait on." },
+    { cat:"technical", cue:"Can you just use our existing scripts instead of your migration tools?",
+      why:"An understandable instinct to reuse familiar, already-built tooling rather than something new.",
+      response:"Let's look at what those scripts actually do well. If they genuinely cover what we need, reusing them makes sense, if there are gaps, I'll be specific about what those are and why.",
+      watch:"Actually evaluate the existing scripts fairly rather than dismissing them by default." },
+    { cat:"technical", cue:"This error doesn't make sense, your tool must be broken.",
+      why:"Cryptic error messages are genuinely confusing, and the instinct is to blame the newest thing introduced.",
+      response:"Let's not assume either way yet, let me dig into what's actually causing it. I'll come back with a plain-English explanation of what happened, whichever side it turns out to be on.",
+      watch:"Investigate properly before responding either defensively or with an assumption it's your fault." },
+    { cat:"technical", cue:"Why can't this just run overnight automatically without anyone watching?",
+      why:"Automation sounds like it should remove the need for anyone to be present, but migration loads often need judgment calls mid-run.",
+      response:"For a lot of it, that's exactly how it works. For the parts where something unexpected needs a quick decision though, having someone watching means we catch it in minutes instead of the next morning.",
+      watch:"Be specific about which parts genuinely need supervision, so it doesn't sound like blanket caution." },
+    { cat:"technical", cue:"Our other vendor's tool does this faster.",
+      why:"Speed comparisons rarely account for what's actually being validated or checked along the way.",
+      response:"That's useful to know, speed matters. Can you tell me more about what that tool checks as it runs? I want to make sure we're comparing the same level of validation, not just raw speed.",
+      watch:"Avoid a defensive reaction. Genuinely investigate whether there's a real efficiency gap worth addressing." },
+
+    // --- Communication & Expectations ---
+    { cat:"communication", cue:"We feel like we're only hearing from you when there's a problem.",
+      why:"Status updates can unintentionally skew toward issues, since good news rarely feels urgent enough to report.",
+      response:"That's a fair pattern to notice, and I want to fix it. Let's set a regular cadence where you hear from me either way, problems and progress both, so it doesn't feel one-sided.",
+      watch:"Actually schedule the good-news updates, they're easy to let slip once things are going smoothly." },
+    { cat:"communication", cue:"Why didn't we know about this risk earlier?",
+      why:"Risks sometimes only become clear as the project unfolds, but that's not always obvious to the client.",
+      response:"That's a fair question, let me be transparent about when we actually became aware of it and why. Going forward, I'll flag things as soon as they're a real possibility, not just once they're certain.",
+      watch:"Be honest here even if the timing reflects on your team, trying to reframe it usually backfires." },
+    { cat:"communication", cue:"Can you stop using so much jargon in these updates?",
+      why:"Technical terms that feel completely normal to the delivery team can be genuinely opaque to business stakeholders.",
+      response:"Absolutely, thank you for saying so, I'd rather know. I'll rewrite these in plain language going forward, and please pull me up any time something's still unclear.",
+      watch:"Actually change the language in the next update, don't just apologize and continue as before." },
+    { cat:"communication", cue:"We want daily updates from now on.",
+      why:"Often a response to feeling out of the loop or anxious about progress, more than a genuine need for daily detail.",
+      response:"I can do that, and I also want to understand what's driving the request, so I make sure the updates actually address what's worrying you rather than just being more frequent.",
+      watch:"More frequent updates without addressing the underlying concern often just becomes noise." },
+    { cat:"communication", cue:"Nobody told us that decision had already been made.",
+      why:"Decisions made in one meeting don't always make it to everyone who needed to know.",
+      response:"That's on us to communicate better, I'm sorry it landed like that. Let me make sure decisions get written down and shared with everyone affected going forward, not just discussed live.",
+      watch:"Set up a simple decision log if one doesn't already exist, verbal-only decisions are how this keeps happening." },
+    { cat:"communication", cue:"Your last email made it sound worse than it actually is.",
+      why:"Written updates can read more alarming than intended, especially without tone or context.",
+      response:"Thanks for telling me, that's useful feedback on how I'm writing these. Let's talk through what actually happened right now so you've got the full picture, and I'll be more careful with the framing next time.",
+      watch:"Read status updates back before sending, imagining how they'll land without your verbal tone attached." },
+    { cat:"communication", cue:"Can we get this in a format we can share with our board?",
+      why:"Internal project detail and board-level reporting need genuinely different framing, not just a shorter version.",
+      response:"Good idea, let's build a short board-level summary alongside the detailed updates, focused on status, risk, and what decisions we need from them, not the day-to-day detail.",
+      watch:"Board summaries need to stand alone without you in the room to explain them, keep that in mind while writing." },
+    { cat:"communication", cue:"We thought this was already agreed, why is it being discussed again?",
+      why:"Agreed can mean different things to different people, a verbal nod in one meeting versus a formal sign-off.",
+      response:"Let's clarify exactly what was agreed and by whom, so we're not going in circles. If it genuinely was settled, I'll make sure that's clear and we move on.",
+      watch:"This is a strong signal to formalize how agreed gets recorded going forward, not just resolve this one instance." },
+
+    // --- Post Go-Live & Hypercare ---
+    { cat:"hypercare", cue:"It worked in testing, why is it broken now that we're live?",
+      why:"Real production volume, timing, and edge cases can surface things test data never touched.",
+      response:"That's genuinely one of the most common patterns after go-live, live data behaves differently to test data. Let's look at exactly what's happening and get it prioritized properly.",
+      watch:"Resist explaining this away too casually, even if it's common, it still needs a real fix and a real timeline." },
+    { cat:"hypercare", cue:"When does hypercare actually end?",
+      why:"An important but sometimes under-communicated detail, especially for a client wondering when support gets harder to reach.",
+      response:"Good question, let's be specific about the date and what changes afterward, so there are no surprises. I'll also make sure you know exactly how to reach support once hypercare ends.",
+      watch:"Put the hypercare end date and what follows it in writing well before it arrives, not the week it ends." },
+    { cat:"hypercare", cue:"We're finding way more issues than we expected after go-live.",
+      why:"A spike in reported issues right after go-live is common as real usage begins, but it can feel alarming without that context.",
+      response:"This is actually a fairly typical pattern in the first couple of weeks, real usage finds things test scenarios don't. Let's look at severity, most of what's coming in is usually minor, and I'll show you the breakdown.",
+      watch:"Back this up with real numbers by severity, don't just assert it's normal without evidence." },
+    { cat:"hypercare", cue:"Can you just fix this directly in production without going through the process?",
+      why:"Urgency after go-live can make formal change processes feel like unnecessary friction.",
+      response:"I understand the urgency, and I still want to protect you from a quick fix causing a bigger problem. Let's move fast through a lightweight version of the process, not skip it entirely.",
+      watch:"Even under pressure, keep some record of what changed in production and why, for your own protection as much as theirs." },
+    { cat:"hypercare", cue:"Our staff say the new system is harder to use than the old one.",
+      why:"Any new system feels harder before it feels familiar, but that doesn't mean the feedback isn't worth exploring.",
+      response:"That's worth taking seriously rather than assuming it's just unfamiliarity. Can you help me understand specifically what's harder? Some of it might be genuine friction we can fix, not just a learning curve.",
+      watch:"Separate real usability issues from simple change resistance, both matter but need different responses." },
+    { cat:"hypercare", cue:"Can we go back to the old system while you sort this out?",
+      why:"A serious ask, usually only raised when confidence has taken a real hit after go-live issues.",
+      response:"I hear how serious this feels. Before we talk about reverting, let me show you exactly what's wrong and what fixing it actually looks like, reverting has real risks and cost of its own to weigh against that.",
+      watch:"Take this request seriously rather than dismissing it, but make sure the real cost of reverting is genuinely understood too." },
+    { cat:"hypercare", cue:"Why do we still need you involved, isn't the project finished?",
+      why:"Go-live can feel like the finish line, even though hypercare and stabilization are a deliberate part of the plan.",
+      response:"That's a fair thing to wonder, go-live definitely feels like the big moment. Hypercare is really the last stretch though, making sure everything's genuinely stable before we step back, not extra unplanned work.",
+      watch:"Set this expectation well before go-live, not as a surprise once they start asking the question." },
+    { cat:"hypercare", cue:"We're not sure who to contact now that the project's wrapping up.",
+      why:"The handover from project support to normal business-as-usual support isn't always clearly signposted.",
+      response:"Let's fix that right now, I'll send over exactly who to contact for what, and by when, so there's no gap between us stepping back and your normal support picking up.",
+      watch:"Send this before it becomes a problem, a clear handover document heads off a lot of post-project frustration." },
+
+    // --- Internal & Delivery Team ---
+    { cat:"internal", cue:"It's not my job to chase the client for that information.",
+      why:"Ambiguity about roles can lead to important requests falling through the cracks between team members.",
+      response:"You're right that it's not clearly assigned, let's fix that now rather than argue whose job it should have been. I'll own getting it chased down this time, and let's agree who owns it going forward.",
+      watch:"Resolve the ownership gap explicitly, don't just personally absorb it every time it comes up." },
+    { cat:"internal", cue:"The solution architect disagrees with how we're mapping this entity.",
+      why:"A genuine technical disagreement between two people who both have valid expertise and perspective.",
+      response:"Let's get both perspectives on the table properly rather than deciding through back channels. I want to understand the specific concern, it might change the approach, or it might just need explaining.",
+      watch:"Don't let this get resolved by whoever's more senior or more insistent, resolve it on the merits." },
+    { cat:"internal", cue:"The PM wants to descope testing to hit the date.",
+      why:"Deadline pressure can push a well-intentioned PM toward trade-offs that shift real risk onto data quality.",
+      response:"I understand the pressure on the date. Let's be really specific about what descoping testing actually risks, so it's a fully informed trade-off, not just a way to make the plan look better on paper.",
+      watch:"Put the risk of the trade-off in writing, even if the decision goes ahead anyway." },
+    { cat:"internal", cue:"A developer says the client's requirements keep changing.",
+      why:"Sometimes genuine scope creep, sometimes a sign requirements weren't captured clearly enough in the first place.",
+      response:"Let's look at what was actually agreed versus what's being asked for now, so we know which it is. If it's genuinely new, let's log it properly rather than just absorbing it quietly.",
+      watch:"Don't let requirements keep changing become an excuse without checking whether they were ever pinned down clearly." },
+    { cat:"internal", cue:"Another vendor on this project isn't delivering what they promised.",
+      why:"Multi-vendor projects create dependencies you don't fully control, which can be genuinely frustrating.",
+      response:"That's a real risk to the project even though it's not our piece directly. Let's document exactly what's missing and the impact, and raise it with the client so it's visible, not something we quietly absorb.",
+      watch:"Don't let another vendor's gap become invisible extra work for your team without it being flagged." },
+    { cat:"internal", cue:"My manager wants me to focus on a different project this week.",
+      why:"Competing internal priorities are a normal reality, especially for people split across multiple engagements.",
+      response:"That's a fair conflict to have, let's figure out together what genuinely can't slip this week versus what can wait a few days. I'll help make the case internally if we need more of your time protected.",
+      watch:"Escalate resourcing conflicts early rather than letting deadlines quietly slip because of them." },
+    { cat:"internal", cue:"I don't think this approach is going to work, but nobody's asking me.",
+      why:"Sometimes the person closest to the technical detail has real concerns that aren't reaching the decision-makers.",
+      response:"I'm asking now, tell me what you're seeing. If there's a real problem with the approach, I'd much rather hear it from you today than find out later.",
+      watch:"Create a real opening for this kind of feedback regularly, not just when someone finally speaks up unprompted." },
+    { cat:"internal", cue:"We're burning out trying to hit this date.",
+      why:"An important, honest signal from your own team that shouldn't be brushed past in service of the deadline.",
+      response:"Thank you for telling me directly, that matters more than the date. Let's look at what's actually driving the pressure and see what can realistically move, I don't want to hit a date at the cost of the team.",
+      watch:"Take this seriously and act on it, not just acknowledge it sympathetically and carry on unchanged." },
+    { cat:"internal", cue:"Why are we doing it this way? The last project I worked on did it differently.",
+      why:"A genuine question worth answering, not a challenge to be shut down, even if the answer is simply different context.",
+      response:"Good question, let me explain why we're approaching it this way here specifically. If there's a genuinely better way based on what you saw before, I want to hear it.",
+      watch:"Actually explain the reasoning rather than defaulting to that's how we do it, it builds real buy-in." }
+  ];
+
+  var activeFilter = "all";
+  var searchTerm = "";
+  var mode = "browse";
+  var practiceOrder = cards.map(function(_, i){ return i; });
+  var practiceIndex = 0;
+
+  function iconSpan(catKey){
+    return '<svg viewBox="0 0 20 20">' + catByKey[catKey].icon + '</svg>';
+  }
+
+  function catCount(key){
+    return key === "all" ? cards.length : cards.filter(function(c){ return c.cat === key; }).length;
+  }
+
+  function buildFilters(){
+    var wrap = document.getElementById("filters");
+    var all = document.createElement("button");
+    all.className = "filter-chip active"; all.dataset.key = "all";
+    all.innerHTML = '<span>All</span><span class="fc-count">' + catCount("all") + '</span>';
+    wrap.appendChild(all);
+    categories.forEach(function(c){
+      var chip = document.createElement("button");
+      chip.className = "filter-chip"; chip.dataset.key = c.key;
+      chip.innerHTML = iconSpan(c.key) + '<span>' + c.label + '</span><span class="fc-count">' + catCount(c.key) + '</span>';
+      wrap.appendChild(chip);
+    });
+    wrap.addEventListener("click", function(e){
+      var chip = e.target.closest(".filter-chip");
+      if(!chip) return;
+      activeFilter = chip.dataset.key;
+      wrap.querySelectorAll(".filter-chip").forEach(function(c){ c.classList.toggle("active", c === chip); });
+      renderGrid();
+    });
+  }
+
+  function cardFaceHtml(c){
+    return (
+      '<div class="card-face card-front">' +
+        '<span class="card-cat">' + iconSpan(c.cat) + catByKey[c.cat].label + '</span>' +
+        '<p class="card-quote">' + c.cue + '</p>' +
+        '<p class="card-hint">Tap to see how to respond</p>' +
+      '</div>' +
+      '<div class="card-face card-back">' +
+        '<p class="back-label">Why this comes up</p>' +
+        '<p class="back-why">' + c.why + '</p>' +
+        '<p class="back-label">How to respond</p>' +
+        '<p class="back-response">' + c.response + '</p>' +
+        '<p class="back-watch"><strong>Watch out:</strong> ' + c.watch + '</p>' +
+      '</div>'
+    );
+  }
+
+  function matchesSearch(c){
+    if(!searchTerm) return true;
+    var hay = (c.cue + " " + catByKey[c.cat].label + " " + c.why).toLowerCase();
+    return hay.indexOf(searchTerm) > -1;
+  }
+
+  function renderGrid(){
+    var grid = document.getElementById("grid");
+    var noResults = document.getElementById("no-results");
+    grid.innerHTML = "";
+    var shown = 0;
+    cards.forEach(function(c){
+      if(activeFilter !== "all" && c.cat !== activeFilter) return;
+      if(!matchesSearch(c)) return;
+      shown++;
+      var el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = '<div class="card-inner">' + cardFaceHtml(c) + '</div>';
+      el.addEventListener("click", function(){ el.classList.toggle("flipped"); });
+      grid.appendChild(el);
+    });
+    noResults.hidden = shown > 0;
+    grid.hidden = mode !== "browse";
+  }
+
+  function renderPractice(){
+    var wrap = document.getElementById("practice-card");
+    var idx = practiceOrder[practiceIndex];
+    var c = cards[idx];
+    wrap.className = "practice-card card";
+    wrap.innerHTML = '<div class="card-inner">' + cardFaceHtml(c) + '</div>';
+    wrap.onclick = function(){ wrap.classList.toggle("flipped"); };
+    document.getElementById("practice-progress").textContent = "Card " + (practiceIndex + 1) + " of " + practiceOrder.length;
+  }
+
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  document.getElementById("search-input").addEventListener("input", function(e){
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderGrid();
+  });
+
+  document.getElementById("practice-prev").addEventListener("click", function(){
+    practiceIndex = (practiceIndex - 1 + practiceOrder.length) % practiceOrder.length;
+    renderPractice();
+  });
+  document.getElementById("practice-next").addEventListener("click", function(){
+    practiceIndex = (practiceIndex + 1) % practiceOrder.length;
+    renderPractice();
+  });
+  document.getElementById("practice-flip").addEventListener("click", function(){
+    document.getElementById("practice-card").classList.toggle("flipped");
+  });
+  document.getElementById("practice-shuffle").addEventListener("click", function(){
+    practiceOrder = shuffle(practiceOrder);
+    practiceIndex = 0;
+    renderPractice();
+  });
+
+  document.getElementById("mode-tabs").addEventListener("click", function(e){
+    var tab = e.target.closest(".mode-tab");
+    if(!tab) return;
+    mode = tab.dataset.mode;
+    document.querySelectorAll(".mode-tab").forEach(function(t){ t.classList.toggle("active", t === tab); });
+    var filters = document.getElementById("filters");
+    var searchWrap = document.getElementById("search-wrap");
+    var noResults = document.getElementById("no-results");
+    if(mode === "browse"){
+      document.getElementById("practice").hidden = true;
+      filters.style.display = "flex";
+      searchWrap.style.display = "block";
+      renderGrid();
+    } else {
+      document.getElementById("grid").hidden = true;
+      noResults.hidden = true;
+      document.getElementById("practice").hidden = false;
+      filters.style.display = "none";
+      searchWrap.style.display = "none";
+      practiceOrder = shuffle(cards.map(function(_, i){ return i; }));
+      practiceIndex = 0;
+      renderPractice();
+    }
+  });
+
+  function renderPrintSheet(){
+    var wrap = document.getElementById("print-only");
+    var html = "";
+    categories.forEach(function(cat){
+      var inCat = cards.filter(function(c){ return c.cat === cat.key; });
+      if(!inCat.length) return;
+      html += '<div class="print-cat"><h2>' + cat.label + '</h2>';
+      inCat.forEach(function(c){
+        html +=
+          '<div class="print-card">' +
+            '<div><p class="card-quote">' + c.cue + '</p><p class="back-why">' + c.why + '</p></div>' +
+            '<div><p class="back-response">' + c.response + '</p><p class="back-watch"><strong>Watch out:</strong> ' + c.watch + '</p></div>' +
+          '</div>';
+      });
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  }
+
+  document.getElementById("count-pill").textContent = cards.length + " cards · " + categories.length + " categories";
+  buildFilters();
+  renderGrid();
+  renderPrintSheet();
+})();
+</script>

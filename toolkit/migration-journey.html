@@ -1,0 +1,457 @@
+<title>The Migration Journey</title>
+<style>
+  /* Palette matches the established Turner Page brand tokens
+     (see home.html / login.html / welcome.html / enrol.html).
+     Hero gradient mapped to the site's actual --deep/--teal/--aqua
+     gradient (see home.html's .promise-inner). Dark-mode removed
+     for brand consistency. */
+  :root{
+    --tp-ink:#102f36;
+    --tp-ink-soft:#50686e;
+    --tp-muted:#657d82;
+    --tp-bg:#f3f9f9;
+    --tp-surface:#FFFFFF;
+    --tp-border:#d8e9e9;
+    --tp-border-soft:#e9f5f5;
+    --tp-teal-900:#005f6c;
+    --tp-teal-700:#0b7f8e;
+    --tp-aqua-500:#7dd8d8;
+    --tp-aqua-100:#e9f5f5;
+    --tp-aqua-050:#f3f9f9;
+    --hero-a:#005f6c;
+    --hero-b:#0b7f8e;
+    --hero-c:#7dd8d8;
+    --hero-ink:#FFFFFF;
+    --shadow-card:0 1px 2px rgba(14,76,83,.06), 0 10px 28px -18px rgba(14,76,83,.22);
+    color-scheme:light;
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--tp-bg); color:var(--tp-ink); font-family:Inter,Segoe UI,Arial,sans-serif;}
+  h1,h2,h3,.tp-word{font-family:Inter,Segoe UI,Arial,sans-serif; text-wrap:balance;}
+  p{line-height:1.65;}
+  ::selection{background:var(--tp-aqua-100);}
+  :focus-visible{outline:2px solid var(--tp-aqua-500); outline-offset:2px; border-radius:4px;}
+  [contenteditable="true"]{border-radius:5px; outline-offset:2px;}
+  [contenteditable="true"]:hover{background:rgba(95,201,194,.12);}
+  [contenteditable="true"]:focus{background:rgba(95,201,194,.16); outline:1.5px dashed var(--tp-aqua-500);}
+
+  .tp-page{max-width:1220px; margin:0 auto; padding:0 0 64px;}
+
+  /* ---- Hero ---- */
+  .hero{
+    background:linear-gradient(135deg, var(--hero-a), var(--hero-b) 55%, var(--hero-c));
+    color:var(--hero-ink); padding:40px 32px 46px; border-radius:0 0 28px 28px;
+    position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:""; position:absolute; right:-60px; top:-60px; width:280px; height:280px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.14), transparent 70%);
+  }
+  .hero-inner{max-width:1220px; margin:0 auto; position:relative;}
+  .brand{display:flex; align-items:center; gap:12px; margin-bottom:26px;}
+  .brand-logo-wrap{
+    background:#fff; border-radius:10px; padding:6px 12px; display:inline-flex; align-items:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.12); flex-shrink:0;
+  }
+  .brand-logo{height:26px; width:auto; display:block;}
+  .brand-sub{font-size:10.5px; opacity:.85; text-transform:uppercase; letter-spacing:.09em;}
+  .hero h1{font-size:clamp(28px,4vw,40px); font-weight:700; margin:0 0 10px; max-width:20ch;}
+  .hero-sub{font-size:15.5px; opacity:.92; max-width:58ch; margin:0 0 28px; line-height:1.65;}
+
+  .hero-map{display:flex; align-items:center; gap:0; max-width:900px;}
+  .hero-map .hm-node{display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0;}
+  .hero-map .hm-dot{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.85);}
+  .hero-map .hm-label{font-size:9.5px; opacity:.75; text-align:center; width:64px; display:none;}
+  .hero-map .hm-line{flex:1; height:1px; background:rgba(255,255,255,.32); margin:0 -1px;}
+  @media (min-width:760px){ .hero-map .hm-label{display:block;} }
+
+  /* ---- Sections ---- */
+  section{padding:52px 32px 0; max-width:1220px; margin:0 auto;}
+  .eyebrow{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--tp-teal-700);}
+  .sec-title{font-size:24px; margin:6px 0 10px;}
+  .sec-lead{color:var(--tp-ink-soft); max-width:66ch; font-size:14.5px; margin:0 0 26px;}
+
+  /* ---- Analogy block ---- */
+  .analogy{
+    background:var(--tp-surface); border:1px solid var(--tp-border); border-left:4px solid var(--tp-aqua-500);
+    border-radius:14px; padding:22px 26px; box-shadow:var(--shadow-card); max-width:78ch;
+  }
+  .analogy p{font-size:14.5px; color:var(--tp-ink-soft); margin:0 0 12px;}
+  .analogy p:last-child{margin-bottom:0;}
+  .analogy strong{color:var(--tp-ink);}
+
+  /* ---- Glance tiles ---- */
+  .glance-grid{display:flex; flex-wrap:wrap; gap:12px;}
+  .glance-tile{
+    flex:1 1 148px; background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:14px;
+    padding:15px 16px 16px; box-shadow:var(--shadow-card); text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; gap:10px; transition:border-color .15s ease, transform .15s ease;
+  }
+  .glance-tile:hover{border-color:var(--tp-aqua-500); transform:translateY(-2px);}
+  .glance-top{display:flex; align-items:center; gap:9px;}
+  .glance-icon{width:30px; height:30px; border-radius:9px; background:var(--tp-aqua-100); color:var(--tp-teal-900); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .glance-icon svg{width:16px; height:16px;}
+  .glance-name{font-weight:600; font-size:12.5px; line-height:1.3;}
+  .dot-meter{display:flex; gap:4px; align-items:center;}
+  .dot-meter span{width:7px; height:7px; border-radius:50%; background:var(--tp-border-soft);}
+  .dot-meter span.filled{background:var(--tp-aqua-500);}
+  .glance-tile[data-engage="heavy"] .dot-meter span.filled{background:var(--tp-teal-900);}
+  .glance-engage-label{font-size:10.5px; color:var(--tp-muted);}
+
+  /* ---- Journey layout ---- */
+  .journey-layout{display:grid; grid-template-columns:1fr 190px; gap:30px; align-items:start;}
+  @media (max-width:980px){ .journey-layout{grid-template-columns:1fr;} .journey-rail{display:none;} }
+
+  .journey-rail{position:sticky; top:20px; display:flex; flex-direction:column; gap:2px; padding-top:6px;}
+  .rail-item{
+    display:flex; align-items:center; gap:9px; font-size:12px; color:var(--tp-muted); text-decoration:none;
+    padding:7px 4px; border-radius:8px; transition:color .15s ease;
+  }
+  .rail-item:hover{color:var(--tp-teal-700);}
+  .rail-dot{width:7px; height:7px; border-radius:50%; background:var(--tp-border); flex-shrink:0; transition:background .2s ease, box-shadow .2s ease;}
+  .rail-item.active{color:var(--tp-teal-900); font-weight:700;}
+  .rail-item.active .rail-dot{background:var(--tp-aqua-500); box-shadow:0 0 0 3px var(--tp-aqua-100);}
+
+  /* ---- Stage timeline ---- */
+  .stage-list{display:flex; flex-direction:column;}
+  .stage-row{display:flex; gap:18px; align-items:stretch;}
+  .stage-node-col{display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:46px;}
+  .stage-icon-node{
+    width:46px; height:46px; border-radius:50%; background:var(--tp-teal-900); color:#fff; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 6px var(--tp-bg); z-index:1;
+  }
+  .stage-icon-node svg{width:21px; height:21px;}
+  .stage-line{width:2px; flex:1; background:var(--tp-border); margin:2px 0; min-height:24px;}
+  .stage-row:last-child .stage-line{background:transparent;}
+
+  .stage{
+    background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:16px; padding:22px 26px 26px;
+    box-shadow:var(--shadow-card); scroll-margin-top:20px; margin-bottom:20px; flex:1; opacity:0; transform:translateY(10px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  .stage.in-view{opacity:1; transform:translateY(0);}
+  .stage-head{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
+  .stage-title-wrap{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .stage-eyebrow{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--tp-muted);}
+  .stage-name{font-size:19px; margin:2px 0 0;}
+  .stage-body{display:grid; grid-template-columns:1.5fr 1fr; gap:26px; margin-top:4px;}
+  @media (max-width:760px){ .stage-body{grid-template-columns:1fr;} .stage-row{gap:12px;} .stage-node-col{width:36px;} .stage-icon-node{width:36px; height:36px;} .stage-icon-node svg{width:17px; height:17px;} }
+  .stage-main p{font-size:14px; color:var(--tp-ink-soft); margin:0 0 14px;}
+  .stage-main p:last-child{margin-bottom:0;}
+  .stage-main strong{color:var(--tp-ink);}
+  .stage-risk{background:var(--tp-bg); border:1px dashed var(--tp-border); border-radius:10px; padding:12px 14px !important; font-size:13px !important;}
+  .stage-side{background:var(--tp-aqua-050); border-radius:12px; padding:16px 18px; align-self:start;}
+  .side-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--tp-teal-700); margin-bottom:10px;}
+  .side-list{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:9px;}
+  .side-list li{font-size:13px; color:var(--tp-ink-soft); display:flex; gap:8px; align-items:flex-start; line-height:1.5;}
+  .side-list li::before{content:"—"; color:var(--tp-aqua-500); flex-shrink:0; font-weight:700;}
+
+  .engage-chip{display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700; padding:4px 11px; border-radius:100px; white-space:nowrap;}
+  .engage-chip .dot-meter span{width:5px; height:5px;}
+  .engage-light{background:var(--tp-aqua-050); color:var(--tp-teal-700);}
+  .engage-moderate{background:var(--tp-aqua-100); color:var(--tp-teal-700);}
+  .engage-heavy{background:var(--tp-teal-900); color:#fff;}
+  .engage-heavy .dot-meter span{background:rgba(255,255,255,.35);}
+  .engage-heavy .dot-meter span.filled{background:#fff;}
+
+  /* ---- FAQ ---- */
+  .faq{display:flex; flex-direction:column; gap:10px; max-width:78ch;}
+  details{background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:12px; padding:2px 18px; box-shadow:var(--shadow-card);}
+  summary{
+    cursor:pointer; padding:14px 0; font-family:Inter,Segoe UI,Arial,sans-serif; font-weight:600; font-size:14.5px; list-style:none;
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+  }
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:"+"; font-size:19px; color:var(--tp-teal-700); font-weight:400; flex-shrink:0; transition:transform .18s ease;}
+  details[open] summary::after{content:"–";}
+  .faq-answer{font-size:13.5px; color:var(--tp-ink-soft); padding:0 0 16px; margin:0; max-width:66ch;}
+
+  /* ---- Team / closing ---- */
+  .closing{
+    margin:36px 32px 0; max-width:1220px; margin-left:auto; margin-right:auto;
+    background:var(--tp-teal-900); color:var(--hero-ink); border-radius:20px; padding:32px; display:flex; gap:28px; flex-wrap:wrap; justify-content:space-between; align-items:center;
+  }
+  .closing-text h2{font-size:19px; margin:0 0 6px; color:#fff;}
+  .closing-text p{font-size:13px; opacity:.85; margin:0; max-width:46ch;}
+  .closing-team{display:flex; flex-direction:column; gap:3px; min-width:210px;}
+  .closing-team label{font-size:10px; text-transform:uppercase; letter-spacing:.08em; opacity:.65;}
+  .closing-team [contenteditable]{font-weight:600; padding:2px 4px; border-radius:5px;}
+  .closing-team [contenteditable]:hover{background:rgba(255,255,255,.14);}
+  .closing-team [contenteditable]:focus{background:rgba(255,255,255,.18); outline:1.5px dashed rgba(255,255,255,.6);}
+  .print-btn{
+    border:none; background:var(--tp-aqua-500); color:#06282b; font-weight:700; font-size:13px; padding:11px 20px;
+    border-radius:100px; cursor:pointer; flex-shrink:0;
+  }
+  .print-btn:hover{background:#4fb8b1;}
+
+  .tp-footer{max-width:1220px; margin:22px auto 0; padding:0 32px; font-size:11.5px; color:var(--tp-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;}
+
+  @media (max-width:640px){ .hero{padding:30px 20px 36px;} section{padding:40px 20px 0;} .stage{padding:18px 16px 20px;} }
+  @media (prefers-reduced-motion:reduce){ * {transition:none !important;} .stage{opacity:1 !important; transform:none !important;} }
+
+  @media print{
+    body{background:#fff;}
+    .hero{border-radius:0; background:linear-gradient(135deg, var(--hero-a), var(--hero-b) 55%, var(--hero-c)) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .hero-map{display:none;}
+    .journey-rail{display:none;}
+    .journey-layout{grid-template-columns:1fr;}
+    .stage{break-inside:avoid; box-shadow:none; opacity:1 !important; transform:none !important;}
+    .glance-tile{break-inside:avoid;}
+    details{break-inside:avoid; box-shadow:none;}
+    details > *:not(summary){display:block !important; max-height:none !important;}
+    summary::after{display:none;}
+    .print-btn{display:none;}
+    .closing{background:var(--tp-teal-900) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  }
+</style>
+
+<div class="tp-page">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="brand">
+        <div class="brand-logo-wrap"><img class="brand-logo" src="/assets/turner-page-logo.png" alt="Turner Page"></div>
+        <div class="brand-sub">Data Migration Toolkit</div>
+      </div>
+      <h1>Your Data Migration Journey</h1>
+      <p class="hero-sub">You don't need any project or IT background to read this. It walks through, in plain English, what "data migration" actually involves, what happens at each stage, and &mdash; most importantly &mdash; where we'll need a bit of your time, and why.</p>
+      <div class="hero-map" id="hero-map"></div>
+    </div>
+  </div>
+
+  <section id="basics">
+    <div class="eyebrow">First, the basics</div>
+    <h2 class="sec-title">What is a data migration, really?</h2>
+    <div class="analogy">
+      <p>In the simplest terms: your business currently keeps its information &mdash; customers, orders, stock, finances, whatever it may be &mdash; inside one or more existing systems. A data migration is the structured process of moving all of that information into a new system, accurately, safely, and without disrupting the business along the way.</p>
+      <p>A useful way to picture it: it's like <strong>moving house</strong>. Before you move, you need to know what you actually own (discovery). You label every box so it ends up in the right room (mapping). You throw out or fix the broken stuff rather than carry it into the new place (cleansing). You do a practice run with the moving van before the real day (build &amp; load). You walk through the new house and check everything arrived correctly before you commit to living there (testing). Then there's the actual move (cutover). And afterwards, you keep a list of "things to sort out" for the first few weeks as you settle in (hypercare).</p>
+      <p>That's really all a data migration is &mdash; just applied to your business's information instead of your furniture. The seven stages below follow exactly that order.</p>
+    </div>
+  </section>
+
+  <section id="glance">
+    <div class="eyebrow">Before you dive in</div>
+    <h2 class="sec-title">Where your time will actually be needed</h2>
+    <p class="sec-lead">Not every stage needs the same amount of you. Some are almost entirely on us; a couple will need real, planned time from your team. Click any stage to jump straight to it.</p>
+    <div class="glance-grid" id="glance-grid"></div>
+  </section>
+
+  <section id="journey">
+    <div class="eyebrow">The Journey, in detail</div>
+    <h2 class="sec-title">Seven stages, one goal</h2>
+    <p class="sec-lead">For each stage: what it means in plain terms, why it matters, what happens if it's rushed, and exactly what we'll need from you.</p>
+    <div class="journey-layout">
+      <div class="stage-list" id="stage-list"></div>
+      <nav class="journey-rail" id="journey-rail" aria-label="Jump to a stage"></nav>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="eyebrow">Questions we hear a lot</div>
+    <h2 class="sec-title">Frequently asked questions</h2>
+    <p class="sec-lead">Straight, jargon-free answers to the things clients usually ask once they've seen this journey.</p>
+    <div class="faq" id="faq-list"></div>
+  </section>
+
+  <div class="closing">
+    <div class="closing-text">
+      <h2>Your delivery team</h2>
+      <p>This journey is led by a Turner Page&ndash;trained Data Migration Lead, working alongside your project team from discovery through hypercare.</p>
+    </div>
+    <div class="closing-team">
+      <div><label>Data Migration Lead</label><div contenteditable="true">Your name</div></div>
+      <div><label>Email</label><div contenteditable="true">you@example.com</div></div>
+    </div>
+    <button class="print-btn" id="print-btn">Print / save as PDF</button>
+  </div>
+
+  <div class="tp-footer">
+    <span>© Turner Page Training &amp; Certification Ltd &middot; The Migration Journey, part of the Turner Page Delivery Toolkit</span>
+    <span>Client-facing &mdash; personalize the highlighted fields above before sending</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var icons = {
+    discovery:'<circle cx="8.3" cy="8.3" r="5.8" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="12.5" y1="12.5" x2="17.5" y2="17.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    mapping:'<rect x="1.5" y="12" width="6" height="6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="12.5" y="1.5" width="6" height="6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="7.5" y1="13" x2="13" y2="7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><polygon points="13,6 15.6,7 13.6,9.6" fill="currentColor"/>',
+    cleansing:'<path d="M2 3 H18 L12.2 10.6 V17 L7.8 15 V10.6 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+    build:'<rect x="2" y="14.5" width="16" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="10" y1="12" x2="10" y2="2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><polyline points="6.2,6.2 10,2.5 13.8,6.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    uat:'<circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><polyline points="6,10.3 9,13.3 14.2,7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+    cutover:'<line x1="4.5" y1="2" x2="4.5" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.5 3.2 H16 L13 7.4 L16 11.6 H4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+    hypercare:'<circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="3.3" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="10" y1="2" x2="10" y2="6.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="10" y1="13.6" x2="10" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="2" y1="10" x2="6.4" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="13.6" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+  };
+
+  var engageMeta = {
+    light:{ label:"Light involvement", cls:"engage-light", level:1, note:"Occasional questions or a quick review — mostly on us." },
+    moderate:{ label:"Moderate involvement", cls:"engage-moderate", level:2, note:"A workshop or two, and a few decisions only you can make." },
+    heavy:{ label:"Heavy involvement", cls:"engage-heavy", level:3, note:"Please block real, dedicated time from your team for this one." }
+  };
+
+  var phases = [
+    {
+      name:"Discovery & Planning", icon:"discovery", engage:"moderate",
+      plain:"Before anything moves, we need to properly understand what you have today: which systems hold your information, roughly how much of it there is, what condition it's in, and what a successful outcome looks like for your business. Think of this like doing a full inventory before a house move &mdash; you can't plan the boxes or the van until you know what you actually own.",
+      why:"Everything else in this journey is built on what we learn here. Get this stage right, and the rest of the plan is realistic. Get it wrong, and we're planning against guesses instead of facts.",
+      risk:"If we don't get accurate access or information at this stage, we end up planning around assumptions. That usually surfaces weeks later as a delay, when we discover a system, a spreadsheet, or a data problem nobody mentioned.",
+      need:["Access to your current systems, or the right people who have it","A heads-up on any known problem areas in your data (e.g. “our customer list has a lot of duplicates”)","Key dates and business events we need to plan around (year-end, peak trading, etc.)","Introductions to the people who know each part of the business best"]
+    },
+    {
+      name:"Data Mapping", icon:"mapping", engage:"light",
+      plain:"Every system stores information a little differently. Mapping is where we work out exactly how each piece of information in your current system should line up in the new one &mdash; for example, making sure “Customer Name” becomes the right field, not something else entirely. We can work most of this out ourselves; where something is specific to how your business actually operates, we need your team's knowledge.",
+      why:"Get this right, and information ends up exactly where people expect to find it. Get it wrong, and it can go completely unnoticed until someone tries to use it and it doesn't make sense.",
+      risk:"Incorrect mapping is one of the most common causes of “the data's wrong” complaints after go-live &mdash; even though, technically, it moved exactly where it was told to.",
+      need:["A short mapping workshop or two with our team","Confirmation of what any unclear field, code, or term actually means","A flag on anything that has a hidden meaning internally that an outsider wouldn't know"]
+    },
+    {
+      name:"Cleansing & Transformation", icon:"cleansing", engage:"moderate",
+      plain:"This is the tidy-up stage. Just as you wouldn't move broken furniture into a brand new house, we don't want to carry duplicate, incomplete, or incorrect data into your new system. We fix what we can automatically, and bring back a short, specific list of decisions that only your team can make.",
+      why:"This is usually the single biggest factor in how trustworthy your new system feels on day one. Nobody trusts a new system that's carrying the same old messy data.",
+      risk:"Unresolved data problems don't disappear &mdash; they just resurface later, usually at the worst possible time, like during a customer call or a financial close.",
+      need:["A review of anything we've flagged as unclear (e.g. “these two customer records look like duplicates — which is correct?”)","Agreement on the rules for handling common issues going forward"]
+    },
+    {
+      name:"Build & Load", icon:"build", engage:"light",
+      plain:"This is where our team does the technical heavy lifting: building the automated process that will move your data, and running practice loads to prove it works before it matters for real. Think of it as the removal company doing a dry run with the vans before moving day.",
+      why:"This is where the plan becomes real. Practice loads let us catch problems calmly, while there's still time to fix them &mdash; instead of during the real thing.",
+      risk:"Skipping or rushing practice loads is how avoidable, everyday problems turn into go-live weekend emergencies.",
+      need:["Access to the technical environments we need","A quick review of test load results when we share them, flagging anything that looks off"]
+    },
+    {
+      name:"Testing & Validation (UAT)", icon:"uat", engage:"heavy",
+      plain:"UAT stands for User Acceptance Testing. In plain terms: this is where your team checks that the new system actually works the way your business needs it to, using data that's genuinely yours. This is the stage where your involvement matters most, because you're the only people who truly know what “correct” looks like for your business.",
+      why:"This is your last real opportunity to catch something before go-live. After this point, changes become much harder and more expensive to make.",
+      risk:"A rushed or under-resourced UAT is one of the strongest predictors of a rocky go-live &mdash; because problems that should have been caught here get caught by your customers and staff instead.",
+      need:["Dedicated, planned time from the people who'll actually use the system day to day","Working through agreed test scenarios and confirming the data and system behave as expected","Formal sign-off once you're satisfied — this is what tells everyone it's safe to proceed"]
+    },
+    {
+      name:"Cutover", icon:"cutover", engage:"heavy",
+      plain:"Cutover is moving day. It's the final, real transfer of your data into the live system, carefully timed and rehearsed in advance so there are no surprises. Like a well-planned house move, everyone knows their job, what time things happen, and what to do if something unexpected comes up.",
+      why:"Everything up to this point has been building toward this moment. A well-prepared cutover should feel calm and controlled, not chaotic &mdash; because the hard decisions were already made earlier.",
+      risk:"This is the one stage where “rushed” isn't really an option &mdash; it's exactly why we rehearse it beforehand rather than improvising it live.",
+      need:["Key people available and reachable during the agreed cutover window","Fast decisions if something needs a judgement call — delays here can delay the whole go-live"]
+    },
+    {
+      name:"Hypercare & Go-Live Support", icon:"hypercare", engage:"moderate",
+      plain:"Even the best-planned move surfaces a few things you only notice once you're actually living or working in the new place, day to day. Hypercare is a period of extra-close support right after go-live, so anything like that gets caught and fixed quickly, rather than lingering.",
+      why:"Fast feedback in this period means fast fixes. The sooner an issue is raised, the easier and cheaper it usually is to resolve.",
+      risk:"If hypercare is cut short, or issues aren't reported promptly, small things that could have been fixed quickly and quietly instead become bigger, more visible problems later.",
+      need:["Reporting anything that looks or feels wrong quickly, rather than working around it quietly","Staying engaged for the full agreed hypercare period, even once things start to feel normal"]
+    }
+  ];
+
+  function dotMeter(level){
+    var out = "";
+    for(var i=1;i<=3;i++){ out += '<span class="' + (i<=level ? "filled" : "") + '"></span>'; }
+    return '<span class="dot-meter">' + out + '</span>';
+  }
+
+  var heroMap = document.getElementById("hero-map");
+  var glanceGrid = document.getElementById("glance-grid");
+  var stageList = document.getElementById("stage-list");
+  var rail = document.getElementById("journey-rail");
+
+  phases.forEach(function(p, i){
+    var meta = engageMeta[p.engage];
+    var idx = i + 1;
+    var isLast = i === phases.length - 1;
+
+    // hero mini map
+    var hm = document.createElement("div");
+    hm.className = "hm-node";
+    hm.innerHTML = '<span class="hm-dot"></span><span class="hm-label">' + p.name.split(" ")[0].replace("&","") + '</span>';
+    heroMap.appendChild(hm);
+    if(!isLast){
+      var hl = document.createElement("div");
+      hl.className = "hm-line";
+      heroMap.appendChild(hl);
+    }
+
+    // glance tile
+    var tile = document.createElement("a");
+    tile.className = "glance-tile";
+    tile.href = "#stage-" + idx;
+    tile.dataset.engage = p.engage;
+    tile.innerHTML =
+      '<div class="glance-top"><div class="glance-icon"><svg viewBox="0 0 20 20">' + icons[p.icon] + '</svg></div><div class="glance-name">' + idx + '. ' + p.name + '</div></div>' +
+      dotMeter(meta.level) +
+      '<div class="glance-engage-label">' + meta.label + '</div>';
+    glanceGrid.appendChild(tile);
+
+    // stage row (timeline)
+    var needHtml = p.need.map(function(n){ return "<li>" + n + "</li>"; }).join("");
+    var row = document.createElement("div");
+    row.className = "stage-row";
+    row.innerHTML =
+      '<div class="stage-node-col"><div class="stage-icon-node"><svg viewBox="0 0 20 20">' + icons[p.icon] + '</svg></div>' + (isLast ? "" : '<div class="stage-line"></div>') + '</div>' +
+      '<article class="stage" id="stage-' + idx + '">' +
+        '<div class="stage-head">' +
+          '<div><div class="stage-eyebrow">Stage ' + idx + ' of ' + phases.length + '</div><h3 class="stage-name">' + p.name + '</h3></div>' +
+          '<span class="engage-chip ' + meta.cls + '">' + dotMeter(meta.level) + p.engage.charAt(0).toUpperCase() + p.engage.slice(1) + '</span>' +
+        '</div>' +
+        '<div class="stage-body">' +
+          '<div class="stage-main">' +
+            '<p><strong>In plain terms:</strong> ' + p.plain + '</p>' +
+            '<p><strong>Why it matters:</strong> ' + p.why + '</p>' +
+            '<p class="stage-risk"><strong>If this stage is rushed:</strong> ' + p.risk + '</p>' +
+          '</div>' +
+          '<div class="stage-side">' +
+            '<div class="side-label">What we’ll need from you</div>' +
+            '<ul class="side-list">' + needHtml + '</ul>' +
+          '</div>' +
+        '</div>' +
+      '</article>';
+    stageList.appendChild(row);
+
+    // rail item
+    var railItem = document.createElement("a");
+    railItem.className = "rail-item";
+    railItem.href = "#stage-" + idx;
+    railItem.dataset.target = "stage-" + idx;
+    railItem.innerHTML = '<span class="rail-dot"></span><span>' + idx + '. ' + p.name.replace(" & Go-Live Support","").replace("Testing & Validation (UAT)","UAT") + '</span>';
+    rail.appendChild(railItem);
+  });
+
+  // scroll-spy for rail + fade-in reveal
+  var railItems = rail.querySelectorAll(".rail-item");
+  var stageEls = stageList.querySelectorAll(".stage");
+  if("IntersectionObserver" in window){
+    var spy = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var id = entry.target.id;
+        var match = null;
+        railItems.forEach(function(ri){ if(ri.dataset.target === id) match = ri; });
+        if(entry.isIntersecting){
+          railItems.forEach(function(ri){ ri.classList.remove("active"); });
+          if(match) match.classList.add("active");
+          entry.target.classList.add("in-view");
+        }
+      });
+    }, { rootMargin: "-35% 0px -50% 0px", threshold: 0 });
+    stageEls.forEach(function(el){ spy.observe(el); });
+  } else {
+    stageEls.forEach(function(el){ el.classList.add("in-view"); });
+  }
+
+  var faqs = [
+    { q:"Do we need our own technical or IT people involved?", a:"For most stages, no — the technical build and data work is on us. Where we do need your people is anywhere business knowledge matters more than technical skill: confirming what your data actually means, deciding how to handle exceptions, and checking the result looks right in testing. You don't need your own migration experts; you need the people who understand your business." },
+    { q:"Why does data cleansing take so long?", a:"Because it's usually the messiest part of the project. Years of manual entry, workarounds, and system changes leave behind duplicates, missing values, and inconsistent formats. We'd rather find and fix that now than have it cause problems in your new system after go-live." },
+    { q:"What happens to data we can't clean automatically?", a:"We flag it and bring it back to your team. Some exceptions need a business decision — for example, which of two duplicate customer records is the “real” one — and only your team can make that call." },
+    { q:"What is UAT, and why do we need to be involved?", a:"UAT (User Acceptance Testing) is where your team checks that the migrated data looks and works correctly in the new system, using real business scenarios. It's the best safety net before go-live, and it only works if the people who know the data best are involved." },
+    { q:"Will we lose access to our old system?", a:"Not immediately. We'll agree a read-only access period after go-live so your team can still refer back to historical data while everyone gets comfortable in the new system." },
+    { q:"What's a “cutover weekend”?", a:"It's the short, tightly planned window — often a weekend — when we do the final, real data load and switch everyone over to the new system. It's rehearsed in advance so there are no surprises on the day." },
+    { q:"What if something goes wrong after go-live?", a:"That's exactly what hypercare is for. We stay closely involved for the first days and weeks after go-live specifically to catch and fix anything that only shows up once the system is being used for real, every day." }
+  ];
+  var faqList = document.getElementById("faq-list");
+  faqs.forEach(function(f){
+    var d = document.createElement("details");
+    d.innerHTML = '<summary>' + f.q + '</summary><p class="faq-answer">' + f.a + '</p>';
+    faqList.appendChild(d);
+  });
+
+  document.getElementById("print-btn").addEventListener("click", function(){ window.print(); });
+})();
+</script>
