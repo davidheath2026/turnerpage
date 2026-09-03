@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Defending the scope boundary</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* Bespoke "Four Pillars" diagram for this lesson only — scoped here
+   rather than added to the shared kit, same approach as Lesson 1's
+   Readiness Model diagram. */
+.pillars-wrap{margin:18px 0 8px;text-align:center}
+.pillars-svg{width:100%;max-width:640px;height:auto;overflow:visible}
+.pillar-col{fill:var(--soft,#eef6f7);stroke:var(--teal,#0b7f8e);stroke-width:1.5;filter:drop-shadow(0 6px 10px rgba(10,74,82,.12));transition:fill .3s ease,stroke .3s ease,filter .3s ease}
+.pillar-node{cursor:pointer;outline:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.pillar-node:hover,.pillar-node:focus{transform:translateY(-6px)}
+.pillar-node.lit .pillar-col{fill:url(#pillarGradient);stroke:var(--deep,#0a4a52);filter:drop-shadow(0 12px 20px rgba(10,74,82,.28))}
+.pillar-node.lit{transform:translateY(-3px)}
+.pillar-num{font-size:21px;font-weight:800;fill:var(--teal,#0b7f8e);transition:fill .3s ease}
+.pillar-title-a,.pillar-title-b{font-size:12.5px;font-weight:600;fill:var(--deep,#0a4a52);transition:fill .3s ease}
+.pillar-node.lit .pillar-num,.pillar-node.lit .pillar-title-a,.pillar-node.lit .pillar-title-b{fill:#fff}
+.pillar-beam{fill:var(--deep,#0a4a52);filter:drop-shadow(0 4px 8px rgba(10,74,82,.2))}
+.pillar-beam-label{font-size:13px;font-weight:700;fill:#fff;letter-spacing:.03em}
+.pillars-progress{font-size:.85rem;color:var(--teal,#0b7f8e);font-weight:600;margin-top:10px}
+.pillars-hint{font-size:.85rem;color:#667;margin-top:2px}
+.pillars-detail{margin-top:22px;display:grid;gap:12px;text-align:left}
+.pillar-card{border:1px solid #dfe9ea;border-radius:14px;padding:16px 18px;background:#fff;box-shadow:0 2px 8px rgba(10,74,82,.05);cursor:pointer;transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease}
+.pillar-card:hover{box-shadow:0 8px 20px rgba(10,74,82,.12);transform:translateY(-2px)}
+.pillar-card.open{border-color:var(--teal,#0b7f8e);box-shadow:0 10px 24px rgba(10,74,82,.14)}
+.pillar-card-head{display:flex;align-items:center;gap:14px}
+.pillar-card-num{width:36px;height:36px;border-radius:50%;background:var(--soft,#eef6f7);color:var(--teal,#0b7f8e);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;transition:background .25s ease,color .25s ease}
+.pillar-card.open .pillar-card-num{background:linear-gradient(135deg,var(--teal,#0b7f8e),var(--deep,#0a4a52));color:#fff}
+.pillar-card-titles{flex:1}
+.pillar-card-title{font-weight:700;color:var(--deep,#0a4a52)}
+.pillar-card-short{font-size:.85rem;color:#667;margin-top:1px}
+.pillar-card-chevron{transition:transform .25s ease;color:var(--teal,#0b7f8e);font-size:.8rem}
+.pillar-card.open .pillar-card-chevron{transform:rotate(180deg)}
+.pillar-card-detail{overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.2,.8,.2,1)}
+.pillar-card.open .pillar-card-detail{max-height:420px}
+.pillar-card-detail-inner{padding:14px 2px 2px 50px;font-size:.93rem;line-height:1.55;color:#334}
+.dq-loop{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON 3 DATA — content only. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+   Draft v2 — rebuilt for depth: a reasoning block after the
+   opening MCQ, a worked guidedSteps example, richer expandableList
+   detail, and a judgement-call nuance block, on top of v1's
+   scope-boundary / PMO material from DML1 sections 2.1-2.2.
+   Click-tested against the real turner-page-kit.js — verify once
+   merged into the live repo, since asset paths (logo, monogram)
+   weren't present in this test environment.
+============================================================== */
+
+const boundaryPillars=[
+  {title:"Migration objects and scenarios",short:"Named specifically, not implied",
+   detail:"Every entity and sub-scenario, named specifically. Not \u201ccustomer data\u201d but \u201cCustomers V3 including addresses, contacts, financial dimensions; excluding inactive customers over seven years old.\u201d Vague scope is unenforceable scope. On a recent programme, \u201ccustomer data\u201d turned out to mean four different things to four different stakeholders \u2014 including one who assumed it covered CRM interaction history, which nobody had ever scoped, resourced or tested."},
+  {title:"Non-migration data",short:"What's explicitly out, and why",
+   detail:"What is explicitly out. Historical invoices below the statutory retention minimum, legacy warehouse locations being decommissioned. If it isn't named as excluded, someone will eventually assume it's included \u2014 usually the person who most needs it and least expects to be told no. Write the reason for each exclusion alongside it; \u201cout of scope\u201d without a reason invites re-litigation the moment someone senior asks why."},
+  {title:"The quality bar",short:"A tolerance, not a percentage",
+   detail:"Reconciliation tolerance, required audit artefacts, dual sign-off. A percentage without a tolerance is not a quality bar, it's a guess dressed as a target. \u201c99.5% accurate\u201d means nothing until you've said which 0.5% is acceptable to get wrong \u2014 low-value dormant accounts, or your top twenty customers by revenue. Those are very different risk profiles hiding behind the same number."},
+  {title:"Cutover readiness gates",short:"Every object traced to a gate",
+   detail:"Every programme gate that depends on data \u2014 SIT entry, UAT exit, mock cutovers, production load, hypercare \u2014 should have a named data owner confirming readiness against defined evidence, not a general assurance that \u201cthings are looking okay.\u201d Each migration object should trace to the specific gate it supports, so when a gate is at risk, you know instantly which objects and owners are involved."}
+];
+
+const pmoSituations=[
+ {
+   title:"Situation 1",
+   question:"A functional lead emails you directly asking for \u201cone more field\u201d to be added to the customer load, promising it's trivial. What do you do first?",
+   options:[
+     {label:"Add it — it sounds small and you don't want to be obstructive.",correct:false,
+      feedback:"Small requests are how scope erodes. \u201cTrivial\u201d is a technical opinion about effort, not an assessment of downstream impact on mapping, testing or reconciliation \u2014 and it's rarely made by the person who'll own that impact."},
+     {label:"Log it as a change request with impact analysis before any build work begins.",correct:true,
+      feedback:"Correct. A change without a logged impact assessment is a change that gets argued about again next month, usually once it's already been built and someone asks who approved it."},
+     {label:"Say no outright and tell them to raise it at steering.",correct:false,
+      feedback:"You don't need to escalate every request to steering. You do need to log it and assess impact first \u2014 most small changes never need to go anywhere near steering once they're properly assessed."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"The PMO's master schedule and your migration plan have quietly drifted apart over the last two weeks. What's the right response?",
+   options:[
+     {label:"Keep your version up to date — it's more accurate anyway.",correct:false,
+      feedback:"A more accurate private plan is still a parallel plan. It creates two versions of the truth, and the PMO's is the one everyone else in the programme sees and reports from."},
+     {label:"Reconcile immediately and drive all future updates through the PMO's tool.",correct:true,
+      feedback:"Correct. The PMO's plan is the master. Your job is to keep it accurate, not to maintain a better shadow copy that only you and your team can see."},
+     {label:"Flag the drift at the next steering meeting.",correct:false,
+      feedback:"Waiting for the next scheduled meeting lets the gap widen for however many days remain until then. This gets fixed the day you notice it, not the day you next present."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"You've hit a risk that will only matter if it's still unresolved in three weeks. Do you log it now or wait until it's closer to biting?",
+   options:[
+     {label:"Wait — no point raising something that might resolve itself.",correct:false,
+      feedback:"This is the soft-escalation trap. Risks that \u201cmight resolve themselves\u201d are exactly the ones that surface at the worst moment if they don't \u2014 usually with far less runway left to fix them."},
+     {label:"Log it now in RAID with a target resolution date, whether or not it needs escalating yet.",correct:true,
+      feedback:"Correct. Logging isn't escalating. It's evidence that you saw it coming, whichever way it goes \u2014 and it starts the clock on the target date rather than letting it drift undated."},
+     {label:"Mention it informally to the PMO lead over coffee.",correct:false,
+      feedback:"An informal mention isn't a record. If it becomes a problem later, there's no trail showing you flagged it, and no date against which \u201cthree weeks\u201d can even be measured."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"The PMO asks you to shorten your reconciliation window by three days to protect the overall programme schedule. Technically possible, but it raises the residual risk of the migration. What's the sharpest response?",
+   options:[
+     {label:"Agree — the PMO owns the schedule, so it's their call to make.",correct:false,
+      feedback:"The PMO owns the schedule, but you own the migration risk position. Agreeing silently means the increased risk is now invisible \u2014 nobody senior has actually chosen to accept it."},
+     {label:"Refuse — data quality can't be compromised for a schedule problem.",correct:false,
+      feedback:"An absolute refusal without evidence is just as unhelpful as silent agreement. It gives the PMO nothing to work with and makes you look inflexible rather than rigorous."},
+     {label:"Agree to the shorter window, but log the increased residual risk explicitly and get it acknowledged by the programme sponsor.",correct:true,
+      feedback:"Correct. This is what \u201cowning the boundary\u201d actually looks like under pressure \u2014 not blocking the request, but making its true cost visible and putting the decision in front of someone senior enough to own it."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Your scope, defended",title:"Your scope, defended",type:"mcq",
+ html:`<div class="promise-card">
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ </div>
+ <p class="lead">Three weeks into build, the Finance Director stops you after a steering meeting.</p>
+ <p>\u201cWhile you're in there — can we also bring across the last five years of supplier contracts? Legal thinks we'll need them.\u201d</p>
+ <p>It's said casually, like a small favour. No date attached, no formal request, no mention of what it might displace.</p>
+ <div class="quote">\u201cIt's basically the same data. Shouldn't be a big deal, right?\u201d</div>
+ <h3>Your instinctive response</h3>`,
+ options:["Say yes — it sounds reasonable and you don't want to seem difficult.","Say no — scope is scope.","Say you'll look into it and get back to them.","Treat it as a scope-change request: log it, assess impact, come back with a dated answer."],
+ feedback:[
+ "It probably is reasonable. But \u201cbasically the same data\u201d is a technical guess, not an impact assessment — and you haven't made one yet.",
+ "Scope should flex when the business genuinely needs it to. The problem here isn't the request, it's the lack of a decision process around it.",
+ "Better than an instant yes, but \u201clook into it\u201d isn't a process anyone can rely on. It needs a name, a date and a place it gets recorded.",
+ "This is the strongest response. A casual request still deserves a formal answer — that's what protects both the scope and the relationship."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"Following it through: what happens next",type:"content",
+ html:`<p class="lead">Picking the right answer is the easy part. What actually happens after you say it is where most DMLs learn the lesson the hard way.</p>
+ <p>Say you log the supplier-contracts request as a change and go away to assess impact. Two things happen almost immediately.</p>
+ <p>First, you discover it isn't \u201cbasically the same data\u201d at all. Contracts sit in a different source system, have no clean owner in the target model, and would need a new mapping and reconciliation approach built from nothing \u2014 not extended from what already exists. That's the difference between a two-day change and a three-week one, and you only find it out by actually assessing rather than estimating.</p>
+ <p>Second, and more important: you now have something concrete to take back to the Finance Director. Not a yes, not a no \u2014 a real trade-off. \u201cThis is a three-week build with no existing mapping. If it's genuinely needed for go-live, here's what it displaces on the current plan. If it can wait until post-go-live phase two, here's what that looks like instead.\u201d</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The DMLs who get a reputation for being \u201ceasy to work with\u201d aren't the ones who say yes fastest. They're the ones whose yes and no both come with a number attached \u2014 because that's what lets a sponsor make a real decision instead of a hopeful one.</p></div></div>
+ <p>Compare that with what happens if you'd just said yes on the spot. Three weeks later, contracts still aren't mapped, testing is behind, and nobody remembers agreeing to accept the delay \u2014 because nobody actually did. The casualness of the original request becomes your problem to explain, not theirs.</p>
+ <div class="principle"><strong>Key takeaway</strong><br>The value of logging a change isn't the paperwork. It's that it forces the real cost to surface before the decision gets made, not after.</div>`
+},
+{
+ id:"b3",nav:"Why the boundary matters",title:"Why the boundary matters",type:"content",
+ html:`<p class="lead">Every migration starts with a boundary that feels solid. Most stop feeling solid by week three.</p>
+ <p>Not because anyone acted in bad faith. Because requests like the Finance Director's arrive constantly, each one small, each one reasonable in isolation, none of them free.</p>
+ <p>The job of a Data Migration Lead is not to prevent scope from ever changing. It's to make sure that when it does change, everyone can see what moved and what it cost.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Holding the line means saying no.</strong></p><p>It doesn't. Holding the line means every yes and every no goes through the same visible process — so nobody discovers the true cost of a decision after it's already been made.</p></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A scope boundary isn't a wall. It's a door with a sign-in sheet.</div>`
+},
+{
+ id:"b4",nav:"The four pillars",title:"The four pillars of a defensible scope boundary",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">A scope statement that can't be defended in a steering meeting isn't a scope statement — it's a hope statement.</p>
+ <div class="pillars-wrap">
+   <svg class="pillars-svg" viewBox="0 0 720 300" role="img" aria-label="Four pillars supporting a defensible scope boundary">
+     <defs>
+       <linearGradient id="pillarGradient" x1="0" y1="0" x2="0" y2="1">
+         <stop offset="0%" stop-color="var(--teal,#0b7f8e)"/>
+         <stop offset="100%" stop-color="var(--deep,#0a4a52)"/>
+       </linearGradient>
+     </defs>
+     <rect x="40" y="40" width="640" height="34" rx="4" class="pillar-beam"/>
+     <text x="360" y="62" text-anchor="middle" class="pillar-beam-label">A DEFENSIBLE SCOPE BOUNDARY</text>
+     <g class="pillar-node" data-index="0" tabindex="0" role="button" aria-label="Migration objects and scenarios">
+       <rect x="40" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="105" y="122" text-anchor="middle" class="pillar-num">01</text>
+       <text x="105" y="270" text-anchor="middle" class="pillar-title-a">Migration objects</text>
+       <text x="105" y="286" text-anchor="middle" class="pillar-title-b">and scenarios</text>
+     </g>
+     <g class="pillar-node" data-index="1" tabindex="0" role="button" aria-label="Non-migration data">
+       <rect x="210" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="275" y="122" text-anchor="middle" class="pillar-num">02</text>
+       <text x="275" y="270" text-anchor="middle" class="pillar-title-a">Non-migration</text>
+       <text x="275" y="286" text-anchor="middle" class="pillar-title-b">data</text>
+     </g>
+     <g class="pillar-node" data-index="2" tabindex="0" role="button" aria-label="The quality bar">
+       <rect x="380" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="445" y="122" text-anchor="middle" class="pillar-num">03</text>
+       <text x="445" y="270" text-anchor="middle" class="pillar-title-a">The quality</text>
+       <text x="445" y="286" text-anchor="middle" class="pillar-title-b">bar</text>
+     </g>
+     <g class="pillar-node" data-index="3" tabindex="0" role="button" aria-label="Cutover readiness gates">
+       <rect x="550" y="90" width="130" height="160" rx="6" class="pillar-col"/>
+       <text x="615" y="122" text-anchor="middle" class="pillar-num">04</text>
+       <text x="615" y="270" text-anchor="middle" class="pillar-title-a">Cutover</text>
+       <text x="615" y="286" text-anchor="middle" class="pillar-title-b">readiness gates</text>
+     </g>
+   </svg>
+   <div class="pillars-progress">0 of 4 explored</div>
+   <div class="pillars-hint">Click a pillar to expand it.</div>
+   <div class="pillars-detail"></div>
+ </div>
+ <p>A Turner Page scope boundary always covers the same four things, documented and signed off by the programme manager and data owners.</p>`,
+ items: boundaryPillars,
+ onMount: ({ b, lesson, state }) => {
+   const svg = lesson.querySelector(".pillars-svg");
+   const detailWrap = lesson.querySelector(".pillars-detail");
+   if(!svg || !detailWrap) return;
+   const st = state.answers[b.id] || { open: [] };
+   const openSet = new Set(st.open || []);
+   const nodes = [...svg.querySelectorAll(".pillar-node")];
+
+   function toggle(idx){
+     const btns = lesson.querySelectorAll(".dq-loop .btn.secondary");
+     if(btns[idx]) btns[idx].click();
+   }
+
+   nodes.forEach((n, idx) => {
+     n.classList.toggle("lit", openSet.has(idx));
+     n.onclick = () => toggle(idx);
+     n.onkeydown = (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(idx); } };
+   });
+
+   const prog = lesson.querySelector(".pillars-progress");
+   if(prog) prog.textContent = `${openSet.size} of ${nodes.length} explored`;
+
+   detailWrap.innerHTML = b.items.map((it, idx) => {
+     const open = openSet.has(idx);
+     return `<div class="pillar-card${open ? " open" : ""}" data-idx="${idx}">
+       <div class="pillar-card-head">
+         <div class="pillar-card-num">0${idx + 1}</div>
+         <div class="pillar-card-titles">
+           <div class="pillar-card-title">${it.title}</div>
+           <div class="pillar-card-short">${it.short || ""}</div>
+         </div>
+         <div class="pillar-card-chevron">\u25BC</div>
+       </div>
+       <div class="pillar-card-detail"><div class="pillar-card-detail-inner">${it.detail}</div></div>
+     </div>`;
+   }).join("");
+   detailWrap.querySelectorAll(".pillar-card").forEach(card => {
+     card.onclick = () => toggle(parseInt(card.dataset.idx, 10));
+   });
+ }
+},
+{
+ id:"b5",nav:"Build one yourself",title:"Building a defensible scope entry",type:"guidedSteps",
+ html:`<p class="lead">Theory is one thing. Let's actually build a scope boundary entry for the supplier-contracts request, using the four pillars in order.</p>`,
+ firstLabel:"Start building the entry",
+ steps:[
+   {html:`<h4>Step 1 — Name the object precisely</h4><p>Not \u201csupplier contracts.\u201d The Finance Director asked for \u201cfive years\u201d \u2014 five years back from what date, and measured against which field? Try again: <em>\u201cSupplier contracts with an execution or amendment date within the five years prior to go-live, sourced from the Contracts Repository.\u201d</em></p><p>Notice what that precision already does \u2014 it turns a round, memorable number into something that can actually be queried and tested, and it surfaces a question worth asking Legal directly: did they mean five years of contract activity, or five years of contracts still legally in force? Those can be very different datasets.</p>`},
+   {html:`<h4>Step 2 — Define what's explicitly out, and why</h4><p><em>\u201cContracts fully expired before [statutory retention date] are excluded, per Legal's retention policy. Contracts under active dispute are excluded pending Legal review \u2014 to be assessed separately post go-live.\u201d</em></p><p>Each exclusion has a reason attached. That reason is what stops the request being re-opened three weeks from now by someone who assumed it was included.</p>`},
+   {html:`<h4>Step 3 — Set the quality bar</h4><p><em>\u201c100% of contract value fields reconciled to source with zero tolerance for financial figures; 98% tolerance on free-text clause fields, manually spot-checked on the remaining 2%.\u201d</em></p><p>Two different tolerances for two different risk levels, in the same object. That's what a real quality bar looks like \u2014 not one number pretending to cover everything equally.</p>`},
+   {html:`<h4>Step 4 — Trace it to a cutover gate</h4><p><em>\u201cRequired for UAT exit if flagged business-critical by Legal; otherwise targeted for post-go-live Phase 2, with no dependency on the primary cutover gate.\u201d</em></p><p>This is the line that actually answers the Finance Director's question. It converts \u201cshould we do this?\u201d into \u201cdoes this block go-live, or doesn't it?\u201d \u2014 which is a decision a sponsor can make in one sentence.</p>`}
+ ],
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice that none of the four steps required saying no. A well-built entry usually finds its own natural answer \u2014 the discipline is in writing it down before the answer becomes obvious to everyone but you.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A scope entry built this way settles most disputes before they start, because the trade-off is visible rather than argued about from memory.</div>`
+},
+{
+ id:"pmoIntro",nav:"What is the PMO?",title:"What the PMO actually is, and what it owns",type:"content",
+ html:`<p class="lead">Before you can work with the PMO well, it helps to be precise about what it actually is \u2014 most new DMLs have a vague sense of it as \u201cthe people who chase status updates,\u201d which massively understates the role.</p>
+ <p>A <strong>Programme Management Office (PMO)</strong> is the function that runs the overall programme's plumbing: the master schedule, the governance cadence, the consolidated risk position, and the reporting that goes up to steering and sponsors. On a small programme, that might be one experienced coordinator wearing several hats. On a large ERP transformation, it's often a team of five or more \u2014 a scheduler, a RAID/reporting analyst, a governance lead running the meeting cadence, sometimes a dedicated finance/benefits tracker.</p>
+ <p>Whatever its size, the PMO's job is to see across every workstream at once \u2014 migration, functional build, testing, training, cutover, hypercare \u2014 and turn a dozen separate pictures into one coherent view the sponsor can actually act on. That's a structurally different job from yours. You go deep on one workstream; the PMO goes wide across all of them.</p>
+ <div class="visual-card">
+   <div class="visual-title">Who owns what</div>
+   <div class="flow">
+     <div class="flow-box"><div><strong>The PMO owns</strong><span class="small">Master schedule · consolidated RAID · governance cadence · steering reporting · cross-workstream dependencies</span></div></div>
+     <div class="flow-box"><div><strong>You own</strong><span class="small">Migration workstream plan · migration-specific RAID · data readiness evidence · feeding accurate status upward</span></div></div>
+   </div>
+ </div>
+ <p>The friction most new DMLs hit isn't malicious gatekeeping \u2014 it's a mismatch of altitude. You're reasoning about a specific mapping defect; the PMO is reasoning about whether the whole programme still lands on budget and on date. An update that's perfectly clear at your altitude can look like noise at theirs, unless it's translated into what it means for the schedule and the risk position they're managing.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Migration is very often the workstream a PMO worries about most \u2014 not because migration teams are less capable, but because data problems tend to surface late and are expensive to unwind once they do. That extra scrutiny isn't personal. It's a rational response to where the programme's real risk usually lives.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>The PMO isn't checking up on you. It's trying to keep one honest, current picture of a programme with a dozen moving parts \u2014 and your workstream is usually the one it trusts least by default, until you give it reason to trust it more.</div>`
+},
+{
+ id:"b6",nav:"Working with the PMO",title:"Working with the PMO",type:"content",
+ html:`<p class="lead">The PMO isn't a layer of bureaucracy above you. It's the team that controls the calendar your whole workstream depends on.</p>
+ <p>Environment refreshes, test windows, mock cutovers, sign-off gates — none of these are yours to move unilaterally. Get the PMO relationship right and your dates hold. Get it wrong and you spend the programme discovering changes after they've already happened.</p>
+ <p>In practice, that relationship runs on a cadence, not a single conversation. Most programmes settle into something like: a weekly RAG (red/amber/green) submission from your workstream, a fortnightly or monthly steering pack the PMO compiles from every workstream's input, and ad-hoc escalations in between when a hard trigger is hit. Learn that rhythm early \u2014 what's due when, in what format \u2014 and you stop being the workstream the PMO has to chase.</p>
+ <div class="visual-card">
+   <div class="visual-title">Speak the PMO's language</div>
+   <div class="flow">
+     <div class="flow-box"><div><strong>Vague status</strong><span class="small">\u201cMapping is going well\u201d</span></div></div>
+     <div class="arrow">→</div>
+     <div class="flow-box"><div><strong>Dated deliverable</strong><span class="small">\u201cCustomer master load complete by 14 Oct, evidence uploaded\u201d</span></div></div>
+   </div>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Maintaining your own, more accurate migration plan.</strong></p><p>A better private plan is still a private plan. If it isn't in the PMO's tool, it doesn't exist as far as the rest of the programme is concerned.</p></div>
+ <p>The relationship itself is worth building before you need anything from it. A five-minute conversation with the PMO lead in week one \u2014 how they like status framed, what their steering pack actually needs, who else is watching migration closely \u2014 pays back tenfold the first time you need a fast decision on a tight date.</p>
+ <div class="principle"><strong>Key takeaway</strong><br>The PMO's plan is the master. Your job is to keep it right, not to keep a better one on the side — and to build the relationship before the week you urgently need it.</div>`
+},
+{
+ id:"b7",nav:"Reading the situation",title:"Reading the situation",type:"situations",
+ html:`<p class="lead">Four moments where the right instinct isn't obvious. Work through each one.</p>`,
+ items:pmoSituations
+},
+{
+ id:"b8",nav:"When it's not black and white",title:"When the boundary and the business collide",type:"content",
+ html:`<p class="lead">Situation 4 was deliberately less clean than the others. Most real scope decisions are.</p>
+ <p>New DMLs often treat scope boundaries as binary — in or out, yes or no. Experienced ones know that the hardest calls aren't about whether something is in scope. They're about whether a legitimate business need should be allowed to increase risk on an already-committed date, and who gets to make that call.</p>
+ <p>Three questions cut through most of these:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li><strong>What's the actual cost?</strong> — not a feeling, a number: days, risk points, reconciliation confidence.</li>
+   <li><strong>Who benefits from saying yes, and who inherits the risk if it goes wrong?</strong> — these are often different people, which is exactly why the decision needs to be visible.</li>
+   <li><strong>Is this decision mine to make?</strong> — a DML can absorb small trade-offs. A DML who quietly absorbs a large one is making a sponsor-level call without a sponsor's authority \u2014 or their accountability.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The DMLs who get burned aren't usually the ones who make the wrong call. They're the ones who make a defensible call, but leave no trail showing it was ever actually a decision \u2014 so when it goes wrong, it looks like negligence instead of a reasoned trade-off.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>When the boundary and the business genuinely collide, your job isn't to win the argument. It's to make sure the right person makes the call, with the real cost in front of them.</div>`
+},
+{
+ id:"b9",nav:"Reflection",title:"Where has your boundary slipped before?",type:"reflection",
+ html:`<p>Think about a project where scope quietly grew without anyone formally deciding it should.</p>
+ <div class="quote">\u201cHow did it happen, and what would have caught it earlier?\u201d</div>
+ <textarea id="reflection" placeholder="Scope slipped on my project when..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/log|record|decision log|written|document/i, strength:"You identified that the gap was a missing written record, not just a missing conversation.", gap:"Say what should have been logged, and where." },
+   { test:/date|deadline|milestone|impact/i, strength:"You connected the change to a date or milestone impact.", gap:"Name the specific date or milestone the change should have been checked against." },
+   { test:/sign.?off|approv|owner|accountab/i, strength:"You referred to ownership or sign-off as the missing control.", gap:"Identify who should have owned the decision." },
+   { test:/small|trivial|informal|casual/i, strength:"You recognised that the change arrived small and informal, which is exactly how scope usually slips.", gap:"Note how the request arrived — most scope slippage starts small and informal." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"You've clearly seen this pattern before. The habit that prevents it is boring by design: log first, build second.":"Good start. The detail that usually matters most is where the decision should have been written down — that's the thing that would have caught it."}</div>`
+},
+{
+ id:"b10",nav:"Summary",title:"If you remember nothing else",type:"content",
+ html:`<p class="lead">Scope doesn't erode because people are careless. It erodes because reasonable requests never get a formal answer.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Every scope statement is documented and signed off — not assumed.</li>
+   <li>Every change request gets a dated impact assessment before any build work starts.</li>
+   <li>The PMO's plan is the master plan. Never maintain a parallel one.</li>
+   <li>When the boundary and the business genuinely collide, put the real cost in front of the person who should own the call.</li>
+ </ul>
+ <div class="principle"><strong>A scope boundary is a door with a sign-in sheet.</strong><br>Nobody gets refused entry by default. Nobody gets in unrecorded either.</div>`
+},
+{
+ id:"b11",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Defending the scope boundary.</strong></p>
+ <p>You've explored how scope actually slips on real programmes, built a defensible scope entry from scratch, and worked through the judgement calls that don't have a clean answer.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Escalation, RAID and building a governance rhythm that holds under pressure</strong></p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next scope conversation and notice whether it's logged or just remembered.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Module 1",
+  moduleTitle: "The Data Migration Lead mindset",
+  lessonLabel: "Lesson 3: Defending the scope boundary",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Scope, governance and the PMO",
+  storageKey: "tp_lesson3_v2",
+  nextUrl: "lesson4.html",
+  finalButtonLabel: "Continue to Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

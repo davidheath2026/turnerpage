@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turner Page | Thinking like a Data Migration Lead: Making evidence-based decisions</title>
-<link rel="stylesheet" href="shared/turner-page-kit.css">
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
 <style>
 /* Lesson-1-only visual: the Turner Page Readiness Model diagram.
    This is a genuinely one-off component (no other lesson uses it),
@@ -79,8 +79,8 @@
 <body>
 <div id="tpRoot"></div>
 
-<script src="shared/footer-config.js"></script>
-<script src="shared/turner-page-kit.js"></script>
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
 <script>
 /* ==============================================================
    LESSON 1 DATA — content only. All chrome, styling and engine
@@ -96,7 +96,7 @@ const fiveQuestions=[
     detail:`<p>This is not the same as asking whether the data loaded successfully.</p>
     <p>A successful load proves that the migration process can move records. It does not prove that the records are complete, accurate or usable.</p>
     <p>An experienced Data Migration Lead asks whether known issues are understood, whether the affected data is material to the business, and whether the right people have accepted the consequences.</p>
-    <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div></div>
+    <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A project once reported that 99.8% of customer records had migrated successfully. The remaining 0.2% included several of the organisation's largest customers. The percentage looked excellent. The business impact did not.</p></div></div>
     <div class="principle"><strong>Key takeaway</strong><br>Data readiness is about usability and understood risk, not a perfect percentage.</div>`
   },
   {
@@ -127,7 +127,7 @@ const fiveQuestions=[
     detail:`<p>Even a well-designed migration process can fail in an unstable environment.</p>
     <p>Environment readiness includes infrastructure, security, permissions, connectivity, integrations, performance, monitoring and operational support.</p>
     <p>The right question is not simply whether an environment exists. It is whether the complete technical landscape can support both the migration and the business immediately afterwards.</p>
-    <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div></div>
+    <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Many environment failures are not caused by missing servers. They are caused by overlooked dependencies: expired credentials, incomplete firewall rules, unavailable interfaces or permissions that were tested with the wrong user profile.</p></div></div>
     <div class="principle"><strong>Key takeaway</strong><br>An environment is ready only when the end-to-end process can operate inside it.</div>`
   },
   {
@@ -259,7 +259,7 @@ const blocks=[
    </div>
  </div>
 
- <div class="callout tp-insight"><img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>One of the biggest mistakes on ERP programmes is confusing status with readiness.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>One of the biggest mistakes on ERP programmes is confusing status with readiness.</p>
  <p>A project can report green infrastructure, green ETL and green testing, yet still fail because the business cannot operate effectively afterwards.</p></div></div>
 
  <div class="callout misconception"><div class="callout-label">Common trap</div>
@@ -290,7 +290,7 @@ const blocks=[
       </article>`).join("")}
    </div>
    <div class="callout tp-insight">
-     <img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true">
+     <img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true">
      <div class="tp-insight-content">
        <div class="callout-label">Turner Page insight</div>
        <p>A Turner Page Data Migration Lead does not begin by asking, “Are we ready?” They ask, “What evidence do we have that we are ready?” Only after all five readiness areas have been assessed should a recommendation be made.</p>
@@ -299,7 +299,7 @@ const blocks=[
  </div>
  ${TPKit.fromField({
    title:"Before I Recommended Go", name:"Zoe", role:"Data Migration Lead", project:"Manufacturing ERP",
-   src:"assets/audio/5Questions-SignOff-Zoe.mp3",
+   src:"/assets/audio/5Questions-SignOff-Zoe.mp3",
    reflection:"Would you have recommended Go before working through all five readiness areas?"
  })}
  <p>Explore each question in detail before moving on.</p>`,
@@ -352,7 +352,7 @@ const blocks=[
  <p>No. The Data Migration Lead owns ensuring that the issue, impact, responsibility and mitigation are understood and managed.</p></div>
  ${TPKit.fromField({
    title:"Who Owns Bad Data?", name:"Isabel", role:"Data Migration Lead", project:"Retail ERP",
-   src:"assets/audio/DuplicateCustomers-Isabel.mp3",
+   src:"/assets/audio/DuplicateCustomers-Isabel.mp3",
    reflection:"Where should responsibility sit for duplicate customer records?"
  })}
  <div class="principle"><strong>Key takeaway</strong><br>You own the migration workstream. You do not personally own every task required to deliver it.</div>`
@@ -391,7 +391,7 @@ const blocks=[
  </div>
 
  <div class="callout tp-insight">
-   <img class="tp-insight-mark" src="assets/turner-page-monogram.png" alt="" aria-hidden="true">
+   <img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true">
    <div class="tp-insight-content">
      <div class="callout-label">The Turner Page Insight</div>
      <p>“Professional Data Migration Leads don't make recommendations from instinct or a single dashboard. They combine evidence from five distinct areas before reaching a professional recommendation.”</p>
@@ -500,7 +500,7 @@ const blocks=[
  <div class="quote">“What is your recommendation?”</div>
  ${TPKit.fromField({
    title:`When "Ready" Isn't Ready`, name:"Darren", role:"Data Migration Lead", project:"Distribution ERP",
-   src:"assets/audio/InvoicingIssue-Darren.mp3",
+   src:"/assets/audio/InvoicingIssue-Darren.mp3",
    reflection:"Would you have recommended Go if invoicing was still unavailable?"
  })}`,
  options:[

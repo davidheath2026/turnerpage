@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Owning the migration workstream</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON 2 DATA — content only. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+============================================================== */
+
+const situations2=[
+ {
+   title:"Situation 1",
+   question:"The Product team has not completed three mapping documents. What is your first concern?",
+   options:[
+     {label:"Chase the team to finish the mappings.",correct:false,
+      feedback:"Reasonable, but incomplete. Completing the mappings isn't the objective. Understanding their impact on delivery comes first."},
+     {label:"Understand whether the delay threatens the next migration milestone.",correct:true,
+      feedback:"Correct. A Data Migration Lead always considers the consequence before deciding the response."},
+     {label:"Escalate immediately to the Steering Committee.",correct:false,
+      feedback:"Escalation may become necessary, but only after you've understood the actual risk."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"Your weekly dashboard shows 95% of migration tasks complete. What question should you ask next?",
+   options:[
+     {label:"Are we genuinely ready for the next migration cycle?",correct:true,
+      feedback:"Correct. Progress and readiness are not the same thing."},
+     {label:"Can I report 95% complete?",correct:false,
+      feedback:"Executives don't buy percentages. They buy confidence."},
+     {label:"How many tasks can we finish this week?",correct:false,
+      feedback:"Throughput is useful. Readiness is what matters."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"A developer asks you to fix an ETL transformation. What should you do first?",
+   options:[
+     {label:"Solve the technical problem yourself.",correct:false,
+      feedback:"Many new Data Migration Leads fall into this trap. Being the best technician rarely makes you the best leader."},
+     {label:"Understand the business impact and assign the right person.",correct:true,
+      feedback:"Correct. Leadership is about ensuring problems are solved, not solving every problem personally."},
+     {label:"Delay the migration until everything is fixed.",correct:false,
+      feedback:"Sometimes delays are unavoidable. But first you need evidence that the issue genuinely threatens delivery."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"The Project Manager asks: “Are we on track?” Which answer demonstrates workstream ownership?",
+   options:[
+     {label:"“We've completed most of our migration tasks.”",correct:false,
+      feedback:"That's activity, not leadership."},
+     {label:"“We've closed twelve risks.”",correct:false,
+      feedback:"Risk closure is useful. It still doesn't tell the Project Manager whether the migration is healthy."},
+     {label:"“We're on track for Mock Migration 2. The biggest remaining concern is product data quality, and we've agreed mitigation with the business.”",correct:true,
+      feedback:"Correct. This answer demonstrates ownership, judgement and confidence."}
+   ]
+ }
+];
+
+const dailyQuestions2=[
+ {title:"Has our migration scope changed?",
+  detail:"Projects rarely stand still. Requirements evolve. Business priorities change. New requests appear. Assumptions are challenged.",
+  ask:"“Has anything changed that could affect what we're migrating or how we're migrating it?”"},
+ {title:"What is currently on the critical path?",
+  detail:"The critical path is constantly changing. Yesterday's priority may no longer be today's. One delayed approval, one unstable environment or one poor-quality data object can suddenly become the biggest threat to delivery.",
+  ask:"“If one thing slips today, what is most likely to delay the next migration milestone?”"},
+ {title:"Which delivery risk concerns me most?",
+  detail:"Every migration has risks. Your job is not to eliminate them all. Your job is to understand them, reduce them where possible and make sure the right people are aware of them. A hidden risk is usually far more dangerous than a known one.",
+  ask:"“If I were presenting to the Steering Committee this afternoon, which risk would I be talking about first?”"},
+ {title:"What important decision is waiting to be made?",
+  detail:"Many migrations are delayed, not because people are working slowly, but because nobody has made an important decision. Typical examples include historical data scope, data ownership, sign-off responsibilities, archive strategy, data quality acceptance and cutover approach. Good Data Migration Leads identify these decisions early and drive them to closure.",
+  ask:"“Which decision, if made today, would unblock the most work?”"},
+ {title:"Are we more ready today than we were yesterday?",
+  detail:"This is perhaps the most important question of all. Migration success is rarely achieved through one huge breakthrough. Instead, it comes from hundreds of small improvements that steadily increase confidence in the workstream. Every day should move the migration closer to a successful go-live. If it doesn't, understand why.",
+  ask:"“What is genuinely different about our readiness today compared with yesterday?”"}
+];
+
+const triangleCorners=[
+ {id:"time",
+  detailHtml:`<div class="kicker">If Time reduces…</div><h4>Go-live brought forward by two weeks</h4><p>Go-live has been brought forward by two weeks. Something has to give.</p><ul class="framework-checks lesson-outcomes"><li>Reduce migration scope.</li><li>Increase delivery capacity.</li><li>Simplify reconciliation activities.</li><li>Delay non-essential data.</li></ul><p class="small">Ignoring the change is not a strategy.</p>`},
+ {id:"scope",
+  detailHtml:`<div class="kicker">If Scope increases…</div><h4>An additional five years of historical sales data</h4><p>The business decides it now wants to migrate an additional five years of historical sales data. Something else has to change.</p><ul class="framework-checks lesson-outcomes"><li>Extend the timeline.</li><li>Add more people.</li><li>Reduce quality expectations elsewhere.</li><li>Remove lower-priority objects.</li></ul><p class="small">Doing nothing simply creates more risk.</p>`},
+ {id:"quality",
+  detailHtml:`<div class="kicker">If Quality expectations increase…</div><h4>100% reconciliation before sign-off</h4><p>Finance now requires 100% reconciliation for every migrated object before sign-off. Excellent. But achieving a higher quality standard requires additional effort.</p><p>That may affect:</p><ul class="framework-checks lesson-outcomes"><li>Timeline.</li><li>Available resources.</li><li>Migration scope.</li></ul>`}
+];
+
+const guidedStepsData=[
+ {html:`<h4>Ignore the noise</h4><p>A new Data Migration Lead often reacts to the first thing they see. For example:</p><div class="quote">“We need to finish Product Mapping.”</div><p>That may be true. But it probably isn't the biggest issue. Experienced Data Migration Leads don't react to activity. They assess the workstream.</p>`},
+ {html:`<h4>Look for delivery threats</h4><p>Ask yourself:</p><ul class="framework-checks lesson-outcomes"><li>What could delay the next milestone?</li><li>Which business decisions remain outstanding?</li><li>Has our scope changed?</li><li>Has anything altered the critical path?</li></ul><p>Immediately, several concerns stand out:</p><ul class="framework-checks lesson-outcomes"><li>The scope has increased.</li><li>A critical business decision is still outstanding.</li><li>An environment issue could delay further migration cycles.</li></ul><p>These are far more significant than simply having one mapping document left to complete.</p>`},
+ {html:`<h4>Prioritise</h4><p>An experienced Data Migration Lead would probably tackle the work in this order:</p><ol class="num-steps"><li>Resolve the outstanding business decision on Finance reconciliation. Without agreement, later testing and sign-off become uncertain.</li><li>Understand whether the environment issue threatens the next migration cycle. If it does, mitigation needs to begin immediately.</li><li>Assess the impact of the additional historical data request. Can the project absorb it? Should it be deferred? What changes elsewhere if it is accepted?</li><li>Continue driving Product Mapping to completion. Still important, just not necessarily the biggest delivery risk.</li></ol>`}
+];
+const guidedClosingHtml=`<div class="principle"><strong>The key lesson</strong><br>None of these priorities were chosen simply because they appeared highest on a task list. They were chosen because they affect migration readiness.</div>
+<div class="quote">Turner Page coaching point: When you're unsure what to do next, stop asking “What should I work on?” Instead ask “What most threatens successful delivery?”</div>`;
+
+const selectOptions2=[
+ {title:"Review the two open Critical Risks.",verdict:"Excellent priority",strength:"good",
+  view:"Critical Risks already threaten successful delivery. Ignoring them would be poor workstream leadership."},
+ {title:"Finish Product Mapping.",verdict:"Investigate first",strength:"neutral",
+  view:"Important, but first determine whether the remaining work actually threatens the next migration milestone. Don't confuse unfinished work with the biggest delivery risk."},
+ {title:"Meet Finance to obtain agreement on opening balances.",verdict:"Excellent priority",strength:"good",
+  view:"Outstanding business decisions frequently delay projects far more than technical work."},
+ {title:"Understand the impact of adding two legal entities.",verdict:"Excellent priority",strength:"good",
+  view:"Every scope change should immediately trigger questions about timeline, quality and delivery risk."},
+ {title:"Meet the Test Manager to understand why another mock migration is required.",verdict:"Good choice",strength:"good",
+  view:"Understanding why another migration cycle is needed may reveal risks that aren't yet visible elsewhere."},
+ {title:"Review the environment risk with Infrastructure.",verdict:"Excellent priority",strength:"good",
+  view:"Environment stability underpins every migration cycle. A technical dependency can quickly become a programme risk."},
+ {title:"Prepare this week's Steering Committee presentation.",verdict:"Necessary, not sufficient",strength:"neutral",
+  view:"Necessary, but reporting should communicate your analysis, not replace it."},
+ {title:"Ask the team to increase productivity.",verdict:"Rarely the right first move",strength:"warn",
+  view:"This is rarely the correct first response. Outstanding Data Migration Leads solve delivery problems. They don't simply increase pressure on the team."}
+];
+const selectThreeClosingHtml=`<h3>Turner Page recommendation</h3>
+<p>An experienced Data Migration Lead would probably prioritise:</p>
+<ol class="num-steps">
+  <li>Outstanding business decisions.</li>
+  <li>Critical Risks.</li>
+  <li>Scope changes.</li>
+  <li>Environment stability.</li>
+  <li>Readiness for the next migration milestone.</li>
+</ol>
+<p>Notice that only one of those priorities is an actual task. Everything else is about protecting successful delivery.</p>
+<div class="principle"><strong>Final thought before reflection</strong><br>You have now seen the difference between completing work and leading a migration. The difference is not technical knowledge. It is judgement.</div>`;
+
+const quickQuestions=[
+ {title:"When somebody asked you for a migration update, what did you usually report?",
+  options:["Completed tasks and outstanding actions.","Readiness, risks and delivery confidence.","A mixture of both."]},
+ {title:"When a major issue occurred, what was your normal reaction?",
+  options:["Solve it myself.","Find the right person to solve it.","Understand the impact before deciding what to do."]},
+ {title:"Thinking about your last project, how often did you consciously ask: “Are we genuinely more ready today than we were yesterday?”",
+  options:["Every day","Every week","Occasionally","Almost never"]}
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Welcome",title:"Owning the migration workstream",type:"content",
+ html:`<p class="lead">In Lesson 1, you learned how successful Data Migration Leads think.</p>
+ <p>Now it's time to explore what they actually own.</p>
+ <p>Many people believe the role is about organising meetings, chasing actions and reporting progress.</p>
+ <p>Those activities matter. But they are not the job.</p>
+ <p>A Data Migration Lead owns the successful delivery of the migration workstream.</p>
+ <p>That means taking responsibility for readiness, quality, governance, communication, risk and successful delivery, not simply ensuring that tasks are completed.</p>
+ <div class="promise">
+  <div class="kicker">By the end of this lesson</div>
+  <h3>You will be able to</h3>
+  <ul class="framework-checks lesson-outcomes">
+    <li>Explain the difference between managing tasks and owning a workstream.</li>
+    <li>Understand what a Data Migration Lead is accountable for.</li>
+    <li>Make better decisions when balancing scope, time and quality.</li>
+    <li>Think like a workstream owner rather than a task manager.</li>
+  </ul>
+ </div>
+ <div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>This lesson moves quickly. From the next screen onwards, you'll be making real judgement calls, not just reading about them.</p>
+ <p>By the end, you should notice yourself asking different questions than you did at the start.</p>
+ </div>`
+},
+{
+ id:"b2",nav:"The challenge",title:"Who owns this problem?",type:"mcq",
+ html:`<p class="lead">Imagine it is Monday morning.</p>
+ <p>Your Project Manager asks:</p>
+ <div class="quote">“Are we ready for Mock Migration 2?”</div>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customer mapping</strong>Complete</div>
+   <div class="status-card"><strong>Supplier mapping</strong>Complete</div>
+   <div class="status-card"><strong>Product mapping</strong>90% complete</div>
+   <div class="status-card"><strong>Reconciliation accuracy</strong>96%</div>
+   <div class="status-card"><strong>Critical risks</strong>Two remain open</div>
+   <div class="status-card"><strong>Finance approval</strong>Historical balances not approved</div>
+   <div class="status-card"><strong>SIT</strong>Starts next Monday</div>
+ </div>
+ <div class="quote">What concerns you most?</div>`,
+ options:[
+   {label:"Product mapping isn't finished.",correct:false,
+    feedback:"Product mapping matters. But before reacting to individual tasks, consider whether they genuinely threaten delivery."},
+   {label:"Finance hasn't approved historical balances.",correct:false,
+    feedback:"This is important. However, one outstanding approval alone doesn't tell you whether the workstream is healthy."},
+   {label:"The combination of outstanding risks, business decisions and readiness for the next migration milestone.",correct:true,
+    feedback:"Correct. A Data Migration Lead looks at the whole workstream. Your responsibility is understanding whether the migration is genuinely ready to move forward."},
+   {label:"Reconciliation isn't yet 100%.",correct:false,
+    feedback:"Quality is essential. However, one metric never tells the whole story. Leadership comes from seeing the complete picture."}
+ ]
+},
+{
+ id:"b3",nav:"Explore",title:"From task manager to workstream owner",type:"content",
+ html:`<p class="lead">The biggest transition you'll make as a Data Migration Lead is changing how you measure success.</p>
+ <p>A task manager asks:</p>
+ <div class="quote">“What have we completed today?”</div>
+ <p>A Data Migration Lead asks:</p>
+ <div class="quote">“Are we more ready today than we were yesterday?”</div>
+ <p>That difference sounds small.</p>
+ <p>In reality, it changes almost every decision you make.</p>
+
+ <h3>What do you actually own?</h3>
+ <p>Although other specialists perform much of the migration work, you remain accountable for the overall health of the workstream.</p>
+ <p>You own:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Migration scope.</li>
+   <li>Governance and decision making.</li>
+   <li>Delivery risks.</li>
+   <li>The critical path.</li>
+   <li>Migration quality.</li>
+   <li>Executive reporting.</li>
+   <li>Overall migration readiness.</li>
+ </ul>
+ <p>Notice something important.</p>
+ <p>You do not need to complete every activity yourself. Instead, your responsibility is ensuring the right work happens, at the right time, by the right people, while continually moving the migration towards a successful go-live.</p>
+
+ <h3>Think one level higher</h3>
+ <p>Imagine an ETL developer reports:</p>
+ <div class="quote">“The Customer load failed.”</div>
+ <p>A technical consultant immediately asks:</p>
+ <div class="quote">“Why did it fail?”</div>
+ <p>A Data Migration Lead first asks:</p>
+ <div class="quote">“What impact does this have on the project?”</div>
+ <p>That question changes everything.</p>
+
+ <details class="tp-details">
+   <summary>See how a Data Migration Lead thinks this through</summary>
+   <div class="tp-details-body">
+     <p>Perhaps:</p>
+     <ul class="framework-checks lesson-outcomes">
+       <li>SIT can still continue.</li>
+       <li>Another object can be migrated first.</li>
+       <li>The failure only affects one country.</li>
+       <li>The critical path remains unchanged.</li>
+     </ul>
+     <p>Or perhaps none of those are true. Your role is to understand the consequence before deciding the response.</p>
+   </div>
+ </details>
+
+ <h3>The mindset shift</h3>
+ <p>Instead of asking:</p>
+ <div class="quote">Which task is late?</div>
+ <p>Start asking:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Which milestone is threatened?</li>
+   <li>Which business decision is outstanding?</li>
+   <li>Which dependency worries me most?</li>
+   <li>What does the Steering Committee need to know?</li>
+ </ul>
+ <p>That is the difference between managing migration activities and leading a migration workstream.</p>
+ <div class="principle"><strong>Turner Page insight</strong><br>Outstanding Data Migration Leads spend less time managing today's tasks and more time ensuring tomorrow's migration succeeds.</div>`
+},
+{
+ id:"b4",nav:"Recognition exercise",title:"Task management or workstream ownership?",type:"situations",
+ html:`<p class="lead">A Data Migration Lead still has to manage tasks. The skill is recognising when the task is merely the surface problem and when you need to step up a level and think about the effect on the workstream.</p>
+ <p>For each situation, choose the response that best demonstrates workstream ownership.</p>`,
+ items: situations2,
+ takeawayHtml:`<div class="principle"><strong>Lesson takeaway</strong><br>Task managers measure activity. Data Migration Leads measure readiness.</div>`
+},
+{
+ id:"b5",nav:"Five Daily Questions",title:"The Five Daily Questions™",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">One of the quickest ways to distinguish an experienced Data Migration Lead from someone who is simply managing migration tasks is by listening to the questions they ask.</p>
+ <p>Experienced Data Migration Leads don't wait for problems to appear. They actively look for them.</p>
+ ${TPKit.fromField({
+   title:"The Question I Almost Skipped", name:"Priya", role:"Data Migration Lead", project:"Healthcare ERP",
+   src:"/assets/audio/lesson2-fivequestions-priya.mp3",
+   reflection:"Which of the five questions do you tend to skip when you're under pressure?"
+ })}
+ <p>Before your first meeting each morning, ask yourself these five questions. Explore each one.</p>`,
+ items: dailyQuestions2,
+ checkpoint: {
+   question:"Which of these five questions do you think experienced Data Migration Leads overlook least often?",
+   options:["Scope changes","Critical path","Delivery risks","Outstanding decisions","Overall readiness"],
+   feedback:"Different projects place different emphasis on each question, but experienced Data Migration Leads consciously consider all five every day."
+ },
+ takeawayHtml:`<div class="principle"><strong>Turner Page takeaway</strong><br>These aren't just good questions. They are daily habits. If you consistently ask and answer these five questions, you'll naturally begin thinking like a workstream owner instead of a task manager.</div>`
+},
+{
+ id:"b6",nav:"Decision Triangle",title:"The Migration Decision Triangle™",type:"tradeoffTriangle",
+ html:`<p class="lead">One of the most common mistakes made by inexperienced Data Migration Leads is believing they can satisfy every request.</p>
+ <p>In reality, every significant decision changes something else.</p>
+ <p>Think about these three factors:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li><strong>Scope</strong> — what are we migrating?</li>
+   <li><strong>Time</strong> — when must we deliver it?</li>
+   <li><strong>Quality</strong> — what standard must we achieve?</li>
+ </ul>
+ <p>These three are constantly in balance.</p>
+
+ <div class="visual-card">
+   <div class="visual-title">The Migration Decision Triangle™</div>
+   <div class="triangle-interactive">
+     <div class="triangle-svg-wrap">
+       <svg viewBox="0 0 420 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A triangle with Time, Scope and Quality at each corner. Select a corner to explore its trade-offs.">
+         <defs>
+           <linearGradient id="triNodeGradient" x1="0" y1="0" x2="1" y2="1">
+             <stop offset="0" stop-color="#005f6c"/><stop offset="1" stop-color="#0b7f8e"/>
+           </linearGradient>
+         </defs>
+         <polygon points="210,40 70,330 350,330" fill="#0b7f8e" fill-opacity=".08" stroke="#0b7f8e" stroke-width="2.5" stroke-linejoin="round"/>
+         <g class="tri-node" data-node="time" tabindex="0" role="button" aria-label="Time — click to explore">
+           <circle cx="210" cy="40" r="40"/>
+           <text x="210" y="46" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="800" fill="#ffffff">TIME</text>
+         </g>
+         <g class="tri-node" data-node="scope" tabindex="0" role="button" aria-label="Scope — click to explore">
+           <circle cx="70" cy="330" r="40"/>
+           <text x="70" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#ffffff">SCOPE</text>
+         </g>
+         <g class="tri-node" data-node="quality" tabindex="0" role="button" aria-label="Quality — click to explore">
+           <circle cx="350" cy="330" r="40"/>
+           <text x="350" y="336" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#ffffff">QUALITY</text>
+         </g>
+       </svg>
+     </div>
+     <div class="tri-detail"><p class="small">Click a corner — Scope, Time or Quality — to see what typically has to change elsewhere.</p></div>
+     <div class="tri-progress"><span data-node="time"></span><span data-node="scope"></span><span data-node="quality"></span></div>
+   </div>
+   <p class="tri-hint">Click a corner to see what happens when it changes.</p>
+ </div>
+
+ ${TPKit.fromField({
+   title:"The Sponsor Wanted All Three", name:"Marcus", role:"Data Migration Lead", project:"Logistics ERP",
+   src:"/assets/audio/lesson2-decisiontriangle-marcus.mp3",
+   reflection:"How would you have responded if the request came to you directly?"
+ })}
+
+ <h3>Interactive challenge</h3>
+ <p>Your Project Sponsor says:</p>
+ <div class="quote">“We need to bring go-live forward by three weeks, include two additional business units and improve reconciliation accuracy.”</div>
+ <p>What is your response?</p>
+ <div class="options tri-challenge-options">
+   <button class="option" type="button"><span class="badge">A</span><span>“Yes, we'll make it happen.”</span></button>
+   <button class="option" type="button"><span class="badge">B</span><span>“We'll need to understand which constraint can change. We cannot increase scope, reduce time and improve quality without changing something else.”</span></button>
+   <button class="option" type="button"><span class="badge">C</span><span>“We'll ask the team to work harder.”</span></button>
+   <button class="option" type="button"><span class="badge">D</span><span>“We'll decide during testing.”</span></button>
+ </div>
+ <div class="tri-challenge-feedback"></div>
+ <div class="tri-closing"></div>`,
+ corners: triangleCorners,
+ challenge: {
+   options: [
+     {label:"“Yes, we'll make it happen.”",correct:false,
+      feedback:"This is an understandable reaction. Unfortunately, projects fail when commitments are made before understanding the consequences."},
+     {label:"“We'll need to understand which constraint can change. We cannot increase scope, reduce time and improve quality without changing something else.”",correct:true,
+      feedback:"Correct. Experienced Data Migration Leads understand that every significant change affects the delivery balance. Your role is to help the project make informed decisions, not impossible promises."},
+     {label:"“We'll ask the team to work harder.”",correct:false,
+      feedback:"Working harder may help in the short term. It rarely solves structural delivery problems."},
+     {label:"“We'll decide during testing.”",correct:false,
+      feedback:"Waiting creates uncertainty. Leadership means identifying trade-offs early enough for the project to make informed decisions."}
+   ]
+ },
+ insightHtml:`<div class="principle"><strong>Turner Page insight</strong><br>Outstanding Data Migration Leads don't simply accept change. They help the project understand the cost of change.</div>`
+},
+{
+ id:"b7",nav:"Guided example",title:"Let's think like a Data Migration Lead",type:"guidedSteps",
+ html:`<p class="lead">Before you tackle a realistic migration scenario yourself, let's walk through one together.</p>
+ <p>This is how an experienced Data Migration Lead would analyse the situation.</p>
+ <h3>The situation</h3>
+ <p>You are 10 weeks from go-live. Your weekly status meeting has just finished. You know the following:</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Customer, Supplier and Finance mappings are complete.</li>
+   <li>Product mappings are only 80% complete.</li>
+   <li>Mock Migration 1 completed successfully.</li>
+   <li>Reconciliation accuracy reached 98%.</li>
+   <li>One critical environment issue remains unresolved.</li>
+   <li>The business has requested two additional years of historical sales data.</li>
+   <li>Finance still hasn't approved the opening balance reconciliation approach.</li>
+ </ul>
+ <p>The Project Manager turns to you and asks:</p>
+ <div class="quote">“What's your assessment?”</div>`,
+ steps: guidedStepsData,
+ closingHtml: guidedClosingHtml
+},
+{
+ id:"b8",nav:"Your turn",title:"You're now the Data Migration Lead",type:"selectN",
+ html:`<p class="lead">Everything you've learned so far now comes together.</p>
+ <p>This is a realistic project situation. There isn't a single perfect answer. Your job is to think like a Data Migration Lead and decide what matters most.</p>
+ <h3>The project</h3>
+ <p>The project is eight weeks from go-live. Latest migration status:</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customer Data</strong>Complete</div>
+   <div class="status-card"><strong>Supplier Data</strong>Complete</div>
+   <div class="status-card"><strong>Product Data</strong>90% complete</div>
+   <div class="status-card"><strong>Finance Data</strong>In progress</div>
+   <div class="status-card"><strong>Mock Migration 1</strong>Completed</div>
+   <div class="status-card"><strong>Mock Migration 2</strong>Starts next week</div>
+   <div class="status-card"><strong>Reconciliation accuracy</strong>98.2%</div>
+   <div class="status-card"><strong>Critical risks</strong>2 open</div>
+   <div class="status-card"><strong>Business decisions</strong>3 outstanding</div>
+ </div>
+ <h3>New information arrives</h3>
+ <ul class="framework-checks lesson-outcomes">
+   <li>The business wants to include two additional legal entities.</li>
+   <li>The Test Manager has requested another mock migration.</li>
+   <li>Finance still hasn't approved opening balances.</li>
+   <li>The infrastructure team has warned of possible environment downtime next week.</li>
+   <li>One senior mapping consultant is on annual leave for two weeks.</li>
+ </ul>
+ <p>The Project Manager asks:</p>
+ <div class="quote">“What should we focus on first?”</div>
+ ${TPKit.fromField({
+   title:"Twenty Minutes to Decide", name:"Sam", role:"Data Migration Lead", project:"Energy ERP",
+   src:"/assets/audio/lesson2-yourturn-sam.mp3",
+   reflection:"Would your first three priorities have matched mine?"
+ })}
+ <div class="quote">You can choose only THREE priorities.</div>`,
+ n:3,
+ options: selectOptions2,
+ mentorFeedbackHtml:`<div class="principle"><strong>Mentor feedback</strong><br>A good Data Migration Lead does not simply react to the loudest problem. You establish the current readiness position, identify what genuinely threatens the next gate, and focus attention where it changes the delivery outcome. What matters is whether your reasoning is anchored in impact, evidence and dates.</div>`,
+ closingHtml: selectThreeClosingHtml
+},
+{
+ id:"b9",nav:"Reflection",title:"Pause and reflect",type:"reflection",
+ html:`<p class="lead">You've now explored what it really means to own a migration workstream.</p>
+ <p>Before moving on, take a few minutes to think about your own experience. There are no right or wrong answers.</p>
+ <p>The purpose is to help you connect today's learning to your own projects.</p>
+ <div id="quickQuestions"></div>
+ <h3>Your reflection</h3>
+ <p>In your own words: What is the single biggest difference between managing migration tasks and leading a migration workstream?</p>
+ <textarea id="reflection" placeholder="The biggest difference is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ quickQuestions: quickQuestions,
+ minLength:40,
+ checks:[
+   { test:/readiness|ready|confidence/i, strength:"You framed the difference around readiness rather than only completed activity.", gap:"Make readiness, not just progress, the centre of your answer." },
+   { test:/critical path|milestone|gate|dependenc/i, strength:"You referred to the critical path or the next milestone, not just today's task list.", gap:"Name what is currently on the critical path or blocking the next milestone." },
+   { test:/decision|decide|escalat/i, strength:"You connected the situation to a decision, a deadline or an escalation.", gap:"Identify the decision, owner or deadline involved." },
+   { test:/risk|impact|mitigat/i, strength:"You considered risk and its impact rather than treating it as a label.", gap:"Explain how you would assess and translate the risk." },
+   { test:/right people|mobilis|mobiliz|delegat|ownership|accountab|assign/i, strength:"You recognised the value of assigning the right person rather than solving everything yourself.", gap:"Describe how you would mobilise the right people rather than solving it yourself." },
+   { test:/evidence|reconcil|data quality/i, strength:"You anchored your answer in evidence rather than optimism.", gap:"Show how evidence, not confidence alone, would support your view." },
+   { test:/trade.?off|scope|time|quality|balance/i, strength:"You made a scope, time or quality trade-off visible.", gap:"Make a scope, time or quality trade-off explicit." }
+ ],
+ mentorFeedbackHtml:`<div class="principle"><strong>Mentor feedback</strong><br>Many experienced consultants discover that they've spent years managing migration activities without truly leading the migration workstream. The transition begins when you stop measuring activity and start measuring readiness. Every project gives you another opportunity to improve that judgement. Don't aim to become the busiest person on the project. Aim to become the person who best understands whether the migration will succeed.</div>`
+},
+{
+ id:"b10",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Owning the migration workstream.</strong></p>
+ <p>You've now explored what it really means to own a migration workstream, not simply manage its tasks.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>Personal action</h3>
+ <p>Before you leave this lesson, complete this sentence:</p>
+ <div class="quote">“On my next project, I will…”</div>
+ <textarea id="valuableReflection" placeholder="On my next project, I will..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p>You've now completed the learning content for Lesson 2. The final step is to test your understanding.</p>`,
+ minLength:15
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Module 1",
+  moduleTitle: "The Data Migration Lead mindset",
+  lessonLabel: "Lesson 2: Owning the migration workstream",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "From mindset to accountability",
+  storageKey: "tp_lesson2_v1",
+  // NOTE: this still points to lesson2-assessment.html, which does not
+  // yet exist in the repo — Dave to confirm whether Lesson 2 (and every
+  // future lesson) should route to its own dedicated assessment page,
+  // or to the single shared assessment.html already in the repo. Update
+  // this one line once that's decided; nothing else needs to change.
+  nextUrl: "lesson2-assessment.html",
+  finalButtonLabel: "Continue to the Lesson 2 assessment →",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Escalation that protects the date</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON 4 DATA — content only. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+   Draft v2 — rebuilt for depth: a reasoning block after the
+   opening MCQ, the escalation-message framework converted to a
+   guidedSteps build-it-yourself exercise, a fourth nuanced
+   situation, and a judgement-call block on political pressure —
+   on top of v1's escalation/RAID-Plus material from DML1
+   sections 2.3-2.4.
+   Click-tested against the real turner-page-kit.js — verify once
+   merged into the live repo, since asset paths (logo, monogram)
+   weren't present in this test environment.
+============================================================== */
+
+const triggerCards=[
+ {title:"Unresolved for 48 hours",short:"No movement, not no attention",
+  detail:"A risk or issue sitting at workstream level with no movement for two days. Not because someone missed it — because nobody decided whose job it was to move it. The fix isn't more urgency, it's a named owner and a next action, both written down the first time the item appears."},
+ {title:"A key gate slips by 2+ days",short:"SIT, UAT, or a mock cutover",
+  detail:"SIT entry, UAT exit, a mock cutover — any of these shifting by more than two working days. Small slips compound: a two-day slip on SIT entry rarely stays two days by the time it reaches UAT, because everything downstream inherits the delay plus its own contingency."},
+ {title:"Reconciliation variance exceeds tolerance",short:"The agreed number, breached",
+  detail:"Not \u201cclose enough.\u201d The agreed number, in the agreed document, breached. If there's no agreed number, there's no trigger — which is its own problem, and one worth raising before the first reconciliation run, not after a variance you can't objectively assess."},
+ {title:"An environment dependency threatens a rehearsal date",short:"Refresh, freeze window, or access issue",
+  detail:"A refresh, a freeze window, an access issue — anything that could stop a mock cutover happening when planned. These often look like someone else's problem right up until the rehearsal date arrives and there's no environment to rehearse in."}
+];
+
+const escalationSituations=[
+ {
+   title:"Situation 1",
+   question:"You've mentioned a risk twice in the weekly working group, but it isn't written anywhere. It's now three weeks old. What's actually wrong here?",
+   options:[
+     {label:"Nothing — everyone in the room knows about it.",correct:false,
+      feedback:"Everyone in that room knows. Nobody outside it does, and neither does anyone who joins later or checks the record after the fact — including whoever eventually has to explain why it wasn't caught sooner."},
+     {label:"It was never actually escalated — it was mentioned.",correct:true,
+      feedback:"Correct. Escalation is a written entry with an owner and a date. A verbal mention, however many times repeated, isn't one — repetition creates a false sense that it's being handled."},
+     {label:"It should have gone straight to steering the first time.",correct:false,
+      feedback:"Not necessarily — plenty of risks resolve at workstream level. The failure here isn't the level, it's that nothing was ever logged, at any level."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"You're drafting an escalation about a delayed environment refresh. Which version gets a decision fastest?",
+   options:[
+     {label:"\u201cWe have a problem with the UAT environment and need to talk about options.\u201d",correct:false,
+      feedback:"This asks the reader to do the thinking. They'll come back with questions before they can decide anything, which costs another full exchange before any decision gets made."},
+     {label:"\u201cUAT2 refresh delayed 5 days. Pushes Mock Cutover 1 outside the fiscal close window. Options: re-plan cutover, extend the freeze, or add an environment. Recommend option A, date shift to 15 Oct.\u201d",correct:true,
+      feedback:"Correct. Context, impact, options, recommendation — in that order. The reader can say yes to your recommendation in one line, because you've already done the thinking for them."},
+     {label:"\u201cThe environment team let us down again — can someone please sort this out.\u201d",correct:false,
+      feedback:"This is a complaint, not an escalation. It has no impact, no options and nothing for anyone to decide — it just transfers the problem without any of the analysis attached."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"A steering-level decision gets made verbally in a corridor conversation after the meeting officially ends. What do you do?",
+   options:[
+     {label:"Treat it as decided and move on — it came from the right people.",correct:false,
+      feedback:"Coming from the right people isn't the same as being recorded. Six weeks from now, nobody will remember it exactly the way you do, including the people who made it."},
+     {label:"Write it up in the Decision Log within 24 hours and circulate for confirmation.",correct:true,
+      feedback:"Correct. The decision is real once it has an ID, a date and a record — not when it was spoken. Circulating for confirmation also catches the version where two people remember it slightly differently."},
+     {label:"Wait for it to be raised formally at the next meeting.",correct:false,
+      feedback:"Waiting lets a real decision sit unrecorded for another week, during which work may already be happening on the strength of it."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"You're two days from a mock cutover and discover a data quality issue that's very likely to be fixable in time — but not certain. Escalating now might look like you're panicking over nothing. What's the sharpest call?",
+   options:[
+     {label:"Wait until closer to the rehearsal — no point causing alarm over something that's probably fine.",correct:false,
+      feedback:"\u201cProbably fine\u201d with two days of runway left is exactly the situation hard triggers exist to remove judgement from. If it isn't fixed in time, there's now no time left to react."},
+     {label:"Escalate now with a clear likelihood assessment, not as an alarm but as a heads-up with a contingency attached.",correct:true,
+      feedback:"Correct. This is the difference between escalating and panicking. A calm, dated flag with \u201clikely resolved, here's the fallback if not\u201d protects the date without creating unnecessary drama."},
+     {label:"Fix it quietly yourself and only mention it if it goes wrong.",correct:false,
+      feedback:"This looks efficient right up until it doesn't work. Then it looks like something was hidden — even though the intent was simply to avoid a fuss."}
+   ]
+ }
+];
+
+const raidFields=[
+ {title:"ID / Category",short:"Risk, Issue, Decision or Compliance",detail:"Risk, Issue, Decision or Compliance — never just \u201cnote.\u201d The category determines who should be looking at it and how urgently, so a vague category quietly routes things to nobody in particular."},
+ {title:"Impact",short:"Tied to a milestone",detail:"Tied to a business milestone, not a technical artefact. \u201cMapping is incomplete\u201d isn't impact. \u201cUAT entry at risk by 4 days\u201d is \u2014 it's the difference between a technical detail and something a sponsor can actually weigh."},
+ {title:"Owner",short:"A named person",detail:"A named person. Never a team, never \u201cTBC.\u201d A team can't be chased in a corridor conversation; a person can. \u201cTBC\u201d is how items sit unresolved for weeks without anyone technically being at fault."},
+ {title:"Target resolution date",short:"A real date",detail:"A date. \u201cASAP\u201d is not a date, and it starts no clock. A real date is what turns \u201cunresolved\u201d into a measurable breach of a hard trigger, rather than a permanently vague sense that something is still open."},
+ {title:"Evidence link",short:"What an auditor would ask for",detail:"The reconciliation report, the sign-off email — the thing an auditor would actually ask for, not a description of it. \u201cSigned off by Finance\u201d without the email attached is a claim, not evidence."},
+ {title:"Escalation level",short:"Workstream, PMO or Steering",detail:"Workstream, PMO or Steering — where it currently sits, and it should move as the item's status changes. An item that's been at Workstream level for three weeks past its target date should not still be sitting there unnoticed."}
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The one that got missed",title:"The one that got missed",type:"mcq",
+ html:`<div class="promise-card">
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ </div>
+ <p class="lead">Six weeks before go-live, a reconciliation variance appears on a mid-sized customer segment. It's just over tolerance — not dramatic, but outside the agreed line.</p>
+ <p>You mention it in the Wednesday stand-up. Everyone nods. Nobody writes anything down. Three weeks later, it's still there, now tangled up with two other issues, and the PMO is asking why nobody flagged it sooner.</p>
+ <div class="quote">\u201cWe did flag it — weeks ago, in the stand-up.\u201d</div>
+ <h3>What actually went wrong?</h3>`,
+ options:["Nothing — it was mentioned, that's enough for a small issue.","The variance itself was the failure.","It was never logged, so it was never really escalated.","The PMO should have been tracking it independently."],
+ feedback:[
+ "A mention in a meeting is not a record. If it isn't written somewhere with a date and an owner, it doesn't exist outside that room.",
+ "A variance just over tolerance happens on most migrations. That's not the failure here — the failure is what happened to it afterwards.",
+ "This is the correct read. Escalation is a written entry with an owner and a date, not a verbal mention however many times repeated.",
+ "The PMO relies on your RAID feeding theirs. If it was never logged on your side, there's nothing for them to have tracked."
+ ]
+},
+{
+ id:"b2",nav:"What the record would show",title:"What the record would show",type:"content",
+ html:`<p class="lead">Rewind the same three weeks, but this time the variance gets logged the moment it appears.</p>
+ <p>Week 1: an entry goes into RAID-Plus. Category: Issue. Impact: \u201caffects go-live confidence for Customer Segment B, currently 6 weeks out.\u201d Owner: you, by name. Target date: 5 working days, matching the hard trigger for reconciliation variances. Evidence: the reconciliation report showing the exact variance.</p>
+ <p>Week 1, five days later: the target date is missed. That's not a failure \u2014 it's the trigger doing its job. The item automatically needs escalating to PMO level, because the rule was agreed in advance, not decided in the moment by how urgent it happens to feel.</p>
+ <p>Week 2: PMO involvement helps identify that the variance is a mapping issue affecting a specific customer sub-type, not the whole segment. Fix scoped, new target date set, still tracked as open.</p>
+ <p>Week 3, the point where the real version of events went wrong: instead of \u201cwe did flag it \u2014 weeks ago, in the stand-up,\u201d there's a dated RAID-Plus entry showing exactly when it was found, who owned it, what the impact assessment said, and what's been done since. The PMO's question isn't \u201cwhy didn't anyone flag this,\u201d it's \u201cwhat's the current status\u201d \u2014 a completely different, much easier conversation.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The gap between these two versions isn't effort or diligence \u2014 both DMLs noticed the same issue in week 1. The only difference is five minutes spent writing it down properly instead of saying it out loud.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A logged item under control looks completely different from an unlogged item under control, even when the underlying work is identical. Only one of them survives being questioned three weeks later.</div>`
+},
+{
+ id:"b3",nav:"Escalation as discipline",title:"Escalation is not an admission of failure",type:"content",
+ html:`<p class="lead">Most people treat escalation as the last resort — something you reach for once things have already gone wrong.</p>
+ <p>Turner Page treats it as a routine control mechanism, the same as any other governance habit. Its purpose is simple: surface decisions to the right level, at the right time, with the trade-offs made visible.</p>
+ <p>A DML who delays escalation isn't avoiding drama. They're storing up a bigger one for later.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Escalating means you've lost control of the issue.</strong></p><p>The opposite is usually true. A well-framed escalation, with options and a recommendation attached, is one of the clearest signals of control a DML can send.</p></div>
+ <div class="principle"><strong>Key takeaway</strong><br>Escalation is structured communication that protects the date. Treat it as routine, not remedial.</div>`
+},
+{
+ id:"b4",nav:"Hard triggers",title:"The four hard triggers that force escalation",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">If escalation only happens when it \u201cfeels serious enough,\u201d it becomes personal — and personal judgement calls are exactly what erode trust under pressure.</p>
+ <p>Turner Page publishes objective triggers in advance, so escalating is never a debate about whether something counts. Open each one.</p>`,
+ items: triggerCards
+},
+{
+ id:"b5",nav:"Build the message",title:"Building an escalation that gets a fast decision",type:"guidedSteps",
+ html:`<p class="lead">Let's build the UAT2 refresh escalation from scratch, one part at a time, so the structure becomes muscle memory rather than a template you copy without thinking about it.</p>`,
+ firstLabel:"Start building the escalation",
+ steps:[
+   {html:`<h4>Step 1 — Context</h4><p>One sentence. No more. <em>\u201cUAT2 environment refresh delayed 5 days due to a licensing issue with the source system extract tool.\u201d</em></p><p>Notice what's absent: no blame, no adjectives, no \u201cunfortunately.\u201d Just the fact, stated plainly enough that someone reading it for the first time understands exactly what happened.</p>`},
+   {html:`<h4>Step 2 — Impact</h4><p><em>\u201cPushes Mock Cutover 1 outside the agreed fiscal close window, risking a second full dress rehearsal being needed post year-end.\u201d</em></p><p>This is where most DMLs undersell the message \u2014 impact needs to land on something the reader already cares about (a date, a cost, a commitment already made), not just describe the technical knock-on.</p>`},
+   {html:`<h4>Step 3 — Options</h4><p><em>\u201ca) Re-plan Mock Cutover 1 for the week after fiscal close \u2014 adds 6 days, no cost impact. b) Extend the environment freeze by 3 days \u2014 needs infrastructure team approval. c) Provision a temporary parallel environment \u2014 fastest, but roughly \u00a34k in additional licensing.\u201d</em></p><p>Three real options, each with its own honest trade-off attached. This is what shows the reader you've actually thought it through, not just identified a problem and handed it over.</p>`},
+   {html:`<h4>Step 4 — Recommendation</h4><p><em>\u201cRecommend option A. The date shift is the least disruptive and doesn't require unbudgeted spend or a dependency on another team's approval.\u201d</em></p><p>A recommendation isn't just picking one \u2014 it's saying why, briefly, using the same criteria the reader would use themselves. That's what lets them say yes without a follow-up meeting.</p>`}
+ ],
+ closingHtml:`<div class="visual-card"><div class="visual-title">The assembled escalation</div><p><em>Context:</em> UAT2 refresh delayed 5 days.<br><em>Impact:</em> Pushes Mock Cutover 1 outside the fiscal close window.<br><em>Options:</em> a) re-plan cutover; b) extend the freeze; c) add an environment.<br><em>Recommendation:</em> option a, date shift to 15 Oct.</p></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A reader should be able to say yes to your recommendation without asking you a clarifying question first.</div>`
+},
+{
+ id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
+ html:`<p class="lead">Four moments where the right call isn't obvious at first glance.</p>`,
+ items:escalationSituations
+},
+{
+ id:"b7",nav:"RAID-Plus",title:"The six fields that make a RAID-Plus entry defensible",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">A plain RAID log tracks risks, assumptions, issues and dependencies. RAID-Plus adds what an auditor — or an executive under pressure — actually asks for. Open each field.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>RAID is a spreadsheet you update before the weekly meeting.</strong></p><p>Treated that way, it hides risk instead of surfacing it. RAID-Plus only works as a living record, updated the moment something changes — not reconstructed from memory once a week.</p></div>`,
+ items: raidFields,
+ takeawayHtml: `<div class="principle"><strong>Key takeaway</strong><br>If it isn't in RAID-Plus with an evidence link, it isn't defensible in an audit — or in a steering meeting.</div>`
+},
+{
+ id:"b8",nav:"When it feels political",title:"When escalation feels political",type:"content",
+ html:`<p class="lead">The framework in this lesson assumes the hardest part of escalating is the paperwork. In practice, the hardest part is often the room.</p>
+ <p>A sponsor who's already told their own leadership the programme is on track doesn't always want to hear it isn't. A steering meeting running long doesn't always have appetite for one more red item. None of that changes whether the trigger has been hit \u2014 but it changes how the escalation needs to be delivered.</p>
+ <p>The instinct under that pressure is usually to soften the message: round the impact down, describe a risk as \u201cbeing monitored\u201d rather than \u201cactive,\u201d push the timing back a week to see if it resolves. This is different from the calm, dated heads-up in Situation 4 \u2014 that was honest about likelihood. Softening for comfort is honest about neither the facts nor the timing.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>An escalation that arrives on time but softened is still a form of late escalation \u2014 the sponsor is being given a smaller decision than the one they actually need to make, and finds out the real size of it later, usually at a worse moment.</p></div></div>
+ <p>The way through isn't bluntness for its own sake. It's separating the fact from the framing: state the trigger and the impact exactly as they are, then use the options-and-recommendation structure to show you've already thought about how to manage it. That gives the sponsor something constructive to react to, rather than just bad news.</p>
+ <div class="principle"><strong>Key takeaway</strong><br>Political pressure is a reason to escalate well. It's never a reason to escalate less than what the trigger actually shows.</div>`
+},
+{
+ id:"b9",nav:"Reflection",title:"Where would your own trail run out?",type:"reflection",
+ html:`<p>Think of a decision on a past project that mattered but was never really written down anywhere solid.</p>
+ <div class="quote">\u201cIf someone asked you to prove it happened, three months later, what could you actually show them?\u201d</div>
+ <textarea id="reflection" placeholder="The decision I'm thinking of is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/log|record|written|document|evidence/i, strength:"You focused on the missing written record rather than the decision itself.", gap:"Name what should have been logged, and where." },
+   { test:/date|deadline|target|resolution/i, strength:"You identified the missing date as part of the gap.", gap:"Note what date should have been attached to it." },
+   { test:/owner|accountab|named/i, strength:"You identified the lack of a named owner.", gap:"Say who should have owned the item." },
+   { test:/trigger|escalat/i, strength:"You connected the gap to an escalation trigger, not just a general lapse.", gap:"Consider whether a defined trigger would have caught this earlier." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"You're pattern-matching this correctly — the fix is almost always the same: log it, date it, name an owner.":"Good instinct. The detail worth adding is what specifically should have been written down, and where it would have lived."}</div>`
+},
+{
+ id:"b10",nav:"Summary",title:"If you remember nothing else",type:"content",
+ html:`<p class="lead">Escalation isn't the thing you do when a project is failing. It's the thing that stops small problems becoming failures.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Publish hard triggers before the programme needs them.</li>
+   <li>A mention in a meeting is not an escalation. A logged entry with an owner and a date is.</li>
+   <li>Context, impact, options, recommendation — every time, in that order.</li>
+   <li>RAID-Plus is a living record, not a weekly spreadsheet exercise.</li>
+   <li>Political pressure changes how you deliver an escalation. It never changes what the trigger actually shows.</li>
+ </ul>
+ <div class="principle"><strong>Sponsors rarely lose confidence because of a problem.</strong><br>They lose it because they heard about the problem from someone other than you.</div>`
+},
+{
+ id:"b11",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Escalation that protects the date.</strong></p>
+ <p>You've explored how to turn escalation from a last resort into a routine control, built an escalation message from scratch, and worked through what changes \u2014 and what doesn't \u2014 when the room gets political.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Turning RAID and Decision Log data into a dashboard sponsors trust</strong></p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it next time something feels too small to log — that's usually exactly when it matters most.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Module 1",
+  moduleTitle: "The Data Migration Lead mindset",
+  lessonLabel: "Lesson 4: Escalation that protects the date",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Escalation pathways and RAID-Plus",
+  storageKey: "tp_lesson4_v2",
+  nextUrl: "lesson5.html",
+  finalButtonLabel: "Continue to Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
