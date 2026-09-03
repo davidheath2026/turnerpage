@@ -1,0 +1,729 @@
+<title>Go/No-Go Scorecard</title>
+<style>
+  /* Palette matches the established Turner Page brand tokens
+     (see home.html / login.html / welcome.html / enrol.html):
+     --deep:#005f6c --teal:#0b7f8e --aqua:#7dd8d8 --mist:#f3f9f9
+     --paper:#fff --line:#d8e9e9 --soft:#e9f5f5 --ink:#102f36
+     Dark-mode variant removed for brand consistency (main site has none). */
+  :root{
+    --tp-ink:#102f36;
+    --tp-ink-soft:#50686e;
+    --tp-muted:#657d82;
+    --tp-bg:#f3f9f9;
+    --tp-surface:#FFFFFF;
+    --tp-surface-raised:#FFFFFF;
+    --tp-border:#d8e9e9;
+    --tp-border-soft:#e9f5f5;
+    --tp-teal-900:#005f6c;
+    --tp-teal-700:#0b7f8e;
+    --tp-teal-500:#0b7f8e;
+    --tp-aqua-500:#7dd8d8;
+    --tp-aqua-100:#e9f5f5;
+    --tp-aqua-050:#f3f9f9;
+    --status-go:#1E8E5A;
+    --status-go-bg:#E5F5EC;
+    --status-conditional:#B4791A;
+    --status-conditional-bg:#FBF0DC;
+    --status-nogo:#C1403D;
+    --status-nogo-bg:#FBE9E8;
+    --shadow-card:0 1px 2px rgba(14,76,83,.06), 0 8px 24px -16px rgba(14,76,83,.18);
+    color-scheme:light;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--tp-bg);
+    color:var(--tp-ink);
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    font-variant-numeric:tabular-nums;
+  }
+  h1,h2,h3,.tp-word{font-family:Inter,Segoe UI,Arial,sans-serif; text-wrap:balance;}
+  button{font-family:inherit;}
+  a{color:var(--tp-teal-700);}
+  ::selection{background:var(--tp-aqua-100);}
+  :focus-visible{outline:2px solid var(--tp-aqua-500); outline-offset:2px; border-radius:4px;}
+
+  .tp-app{max-width:1280px; margin:0 auto; padding:28px 24px 80px;}
+
+  /* ---- Topbar ---- */
+  .tp-topbar{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+    padding-bottom:20px; margin-bottom:24px; border-bottom:1px solid var(--tp-border);
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-logo-wrap{
+    background:#fff; border:1px solid var(--tp-border); border-radius:10px; padding:6px 12px;
+    display:inline-flex; align-items:center; box-shadow:var(--shadow-card); flex-shrink:0;
+  }
+  .brand-logo{height:30px; width:auto; display:block;}
+  .brand-sub{font-size:11px; color:var(--tp-muted); text-transform:uppercase; letter-spacing:.09em; margin-top:1px;}
+  .tool-badge{
+    display:inline-flex; align-items:center; gap:6px; margin-left:14px; padding:5px 12px;
+    background:var(--tp-aqua-100); color:var(--tp-teal-900); border-radius:100px;
+    font-size:12px; font-weight:600; letter-spacing:.02em;
+  }
+  .tool-badge svg{width:13px; height:13px;}
+
+  .meta-grid{
+    display:grid; grid-template-columns:repeat(4, minmax(120px,1fr)); gap:14px 18px;
+  }
+  .meta-field label{
+    display:block; font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--tp-muted); margin-bottom:5px;
+  }
+  .meta-field input{
+    width:100%; border:1px solid var(--tp-border); background:var(--tp-surface); color:var(--tp-ink);
+    border-radius:8px; padding:7px 10px; font-size:13.5px; font-family:inherit;
+  }
+  .meta-field input:focus{border-color:var(--tp-aqua-500);}
+
+  /* ---- Layout ---- */
+  .tp-main{display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;}
+  @media (max-width:920px){ .tp-main{grid-template-columns:1fr;} .meta-grid{grid-template-columns:repeat(2,1fr);} }
+
+  .tp-categories{display:flex; flex-direction:column; gap:16px;}
+  .section-intro{margin:0 0 4px; font-size:13.5px; color:var(--tp-ink-soft); max-width:64ch; line-height:1.6;}
+
+  .cat-card{
+    background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:14px;
+    padding:18px 20px; box-shadow:var(--shadow-card);
+  }
+  .cat-head{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; flex-wrap:wrap;}
+  .cat-titles{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .cat-name{
+    font-family:'Poppins',sans-serif; font-weight:600; font-size:15px; color:var(--tp-ink);
+    border:1px solid transparent; background:transparent; border-radius:6px; padding:3px 6px; min-width:120px;
+  }
+  .cat-name:hover, .cat-name:focus{border-color:var(--tp-border);}
+  .weight-inline{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--tp-muted);}
+  .weight-inline input{
+    width:44px; border:1px solid var(--tp-border); background:var(--tp-bg); color:var(--tp-ink);
+    border-radius:6px; padding:2px 5px; font-size:12px; text-align:right;
+  }
+  .cat-remove{
+    border:none; background:none; color:var(--tp-muted); cursor:pointer; font-size:12px; padding:2px 6px; border-radius:6px;
+  }
+  .cat-remove:hover{background:var(--status-nogo-bg); color:var(--status-nogo);}
+
+  .cat-score{display:flex; align-items:center; gap:10px; min-width:150px;}
+  .score-bar{flex:1; height:6px; border-radius:100px; background:var(--tp-border-soft); overflow:hidden;}
+  .score-fill{height:100%; border-radius:100px; transition:width .3s ease, background .3s ease;}
+  .score-num{font-weight:700; font-size:13px; width:38px; text-align:right;}
+
+  .cat-items{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  .item{
+    display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:10px;
+    padding:8px 10px; border-radius:10px; background:var(--tp-bg); border:1px solid var(--tp-border-soft);
+  }
+  .status-pill{
+    border:none; cursor:pointer; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:100px;
+    white-space:nowrap; letter-spacing:.02em;
+  }
+  .status-pill[data-status="met"]{background:var(--status-go-bg); color:var(--status-go);}
+  .status-pill[data-status="partial"]{background:var(--status-conditional-bg); color:var(--status-conditional);}
+  .status-pill[data-status="not-met"]{background:var(--status-nogo-bg); color:var(--status-nogo);}
+  .item-text{
+    border:1px solid transparent; background:transparent; color:var(--tp-ink); font-size:13.5px;
+    padding:4px 6px; border-radius:6px; width:100%; font-family:inherit;
+  }
+  .item-text:hover, .item-text:focus{border-color:var(--tp-border);}
+  .critical-toggle{display:flex; align-items:center; gap:5px; font-size:11px; color:var(--tp-muted); white-space:nowrap; cursor:pointer;}
+  .critical-toggle input{accent-color:var(--status-nogo);}
+  .item-remove{border:none; background:none; color:var(--tp-muted); cursor:pointer; font-size:15px; line-height:1; padding:2px 5px;}
+  .item-remove:hover{color:var(--status-nogo);}
+
+  .add-item{
+    align-self:flex-start; margin-top:6px; border:1px dashed var(--tp-border); background:none; color:var(--tp-teal-700);
+    font-size:12.5px; font-weight:600; padding:7px 12px; border-radius:8px; cursor:pointer;
+  }
+  .add-item:hover{background:var(--tp-aqua-050); border-color:var(--tp-aqua-500);}
+  .add-cat-btn{
+    align-self:flex-start; border:1px dashed var(--tp-border); background:none; color:var(--tp-teal-700);
+    font-size:13px; font-weight:600; padding:10px 16px; border-radius:10px; cursor:pointer;
+  }
+  .add-cat-btn:hover{background:var(--tp-aqua-050); border-color:var(--tp-aqua-500);}
+  .weight-warn{font-size:11.5px; color:var(--status-conditional); margin-top:2px;}
+
+  /* ---- Decision panel ---- */
+  .tp-decision{position:sticky; top:20px; display:flex; flex-direction:column; gap:14px;}
+  @media (max-width:920px){ .tp-decision{position:static;} }
+  .panel-card{
+    background:var(--tp-surface); border:1px solid var(--tp-border); border-radius:14px; padding:18px 20px;
+    box-shadow:var(--shadow-card);
+  }
+  .panel-card h3{margin:0 0 10px; font-size:13px; letter-spacing:.03em; text-transform:uppercase; color:var(--tp-muted); font-weight:600; font-family:'Inter',sans-serif;}
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .card-head h3{margin:0;}
+  .ghost-btn{border:1px solid var(--tp-border); background:none; color:var(--tp-teal-700); font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:100px; cursor:pointer;}
+  .ghost-btn:hover{background:var(--tp-aqua-050); border-color:var(--tp-aqua-500);}
+
+  .gauge-wrap{display:flex; align-items:center; gap:16px;}
+  .gauge-num{font-family:'Poppins',sans-serif; font-size:30px; font-weight:700; line-height:1;}
+  .gauge-caption{font-size:12px; color:var(--tp-muted); margin-top:4px; line-height:1.4;}
+
+  .rec-badge{
+    display:inline-flex; align-items:center; gap:7px; font-family:'Poppins',sans-serif; font-weight:700; font-size:16px;
+    padding:9px 16px; border-radius:10px; width:100%; justify-content:center;
+  }
+  .rec-badge .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .panel-card[data-rec="go"] .rec-badge{background:var(--status-go-bg); color:var(--status-go);}
+  .panel-card[data-rec="go"] .rec-badge .dot{background:var(--status-go);}
+  .panel-card[data-rec="conditional"] .rec-badge{background:var(--status-conditional-bg); color:var(--status-conditional);}
+  .panel-card[data-rec="conditional"] .rec-badge .dot{background:var(--status-conditional);}
+  .panel-card[data-rec="no-go"] .rec-badge{background:var(--status-nogo-bg); color:var(--status-nogo);}
+  .panel-card[data-rec="no-go"] .rec-badge .dot{background:var(--status-nogo);}
+  .rec-note{font-size:12px; color:var(--tp-muted); margin-top:8px; line-height:1.5;}
+  .override-row{margin-top:12px; padding-top:12px; border-top:1px solid var(--tp-border-soft);}
+  .override-row label{display:block; font-size:11.5px; font-weight:600; color:var(--tp-muted); margin-bottom:5px;}
+  .override-row select, .override-row textarea{
+    width:100%; border:1px solid var(--tp-border); background:var(--tp-bg); color:var(--tp-ink);
+    border-radius:8px; padding:7px 9px; font-size:12.5px; font-family:inherit; resize:vertical;
+  }
+  .override-row textarea{margin-top:8px; min-height:52px;}
+
+  #rationale-text{
+    width:100%; min-height:120px; border:1px solid var(--tp-border); background:var(--tp-bg); color:var(--tp-ink);
+    border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.55; font-family:inherit; resize:vertical;
+  }
+
+  #blockers-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  #blockers-list li{
+    display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.5; color:var(--tp-ink-soft);
+    padding:8px 10px; background:var(--status-nogo-bg); border-radius:8px;
+  }
+  #blockers-list li .b-icon{color:var(--status-nogo); flex-shrink:0; margin-top:1px;}
+  #blockers-list .empty{background:var(--status-go-bg); color:var(--status-go); font-weight:600;}
+  #blockers-list .empty .b-icon{color:var(--status-go);}
+
+  .signoff-table{width:100%; border-collapse:collapse; font-size:12px;}
+  .signoff-table th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--tp-muted); font-weight:600; padding-bottom:6px;}
+  .signoff-table td{padding:4px 0;}
+  .signoff-table input, .signoff-table select{
+    width:100%; border:1px solid var(--tp-border); background:var(--tp-bg); color:var(--tp-ink);
+    border-radius:6px; padding:5px 6px; font-size:11.5px; font-family:inherit;
+  }
+  .signoff-row-remove{border:none; background:none; color:var(--tp-muted); cursor:pointer; font-size:14px;}
+  .add-signoff{margin-top:8px; border:1px dashed var(--tp-border); background:none; color:var(--tp-teal-700); font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:8px; cursor:pointer;}
+
+  .actions{display:flex; gap:10px;}
+  .btn-primary, .btn-secondary{
+    flex:1; border-radius:10px; padding:11px 14px; font-size:13px; font-weight:700; cursor:pointer; border:none;
+    font-family:'Inter',sans-serif;
+  }
+  .btn-primary{background:var(--tp-teal-900); color:#fff;}
+  .btn-primary:hover{background:var(--tp-teal-700);}
+  .btn-secondary{background:none; border:1px solid var(--tp-border); color:var(--tp-ink);}
+  .btn-secondary:hover{border-color:var(--tp-aqua-500); color:var(--tp-teal-700);}
+  .copy-flash{font-size:11.5px; color:var(--status-go); text-align:center; margin-top:6px; min-height:14px;}
+
+  .tp-footer{margin-top:32px; padding-top:16px; border-top:1px solid var(--tp-border); font-size:11.5px; color:var(--tp-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+
+  /* ---- Print ---- */
+  @media print{
+    body{background:#fff;}
+    .tp-app{max-width:none; padding:0 12px;}
+    .tp-main{grid-template-columns:1fr; display:block;}
+    .tp-decision{position:static; margin-top:18px;}
+    .add-item, .add-cat-btn, .cat-remove, .item-remove, .ghost-btn, .actions, .add-signoff, .signoff-row-remove{display:none !important;}
+    .critical-toggle input{pointer-events:none;}
+    .cat-card, .panel-card{box-shadow:none; border:1px solid #ccc; break-inside:avoid;}
+    .item-text, .cat-name{border:none;}
+    .meta-field input{border:none; padding:0; font-weight:600;}
+  }
+</style>
+
+<div class="tp-app">
+  <header class="tp-topbar">
+    <div>
+      <div class="brand">
+        <div class="brand-logo-wrap"><img class="brand-logo" src="/assets/turner-page-logo.png" alt="Turner Page"></div>
+        <div class="brand-sub">Delivery Toolkit</div>
+        <span class="tool-badge">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.4l2.2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          Go/No-Go Scorecard
+        </span>
+      </div>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-field"><label for="f-project">Project</label><input id="f-project" value="Acme Manufacturing"></div>
+      <div class="meta-field"><label for="f-app">Target application</label><input id="f-app" value="Dynamics 365 F&SCM"></div>
+      <div class="meta-field"><label for="f-golive">Planned go-live</label><input id="f-golive" type="date"></div>
+      <div class="meta-field"><label for="f-assessor">Assessed by</label><input id="f-assessor" value="Your name"></div>
+    </div>
+  </header>
+
+  <main class="tp-main">
+    <section class="tp-categories" id="categories">
+      <p class="section-intro">Score each readiness area against the criteria below. Criteria marked <strong>Critical</strong> are cutover blockers &mdash; if one isn't fully met, the recommendation is capped automatically regardless of overall score. Everything here is editable: rename, reweight, add or remove criteria to match your project.</p>
+    </section>
+
+    <aside class="tp-decision">
+      <div class="panel-card">
+        <h3>Overall readiness</h3>
+        <div class="gauge-wrap">
+          <svg width="86" height="86" viewBox="0 0 86 86" id="gauge-svg" role="img" aria-label="Overall readiness score gauge">
+            <circle cx="43" cy="43" r="36" fill="none" stroke="var(--tp-border-soft)" stroke-width="9"/>
+            <circle id="gauge-arc" cx="43" cy="43" r="36" fill="none" stroke="var(--tp-aqua-500)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 43 43)"/>
+          </svg>
+          <div>
+            <div class="gauge-num" id="gauge-num">0%</div>
+            <div class="gauge-caption" id="gauge-caption">weighted across all categories</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card" id="rec-card" data-rec="conditional">
+        <h3>Recommendation</h3>
+        <div class="rec-badge" id="rec-badge"><span class="dot"></span><span id="rec-label">Conditional Go</span></div>
+        <p class="rec-note" id="rec-note"></p>
+        <div class="override-row">
+          <label for="override-select">Override decision (optional)</label>
+          <select id="override-select">
+            <option value="">No override &mdash; use auto-recommendation</option>
+            <option value="go">Force: Go</option>
+            <option value="conditional">Force: Conditional Go</option>
+            <option value="no-go">Force: No-Go</option>
+          </select>
+          <textarea id="override-reason" placeholder="Reason for override (shown on the decision paper)"></textarea>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="card-head"><h3>Executive rationale</h3><button class="ghost-btn" id="regen-btn">Regenerate</button></div>
+        <textarea id="rationale-text"></textarea>
+      </div>
+
+      <div class="panel-card">
+        <h3>Open blockers</h3>
+        <ul id="blockers-list"></ul>
+      </div>
+
+      <div class="panel-card">
+        <h3>Decision sign-off</h3>
+        <table class="signoff-table">
+          <thead><tr><th style="width:30%">Role</th><th style="width:26%">Name</th><th style="width:26%">Decision</th><th style="width:18%">Date</th><th></th></tr></thead>
+          <tbody id="signoff-body"></tbody>
+        </table>
+        <button class="add-signoff" id="add-signoff">+ Add signatory</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="print-btn">Print decision paper</button>
+        <button class="btn-secondary" id="copy-btn">Copy summary</button>
+      </div>
+      <div class="copy-flash" id="copy-flash"></div>
+    </aside>
+  </main>
+
+  <footer class="tp-footer">
+    <span>© Turner Page Training &amp; Certification Ltd &middot; Go/No-Go Scorecard, part of the Turner Page Delivery Toolkit</span>
+    <span id="last-saved"></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var defaultState = {
+    categories: [
+      { id:"dq", name:"Data Quality & Migration Readiness", weight:25, items:[
+        { text:"Source data profiled and cleansing complete for all in-scope entities", status:"met", critical:true, weight:1 },
+        { text:"Data mapping signed off by business SMEs", status:"met", critical:false, weight:1 },
+        { text:"Final mock load reconciliation within agreed tolerance", status:"partial", critical:true, weight:1 },
+        { text:"Duplicate / orphan record exceptions resolved or formally accepted", status:"met", critical:false, weight:1 }
+      ]},
+      { id:"env", name:"Environment Readiness", weight:15, items:[
+        { text:"Production environment provisioned and configured to spec", status:"met", critical:true, weight:1 },
+        { text:"Integrations / interfaces validated end-to-end", status:"met", critical:false, weight:1 },
+        { text:"Performance / load testing of migration jobs completed", status:"partial", critical:false, weight:1 }
+      ]},
+      { id:"cfg", name:"Configuration & Reference Data", weight:10, items:[
+        { text:"All reference / configuration data validated in production", status:"met", critical:true, weight:1 },
+        { text:"Number sequences and master-data dependencies confirmed", status:"met", critical:false, weight:1 }
+      ]},
+      { id:"team", name:"Team & Resourcing", weight:10, items:[
+        { text:"Cutover team roles, contacts and availability confirmed", status:"met", critical:true, weight:1 },
+        { text:"Business SMEs available for cutover weekend and hypercare", status:"met", critical:false, weight:1 },
+        { text:"Escalation path and decision-makers identified", status:"met", critical:false, weight:1 }
+      ]},
+      { id:"uat", name:"Testing & UAT Sign-off", weight:20, items:[
+        { text:"UAT completed with formal business sign-off", status:"met", critical:true, weight:1 },
+        { text:"Critical / high defects from UAT closed or accepted with mitigation", status:"partial", critical:true, weight:1 },
+        { text:"Regression testing on downstream reports and processes complete", status:"met", critical:false, weight:1 }
+      ]},
+      { id:"cutover", name:"Cutover Readiness", weight:15, items:[
+        { text:"Cutover runbook rehearsed at least once end-to-end", status:"met", critical:true, weight:1 },
+        { text:"Rehearsal duration within go-live window tolerance", status:"met", critical:false, weight:1 },
+        { text:"Rollback / contingency plan documented and agreed", status:"met", critical:false, weight:1 },
+        { text:"Go-live communications plan drafted", status:"partial", critical:false, weight:1 }
+      ]},
+      { id:"defects", name:"Open Defects & Issues", weight:5, items:[
+        { text:"No open Severity 1 defects", status:"met", critical:true, weight:1 },
+        { text:"Severity 2 defects have agreed workarounds", status:"met", critical:false, weight:1 },
+        { text:"RAID log reviewed with no unmitigated red risks", status:"met", critical:false, weight:1 }
+      ]}
+    ],
+    override:"", overrideReason:"", rationale:"", rationaleTouched:false,
+    signoffs:[
+      {role:"Data Migration Lead", name:"", decision:"", date:""},
+      {role:"Solution / Technical Architect", name:"", decision:"", date:""},
+      {role:"Client Business Owner", name:"", decision:"", date:""}
+    ],
+    meta:{project:"Acme Manufacturing", app:"Dynamics 365 F&SCM", golive:"", assessor:"Your name"}
+  };
+
+  var STORE_KEY = "tp-go-no-go-v1";
+  var state;
+  try{
+    var saved = localStorage.getItem(STORE_KEY);
+    state = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultState));
+  }catch(e){ state = JSON.parse(JSON.stringify(defaultState)); }
+
+  function persist(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      var el = document.getElementById("last-saved");
+      if(el){ el.textContent = "Saved locally " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}); }
+    }catch(e){ /* storage unavailable — continue without persistence */ }
+  }
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  function itemPoints(it){ return it.status==="met" ? 1 : it.status==="partial" ? 0.5 : 0; }
+
+  function categoryScore(cat){
+    if(!cat.items.length) return 0;
+    var totalW = 0, sum = 0;
+    cat.items.forEach(function(it){ var w = Number(it.weight)||1; totalW += w; sum += itemPoints(it)*w; });
+    return totalW ? (sum/totalW*100) : 0;
+  }
+
+  function overallScore(){
+    var totalW = 0, sum = 0;
+    state.categories.forEach(function(c){ var w = Number(c.weight)||0; totalW += w; sum += categoryScore(c)*w; });
+    return totalW ? (sum/totalW) : 0;
+  }
+
+  function totalWeight(){
+    return state.categories.reduce(function(s,c){ return s + (Number(c.weight)||0); }, 0);
+  }
+
+  function blockerItems(){
+    var out = [];
+    state.categories.forEach(function(c){
+      c.items.forEach(function(it){
+        if(it.critical && it.status !== "met"){ out.push({ cat:c.name, text:it.text, status:it.status }); }
+      });
+    });
+    return out;
+  }
+
+  function computeAutoRecommendation(){
+    var blockers = blockerItems();
+    var hard = blockers.filter(function(b){ return b.status === "not-met"; });
+    var score = overallScore();
+    if(hard.length) return "no-go";
+    if(blockers.length) return "conditional";
+    if(score >= 90) return "go";
+    if(score >= 75) return "conditional";
+    return "no-go";
+  }
+
+  function scoreColor(score){
+    if(score >= 85) return "var(--status-go)";
+    if(score >= 60) return "var(--status-conditional)";
+    return "var(--status-nogo)";
+  }
+
+  function recLabel(rec){
+    return rec === "go" ? "Go" : rec === "conditional" ? "Conditional Go" : "No-Go";
+  }
+
+  function buildRationale(){
+    var score = overallScore();
+    var scoredCats = state.categories.map(function(c){ return { name:c.name, score:categoryScore(c) }; });
+    scoredCats.sort(function(a,b){ return a.score - b.score; });
+    var weakest = scoredCats.filter(function(c){ return c.score < 85; }).slice(0,2);
+    var blockers = blockerItems();
+    var hard = blockers.filter(function(b){ return b.status === "not-met"; });
+    var rec = state.override || computeAutoRecommendation();
+
+    var parts = [];
+    parts.push("Overall readiness is currently " + Math.round(score) + "%, assessed across " + state.categories.length + " categories.");
+
+    if(weakest.length){
+      parts.push("The areas needing the most attention are " + weakest.map(function(c){ return c.name + " (" + Math.round(c.score) + "%)"; }).join(" and ") + ".");
+    } else {
+      parts.push("All categories are tracking strongly, with no area materially dragging on the overall score.");
+    }
+
+    if(hard.length){
+      parts.push(hard.length + " critical criteri" + (hard.length === 1 ? "on is" : "a are") + " not yet met, which caps the recommendation at No-Go until resolved: " + hard.map(function(b){ return b.text.toLowerCase(); }).join("; ") + ".");
+    } else if(blockers.length){
+      parts.push(blockers.length + " critical criteri" + (blockers.length === 1 ? "on is" : "a are") + " only partially met, which caps the recommendation at Conditional Go: " + blockers.map(function(b){ return b.text.toLowerCase(); }).join("; ") + ".");
+    } else {
+      parts.push("No critical criteria are outstanding.");
+    }
+
+    parts.push("Based on the above, the current recommendation is " + recLabel(rec) + ".");
+    return parts.join(" ");
+  }
+
+  function render(){
+    renderCategories();
+    renderDecision();
+    persist();
+  }
+
+  function renderCategories(){
+    var wrap = document.getElementById("categories");
+    var existing = wrap.querySelectorAll(".cat-card, .weight-warn, .add-cat-btn");
+    existing.forEach(function(n){ n.remove(); });
+
+    state.categories.forEach(function(cat){
+      var card = document.createElement("article");
+      card.className = "cat-card";
+      card.dataset.catId = cat.id;
+
+      var score = categoryScore(cat);
+      var head = document.createElement("div");
+      head.className = "cat-head";
+      head.innerHTML =
+        '<div class="cat-titles">' +
+          '<input class="cat-name" data-role="cat-name" value="' + escapeAttr(cat.name) + '">' +
+          '<span class="weight-inline">Weight <input type="number" min="0" max="100" data-role="cat-weight" value="' + cat.weight + '">%</span>' +
+          '<button class="cat-remove" data-role="cat-remove" aria-label="Remove category">Remove</button>' +
+        '</div>' +
+        '<div class="cat-score">' +
+          '<div class="score-bar"><div class="score-fill" style="width:' + score.toFixed(0) + '%; background:' + scoreColor(score) + '"></div></div>' +
+          '<span class="score-num">' + Math.round(score) + '%</span>' +
+        '</div>';
+      card.appendChild(head);
+
+      var ul = document.createElement("ul");
+      ul.className = "cat-items";
+      cat.items.forEach(function(it, idx){
+        var li = document.createElement("li");
+        li.className = "item";
+        li.dataset.idx = idx;
+        var statusText = it.status === "met" ? "Met" : it.status === "partial" ? "Partial" : "Not met";
+        li.innerHTML =
+          '<button class="status-pill" data-role="status" data-status="' + it.status + '">' + statusText + '</button>' +
+          '<input class="item-text" data-role="item-text" value="' + escapeAttr(it.text) + '">' +
+          '<label class="critical-toggle"><input type="checkbox" data-role="critical" ' + (it.critical ? "checked" : "") + '> Critical</label>' +
+          '<button class="item-remove" data-role="item-remove" aria-label="Remove criterion">&times;</button>';
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+
+      var addBtn = document.createElement("button");
+      addBtn.className = "add-item";
+      addBtn.dataset.role = "add-item";
+      addBtn.textContent = "+ Add criterion";
+      card.appendChild(addBtn);
+
+      wrap.appendChild(card);
+    });
+
+    var tw = totalWeight();
+    if(tw !== 100){
+      var warn = document.createElement("p");
+      warn.className = "weight-warn";
+      warn.textContent = "Category weights total " + tw + "% — for a clean 0–100 score, aim for 100%.";
+      wrap.appendChild(warn);
+    }
+
+    var addCat = document.createElement("button");
+    addCat.className = "add-cat-btn";
+    addCat.id = "add-cat-btn";
+    addCat.textContent = "+ Add category";
+    wrap.appendChild(addCat);
+  }
+
+  function renderDecision(){
+    var score = overallScore();
+    var auto = computeAutoRecommendation();
+    var rec = state.override || auto;
+
+    var gaugeNum = document.getElementById("gauge-num");
+    gaugeNum.textContent = Math.round(score) + "%";
+    gaugeNum.style.color = scoreColor(score);
+    var circumference = 2 * Math.PI * 36;
+    var arc = document.getElementById("gauge-arc");
+    arc.style.strokeDasharray = circumference;
+    arc.style.strokeDashoffset = circumference * (1 - score/100);
+    arc.style.stroke = scoreColor(score);
+    arc.style.transition = "stroke-dashoffset .35s ease, stroke .35s ease";
+
+    var recCard = document.getElementById("rec-card");
+    recCard.dataset.rec = rec;
+    document.getElementById("rec-label").textContent = recLabel(rec) + (state.override ? " (override)" : "");
+    var note = document.getElementById("rec-note");
+    if(state.override){
+      note.textContent = state.overrideReason ? state.overrideReason : "Manually overridden — add a reason so it's captured on the decision paper.";
+    } else {
+      note.textContent = "Auto-computed from category scores and critical-criteria status.";
+    }
+
+    var blockers = blockerItems();
+    var list = document.getElementById("blockers-list");
+    list.innerHTML = "";
+    if(!blockers.length){
+      var li = document.createElement("li");
+      li.className = "empty";
+      li.innerHTML = '<span class="b-icon">&#10003;</span><span>No open blockers — all critical criteria are met.</span>';
+      list.appendChild(li);
+    } else {
+      blockers.forEach(function(b){
+        var li = document.createElement("li");
+        li.innerHTML = '<span class="b-icon">&#9888;</span><span><strong>' + escapeHtml(b.cat) + ':</strong> ' + escapeHtml(b.text) + ' <em>(' + (b.status === "not-met" ? "not met" : "partial") + ')</em></span>';
+        list.appendChild(li);
+      });
+    }
+
+    var ta = document.getElementById("rationale-text");
+    if(!state.rationaleTouched){
+      state.rationale = buildRationale();
+      ta.value = state.rationale;
+    }
+
+    var sbody = document.getElementById("signoff-body");
+    sbody.innerHTML = "";
+    state.signoffs.forEach(function(s, idx){
+      var tr = document.createElement("tr");
+      tr.dataset.idx = idx;
+      tr.innerHTML =
+        '<td><input data-role="so-role" value="' + escapeAttr(s.role) + '"></td>' +
+        '<td><input data-role="so-name" value="' + escapeAttr(s.name) + '" placeholder="Name"></td>' +
+        '<td><select data-role="so-decision">' +
+          '<option value=""' + (s.decision===""?" selected":"") + '>—</option>' +
+          '<option value="Approve"' + (s.decision==="Approve"?" selected":"") + '>Approve</option>' +
+          '<option value="Conditional"' + (s.decision==="Conditional"?" selected":"") + '>Conditional</option>' +
+          '<option value="Reject"' + (s.decision==="Reject"?" selected":"") + '>Reject</option>' +
+        '</select></td>' +
+        '<td><input type="date" data-role="so-date" value="' + escapeAttr(s.date) + '"></td>' +
+        '<td><button class="signoff-row-remove" data-role="so-remove" aria-label="Remove signatory">&times;</button></td>';
+      sbody.appendChild(tr);
+    });
+  }
+
+  function escapeAttr(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;"); }
+  function escapeHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // ---- Event delegation ----
+  document.getElementById("categories").addEventListener("click", function(e){
+    if(e.target.id === "add-cat-btn"){
+      state.categories.push({ id:uid(), name:"New category", weight:0, items:[
+        { text:"New criterion", status:"not-met", critical:false, weight:1 }
+      ]});
+      render();
+      return;
+    }
+    var role = e.target.closest("[data-role]");
+    if(!role) return;
+    var catCard = e.target.closest(".cat-card");
+    var cat = catCard ? state.categories.find(function(c){ return c.id === catCard.dataset.catId; }) : null;
+
+    if(role.dataset.role === "status"){
+      var li = e.target.closest(".item");
+      var idx = Number(li.dataset.idx);
+      var order = ["not-met","partial","met"];
+      var next = order[(order.indexOf(cat.items[idx].status) + 1) % 3];
+      cat.items[idx].status = next;
+      render();
+    } else if(role.dataset.role === "item-remove"){
+      var li2 = e.target.closest(".item");
+      cat.items.splice(Number(li2.dataset.idx), 1);
+      render();
+    } else if(role.dataset.role === "add-item"){
+      cat.items.push({ text:"New criterion", status:"not-met", critical:false, weight:1 });
+      render();
+    } else if(role.dataset.role === "cat-remove"){
+      state.categories = state.categories.filter(function(c){ return c.id !== cat.id; });
+      render();
+    }
+  });
+
+  document.getElementById("categories").addEventListener("change", function(e){
+    var catCard = e.target.closest(".cat-card");
+    if(!catCard) return;
+    var cat = state.categories.find(function(c){ return c.id === catCard.dataset.catId; });
+    var role = e.target.dataset.role;
+    if(role === "cat-name"){ cat.name = e.target.value; state.rationaleTouched = false; render(); }
+    else if(role === "cat-weight"){ cat.weight = Number(e.target.value)||0; render(); }
+    else if(role === "item-text"){
+      var li = e.target.closest(".item");
+      cat.items[Number(li.dataset.idx)].text = e.target.value;
+      state.rationaleTouched = false;
+      render();
+    } else if(role === "critical"){
+      var li2 = e.target.closest(".item");
+      cat.items[Number(li2.dataset.idx)].critical = e.target.checked;
+      render();
+    }
+  });
+
+  document.getElementById("override-select").addEventListener("change", function(e){ state.override = e.target.value; render(); });
+  document.getElementById("override-reason").addEventListener("input", function(e){ state.overrideReason = e.target.value; persist(); document.getElementById("rec-note").textContent = e.target.value || "Manually overridden — add a reason so it's captured on the decision paper."; });
+
+  document.getElementById("rationale-text").addEventListener("input", function(e){ state.rationale = e.target.value; state.rationaleTouched = true; persist(); });
+  document.getElementById("regen-btn").addEventListener("click", function(){ state.rationaleTouched = false; render(); });
+
+  document.getElementById("signoff-body").addEventListener("input", function(e){
+    var tr = e.target.closest("tr"); if(!tr) return;
+    var s = state.signoffs[Number(tr.dataset.idx)];
+    var role = e.target.dataset.role;
+    if(role === "so-role") s.role = e.target.value;
+    if(role === "so-name") s.name = e.target.value;
+    if(role === "so-date") s.date = e.target.value;
+    persist();
+  });
+  document.getElementById("signoff-body").addEventListener("change", function(e){
+    var tr = e.target.closest("tr"); if(!tr) return;
+    if(e.target.dataset.role === "so-decision"){ state.signoffs[Number(tr.dataset.idx)].decision = e.target.value; persist(); }
+  });
+  document.getElementById("signoff-body").addEventListener("click", function(e){
+    if(e.target.dataset.role === "so-remove"){
+      var tr = e.target.closest("tr");
+      state.signoffs.splice(Number(tr.dataset.idx), 1);
+      renderDecision(); persist();
+    }
+  });
+  document.getElementById("add-signoff").addEventListener("click", function(){
+    state.signoffs.push({role:"", name:"", decision:"", date:""});
+    renderDecision(); persist();
+  });
+
+  ["f-project","f-app","f-golive","f-assessor"].forEach(function(id){
+    var el = document.getElementById(id);
+    var key = id === "f-project" ? "project" : id === "f-app" ? "app" : id === "f-golive" ? "golive" : "assessor";
+    el.value = state.meta[key] || el.value;
+    el.addEventListener("input", function(){ state.meta[key] = el.value; persist(); });
+  });
+
+  document.getElementById("print-btn").addEventListener("click", function(){ window.print(); });
+  document.getElementById("copy-btn").addEventListener("click", function(){
+    var score = Math.round(overallScore());
+    var rec = recLabel(state.override || computeAutoRecommendation());
+    var summary = "Turner Page Go/No-Go Scorecard\n" +
+      "Project: " + state.meta.project + " (" + state.meta.app + ")\n" +
+      "Planned go-live: " + (state.meta.golive || "TBC") + "\n" +
+      "Overall readiness: " + score + "% — Recommendation: " + rec + "\n\n" +
+      document.getElementById("rationale-text").value;
+    var flash = document.getElementById("copy-flash");
+    function ok(){ flash.textContent = "Copied to clipboard."; setTimeout(function(){ flash.textContent=""; }, 2500); }
+    function fail(){ flash.textContent = "Couldn't copy automatically — select and copy the rationale text manually."; }
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(summary).then(ok).catch(fail);
+      } else { fail(); }
+    }catch(e){ fail(); }
+  });
+
+  render();
+})();
+</script>
