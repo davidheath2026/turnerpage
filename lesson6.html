@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | When it's genuinely bad news</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* Placeholder flag for "From the Field" audio not yet recorded. */
+.to-record{border:2px dashed #d98c1f;border-radius:12px;padding:4px 4px 14px;margin:18px 0}
+.to-record-flag{background:#fff6e8;color:#8a5a10;font-size:.82rem;font-weight:700;padding:8px 12px;border-radius:8px 8px 0 0;margin:-2px -2px 10px}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON 6 DATA — content only. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+   Built from DML1 section 3.3-3.4 (managing surprises and
+   PMO/steering reporting). Follows the Turner Page lesson
+   playbook (ten-block shape). Click-tested against the real
+   turner-page-kit.js.
+============================================================== */
+
+const firstHourHabits=[
+ {title:"Confirm scope factually, don't estimate it",short:"Count it, don't guess it",
+  detail:"\u201cAround 50 accounts\u201d and \u201cconfirmed 47 accounts, query still running\u201d are very different things to escalate on. The first hour's job is turning a rumour into a number, even an incomplete one \u2014 not turning it into a polished plan."},
+ {title:"Contain before you explain",short:"Stop it getting worse first",
+  detail:"If a dependent activity could compound the problem \u2014 another load running against the same bad reference table, a test team about to sign off something affected \u2014 pause it before you spend time writing anything up. A well-written message about a problem that doubled in size while you were drafting it helps nobody."},
+ {title:"Get one rough fix-effort estimate",short:"Hours, days, or genuinely unknown",
+  detail:"You don't need a project plan in the first hour. You need one technical person's honest gut read: is this a config fix, a re-run, or a rebuild? \u201cGenuinely unknown, will know more by end of day\u201d is a completely valid answer \u2014 and a far better one than a confident guess that turns out wrong."},
+ {title:"Decide who needs to know today",short:"Not everyone needs the same speed",
+  detail:"The PMO and your sponsor usually need same-day visibility on anything that could affect Friday's decision. A vendor contact who isn't involved in the fix can usually wait for tomorrow's normal cadence. Getting this split right stops a genuine crisis from turning into an inbox flood."}
+];
+
+const surpriseSituations=[
+ {
+   title:"Situation 1",
+   question:"You reported Green last Thursday. The issue discovered today means that Green was, in hindsight, wrong \u2014 the risk already existed, you just hadn't found it yet. How do you handle that in today's escalation?",
+   options:[
+     {label:"Don't mention last week's status — focus only on today's facts.",correct:false,
+      feedback:"Leaving it out doesn't make the question go away, it just means someone else asks it later, at a worse moment, and it looks like you were hoping nobody would notice."},
+     {label:"Acknowledge it plainly: last week's Green reflected what was known then, and today's finding changes that picture.",correct:true,
+      feedback:"Correct. This is honest without being self-flagellating. A status is only ever as good as what's known at the time it's given \u2014 saying so plainly is very different from pretending it didn't happen."},
+     {label:"Explain in detail why the issue was reasonably undetectable last week.",correct:false,
+      feedback:"A long justification before the reader even has the facts of today's problem reads as defensive. Lead with what's happening now; context about why it wasn't caught earlier can follow if asked."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"Your sponsor mentions, slightly awkwardly, that they heard about the issue from someone else on the programme before you'd told them. What's the most useful thing to do right now?",
+   options:[
+     {label:"Explain why you hadn't reached them yet — you were still confirming facts.",correct:false,
+      feedback:"This is true and reasonable, but leading with an explanation of the delay puts your timeline ahead of their concern. It reads as justifying yourself before addressing them."},
+     {label:"Apologise for the gap, then immediately give them the clearest, most current picture you have.",correct:true,
+      feedback:"Correct. A brief, genuine acknowledgement costs little and closes the trust gap fast \u2014 then the best repair is simply giving them excellent information right now, not relitigating why it was late."},
+     {label:"Point out that they weren't the first person who needed to know.",correct:false,
+      feedback:"Technically this might even be true, but it reads as deflecting rather than addressing their actual concern, which is that they felt out of the loop."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"Two team members give you different severity assessments of the same issue within an hour of each other. The steering update is due in ninety minutes. What do you do?",
+   options:[
+     {label:"Go with whichever assessment sounds more serious, to be safe.",correct:false,
+      feedback:"Defaulting to the scarier number isn't safe, it's just a different kind of inaccurate \u2014 and it can trigger an overreaction that costs real time and credibility once the truth turns out milder."},
+     {label:"Report the range honestly — both assessments, with a note that it's still being narrowed down.",correct:true,
+      feedback:"Correct. \u201cBetween X and Y, confirming which by end of day\u201d is genuinely useful information. Reporting a false precision you don't actually have helps nobody, however tidy it looks."},
+     {label:"Delay the steering update until the two assessments are reconciled.",correct:false,
+      feedback:"Delaying the whole update to resolve one detail means the steering group loses visibility on everything else that's genuinely ready to report, for the sake of one still-open question."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"By the time of the meeting, you genuinely can't get a reliable fix-effort estimate — the technical team themselves aren't sure yet. What's the strongest thing to say?",
+   options:[
+     {label:"Give your best personal guess so the meeting has a number to work with.",correct:false,
+      feedback:"A confident-sounding guess, once said out loud in a steering meeting, tends to get treated as a commitment \u2014 and you'll be held to a number nobody actually stood behind."},
+     {label:"State plainly that the estimate isn't reliable yet, and commit to a specific time you'll have a real one.",correct:true,
+      feedback:"Correct. \u201cI don't know yet, and here's exactly when I will\u201d is a complete, professional answer. It's more useful to a decision-maker than false certainty, and it's a promise you can actually keep."},
+     {label:"Ask the technical team to commit to an estimate before the meeting, even if they're not confident in it.",correct:false,
+      feedback:"Pressuring a genuinely uncertain estimate into existence just moves the false confidence one step upstream \u2014 it still ends up in the room as if it were reliable."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The 4pm surprise",title:"The 4pm surprise",type:"mcq",
+ html:`<div class="promise-card">
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ </div>
+ <p class="lead">It's 4pm on Wednesday. Go/no-go for cutover is Friday morning.</p>
+ <p>During a routine spot check \u2014 not a planned test, just someone double-checking something unrelated \u2014 QA notices the address mapping used the wrong reference table for a segment of major accounts. Early read: around 50 accounts affected. Nobody yet knows if the fix is a five-minute config change or a partial rebuild.</p>
+ <div class="quote">\u201cWe don't actually know how bad this is yet.\u201d</div>
+ <h3>What do you do in the next hour?</h3>`,
+ options:["Escalate immediately, before you know anything about scope or fix effort.","Spend about an hour establishing basic facts, then escalate the same day with what's known and what isn't.","Wait for tomorrow's scheduled stand-up, using the extra time to investigate fully first.","Fix it quietly over the weekend without telling anyone, aiming to have it resolved before Friday."],
+ feedback:[
+ "Escalating with genuinely nothing confirmed forces the reader to ask you all the basic questions themselves. A short delay to get real facts almost always produces a more useful escalation, not a slower one.",
+ "This is the strongest response. An hour to turn a rumour into real numbers, then a same-day escalation with clear knowns and unknowns, respects both urgency and accuracy.",
+ "With a go/no-go decision on Friday, waiting for tomorrow's normal cadence hands back nearly a full day of reaction time on something that could change the decision itself.",
+ "This treats a programme-level risk as something to manage alone. Even a successful weekend fix doesn't undo the fact that a decision-relevant risk was hidden from the people who needed to weigh it."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next: the escalation, built properly",type:"content",
+ html:`<p class="lead">Say you take the hour. Here's what it actually produces, using the same context/impact/options/recommendation structure from the escalation lesson \u2014 the exact same skill, just under real pressure this time.</p>
+ <p><strong>Context:</strong> \u201cSpot check found 47 confirmed accounts (of an estimated 50-60) mapped against the wrong reference table for delivery addresses.\u201d</p>
+ <p><strong>Impact:</strong> \u201cAffects Friday's go/no-go decision. Fix scope not yet confirmed \u2014 could be a same-day config change or up to two days of rework.\u201d</p>
+ <p><strong>Options:</strong> \u201ca) Hold Friday's decision pending a confirmed fix estimate by Thursday noon. b) Proceed Friday with these accounts held back for a follow-up load. c) Delay cutover by 2-3 days as a precaution.\u201d</p>
+ <p><strong>Recommendation:</strong> \u201cOption a \u2014 we'll have a real estimate in 18 hours, which is well within the decision window, and it avoids either an unnecessary delay or an unnecessary risk.\u201d</p>
+ <p>Notice what this message is not: it isn't a confession, and it isn't a crisis announcement. It's the same calm, structured shape you'd use for a much smaller problem \u2014 which is exactly why it lands as competence rather than panic.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The DMLs who handle genuine crises well aren't the ones who never have them. They're the ones whose crisis communication looks almost identical to their routine communication \u2014 same structure, same tone, just higher stakes.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A real surprise doesn't need a different communication skill. It needs the same one, used faster and under more pressure.</div>`
+},
+{
+ id:"b3",nav:"Why surprises are different",title:"Why surprises are different from warnings",type:"content",
+ html:`<p class="lead">Lesson 5 was about catching a slow-forming pattern before it became a problem. This lesson is about something else \u2014 the moment a problem is already fully formed and lands on your desk without warning.</p>
+ <p>You cannot prevent every surprise. Even the best RAID discipline, the best escalation habits, the best PMO relationship \u2014 something will still occasionally arrive with no warning at all. That's not a governance failure. It's the nature of complex programmes.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Wait until you have the complete picture before telling anyone.</strong></p><p>This feels responsible \u2014 nobody wants to cause alarm over incomplete information. But \u201ccomplete picture\u201d often takes far longer to assemble than the decision window allows. The goal isn't complete information, it's honest information, clearly labelled as partial.</p></div>
+ <div class="principle"><strong>Key takeaway</strong><br>What actually gets judged, after the fact, is rarely the surprise itself. It's how fast and how clearly it was handled once it was known.</div>`
+},
+{
+ id:"b4",nav:"The first hour",title:"Four things to nail in the first hour",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">The first hour after a genuine surprise sets the tone for everything after it. Four things matter more than anything else in that hour. Open each one.</p>`,
+ items: firstHourHabits
+},
+{
+ id:"b5",nav:"Write it yourself",title:"Writing the same-day escalation",type:"guidedSteps",
+ html:`<p class="lead">Let's build the actual escalation for the address-mapping surprise, one part at a time \u2014 the same structure as before, applied live.</p>`,
+ firstLabel:"Start the escalation",
+ steps:[
+   {html:`<h4>Step 1 — Context, stated as fact</h4><p><em>\u201cSpot check identified 47 confirmed accounts mapped against the wrong reference table for delivery addresses; estimated total 50-60.\u201d</em></p><p>A range with a confirmed floor (\u201c47 confirmed, up to 60 estimated\u201d) is far more credible than either a vague \u201caround 50\u201d or a false-precision single number.</p>`},
+   {html:`<h4>Step 2 — Impact, tied to the decision that matters</h4><p><em>\u201cDirectly affects Friday's go/no-go decision. Fix scope not yet confirmed.\u201d</em></p><p>Everything else about this issue is secondary to the fact that it touches a specific, imminent decision. Lead with that connection so the reader immediately understands the stakes.</p>`},
+   {html:`<h4>Step 3 — Options, genuinely different from each other</h4><p><em>\u201ca) Hold the decision pending a confirmed estimate by Thursday noon. b) Proceed Friday, holding these accounts back for a follow-up load. c) Delay cutover 2-3 days as a precaution.\u201d</em></p><p>Three real choices with different risk profiles \u2014 not one obvious option and two token alternatives included just to look thorough.</p>`},
+   {html:`<h4>Step 4 — Recommendation, with the reasoning shown</h4><p><em>\u201cRecommend option a. Eighteen hours is well within the decision window, and it avoids both an unnecessary delay and an unnecessary risk.\u201d</em></p><p>The reasoning matters as much as the choice \u2014 it's what lets the reader agree quickly, or push back on the specific logic rather than the whole recommendation.</p>`}
+ ],
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>This escalation took roughly the same four sentences as the environment-refresh example from the previous lesson. The stakes were much higher here \u2014 the structure didn't need to change at all.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>If you find yourself needing a completely different approach for a serious surprise, that's usually a sign of panic, not a sign the situation genuinely requires it.</div>`
+},
+{
+ id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
+ html:`<p class="lead">Four moments in the aftermath of a surprise where the right call isn't obvious.</p>`,
+ items:surpriseSituations
+},
+{
+ id:"b7",nav:"Delivering bad news well",title:"Delivering bad news well",type:"content",
+ html:`<p class="lead">Two opposite instincts show up when the news is genuinely bad: minimising it to soften the blow, or over-apologising to the point that the actual facts get lost under the apology.</p>
+ <p>Neither serves the reader. Minimising erodes trust the moment the full scale becomes clear anyway. Over-apologising makes the conversation about your feelings about the problem rather than the problem itself \u2014 and a decision-maker in a hurry has to wade through the apology to find the facts they actually need.</p>
+ <p>The steadier middle path: state the facts plainly, take ownership of what's genuinely yours to own, and move quickly to what happens next. One clear sentence of acknowledgement is usually enough. More than that starts working against you.</p>
+ <div class="to-record">
+   <div class="to-record-flag">\u26A0 PLACEHOLDER \u2014 record via ElevenLabs (or similar) and replace the src below before publishing. Script text will double as an on-page transcript once real audio is in place.</div>
+   ${TPKit.fromField({
+     title:"The Meeting I Almost Over-Apologised In",
+     name:"Owen",
+     role:"Data Migration Lead",
+     project:"Insurance ERP",
+     src:"/assets/audio/lesson6-fromfield-owen.mp3",
+     reflection:"\u201cI once opened a steering update with nearly two minutes of apology before I'd said a single fact. Halfway through I could see the sponsor's patience running out \u2014 not because she was angry about the issue, but because she still didn't know what it actually was. Now I say one honest sentence, own what's mine, and get straight to what happens next. People forgive problems. They get frustrated by not knowing what's actually going on.\u201d"
+   })}
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Most senior stakeholders can tell the difference between someone who's rattled and someone who's calm within the first fifteen seconds of how they open a difficult update. That impression tends to outlast the memory of the issue itself.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>Own it in one sentence. Then spend the rest of the conversation on what happens next, not on how bad you feel about it.</div>`
+},
+{
+ id:"b8",nav:"Reflection",title:"A time you had to deliver bad news",type:"reflection",
+ html:`<p>Think of a time you had to tell someone senior that something had genuinely gone wrong.</p>
+ <div class="quote">\u201cHow did you open that conversation, and what would you do differently now?\u201d</div>
+ <textarea id="reflection" placeholder="The situation I'm thinking of is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/fact|scope|confirm|number/i, strength:"You focused on getting to the facts clearly, rather than dwelling on how the news was received.", gap:"Consider how quickly you got to the concrete facts of the situation." },
+   { test:/apolog|sorry|own|ownership/i, strength:"You reflected on ownership or apology specifically, which is exactly the balance this lesson is about.", gap:"Think about whether your opening leaned toward over-apologising or minimising." },
+   { test:/next|plan|option|recommend/i, strength:"You connected the conversation to what happened next, not just the bad news itself.", gap:"Consider how quickly the conversation moved to options or next steps." },
+   { test:/calm|tone|reaction|panic/i, strength:"You reflected on tone and composure, which shapes how bad news actually lands.", gap:"Think about how calm the delivery itself felt, separate from the facts being delivered." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"You've clearly thought hard about how delivery shapes the outcome, not just the facts themselves.":"Good reflection. The detail worth adding is exactly how you opened the conversation \u2014 that first sentence usually sets the tone for everything after it."}</div>`
+},
+{
+ id:"b9",nav:"Summary",title:"If you remember nothing else",type:"content",
+ html:`<p class="lead">A surprise isn't a governance failure. How it's handled in the first hour, and how it's reported afterward, is what actually gets judged.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Spend the first hour confirming facts and containing damage \u2014 not building the perfect message.</li>
+   <li>Use the same context/impact/options/recommendation structure under pressure that you'd use for anything smaller.</li>
+   <li>Report ranges honestly rather than false precision when the picture is still forming.</li>
+   <li>Own bad news in one clear sentence, then move straight to what happens next.</li>
+ </ul>
+ <div class="principle"><strong>People forgive problems. They get frustrated by not knowing what's actually going on.</strong><br>Speed and clarity, not perfection, are what earn trust back fastest.</div>`
+},
+{
+ id:"b10",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed When it's genuinely bad news.</strong></p>
+ <p>You've worked through the first hour of a real surprise, built a same-day escalation under pressure, and practised the line between owning a problem and drowning it in apology.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building a leadership cadence that holds under pressure</strong></p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it next time bad news lands unexpectedly \u2014 the first sentence you say usually matters more than the tenth.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Module 1",
+  moduleTitle: "The Data Migration Lead mindset",
+  lessonLabel: "Lesson 6: When it's genuinely bad news",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "Managing surprises and PMO/steering reporting",
+  storageKey: "tp_lesson6_v1",
+  nextUrl: "lesson7.html",
+  finalButtonLabel: "Continue to Lesson 7 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
