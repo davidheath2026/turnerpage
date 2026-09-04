@@ -113,8 +113,8 @@ const verdictSituations = [
   },
   {
     q:"A customer classified as RETAIL in legacy appears as B2C in the target. A tester raises it as a migration defect.",
-    a:0,
-    why:"Not necessarily a defect. If RETAIL \u2192 B2C is the approved mapping rule, the difference is evidence that the migration transformed the data correctly."
+    a:2,
+    why:"Not enough evidence yet, and not automatically a defect either. The scenario only tells us a tester flagged it \u2014 it does not confirm whether RETAIL \u2192 B2C is an approved mapping rule or an actual error. If it turns out to be the signed-off rule, the difference is evidence of a correct transformation. If not, it's a real defect. Either way, someone needs to check the mapping rule before calling it either successful or unsuccessful."
   },
   {
     q:"The legacy and target trial balances agree exactly after migration. Finance therefore declares the whole financial migration complete.",
@@ -324,7 +324,7 @@ const LESSON_CONFIG = {
   lessonLabel: "Lesson 1: What data migration actually is",
   lessonShortLabel: "Lesson 1",
   lessonTagline: "Technical success is not migration success",
-  storageKey: "tp_core1_lesson1_v3",
+  storageKey: "tp_core1_lesson1_v4",
   nextUrl: "lesson2.html",
   finalButtonLabel: "Continue to Lesson 2",
   blocks: blocks
