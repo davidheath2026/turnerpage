@@ -54,49 +54,6 @@ const fiveTests=[
   }
 ];
 
-// Section 5 — "What does the evidence actually prove?" reframed as a
-// judgement exercise: each item is a piece of evidence, and the option
-// set is the five tests, reordered per item so the correct answer's
-// position doesn't just track the item number (1→A, 2→B, 3→C...).
-const testLabels = fiveTests.map(t => t.title);
-// [correctTestIndex, displayOrder of test indices]
-const evidenceItems = [
-  {
-    q:"18,530 active customers were in agreed scope. 18,530 are accounted for in the target and approved exclusions.",
-    order:[2,4,0,1,3], a:0,
-    why:"It accounts for the expected population rather than merely reporting the number accepted by the loader."
-  },
-  {
-    q:"A comparison of 200 sampled customers confirms that names, tax numbers, payment terms and status values match the approved transformation rules.",
-    order:[0,3,2,4,1], a:1,
-    why:"It checks the correctness of values against agreed rules."
-  },
-  {
-    q:"An automated check finds zero sales orders whose customer identifier is absent from the migrated customer population.",
-    order:[2,4,1,3,0], a:2,
-    why:"It tests a dependency between two migrated data sets."
-  },
-  {
-    q:"Legacy customer type 07 is converted to DISTRIBUTOR in the target, in accordance with the signed mapping rule.",
-    order:[0,1,4,3,2], a:3,
-    why:"It proves that a difference from legacy is deliberate and semantically correct."
-  },
-  {
-    q:"Sales users successfully create and invoice orders for ten migrated customers covering domestic, export and credit-held scenarios.",
-    order:[0,4,1,3,2], a:4,
-    why:"It demonstrates that the data supports actual target-system behaviour."
-  }
-];
-const evidenceSituations = evidenceItems.map((e, idx) => ({
-  title:`Evidence ${idx+1}`,
-  question:e.q,
-  options: e.order.map(testIdx => ({
-    label: testLabels[testIdx],
-    correct: testIdx === e.a,
-    feedback: (testIdx === e.a ? "Correct.<br>" : "Not quite \u2014 this test asks a different question.<br>") + e.why
-  }))
-}));
-
 // Section 6 — successful / not successful / not enough evidence, a
 // fixed three-option judgement reused across four situations.
 const verdictOptions = ["Successful", "Not successful", "Not enough evidence yet"];
@@ -213,10 +170,18 @@ const blocks=[
  takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>These five tests are related but not interchangeable. A correct record count does not prove field accuracy. Accurate individual fields do not prove relationships. Structurally valid data does not prove that a business process will work.</div>`
 },
 {
- id:"b5",nav:"What does the evidence prove?",title:"Build it yourself \u2014 What does the evidence actually prove?",type:"situations",
- html:`<p class="lead">Bramwell's migration team produces the following evidence after reworking the customer load. For each item, decide which of the five tests it primarily supports.</p>`,
- items: evidenceSituations,
- takeawayHtml:`<div class="principle"><strong>Key takeaway</strong><br>The important point is not memorising five labels. It is learning to ask what a piece of migration evidence actually proves.</div>`
+ id:"b5",nav:"Build it yourself",title:"Build it yourself \u2014 What does the evidence actually prove?",type:"guidedSteps",
+ html:`<p class="lead">Bramwell's migration team has reworked the customer load and produced five pieces of evidence. Theory is one thing \u2014 let's actually work through what each piece proves, one at a time.</p>`,
+ firstLabel:"Start reviewing the evidence",
+ steps:[
+   {html:`<h4>Evidence 1 \u2014 "18,530 active customers were in agreed scope. 18,530 are accounted for in the target and approved exclusions."</h4><p>Which test does this support? <strong>Is it there? (Completeness).</strong></p><p>Notice what this evidence does and doesn't prove. It accounts for the expected population rather than merely reporting the number the loader happened to accept \u2014 that's a meaningfully stronger claim than "99.4% loaded". But it says nothing yet about whether those 18,530 records contain the right values.</p>`},
+   {html:`<h4>Evidence 2 \u2014 "A comparison of 200 sampled customers confirms that names, tax numbers, payment terms and status values match the approved transformation rules."</h4><p>Which test does this support? <strong>Is it right? (Accuracy).</strong></p><p>This is a different question from Evidence 1, and answering it requires different work \u2014 sampling and checking values against agreed rules, not just counting records. A migration can pass the completeness test and fail this one, or the reverse.</p>`},
+   {html:`<h4>Evidence 3 \u2014 "An automated check finds zero sales orders whose customer identifier is absent from the migrated customer population."</h4><p>Which test does this support? <strong>Is it connected? (Relationships).</strong></p><p>This tests a dependency between two migrated data sets, not the customer data in isolation. Individually correct customer records and individually correct order records can still fail this test if the link between them breaks.</p>`},
+   {html:`<h4>Evidence 4 \u2014 "Legacy customer type 07 is converted to DISTRIBUTOR in the target, in accordance with the signed mapping rule."</h4><p>Which test does this support? <strong>Does it mean the right thing? (Business meaning).</strong></p><p>This is the evidence that proves a difference from legacy is deliberate and correct, not a defect. Without the signed mapping rule as evidence, a reviewer would have no way to tell this apart from an unintended error.</p>`},
+   {html:`<h4>Evidence 5 \u2014 "Sales users successfully create and invoice orders for ten migrated customers covering domestic, export and credit-held scenarios."</h4><p>Which test does this support? <strong>Can the business use it? (Usability).</strong></p><p>This is the only evidence so far that comes from an actual business process rather than a data check. It's also the hardest and slowest to produce \u2014 which is exactly why teams are tempted to stop at the earlier, easier tests.</p>`}
+ ],
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice that all five pieces of evidence were needed. None of them alone would have been enough to call the customer migration successful \u2014 and none of them individually resembles a "99.4% loaded" headline.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>The important point is not memorising five labels. It is learning to ask what a piece of migration evidence actually proves, and what it still leaves unanswered.</div>`
 },
 {
  id:"b6",nav:"Situations",title:"Situations \u2014 Successful, unsuccessful or not enough evidence?",type:"situations",
