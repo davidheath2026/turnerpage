@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Migration Lead Course | Turner Page Academy</title>
+<style>
+  /* Palette matches the established Turner Page brand tokens
+     (see home.html / login.html / welcome.html / enrol.html).
+     --gold is kept as-is: used only for star-rating icons and
+     small "featured" tags, a functional accent, not brand identity.
+     IBM Plex Mono replaced with the system monospace stack. */
+  :root{
+    --teal-900:#005f6c;
+    --teal-800:#005f6c;
+    --teal-700:#0b7f8e;
+    --aqua-500:#7dd8d8;
+    --aqua-300:#7dd8d8;
+    --mint-100:#e9f5f5;
+    --paper:#FFFFFF;
+    --ink:#102f36;
+    --ink-soft:#50686e;
+    --ink-faint:#657d82;
+    --gold:#EFB93A;
+    --line:#d8e9e9;
+    --radius:16px;
+    --shadow:0 20px 50px -25px rgba(14,76,83,0.35);
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,h4{
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    margin:0;
+    color:var(--teal-900);
+    letter-spacing:-0.01em;
+  }
+  p{margin:0;color:var(--ink-soft);line-height:1.6;}
+  a{color:inherit;text-decoration:none;}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+  img{display:block;max-width:100%;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease, transform .7s ease;}
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  /* ---------- nav ---------- */
+  header{
+    position:sticky;top:0;z-index:100;
+    background:rgba(255,253,248,0.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid transparent;
+    transition:border-color .3s ease, box-shadow .3s ease;
+  }
+  header.scrolled{border-color:var(--line); box-shadow:0 2px 20px rgba(14,76,83,0.06);}
+  nav.wrap{display:flex;align-items:center;justify-content:space-between;height:76px;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand img{height:34px;width:auto;}
+  .navlinks{display:flex;align-items:center;gap:32px;}
+  .navlinks a{font-size:14.5px;font-weight:500;color:var(--teal-900);opacity:.78;transition:opacity .2s;}
+  .navlinks a:hover{opacity:1;}
+  .navcta{display:flex;align-items:center;gap:18px;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:12px 22px;border-radius:999px;font-weight:600;font-size:14.5px;
+    border:1.5px solid transparent;transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{background:var(--teal-900);color:#fff;box-shadow:0 10px 24px -10px rgba(14,76,83,0.55);}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 30px -12px rgba(14,76,83,0.6);}
+  .btn-ghost{background:transparent;color:var(--teal-900);border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--teal-900);}
+  .btn-light{background:#fff;color:var(--teal-900);}
+  .btn-light:hover{transform:translateY(-2px);}
+  .signin{font-size:14.5px;font-weight:600;color:var(--teal-900);}
+  .navtoggle{display:none;background:none;border:none;}
+  .navtoggle span{display:block;width:22px;height:2px;background:var(--teal-900);margin:5px 0;border-radius:2px;}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative;padding:76px 0 40px;overflow:hidden;}
+  .hero::before{
+    content:"";position:absolute;inset:-20% -10% auto -10%;height:640px;
+    background:radial-gradient(60% 60% at 30% 20%, var(--mint-100) 0%, rgba(234,247,245,0) 70%),
+               radial-gradient(50% 50% at 85% 10%, var(--aqua-300) 0%, rgba(169,228,223,0) 65%);
+    opacity:.8;z-index:-1;
+  }
+  .hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:center;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--teal-700);background:var(--mint-100);border:1px solid var(--aqua-300);
+    padding:7px 14px;border-radius:999px;margin-bottom:20px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+  .hero h1{font-size:clamp(34px,4.4vw,52px);line-height:1.08;font-weight:700;}
+  .hero h1 em{font-style:normal;color:var(--aqua-500);}
+  .hero p.lead{margin-top:22px;font-size:18px;max-width:520px;}
+  .hero-ctas{display:flex;align-items:center;gap:18px;margin-top:32px;flex-wrap:wrap;}
+  .hero-note{font-size:13px;color:var(--ink-faint);margin-top:14px;}
+  .trustbar{display:flex;gap:34px;margin-top:46px;flex-wrap:wrap;}
+  .trust-item{display:flex;flex-direction:column;gap:2px;}
+  .trust-item .num{font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:700;font-size:21px;color:var(--teal-900);}
+  .trust-item .lbl{font-size:12.5px;color:var(--ink-faint);}
+
+  /* ---------- flip demo ---------- */
+  .flipzone{perspective:1600px;}
+  .book{
+    position:relative;width:100%;max-width:430px;margin-left:auto;aspect-ratio:4/4.6;
+  }
+  .book-shadow{position:absolute;inset:14px -14px -22px 14px;background:var(--teal-900);opacity:.08;border-radius:18px;filter:blur(2px);}
+  .page{
+    position:absolute;inset:0;background:#fff;border-radius:18px;border:1px solid var(--line);
+    box-shadow:var(--shadow);padding:34px 32px;display:flex;flex-direction:column;
+    backface-visibility:hidden;transform-style:preserve-3d;transform-origin:left center;
+    transition:transform .85s cubic-bezier(.65,0,.35,1);
+  }
+  .page.turned{transform:rotateY(-165deg);}
+  .page .pnum{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--aqua-500);font-weight:600;letter-spacing:.04em;}
+  .page h4{font-size:21px;margin-top:14px;line-height:1.3;}
+  .page p{margin-top:14px;font-size:14.5px;}
+  .page .tag{
+    margin-top:auto;align-self:flex-start;background:var(--mint-100);color:var(--teal-700);
+    font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;
+  }
+  .page1{z-index:5;}
+  .page2{z-index:4;}
+  .page3{z-index:3;background:var(--teal-900);}
+  .page3 .pnum{color:var(--aqua-300);}
+  .page3 h4{color:#fff;}
+  .page3 p{color:var(--aqua-300);}
+  .page3 .tag{background:rgba(255,255,255,0.12);color:#fff;}
+  .flip-controls{display:flex;justify-content:center;gap:10px;margin-top:20px;}
+  .flip-dot{width:8px;height:8px;border-radius:50%;background:var(--line);border:none;padding:0;transition:background .2s;}
+  .flip-dot.active{background:var(--teal-900);width:22px;border-radius:5px;}
+  .flip-hint{text-align:center;font-size:12.5px;color:var(--ink-faint);margin-top:10px;}
+  .book-badge{
+    position:absolute;top:-16px;left:-16px;z-index:10;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:8px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:600;color:var(--teal-900);transform:rotate(-4deg);
+  }
+  .book-badge .stars{color:var(--gold);font-size:12px;letter-spacing:1px;}
+  .page4{z-index:2;}
+  .page5{z-index:1;}
+  .page-quote{justify-content:flex-start;}
+  .page-quote .quote-mark{font-family:Inter,Segoe UI,Arial,sans-serif;font-size:44px;color:var(--aqua-300);line-height:.6;margin-top:10px;}
+  .page-quote .qtext{font-size:15px;color:var(--ink);margin-top:8px;line-height:1.55;}
+  .page-quote .stars{color:var(--gold);font-size:14px;letter-spacing:2px;margin-top:14px;}
+  .page-quote .qwho{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:18px;}
+  .page-quote .qavatar{width:40px;height:40px;border-radius:50%;background:var(--mint-100);display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;}
+
+  /* ---------- section shell ---------- */
+  section{padding:96px 0;}
+  .section-head{max-width:660px;margin-bottom:56px;}
+  .section-head .eyebrow{margin-bottom:16px;}
+  .section-head h2{font-size:clamp(28px,3.2vw,38px);font-weight:700;line-height:1.15;}
+  .section-head p{margin-top:16px;font-size:16.5px;}
+  .center{text-align:center;margin-left:auto;margin-right:auto;}
+
+  /* ---------- role explainer ---------- */
+  .role-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:48px;align-items:start;}
+  .role-copy p{font-size:15.5px;margin-top:18px;}
+  .role-copy p:first-child{margin-top:0;}
+  .role-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:36px 34px;box-shadow:var(--shadow);}
+  .role-card h4{font-size:15px;color:var(--teal-900);}
+  .role-card .role-kicker{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--aqua-500);margin-bottom:10px;display:block;}
+  .role-list{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:15px;}
+  .role-list li{display:flex;gap:11px;font-size:14.5px;color:var(--ink-soft);align-items:flex-start;line-height:1.55;}
+  .role-list li svg{flex:none;margin-top:3px;}
+  @media (max-width:900px){ .role-grid{grid-template-columns:1fr;} }
+
+  /* ---------- advantage cards (for you / for client) ---------- */
+  .adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+  .adv-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:36px 34px;box-shadow:0 24px 50px -35px rgba(14,76,83,0.4);}
+  .adv-kicker{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--aqua-500);}
+  .adv-card h3{font-size:23px;margin-top:10px;}
+  .adv-list{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:13px;}
+  .adv-list li{display:flex;gap:10px;font-size:14.5px;color:var(--ink-soft);align-items:flex-start;line-height:1.55;}
+  .adv-list li svg{flex:none;margin-top:3px;}
+  @media (max-width:900px){ .adv-grid{grid-template-columns:1fr;} }
+
+  /* ---------- method / pages ---------- */
+  .method{background:var(--teal-900);color:#fff;position:relative;}
+  .method .section-head h2{color:#fff;}
+  .method .section-head p{color:var(--aqua-300);}
+  .method .eyebrow{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.18);color:var(--aqua-300);}
+  .method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,0.14);border-radius:20px;overflow:hidden;}
+  .method-card{background:#123F45;padding:38px 32px;}
+  .method-card .pnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--aqua-500);font-size:13px;font-weight:600;}
+  .method-card h3{color:#fff;font-size:19px;margin-top:18px;line-height:1.35;}
+  .method-card p{color:var(--aqua-300);margin-top:12px;font-size:14.5px;}
+  .method-card .spine{width:30px;height:3px;background:var(--aqua-500);border-radius:3px;margin-bottom:6px;}
+  @media (max-width:900px){ .method-grid{grid-template-columns:1fr;} }
+
+  /* ---------- shared foundation strip ---------- */
+  .shared-strip{
+    margin-top:40px;display:flex;align-items:center;gap:18px;background:var(--mint-100);
+    border:1px solid var(--aqua-300);border-radius:16px;padding:20px 26px;
+  }
+  .shared-strip .icon{flex:none;width:38px;height:38px;border-radius:10px;background:var(--teal-900);display:flex;align-items:center;justify-content:center;}
+  .shared-strip p{font-size:14px;color:var(--teal-800);}
+  .shared-strip strong{color:var(--teal-900);}
+
+  /* ---------- module pricing ---------- */
+  .bundle-banner{
+    display:flex;justify-content:space-between;align-items:center;gap:32px;background:var(--teal-900);
+    border-radius:22px;padding:38px 42px;color:#fff;
+  }
+  .bundle-tag{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);}
+  .bundle-left h3{color:#fff;font-size:22px;margin-top:8px;}
+  .bundle-left p{color:var(--aqua-300);margin-top:10px;font-size:14px;max-width:440px;}
+  .bundle-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none;}
+  .bundle-price{display:flex;align-items:baseline;gap:10px;}
+  .bundle-price .was{font-size:15px;color:var(--aqua-300);text-decoration:line-through;}
+  .bundle-price .amount{font-size:28px;font-weight:600;color:#fff;}
+  .bundle-note{font-size:11.5px;color:var(--aqua-300);max-width:230px;line-height:1.5;}
+  @media (max-width:760px){
+    .bundle-banner{flex-direction:column;align-items:flex-start;text-align:left;padding:32px 28px;}
+    .bundle-right{align-items:flex-start;text-align:left;width:100%;}
+  }
+  .module-row{margin-top:44px;}
+  .module-row:first-of-type{margin-top:40px;}
+  .module-row-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px;}
+  .module-group-label{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-700);}
+  .module-scroll{display:flex;gap:18px;overflow-x:auto;padding:6px 4px 18px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .module-scroll::-webkit-scrollbar{display:none;}
+  .module-chip{
+    scroll-snap-align:start;flex:none;width:236px;background:#fff;border:1px solid var(--aqua-300);border-radius:16px;
+    padding:22px 20px;cursor:pointer;text-align:left;font-family:inherit;transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .module-chip:hover, .module-chip:focus-visible{transform:translateY(-5px);box-shadow:0 22px 38px -26px rgba(14,76,83,0.42);border-color:var(--teal-900);outline:none;}
+  .module-chip .num{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--aqua-500);font-weight:600;}
+  .module-chip h5{font-size:15.5px;margin-top:10px;color:var(--teal-900);font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.3;font-weight:600;}
+  .module-chip .snippet{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.55;min-height:48px;}
+  .chip-foot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:13px;border-top:1px solid var(--line);}
+  .chip-price{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:var(--teal-900);font-size:14px;}
+  .chip-more{font-size:12px;font-weight:600;color:var(--teal-700);display:flex;align-items:center;gap:3px;}
+
+  /* ---------- module detail modal ---------- */
+  .module-modal{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;padding:24px;}
+  .module-modal.open{display:flex;}
+  .module-modal-backdrop{position:absolute;inset:0;background:rgba(14,38,42,0.55);backdrop-filter:blur(2px);}
+  .module-modal-card{
+    position:relative;background:#fff;border-radius:22px;max-width:460px;width:100%;padding:40px 36px;
+    box-shadow:var(--shadow);max-height:85vh;overflow-y:auto;
+  }
+  .module-modal-close{
+    position:absolute;top:16px;right:16px;background:var(--mint-100);border:none;width:32px;height:32px;
+    border-radius:50%;color:var(--teal-900);font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;
+  }
+  .module-modal-card h3{font-size:22px;margin-top:12px;line-height:1.3;}
+  .module-modal-card p{font-size:14.5px;margin-top:14px;line-height:1.65;}
+  @media (max-width:520px){ .module-modal-card{padding:32px 24px;} }
+
+  /* ---------- curriculum checklist ---------- */
+  .learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 32px;}
+  .learn-item{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;}
+  .learn-item svg{flex:none;margin-top:2px;}
+  .learn-item p{font-size:14.5px;color:var(--ink);line-height:1.55;}
+  @media (max-width:760px){ .learn-grid{grid-template-columns:1fr;} }
+
+  /* ---------- toolkit ---------- */
+  .toolkit{background:var(--mint-100);}
+  .toolkit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .tool-card{background:#fff;border-radius:18px;padding:28px;border:1px solid var(--aqua-300);display:flex;flex-direction:column;gap:14px;transition:transform .2s ease, box-shadow .2s ease;}
+  .tool-card:hover{transform:translateY(-5px);box-shadow:0 24px 40px -28px rgba(14,76,83,0.4);}
+  .tool-kicker{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--aqua-500);}
+  .tool-card h4{font-size:18px;margin-top:2px;}
+  .tool-card p.desc{font-size:13.5px;margin-top:0;min-height:58px;}
+  .tool-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);}
+  .tool-price{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:var(--teal-900);font-size:16px;}
+  .tool-price span{font-size:11.5px;color:var(--ink-faint);font-family:'Inter',sans-serif;}
+  .tool-worth{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--ink-faint);text-decoration:line-through;margin-bottom:2px;}
+  .tool-why{font-size:12.5px;color:var(--ink-soft);background:var(--mint-100);padding:11px 13px;border-radius:10px;line-height:1.5;}
+  .tool-why strong{color:var(--teal-900);}
+  .tool-add{font-size:13px;font-weight:600;color:var(--teal-900);display:flex;align-items:center;gap:4px;}
+  .toolkit-note{margin-top:34px;font-size:13.5px;color:var(--ink-soft);text-align:center;}
+  @media (max-width:900px){ .toolkit-grid{grid-template-columns:1fr;} }
+
+  /* ---------- community ---------- */
+  .community-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .info-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:30px 28px;box-shadow:0 24px 50px -38px rgba(14,76,83,0.35);}
+  .info-card .info-icon{width:42px;height:42px;border-radius:12px;background:var(--teal-900);display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+  .info-card h4{font-size:17px;}
+  .info-card p{font-size:14px;margin-top:10px;}
+  @media (max-width:900px){ .community-grid{grid-template-columns:1fr;} }
+
+  /* ---------- reviews ---------- */
+  .reviews-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:28px;margin-bottom:44px;}
+  .rating-summary{display:flex;align-items:center;gap:22px;}
+  .rating-big{font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:800;font-size:52px;color:var(--teal-900);line-height:1;}
+  .stars{color:var(--gold);font-size:17px;letter-spacing:2px;}
+  .rating-sub{font-size:13.5px;color:var(--ink-faint);margin-top:4px;}
+  .rating-bars{display:flex;flex-direction:column;gap:5px;min-width:220px;}
+  .rbar-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-faint);}
+  .rbar-track{flex:1;height:6px;background:var(--line);border-radius:4px;overflow:hidden;}
+  .rbar-fill{height:100%;background:var(--gold);border-radius:4px;}
+  .review-controls{display:flex;gap:10px;}
+  .rc-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;transition:border-color .2s, transform .2s;}
+  .rc-btn:hover{border-color:var(--teal-900);transform:translateY(-2px);}
+  .review-scroll{display:flex;gap:22px;overflow-x:auto;padding-bottom:14px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .review-scroll::-webkit-scrollbar{display:none;}
+  .review-card{
+    scroll-snap-align:start;flex:none;width:340px;background:#fff;border:1px solid var(--line);
+    border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:14px;
+  }
+  .review-top{display:flex;align-items:center;gap:12px;}
+  .avatar{width:42px;height:42px;border-radius:50%;background:var(--teal-900);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:15px;flex:none;}
+  .review-name{font-weight:600;color:var(--teal-900);font-size:14.5px;}
+  .review-role{font-size:12px;color:var(--ink-faint);}
+  .review-card .stars{font-size:14px;}
+  .review-text{font-size:14px;color:var(--ink-soft);line-height:1.65;}
+
+  /* ---------- enroll card ---------- */
+  .enroll-wrap{max-width:600px;margin:0 auto;}
+  .enroll-card{
+    background:#fff;border:1px solid var(--line);border-radius:24px;padding:0;overflow:hidden;
+    box-shadow:0 28px 60px -35px rgba(14,76,83,0.45);position:relative;
+  }
+  .enroll-card .fold{
+    position:absolute;top:0;right:0;width:0;height:0;
+    border-style:solid;border-width:0 52px 52px 0;border-color:transparent var(--mint-100) transparent transparent;
+  }
+  .enroll-top{padding:40px 40px 0;}
+  .course-role{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--aqua-500);}
+  .enroll-card h3{font-size:27px;margin-top:10px;}
+  .enroll-card .subtitle{margin-top:10px;font-size:15px;color:var(--ink-soft);}
+  .course-stats{display:flex;gap:26px;margin-top:24px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .course-stats div{display:flex;flex-direction:column;gap:2px;}
+  .course-stats .n{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;color:var(--teal-900);font-size:15px;}
+  .course-stats .l{font-size:11.5px;color:var(--ink-faint);}
+  .course-learn{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .course-learn li{display:flex;gap:10px;font-size:14.5px;color:var(--ink-soft);align-items:flex-start;}
+  .course-learn li svg{flex:none;margin-top:2px;}
+  .enroll-bottom{display:flex;align-items:center;justify-content:space-between;padding:28px 40px 40px;margin-top:28px;flex-wrap:wrap;gap:16px;}
+  .price{display:flex;flex-direction:column;}
+  .price .amount{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:28px;font-weight:600;color:var(--teal-900);}
+  .price .amount span{font-size:13px;color:var(--ink-faint);font-family:'Inter',sans-serif;font-weight:500;}
+  .price .was{font-size:12.5px;color:var(--ink-faint);text-decoration:line-through;}
+  .bundle-note-strip{
+    max-width:600px;margin:22px auto 0;display:flex;align-items:center;justify-content:space-between;gap:20px;
+    background:var(--mint-100);border:1px solid var(--aqua-300);border-radius:16px;padding:18px 26px;flex-wrap:wrap;
+  }
+  .bundle-note-strip p{font-size:13.5px;color:var(--teal-800);}
+  .bundle-note-strip strong{color:var(--teal-900);}
+
+  /* ---------- newsletter ---------- */
+  .newsletter-card{max-width:640px;margin:0 auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:24px;padding:52px 48px;box-shadow:var(--shadow);}
+  .newsletter-card h2{font-size:clamp(24px,3vw,30px);margin-top:14px;}
+  .newsletter-card p.lead-sm{margin-top:14px;font-size:15px;max-width:460px;margin-left:auto;margin-right:auto;}
+  .newsletter-form{display:flex;gap:10px;margin-top:26px;max-width:420px;margin-left:auto;margin-right:auto;}
+  .newsletter-form input{flex:1;padding:13px 18px;border-radius:999px;border:1.5px solid var(--line);font-size:14px;font-family:'Inter',sans-serif;color:var(--ink);background:#fff;}
+  .newsletter-form input:focus{outline:none;border-color:var(--teal-900);}
+  .newsletter-success{display:none;margin-top:18px;font-size:14px;color:var(--teal-700);font-weight:600;}
+  .newsletter-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 24px;margin-top:30px;}
+  .nt-item{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);}
+  @media (max-width:560px){
+    .newsletter-card{padding:38px 26px;}
+    .newsletter-form{flex-direction:column;}
+  }
+
+  /* ---------- signup toast ---------- */
+  .signup-toast{
+    position:fixed;left:20px;bottom:20px;z-index:200;background:#fff;border:1px solid var(--line);
+    border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;
+    max-width:300px;transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .4s ease, opacity .4s ease;
+  }
+  .signup-toast.show{transform:translateY(0);opacity:1;pointer-events:auto;}
+  .toast-pin{flex:none;width:34px;height:34px;border-radius:50%;background:var(--mint-100);display:flex;align-items:center;justify-content:center;}
+  .toast-text{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .toast-text strong{color:var(--teal-900);}
+  .toast-time{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .toast-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--ink-faint);font-size:15px;line-height:1;padding:2px;}
+  @media (max-width:520px){
+    .signup-toast{left:12px;right:12px;bottom:12px;max-width:none;}
+  }
+
+  /* ---------- final cta ---------- */
+  .final-cta{
+    background:linear-gradient(135deg, var(--teal-900) 0%, var(--teal-700) 100%);
+    border-radius:28px;padding:70px 60px;text-align:center;position:relative;overflow:hidden;
+    margin:0 32px;
+  }
+  .final-cta::after{
+    content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle, rgba(95,201,194,0.35), transparent 70%);
+  }
+  .final-cta h2{color:#fff;font-size:clamp(26px,3.4vw,38px);}
+  .final-cta p{color:var(--aqua-300);margin-top:14px;font-size:16px;max-width:480px;margin-left:auto;margin-right:auto;}
+  .final-cta .hero-ctas{justify-content:center;margin-top:30px;}
+
+  /* ---------- footer ---------- */
+  footer{padding:64px 0 36px;}
+  .foot-grid{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:40px;margin-bottom:48px;}
+  .foot-brand .brand{margin-bottom:14px;}
+  .foot-brand p{font-size:13.5px;max-width:260px;}
+  .foot-col h5{font-size:13px;color:var(--teal-900);margin-bottom:16px;}
+  .foot-col a{display:block;font-size:13.5px;color:var(--ink-soft);margin-bottom:11px;}
+  .foot-col a:hover{color:var(--teal-900);}
+  .foot-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-faint);flex-wrap:wrap;gap:12px;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .navlinks{display:none;}
+    .navtoggle{display:block;}
+    .hero-grid{grid-template-columns:1fr;}
+    .flipzone{margin-top:20px;}
+    .book{margin:0 auto;}
+    .foot-grid{grid-template-columns:1fr 1fr;}
+    .final-cta{margin:0 16px;padding:50px 28px;}
+    section{padding:64px 0;}
+  }
+  @media (max-width:520px){
+    .wrap{padding:0 20px;}
+    .foot-grid{grid-template-columns:1fr;}
+    .trustbar{gap:22px;}
+    .enroll-bottom{flex-direction:column;align-items:flex-start;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;animation:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header id="siteHeader">
+  <nav class="wrap">
+    <a href="#top" class="brand"><img src="/assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="navlinks">
+      <a href="#what-is-dml">What is a DML</a>
+      <a href="#why-it-matters">Why it matters</a>
+      <a href="#curriculum">Curriculum</a>
+      <a href="#modules">Modules &amp; pricing</a>
+      <a href="#toolkit">Toolkit</a>
+      <a href="#reviews">Reviews</a>
+    </div>
+    <div class="navcta">
+      <a href="#" class="signin">Sign in</a>
+      <a href="#enroll" class="btn btn-primary">Start Lesson 1 free</a>
+    </div>
+    <button class="navtoggle" aria-label="Menu"><span></span><span></span><span></span></button>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow"><span class="dot"></span> Turner Page Academy · Data Migration Lead</div>
+        <h1>Become the person the steering board actually trusts with the <em>go/no-go</em> call.</h1>
+        <p class="lead">The Data Migration Lead course trains you to own migration readiness on real ERP programmes — reading the evidence, coordinating the delivery team, and making (and defending) the recommendation everyone else is waiting on. Open to page one for free.</p>
+        <div class="hero-ctas">
+          <a href="#enroll" class="btn btn-primary">Start Lesson 1 free →</a>
+          <a href="#what-is-dml" class="btn btn-ghost">What does a DML actually do?</a>
+        </div>
+        <p class="hero-note">No credit card. Lesson 1 is on us.</p>
+        <div class="trustbar">
+          <div class="trust-item"><span class="num mono">4.8/5</span><span class="lbl">from DML learners</span></div>
+          <div class="trust-item"><span class="num mono">30+</span><span class="lbl">countries represented</span></div>
+          <div class="trust-item"><span class="num mono">7+5</span><span class="lbl">shared + DML modules</span></div>
+          <div class="trust-item"><span class="num mono">~30m</span><span class="lbl">per lesson, self-paced</span></div>
+        </div>
+      </div>
+
+      <div class="flipzone">
+        <div class="book" id="flipBook">
+          <div class="book-shadow"></div>
+          <div class="book-badge"><span class="stars">★★★★★</span> 4.8/5 · DML learners</div>
+          <div class="page page1" data-idx="0">
+            <span class="pnum">P.01 — DML, MODULE 3</span>
+            <h4>"The vendor says the data's ready. Is it?"</h4>
+            <p>You're handed a source extract two weeks before go-live. The vendor calls it clean. Your job is to decide whether the programme should believe them.</p>
+            <span class="tag">Readiness &amp; Evidence</span>
+          </div>
+          <div class="page page2" data-idx="1">
+            <span class="pnum">P.02 — THE FRAMEWORK</span>
+            <h4>The Turner Page Migration Readiness Framework</h4>
+            <p>Four lenses — data, process, business, environment — plus a residual-risk call you have to be able to defend to a steering board.</p>
+            <span class="tag">Practical, not theoretical</span>
+          </div>
+          <div class="page page3" data-idx="2">
+            <span class="pnum">P.03 — YOUR CALL</span>
+            <h4>You recommend: proceed, delay, or escalate.</h4>
+            <p>Make the call, get coached on your reasoning, and see how three experienced Data Migration Leads would have played it.</p>
+            <span class="tag">Coached reflection</span>
+          </div>
+          <div class="page page-quote page4" data-idx="3">
+            <span class="pnum">P.04 — FROM A LEARNER</span>
+            <span class="quote-mark">&ldquo;</span>
+            <p class="qtext">First training I've done that argues with you when your evidence is weak. It changed how I run readiness reviews.</p>
+            <div class="stars">★★★★★</div>
+            <div class="qwho">
+              <div class="qavatar">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <defs>
+                    <radialGradient id="faceGradA" cx="35%" cy="30%" r="75%">
+                      <stop offset="0%" stop-color="#C9EDE9"/>
+                      <stop offset="100%" stop-color="#8FD8D1"/>
+                    </radialGradient>
+                    <linearGradient id="hairGradA" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#123F45"/>
+                      <stop offset="100%" stop-color="#0E4C53"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="20" cy="20" r="20" fill="#EAF7F5"/>
+                  <circle cx="20" cy="22" r="10" fill="url(#faceGradA)"/>
+                  <path d="M9 17c0-6.6 4.5-10 11-10s11 3.4 11 10c-2.3-2.3-6-3.4-11-3.4S11.3 14.7 9 17z" fill="url(#hairGradA)"/>
+                  <circle cx="9.5" cy="27" r="2.6" fill="url(#hairGradA)"/>
+                  <path d="M15 19.4c.6-.5 1.6-.5 2.2 0M22.8 19.4c.6-.5 1.6-.5 2.2 0" stroke="#0E4C53" stroke-width="1" stroke-linecap="round"/>
+                  <circle cx="16" cy="21.5" r="1.3" fill="#0E4C53"/>
+                  <circle cx="24" cy="21.5" r="1.3" fill="#0E4C53"/>
+                  <path d="M16 26c1.7 1.6 6.3 1.6 8 0" stroke="#0E4C53" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+                  <circle cx="14.5" cy="24" r="1.6" fill="#F2A6A6" opacity="0.35"/>
+                  <circle cx="25.5" cy="24" r="1.6" fill="#F2A6A6" opacity="0.35"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="page page-quote page5" data-idx="4">
+            <span class="pnum">P.05 — FROM A LEARNER</span>
+            <span class="quote-mark">&ldquo;</span>
+            <p class="qtext">The steering board content alone was worth it. I finally had language for "the vendor says it's fine" that didn't sound defensive.</p>
+            <div class="stars">★★★★★</div>
+            <div class="qwho">
+              <div class="qavatar">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <defs>
+                    <radialGradient id="faceGradB" cx="35%" cy="30%" r="75%">
+                      <stop offset="0%" stop-color="#C9EDE9"/>
+                      <stop offset="100%" stop-color="#8FD8D1"/>
+                    </radialGradient>
+                    <linearGradient id="hairGradB" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#123F45"/>
+                      <stop offset="100%" stop-color="#0E4C53"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="20" cy="20" r="20" fill="#EAF7F5"/>
+                  <circle cx="20" cy="22" r="10" fill="url(#faceGradB)"/>
+                  <path d="M9 18c0-6 4.5-9.4 11-9.4s11 3.4 11 9.4c-1-1.7-3.2-2.9-5.6-3.2 1 .9 1.7 2 2 3.2-4.5-2.3-10-2.3-15.3 0 .3-1.1.9-2 1.8-2.8-1.9.4-2.7 1.4-2.9 2.8z" fill="url(#hairGradB)"/>
+                  <path d="M15 19.9c.6-.5 1.6-.5 2.2 0M22.8 19.9c.6-.5 1.6-.5 2.2 0" stroke="#0E4C53" stroke-width="1" stroke-linecap="round"/>
+                  <circle cx="16" cy="22" r="1.3" fill="#0E4C53"/>
+                  <circle cx="24" cy="22" r="1.3" fill="#0E4C53"/>
+                  <path d="M16.5 26.2c1.6 1.4 5.4 1.4 7 0" stroke="#0E4C53" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+                  <path d="M14 28.5c1-1.6 2.5-2.4 6-2.4s5 .8 6 2.4" stroke="#0E4C53" stroke-width="1.1" stroke-linecap="round" fill="none" opacity="0.5"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flip-controls">
+          <button class="flip-dot active" data-go="0"></button>
+          <button class="flip-dot" data-go="1"></button>
+          <button class="flip-dot" data-go="2"></button>
+          <button class="flip-dot" data-go="3"></button>
+          <button class="flip-dot" data-go="4"></button>
+        </div>
+        <p class="flip-hint">Click the card to turn the page →</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS A DML -->
+  <section id="what-is-dml" style="background:var(--mint-100);">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> Role, decoded</div>
+        <h2>Not the person building the load. The person who owns whether it should run.</h2>
+        <p>A Data Migration Lead is a governance and coordination role, not the hands-on technical build — that craft belongs to the Technical Architect and Data Engineer. Your job is making sure the right evidence exists, the right people are aligned, and the programme knows the true state of readiness at every stage.</p>
+      </div>
+      <div class="role-grid">
+        <div class="role-copy reveal">
+          <p>It's a role built on judgement more than throughput. You're the conduit between the technical delivery team and the business or client stakeholders — translating "the load failed on the vendor table" into what it actually means for go-live, and translating "we need this by Friday" back into what the team can realistically deliver.</p>
+          <p>Your time on a project flexes with how self-sufficient the client's own team is — heavier during onboarding and framework setup, lighter once knowledge transfer sticks. But it never disappears entirely. Someone still has to own the risk review and the escalation when it actually matters, and that's the seat this course trains you for.</p>
+        </div>
+        <div class="role-card reveal">
+          <span class="role-kicker">A Data Migration Lead, day to day</span>
+          <ul class="role-list">
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Confirms environment and configuration/reference data are actually ready before migration activities start</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Works daily alongside the Project Manager, Solution Architect, and Technical Architect</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Identifies blockers early and triages bugs before they threaten the timeline</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Is the conduit between the technical delivery team and the business or client stakeholders</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Owns the readiness recommendation — proceed, delay, or escalate — and defends it to governance</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY IT MATTERS -->
+  <section id="why-it-matters">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> Why it's worth doing properly</div>
+        <h2>One course, two people who benefit from you doing this well.</h2>
+        <p>Getting good at this role isn't just about you. It changes what your client or employer can rely on you for, too.</p>
+      </div>
+      <div class="adv-grid">
+        <div class="adv-card reveal">
+          <div class="adv-kicker">For you</div>
+          <h3>What it does for your career</h3>
+          <ul class="adv-list">
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Turns hands-on technical skill into something bigger: programme-level accountability and credibility</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Gives you a defensible framework instead of gut feel when a steering board asks "are we ready?"</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Builds a skill that travels across ERP platforms — Dynamics 365, SAP, Salesforce, Oracle, Workday, and beyond</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Prepares you to have the hard "the vendor says it's fine, is it?" conversation with confidence</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Comes with a toolkit that saves you real hours the moment you start your next project</li>
+          </ul>
+        </div>
+        <div class="adv-card reveal">
+          <div class="adv-kicker">For your client</div>
+          <h3>What it does for the programme</h3>
+          <ul class="adv-list">
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> One accountable point of contact for readiness, instead of ambiguity spread across three teams</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Evidence-based go/delay/escalate calls instead of assurances nobody can stand behind later</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Blockers surfaced and resolved earlier, before they become a late, expensive surprise</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> A smoother relationship between the technical delivery team and the business, because someone is actively translating between them</li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> A DML who builds the client's own team's self-sufficiency over time, instead of creating long-term dependency</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METHOD -->
+  <section class="method" id="method">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> What makes this different</div>
+        <h2>Professional judgement, not passive content.</h2>
+        <p>Most training tells you what a Data Migration Lead does. Turner Page is built to develop how you think — under real pressure, with incomplete evidence, on the exact kind of decision you'll be handed on your very next project.</p>
+      </div>
+      <div class="method-grid">
+        <div class="method-card reveal">
+          <div class="spine"></div>
+          <span class="pnum">P.01</span>
+          <h3>Face a real project decision</h3>
+          <p>Start with the kind of question you're actually asked when evidence is incomplete and the go-live date isn't moving.</p>
+        </div>
+        <div class="method-card reveal">
+          <div class="spine"></div>
+          <span class="pnum">P.02</span>
+          <h3>Learn a practical framework</h3>
+          <p>Use the Turner Page Migration Readiness Framework to weigh data, process, business, and environment risk.</p>
+        </div>
+        <div class="method-card reveal">
+          <div class="spine"></div>
+          <span class="pnum">P.03</span>
+          <h3>Apply it and get coached</h3>
+          <p>Make your recommendation, see how it holds up, and carry the reasoning into your next real project.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FITS AROUND YOUR REAL PROJECT -->
+  <section id="compare">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> However you're coming to this</div>
+        <h2>Real projects are where the instinct actually gets built. Turner Page just meets you wherever you are on one.</h2>
+        <p>There's no substitute for a live migration — the real stakeholders, the real pressure, the real weight of a call that's actually going to happen. That's genuinely the best teacher there is, and nothing here is trying to replace it. What Turner Page adds is a framework, a toolkit, and a coached space to sharpen your judgement alongside that experience, however and whenever you come to it.</p>
+      </div>
+      <div class="community-grid">
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 15V3" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round"/><path d="M4 3.5h9l-2.2 3 2.2 3H4" stroke="#A9E4DF" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <h4>Starting a project from day one</h4>
+          <p>Get the framework and the readiness habits in place before you're handed your first piece of evidence to weigh, so you walk in already knowing which questions to ask.</p>
+        </div>
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 2.5h8v13l-4-2.6-4 2.6v-13z" stroke="#A9E4DF" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <h4>Picking it up mid-flight</h4>
+          <p>Already knee-deep in a live migration? Jump straight to the module that matches what you're stuck on right now — self-paced means you don't have to start at lesson one to get value today.</p>
+        </div>
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M6 3.5V2.2a1 1 0 011-1h2a1 1 0 011 1V3.5" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round"/><rect x="2.5" y="3.5" width="13" height="10.5" rx="1.6" stroke="#A9E4DF" stroke-width="1.6"/><path d="M2.5 9h13" stroke="#A9E4DF" stroke-width="1.6"/></svg></div>
+          <h4>Just here for the toolkit and Guru skills</h4>
+          <p>Not ready for the full course, or don't need it? Grab Project Planner, Cutover Planner, or an AI Platform Guru skill on their own — the tooling and AI collateral behind Turner Page work whether or not you take a single lesson.</p>
+        </div>
+      </div>
+      <div class="shared-strip reveal">
+        <div class="icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4.5C2 3.67 2.67 3 3.5 3H8v12H3.5A1.5 1.5 0 012 13.5v-9z" fill="white"/><path d="M16 4.5c0-.83-.67-1.5-1.5-1.5H10v12h4.5a1.5 1.5 0 001.5-1.5v-9z" fill="#A9E4DF"/></svg>
+        </div>
+        <p><strong>Most learners land somewhere between these three</strong> — a bit of real-project instinct already, looking to fill in the framework and tooling around it. Wherever you're starting from, Lesson 1 is free.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CURRICULUM -->
+  <section id="curriculum" style="background:var(--mint-100);">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> 7 shared + 5 DML modules</div>
+        <h2>By the end of this course, you'll be able to:</h2>
+        <p>Every module is built around a real decision, not a slide deck you passively click through.</p>
+      </div>
+      <div class="learn-grid reveal">
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Assess migration readiness using evidence, not assurances</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Distinguish ownership from execution on a programme</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Ask better questions when a vendor says "it's fine"</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Make migration recommendations governance can trust</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Confirm environment and configuration/reference data readiness before migration activities start</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Identify and escalate blockers before they become go-live risks</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Act as the conduit between the technical delivery team and business stakeholders</p></div>
+        <div class="learn-item"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Defend a proceed/delay/escalate recommendation to a steering board, under real pressure</p></div>
+      </div>
+      <div class="shared-strip reveal">
+        <div class="icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4.5C2 3.67 2.67 3 3.5 3H8v12H3.5A1.5 1.5 0 012 13.5v-9z" fill="white"/><path d="M16 4.5c0-.83-.67-1.5-1.5-1.5H10v12h4.5a1.5 1.5 0 001.5-1.5v-9z" fill="#A9E4DF"/></svg>
+        </div>
+        <p><strong>Both Turner Page courses share 7 core foundation modules</strong> on evidence, risk, and programme reality — then this course branches into 5 modules built specifically for the Lead's seat: readiness calls, governance, escalation, and steering-board communication. Add Data Migration Consultant later and your foundation progress carries straight over.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULES & PRICING -->
+  <section id="modules">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> Buy exactly what you need</div>
+        <h2>Every module, priced on its own — or bundled for a lot less.</h2>
+        <p>Most people are better off with the full course: one price, the whole end-to-end Data Migration Lead picture, and every module ties into the next. But if there's just one specific piece you need right now, you can buy that module on its own.</p>
+      </div>
+
+      <div class="bundle-banner reveal">
+        <div class="bundle-left">
+          <span class="bundle-tag">Buy smart</span>
+          <h3>Enrol in the full course and save $165</h3>
+          <p>All 12 modules bought separately comes to $1,164. Enrol in the full Data Migration Lead course instead and you get the same 12 modules, plus the coached reflection, the certificate, and everything Turner Page adds later — for $999.</p>
+        </div>
+        <div class="bundle-right">
+          <div class="bundle-price">
+            <span class="was mono">$1,164</span>
+            <span class="amount mono">$999</span>
+          </div>
+          <a href="#enroll" class="btn btn-light">Enrol in the full course</a>
+          <p class="bundle-note">Already bought a few modules on their own? Ask about crediting them toward the full course — the more of the picture you've bought, the closer it gets.</p>
+        </div>
+      </div>
+
+      <div class="module-row reveal">
+        <div class="module-row-head">
+          <div class="module-group-label">7 shared foundation modules</div>
+          <div class="review-controls">
+            <button class="rc-btn" data-scroll-prev="foundationScroll" aria-label="Scroll foundation modules left">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="rc-btn" data-scroll-next="foundationScroll" aria-label="Scroll foundation modules right">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="module-scroll" id="foundationScroll"></div>
+      </div>
+
+      <div class="module-row reveal">
+        <div class="module-row-head">
+          <div class="module-group-label">5 Data Migration Lead specialist modules</div>
+          <div class="review-controls">
+            <button class="rc-btn" data-scroll-prev="dmlScroll" aria-label="Scroll DML modules left">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="rc-btn" data-scroll-next="dmlScroll" aria-label="Scroll DML modules right">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="module-scroll" id="dmlScroll"></div>
+      </div>
+
+      <p class="toolkit-note">Scroll or click through the modules above — prices shown are illustrative while pricing strategy is finalised.</p>
+    </div>
+  </section>
+
+  <!-- TOOLKIT -->
+  <section class="toolkit" id="toolkit">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> Keep the toolkit</div>
+        <h2>The tooling you'll actually open on a real project.</h2>
+        <p>Purpose-built for the DML seat, sold separately from the course. Use them on your very next real project.</p>
+      </div>
+      <div class="toolkit-grid">
+        <div class="tool-card reveal">
+          <span class="tool-kicker">Planning</span>
+          <h4>Project Planner</h4>
+          <p class="desc">Turn a client conversation straight into a live Gantt, resourcing view, RAID log and RAG-rated executive summary — every part editable.</p>
+          <p class="tool-why"><strong>Why it's worth it:</strong> a senior PM typically bills 6–8 hours to build a plan like this from scratch. You walk into your first client call with it already done.</p>
+          <div class="tool-foot">
+            <div>
+              <span class="tool-worth">Worth $250</span>
+              <div class="tool-price">$89 <span>/ project</span></div>
+            </div>
+            <a href="#" class="tool-add">Add to plan →</a>
+          </div>
+        </div>
+        <div class="tool-card reveal">
+          <span class="tool-kicker">Go-live</span>
+          <h4>Cutover Planner</h4>
+          <p class="desc">Draft a step-by-step cutover runbook with go/no-go gates, a live progress tracker, and rollback triggers built in from day one.</p>
+          <p class="tool-why"><strong>Why it's worth it:</strong> building a runbook that actually holds up under go/no-go pressure eats a full day before go-live — most teams don't have that day to spare.</p>
+          <div class="tool-foot">
+            <div>
+              <span class="tool-worth">Worth $250</span>
+              <div class="tool-price">$89 <span>/ project</span></div>
+            </div>
+            <a href="#" class="tool-add">Add to plan →</a>
+          </div>
+        </div>
+        <div class="tool-card reveal">
+          <span class="tool-kicker">AI skills</span>
+          <h4>Platform Gurus</h4>
+          <p class="desc">Download an AI skill for the exact target platform you're migrating into — Dynamics 365 Finance, Supply Chain, Salesforce, and more.</p>
+          <p class="tool-why"><strong>Why it's worth it:</strong> replaces days of trial-and-error learning a new platform's migration quirks. You're productive on day one instead of week two.</p>
+          <div class="tool-foot">
+            <div>
+              <span class="tool-worth">Worth $150</span>
+              <div class="tool-price">From $29 <span>/ skill</span></div>
+            </div>
+            <a href="#" class="tool-add">Browse Gurus →</a>
+          </div>
+        </div>
+      </div>
+      <p class="toolkit-note">Toolkit items are available to everyone — course graduates get 20% off every purchase.</p>
+    </div>
+  </section>
+
+  <!-- COMMUNITY / GROWTH -->
+  <section id="community">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div class="eyebrow"><span class="dot"></span> This isn't a one-time purchase</div>
+        <h2>Your access grows as the Turner Page community grows.</h2>
+        <p>Enrol once and you don't just get the course as it looks today. As more Data Migration Leads and Consultants join Turner Page, the platform keeps growing with them.</p>
+      </div>
+      <div class="community-grid">
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#A9E4DF" stroke-width="1.6"/><path d="M9 5v4l3 2" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h4>Content that stays current</h4>
+          <p>When Microsoft changes how D365 migration tooling works, that shows up in the course and in the Platform Guru skills, not just in a changelog nobody reads.</p>
+        </div>
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 14V6l6-3 6 3v8" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 14v-5" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <h4>A toolkit that keeps expanding</h4>
+          <p>Project Planner and Cutover Planner were the start. New tools get added as the community's real projects surface new gaps worth solving.</p>
+        </div>
+        <div class="info-card reveal">
+          <div class="info-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6" cy="6" r="2.4" stroke="#A9E4DF" stroke-width="1.6"/><circle cx="13" cy="7.5" r="2" stroke="#A9E4DF" stroke-width="1.6"/><path d="M2.5 15c0-2.5 1.8-4 3.8-4s3.8 1.5 3.8 4M11 15c0-1.9 1.2-3.2 3-3.2s3.2 1.3 3.2 3.2" stroke="#A9E4DF" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <h4>A community of people in your seat</h4>
+          <p>Other Data Migration Leads working the same kinds of readiness calls, across 30+ countries — so you're never the only person who's seen this exact problem before.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section id="reviews" style="background:var(--paper);">
+    <div class="wrap">
+      <div class="reviews-head">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> The review board</div>
+          <h2 style="font-size:clamp(26px,3vw,34px);">What Data Migration Leads say</h2>
+        </div>
+        <div class="rating-summary">
+          <div>
+            <div class="rating-big mono">4.8</div>
+            <div class="stars">★★★★★</div>
+            <div class="rating-sub">verified learner reviews</div>
+          </div>
+          <div class="rating-bars">
+            <div class="rbar-row"><span>5★</span><div class="rbar-track"><div class="rbar-fill" style="width:82%;"></div></div><span>82%</span></div>
+            <div class="rbar-row"><span>4★</span><div class="rbar-track"><div class="rbar-fill" style="width:13%;"></div></div><span>13%</span></div>
+            <div class="rbar-row"><span>3★</span><div class="rbar-track"><div class="rbar-fill" style="width:4%;"></div></div><span>4%</span></div>
+            <div class="rbar-row"><span>2★</span><div class="rbar-track"><div class="rbar-fill" style="width:1%;"></div></div><span>1%</span></div>
+            <div class="rbar-row"><span>1★</span><div class="rbar-track"><div class="rbar-fill" style="width:0%;"></div></div><span>0%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-scroll" id="reviewScroll">
+        <div class="review-card">
+          <div class="review-top">
+            <div class="avatar">RK</div>
+            <div><div class="review-name">Rhea K.</div><div class="review-role">Senior Data Migration Analyst</div></div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p class="review-text">First training I've done that argues with you when your evidence is weak. Module 6 alone changed how I run readiness reviews.</p>
+        </div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="avatar">AM</div>
+            <div><div class="review-name">Amara M.</div><div class="review-role">Programme Manager, Retail ERP</div></div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p class="review-text">I made my whole migration team take the foundation modules. Everyone now uses the same vocabulary for risk. Huge unlock.</p>
+        </div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="avatar">ND</div>
+            <div><div class="review-name">Nina D.</div><div class="review-role">Data Migration Lead, Public Sector</div></div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p class="review-text">The coached reflection at the end of each lesson is the difference. It's not just content, someone is actually developing your judgement.</p>
+        </div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="avatar">DP</div>
+            <div><div class="review-name">Diego P.</div><div class="review-role">Data Migration Lead, Manufacturing ERP</div></div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p class="review-text">The steering board content alone was worth it. I finally had language for "the vendor says it's fine" that didn't sound defensive.</p>
+        </div>
+      </div>
+      <div class="review-controls" style="justify-content:center;margin-top:22px;">
+        <button class="rc-btn" id="rcPrev" aria-label="Previous reviews">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="rc-btn" id="rcNext" aria-label="Next reviews">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="#0E4C53" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENROLL -->
+  <section id="enroll" style="background:var(--mint-100);">
+    <div class="wrap">
+      <div class="section-head center reveal">
+        <div class="eyebrow"><span class="dot"></span> Enrol</div>
+        <h2>Open to page one. It's free.</h2>
+        <p>Start Lesson 1 today. No credit card, no commitment — just the first real decision you'll be asked to make.</p>
+      </div>
+      <div class="enroll-wrap reveal">
+        <div class="enroll-card">
+          <div class="fold"></div>
+          <div class="enroll-top">
+            <div class="course-role">Programme accountability</div>
+            <h3>Data Migration Lead</h3>
+            <p class="subtitle">For the person who owns readiness, faces the steering board, and has to defend the recommendation.</p>
+            <div class="course-stats">
+              <div><span class="n">7+5</span><span class="l">shared + DML modules</span></div>
+              <div><span class="n">~30m</span><span class="l">per lesson</span></div>
+              <div><span class="n">Self-paced</span><span class="l">format</span></div>
+            </div>
+            <ul class="course-learn">
+              <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Assess migration readiness using evidence, not assurances</li>
+              <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Distinguish ownership from execution on a programme</li>
+              <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Ask better questions when a vendor says "it's fine"</li>
+              <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Make migration recommendations governance can trust</li>
+            </ul>
+          </div>
+          <div class="enroll-bottom">
+            <div class="price">
+              <span class="amount mono">$999 <span>one-time</span></span>
+              <span class="was mono">$1,249</span>
+            </div>
+            <a href="#" class="btn btn-primary">Start Lesson 1 free</a>
+          </div>
+        </div>
+        <div class="bundle-note-strip">
+          <p>Curious about <strong>Data Migration Consultant</strong> too? Bundle both and save on the pair.</p>
+          <a href="#" class="btn btn-ghost">Compare both courses</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEWSLETTER -->
+  <section id="newsletter">
+    <div class="wrap">
+      <div class="newsletter-card reveal">
+        <div class="eyebrow"><span class="dot"></span> Stay in the loop</div>
+        <h2>Get the occasional email, not an inbox flood.</h2>
+        <p class="lead-sm">A short newsletter — every week or two — with real migration lessons, DML frameworks and updates, and the occasional freebie. No spam, no junk, and it's one click to unsubscribe.</p>
+
+        <form class="newsletter-form" id="newsletterForm">
+          <input type="email" id="newsletterEmail" placeholder="you@company.com" required aria-label="Email address">
+          <button type="submit" class="btn btn-primary">Subscribe</button>
+        </form>
+        <p class="newsletter-success" id="newsletterSuccess">You're in — check your inbox to confirm.</p>
+
+        <div class="newsletter-trust">
+          <div class="nt-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> No spam, ever</div>
+          <div class="nt-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Your privacy is protected</div>
+          <div class="nt-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Unsubscribe in one click</div>
+          <div class="nt-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#5FC9C2"/><path d="M4.5 8.2l2.2 2.2L11.5 6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Genuinely useful, plus freebies</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section style="padding-top:0;">
+    <div class="final-cta reveal">
+      <h2>See what a Data Migration Lead actually decides.</h2>
+      <p>Start Lesson 1 today. No credit card, no commitment — just the first real decision you'll be asked to make.</p>
+      <div class="hero-ctas">
+        <a href="#enroll" class="btn btn-light">Start Lesson 1 free</a>
+        <a href="#toolkit" class="btn" style="border:1.5px solid rgba(255,255,255,0.4);color:#fff;">See the toolkit</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a href="#top" class="brand"><img src="/assets/turner-page-logo.png" alt="Turner Page"></a>
+        <p>Turning ERP data migration from guesswork into a craft — one chapter at a time.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Courses</h5>
+        <a href="#enroll">Data Migration Lead</a>
+        <a href="#">Data Migration Consultant</a>
+        <a href="#">Compare both</a>
+      </div>
+      <div class="foot-col">
+        <h5>Toolkit</h5>
+        <a href="#toolkit">Project Planner</a>
+        <a href="#toolkit">Cutover Planner</a>
+        <a href="#toolkit">Platform Gurus</a>
+      </div>
+      <div class="foot-col">
+        <h5>Company</h5>
+        <a href="#reviews">Reviews</a>
+        <a href="#newsletter">Newsletter</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Turner Page Academy. All rights reserved.</span>
+      <span>Philadelphia · Oslo</span>
+    </div>
+  </div>
+</footer>
+
+<div class="signup-toast" id="signupToast" role="status" aria-live="polite">
+  <button class="toast-close" id="toastClose" aria-label="Dismiss">×</button>
+  <div class="toast-pin">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1c-2.6 0-4.7 2.1-4.7 4.7C3.3 9.2 8 15 8 15s4.7-5.8 4.7-9.3C12.7 3.1 10.6 1 8 1z" fill="#0E4C53"/><circle cx="8" cy="5.6" r="1.7" fill="#A9E4DF"/></svg>
+  </div>
+  <div>
+    <div class="toast-text"><strong id="toastName">Ólafur B.</strong> <span id="toastAction">from Iceland just started</span> <span id="toastCourse">Data Migration Lead</span></div>
+    <div class="toast-time" id="toastTime">2 hours ago</div>
+  </div>
+</div>
+
+<div class="module-modal" id="moduleModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="module-modal-backdrop" id="moduleModalBackdrop"></div>
+  <div class="module-modal-card">
+    <button class="module-modal-close" id="moduleModalClose" aria-label="Close">×</button>
+    <span class="tool-kicker" id="modalKicker"></span>
+    <h3 id="modalTitle"></h3>
+    <p id="modalDetail"></p>
+    <div class="tool-foot" style="margin-top:24px;">
+      <div class="tool-price" id="modalPrice"></div>
+      <a href="#" class="btn btn-primary" id="modalAdd">Add module →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // sticky header shadow
+  const header = document.getElementById('siteHeader');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 8);
+  });
+
+  // reveal on scroll
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  revealEls.forEach(el => io.observe(el));
+
+  // module data — powers the scrollable module strips + detail modal
+  const moduleData = [
+    { group: 'foundation', kicker: 'Foundation · 01', title: 'Evidence Over Assurance',
+      snippet: "What separates real evidence from someone simply saying it's fine.",
+      detail: "You'll learn to tell the difference between real evidence and someone simply saying it's fine — and build a habit of asking for the version you can actually stand behind. What you'll walk away with: a short checklist for weighing evidence quality on any migration, on any platform.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 02', title: 'Migration Risk Fundamentals',
+      snippet: 'The four lenses used to weigh risk on any migration, on any platform.',
+      detail: "The four lenses — data, process, business, environment — used to weigh risk on any migration, whatever platform it's running on. What you'll walk away with: a repeatable way to structure a risk conversation instead of relying on gut feel.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 03', title: 'Programme Reality',
+      snippet: 'How governance and steering boards actually work, not the textbook version.',
+      detail: "How governance, phases, and steering boards actually work on a live migration programme — not the textbook version. What you'll walk away with: a clear picture of who decides what, and where a Data Migration Lead actually sits in that structure.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 04', title: 'Reading a Mapping Spec',
+      snippet: 'Enough fluency to review a mapping spec critically, without building one.',
+      detail: "Enough fluency in mapping and transformation logic to read one critically and ask sharp questions, without needing to build one yourself. What you'll walk away with: the ability to sit in a mapping review and spot the gaps that matter.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 05', title: 'Reconciliation Basics',
+      snippet: 'What "it ties out" actually means, and how to check it.',
+      detail: "What \"it ties out\" actually means, and the checks that tell you whether to believe it. What you'll walk away with: a short list of reconciliation checks you can ask for on any load, any platform.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 06', title: 'Stakeholder Communication',
+      snippet: 'Translating between technical delivery and the business, both ways.',
+      detail: "Translating between the technical delivery team and the business, in both directions, without losing anything that matters in the middle. What you'll walk away with: language for turning a technical failure into a business-relevant update, and back again.",
+      price: 97 },
+    { group: 'foundation', kicker: 'Foundation · 07', title: 'The Toolset',
+      snippet: 'A run-through of the planning, cutover, and AI Guru tools you\'ll lean on.',
+      detail: "A practical run-through of the planning, cutover, and AI Guru tools every migration leans on, so you're not starting cold on your first project. What you'll walk away with: hands-on familiarity with the Turner Page toolkit before you ever need it live.",
+      price: 97 },
+    { group: 'dml', kicker: 'DML · 01', title: 'The Readiness Call',
+      snippet: 'Weighing incomplete evidence and landing on proceed, delay, or escalate.',
+      detail: "How to weigh incomplete evidence and land on a call — proceed, delay, or escalate — and defend the reasoning behind it. What you'll walk away with: a decision framework you can use under real pressure, not just in hindsight.",
+      price: 97 },
+    { group: 'dml', kicker: 'DML · 02', title: 'Steering Board Communication',
+      snippet: 'Presenting risk and a recommendation without losing the room.',
+      detail: "Presenting risk and a recommendation to governance, without downplaying it or losing the room. What you'll walk away with: a structure for a readiness update that holds up under tough questions.",
+      price: 97 },
+    { group: 'dml', kicker: 'DML · 03', title: 'Escalation & Blocker Triage',
+      snippet: "Knowing what's worth raising, when, and how to raise it.",
+      detail: "Knowing what's worth raising, when, and how to raise it before it becomes a crisis. What you'll walk away with: a triage habit that catches blockers while they're still cheap to fix.",
+      price: 97 },
+    { group: 'dml', kicker: 'DML · 04', title: 'Environment & Configuration Sign-off',
+      snippet: 'Confirming environments and reference data are genuinely ready.',
+      detail: "Confirming environments and configuration/reference data are genuinely ready before migration activities start, not just assumed to be. What you'll walk away with: a sign-off checklist you can run on any project, any platform.",
+      price: 97 },
+    { group: 'dml', kicker: 'DML · 05', title: 'Owning the Programme',
+      snippet: 'Holding the seat between technical delivery and the business.',
+      detail: "What it means to hold the seat between technical delivery and the business, day to day, for the length of a project. What you'll walk away with: a clear-eyed view of the DML role's real rhythm, from onboarding through to steady state.",
+      price: 97 }
+  ];
+
+  const moduleModal = document.getElementById('moduleModal');
+  const modalKicker = document.getElementById('modalKicker');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalDetail = document.getElementById('modalDetail');
+  const modalPrice = document.getElementById('modalPrice');
+
+  function openModuleModal(mod){
+    modalKicker.textContent = mod.kicker;
+    modalTitle.textContent = mod.title;
+    modalDetail.textContent = mod.detail;
+    modalPrice.innerHTML = `$${mod.price} <span style="font-size:11.5px;color:var(--ink-faint);font-family:'Inter',sans-serif;font-weight:500;">/ module</span>`;
+    moduleModal.classList.add('open');
+  }
+  function closeModuleModal(){ moduleModal.classList.remove('open'); }
+
+  document.getElementById('moduleModalClose').addEventListener('click', closeModuleModal);
+  document.getElementById('moduleModalBackdrop').addEventListener('click', closeModuleModal);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModuleModal(); });
+
+  function renderModuleGroup(containerId, group){
+    const container = document.getElementById(containerId);
+    moduleData.filter(m => m.group === group).forEach(mod => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'module-chip';
+      chip.innerHTML = `
+        <span class="num mono">${mod.kicker}</span>
+        <h5>${mod.title}</h5>
+        <p class="snippet">${mod.snippet}</p>
+        <div class="chip-foot">
+          <span class="chip-price mono">$${mod.price}</span>
+          <span class="chip-more">Details →</span>
+        </div>
+      `;
+      chip.addEventListener('click', () => openModuleModal(mod));
+      container.appendChild(chip);
+    });
+  }
+  renderModuleGroup('foundationScroll', 'foundation');
+  renderModuleGroup('dmlScroll', 'dml');
+
+  document.querySelectorAll('[data-scroll-prev]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.dataset.scrollPrev).scrollBy({ left: -260, behavior: 'smooth' });
+    });
+  });
+  document.querySelectorAll('[data-scroll-next]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.dataset.scrollNext).scrollBy({ left: 260, behavior: 'smooth' });
+    });
+  });
+
+  // page flip demo
+  const book = document.getElementById('flipBook');
+  const dots = document.querySelectorAll('.flip-dot');
+  const pages = document.querySelectorAll('.page');
+  let current = 0;
+  function setPage(idx){
+    pages.forEach((p,i) => { p.classList.toggle('turned', i < idx); });
+    dots.forEach((d,i) => d.classList.toggle('active', i === idx));
+    current = idx;
+  }
+  book.addEventListener('click', () => {
+    setPage(current >= pages.length - 1 ? 0 : current + 1);
+  });
+  dots.forEach(d => d.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setPage(parseInt(d.dataset.go));
+  }));
+  setInterval(() => {
+    setPage(current >= pages.length - 1 ? 0 : current + 1);
+  }, 4200);
+
+  // review carousel controls
+  const scrollBox = document.getElementById('reviewScroll');
+  document.getElementById('rcNext').addEventListener('click', () => scrollBox.scrollBy({left: 360, behavior:'smooth'}));
+  document.getElementById('rcPrev').addEventListener('click', () => scrollBox.scrollBy({left: -360, behavior:'smooth'}));
+
+  // newsletter signup (front-end only — wire to real ESP/backend later)
+  const newsletterForm = document.getElementById('newsletterForm');
+  newsletterForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    newsletterForm.style.display = 'none';
+    document.getElementById('newsletterSuccess').style.display = 'block';
+  });
+
+  // live signup toast (sample data, DML sign-ups only — wire to real signup events in production)
+  const signupPool = [
+    {name:"Ólafur B.", place:"Iceland"},
+    {name:"Thabo N.", place:"South Africa"},
+    {name:"Lucas F.", place:"Brazil"},
+    {name:"Erik S.", place:"Norway"},
+    {name:"Daniel K.", place:"Canada"},
+    {name:"Tom W.", place:"Australia"},
+    {name:"Priya S.", place:"India"},
+    {name:"Grace O.", place:"Nigeria"}
+  ];
+  const timePool = ["6 minutes ago","18 minutes ago","42 minutes ago","1 hour ago","2 hours ago","5 hours ago"];
+  const toastEl = document.getElementById('signupToast');
+  const toastName = document.getElementById('toastName');
+  const toastAction = document.getElementById('toastAction');
+  const toastCourse = document.getElementById('toastCourse');
+  const toastTime = document.getElementById('toastTime');
+  let toastTimer = null;
+
+  function showSignupToast(){
+    const entry = signupPool[Math.floor(Math.random() * signupPool.length)];
+    const time = timePool[Math.floor(Math.random() * timePool.length)];
+    toastName.textContent = entry.name;
+    toastAction.textContent = `from ${entry.place} just started`;
+    toastCourse.textContent = "Data Migration Lead";
+    toastTime.textContent = time;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.classList.remove('show'); }, 5500);
+  }
+  document.getElementById('toastClose').addEventListener('click', () => {
+    toastEl.classList.remove('show');
+    clearTimeout(toastTimer);
+  });
+  setTimeout(function loopToast(){
+    showSignupToast();
+    setTimeout(loopToast, 9000 + Math.random() * 6000);
+  }, 4000);
+
+  // mobile nav (simple toggle)
+  document.querySelector('.navtoggle').addEventListener('click', () => {
+    const nl = document.querySelector('.navlinks');
+    nl.style.display = nl.style.display === 'flex' ? 'none' : 'flex';
+    nl.style.position='absolute'; nl.style.top='76px'; nl.style.left='0'; nl.style.right='0';
+    nl.style.background='#fff'; nl.style.flexDirection='column'; nl.style.padding='20px 32px'; nl.style.borderBottom='1px solid var(--line)';
+  });
+</script>
+
+</body>
+</html>
