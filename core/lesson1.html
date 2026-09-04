@@ -64,12 +64,12 @@ const evidenceItems = [
   {
     q:"18,530 active customers were in agreed scope. 18,530 are accounted for in the target and approved exclusions.",
     order:[2,4,0,1,3], a:0,
-    why:"It accounts for the expected population rather than merely reporting the number accepted by the loader \u2014 a meaningfully stronger claim than a headline load percentage. It says nothing yet, though, about whether those 18,530 records contain the right values."
+    why:"It accounts for the expected population rather than merely reporting the number accepted by the loader, which is a meaningfully stronger claim than a headline load percentage. It says nothing yet, though, about whether those 18,530 records contain the right values."
   },
   {
     q:"A comparison of 200 sampled customers confirms that names, tax numbers, payment terms and status values match the approved transformation rules.",
     order:[0,3,2,4,1], a:1,
-    why:"This is a different question from completeness, and answering it requires different work \u2014 sampling and checking values against agreed rules, not just counting records. A migration can pass the completeness test and fail this one, or the reverse."
+    why:"This is a different question from completeness, and answering it requires different work: sampling and checking values against agreed rules, not just counting records. A migration can pass the completeness test and fail this one, or the reverse."
   },
   {
     q:"An automated check finds zero sales orders whose customer identifier is absent from the migrated customer population.",
@@ -84,7 +84,7 @@ const evidenceItems = [
   {
     q:"Sales users successfully create and invoice orders for ten migrated customers covering domestic, export and credit-held scenarios.",
     order:[0,4,1,3,2], a:4,
-    why:"This is the only evidence so far that comes from an actual business process rather than a data check. It's also the hardest and slowest to produce \u2014 which is exactly why teams are tempted to stop at the earlier, easier tests."
+    why:"This is the only evidence so far that comes from an actual business process rather than a data check. It's also the hardest and slowest to produce, which is exactly why teams are tempted to stop at the earlier, easier tests."
   }
 ];
 const evidenceSituations = evidenceItems.map((e, idx) => ({
@@ -93,7 +93,7 @@ const evidenceSituations = evidenceItems.map((e, idx) => ({
   options: e.order.map(testIdx => ({
     label: testLabels[testIdx],
     correct: testIdx === e.a,
-    feedback: (testIdx === e.a ? "Correct.<br>" : "Not quite \u2014 this test asks a different question.<br>") + e.why
+    feedback: (testIdx === e.a ? "Correct.<br>" : "Not quite. This test asks a different question.<br>") + e.why
   }))
 }));
 
@@ -114,7 +114,7 @@ const verdictSituations = [
   {
     q:"A customer classified as RETAIL in legacy appears as B2C in the target. A tester raises it as a migration defect.",
     a:2,
-    why:"Not enough evidence yet, and not automatically a defect either. The scenario only tells us a tester flagged it \u2014 it does not confirm whether RETAIL \u2192 B2C is an approved mapping rule or an actual error. If it turns out to be the signed-off rule, the difference is evidence of a correct transformation. If not, it's a real defect. Either way, someone needs to check the mapping rule before calling it either successful or unsuccessful."
+    why:"Not enough evidence yet, and not automatically a defect either. The scenario only tells us a tester flagged it; it does not confirm whether RETAIL \u2192 B2C is an approved mapping rule or an actual error. If it turns out to be the signed-off rule, the difference is evidence of a correct transformation. If not, it's a real defect. Either way, someone needs to check the mapping rule before calling it either successful or unsuccessful."
   },
   {
     q:"The legacy and target trial balances agree exactly after migration. Finance therefore declares the whole financial migration complete.",
@@ -133,7 +133,7 @@ const verdictSituations = [
 
 const blocks=[
 {
- id:"b1",nav:"99.4% successful",title:"Opening scenario \u2014 99.4% successful",type:"mcq",
+ id:"b1",nav:"99.4% successful",title:"Opening scenario: 99.4% successful",type:"mcq",
  html:`<p class="lead">It is 18:40 on Saturday, 14 November. Bramwell Industries is due to go live with its new ERP and CRM landscape on Monday morning.</p>
  <p>The customer migration has just completed. The migration dashboard shows:</p>
  <div class="status-grid">
@@ -143,7 +143,7 @@ const blocks=[
    <div class="status-card"><strong>Cutover window</strong>ETL completed on time</div>
    <div class="status-card"><strong>Infrastructure errors</strong>None reported</div>
  </div>
- <div class="quote">"99.4%. Excellent. Customers are done. Let's move on to the sales orders."<br><span class="small">\u2014 Project manager</span></div>
+ <div class="quote">"99.4%. Excellent. Customers are done. Let's move on to the sales orders."<br><span class="small">Project manager</span></div>
  <p>Before the team moves on, however, a consultant runs several business-focused checks. They reveal:</p>
  <ul class="framework-checks">
    <li>760 active customers have no valid payment terms.</li>
@@ -175,11 +175,11 @@ const blocks=[
  <div class="visual-card">
    <div class="visual-title">From data problem to business consequence</div>
    <ul class="framework-checks">
-     <li><strong>Missing payment terms</strong> \u2014 orders cannot be invoiced correctly or require manual intervention, causing delayed billing and cash collection.</li>
-     <li><strong>Blank tax classification</strong> \u2014 tax calculation fails or uses an inappropriate default, creating compliance and financial risk.</li>
-     <li><strong>Missing delivery address</strong> \u2014 the warehouse cannot select the correct destination, causing delayed or misdirected deliveries.</li>
-     <li><strong>Wrong customer group</strong> \u2014 pricing, reporting or business rules behave incorrectly, causing commercial and reporting errors.</li>
-     <li><strong>Rejected key customer</strong> \u2014 the user cannot create or process transactions for that account, causing immediate operational disruption.</li>
+     <li><strong>Missing payment terms:</strong> orders cannot be invoiced correctly or require manual intervention, causing delayed billing and cash collection.</li>
+     <li><strong>Blank tax classification:</strong> tax calculation fails or uses an inappropriate default, creating compliance and financial risk.</li>
+     <li><strong>Missing delivery address:</strong> the warehouse cannot select the correct destination, causing delayed or misdirected deliveries.</li>
+     <li><strong>Wrong customer group:</strong> pricing, reporting or business rules behave incorrectly, causing commercial and reporting errors.</li>
+     <li><strong>Rejected key customer:</strong> the user cannot create or process transactions for that account, causing immediate operational disruption.</li>
    </ul>
  </div>
  <p>This is the first important shift in how a professional migration consultant thinks:</p>
@@ -194,10 +194,10 @@ const blocks=[
  <div class="visual-card">
    <div class="visual-title">Technical success and migration success</div>
    <ul class="framework-checks">
-     <li><strong>100% loaded, wrong payment-term mapping, invoices fail</strong> \u2014 not successful.</li>
-     <li><strong>98% loaded, 2% rejected by agreed exclusion rule, business operates correctly</strong> \u2014 potentially successful.</li>
-     <li><strong>100% loaded, relationships broken, orders cannot find customers</strong> \u2014 not successful.</li>
-     <li><strong>99.4% loaded, variances understood/corrected/formally accepted, business-ready</strong> \u2014 can be successful.</li>
+     <li><strong>100% loaded, wrong payment-term mapping, invoices fail:</strong> not successful.</li>
+     <li><strong>98% loaded, 2% rejected by agreed exclusion rule, business operates correctly:</strong> potentially successful.</li>
+     <li><strong>100% loaded, relationships broken, orders cannot find customers:</strong> not successful.</li>
+     <li><strong>99.4% loaded, variances understood/corrected/formally accepted, business-ready:</strong> can be successful.</li>
    </ul>
  </div>
  <div class="callout misconception"><div class="callout-label">Common trap</div><p>Treating the import tool's success percentage as the migration success percentage. Import tools normally tell you whether a record passed their technical rules. They do not know whether the business meaning of the data is correct.</p></div>
@@ -213,14 +213,14 @@ const blocks=[
  takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>These five tests are related but not interchangeable. A correct record count does not prove field accuracy. Accurate individual fields do not prove relationships. Structurally valid data does not prove that a business process will work.</div>`
 },
 {
- id:"b5",nav:"What does the evidence prove?",title:"Build it yourself \u2014 What does the evidence actually prove?",type:"situations",
+ id:"b5",nav:"What does the evidence prove?",title:"Build it yourself: What does the evidence actually prove?",type:"situations",
  html:`<p class="lead">Bramwell's migration team has reworked the customer load and produced five pieces of evidence. For each item, decide which of the five tests it primarily supports before the reasoning is revealed.</p>`,
  items: evidenceSituations,
- takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice that all five pieces of evidence were needed. None of them alone would have been enough to call the customer migration successful \u2014 and none of them individually resembles a "99.4% loaded" headline.</p></div></div>
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice that all five pieces of evidence were needed. None of them alone would have been enough to call the customer migration successful, and none of them individually resembles a "99.4% loaded" headline.</p></div></div>
  <div class="principle"><strong>Key takeaway</strong><br>The important point is not memorising five labels. It is learning to ask what a piece of migration evidence actually proves, and what it still leaves unanswered.</div>`
 },
 {
- id:"b6",nav:"Situations",title:"Situations \u2014 Successful, unsuccessful or not enough evidence?",type:"situations",
+ id:"b6",nav:"Situations",title:"Situations: Successful, unsuccessful or not enough evidence?",type:"situations",
  html:`<p class="lead">Migration work is full of apparently simple results that require judgement. Consider each situation before reading the discussion.</p>`,
  items: verdictSituations
 },
@@ -312,7 +312,7 @@ const blocks=[
  </div>
  <div id="valuableFeedback"></div>
  <h3>Next lesson</h3>
- <p><strong>Understanding business data</strong> \u2014 you will look at the different types of business data and the dependencies between them, and start to see why migration sequence, relationships and business processes matter long before anyone writes an ETL package.</p>`,
+ <p><strong>Understanding business data:</strong> you will look at the different types of business data and the dependencies between them, and start to see why migration sequence, relationships and business processes matter long before anyone writes an ETL package.</p>`,
  minLength:20,
  savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
 }
