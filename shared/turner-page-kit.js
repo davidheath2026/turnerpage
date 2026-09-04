@@ -499,7 +499,7 @@ function mount(root, config){
   root.innerHTML = `
     <header class="topbar">
       <div class="topbar-inner">
-        <a href="${config.homeUrl || 'index.html'}" aria-label="Return to home"><img class="brand-logo" src="${config.logoSrc || 'assets/turner-page-logo.png'}" alt="Turner Page"></a>
+        <a href="${config.homeUrl || '/index.html'}" aria-label="Return to home"><img class="brand-logo" src="${config.logoSrc || '/assets/turner-page-logo.png'}" alt="Turner Page"></a>
         <div class="brand-copy">
           <strong>${config.programmeName || 'Data Migration Lead Programme'}</strong>
           <span>${config.programmeTagline || 'Professional training and certification'}</span>
