@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Understanding business data</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 1 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Bramwell Industries facts kept consistent with Lesson 1:
+   18,530 active customer accounts is the agreed source population.
+============================================================== */
+
+const fourTypes = [
+  {
+    title:"Master data",
+    short:"Relatively persistent business objects",
+    detail:`<p>Business objects that are repeatedly used by processes and transactions.</p>
+    <p><strong>Examples:</strong> customers, suppliers, products, employees, chart of accounts, assets.</p>
+    <p>Master data often looks simple because the object has a familiar business name. In practice, each object may contain multiple records, relationships, classifications and system-specific structures.</p>`
+  },
+  {
+    title:"Transactional data",
+    short:"Records created by business activity",
+    detail:`<p>Records created when the organisation performs business activity.</p>
+    <p><strong>Examples:</strong> sales orders, purchase orders, invoices, payments, journals, inventory movements.</p>
+    <p>Transactions normally depend heavily on master and reference data. An open sales order is not useful if its customer or products do not exist in the target.</p>`
+  },
+  {
+    title:"Reference and configuration data",
+    short:"Small in volume, large in consequence",
+    detail:`<p>Controlled values and setup that classify data or determine how the target system behaves.</p>
+    <p><strong>Examples:</strong> payment terms, tax codes, currencies, units of measure, status values, product categories.</p>
+    <p>These records are often small in volume but large in consequence. A missing two-character tax code can stop thousands of otherwise correct records from functioning.</p>`
+  },
+  {
+    title:"Relationship data",
+    short:"The links that give records context",
+    detail:`<p>The links that give individual records their business context.</p>
+    <p><strong>Examples:</strong> customer to address, order to customer, order line to product, employee to manager, contact to organisation, product to category.</p>
+    <p>Relationships may be represented by foreign keys, identifiers, lookup values, bridge tables or application-specific structures. Losing the relationship can make individually correct records unusable.</p>`
+  }
+];
+
+// Section 5 — illustrative dependency chain, built as an interactive
+// loop so the learner explores why each layer must exist before the
+// next, rather than being handed a static diagram. Explicitly framed
+// as illustrative, not a universal migration sequence.
+const dependencyChain = [
+  {
+    title:"1. Reference and configuration data",
+    short:"Payment terms, tax codes, currencies, units",
+    detail:`<p>These small, controlled values are usually the first layer, because master and transactional records point to them. If a payment term or tax code does not exist in the target, everything that depends on it inherits the same gap.</p>`
+  },
+  {
+    title:"2. Master data",
+    short:"Customers, products",
+    detail:`<p>Customers and products can normally only be considered ready once the reference values they rely on (payment terms, tax classifications, units, currencies) are in place and correctly mapped.</p>`
+  },
+  {
+    title:"3. Transactional data",
+    short:"Open sales orders",
+    detail:`<p>An open sales order references a customer, products, units, currency and reference values all at once. It cannot be meaningfully tested until all of those layers beneath it are ready.</p>`
+  },
+  {
+    title:"4. Business process validation",
+    short:"Invoice and fulfilment testing",
+    detail:`<p>Only once an order exists correctly can the team test whether it can actually be invoiced and fulfilled, which is the real measure of whether the migration works.</p>`
+  }
+];
+
+// Section 6, part 1 — candidate dependencies for Bramwell's open sales
+// order migration. All nine candidates from the source material are
+// presented as teaching content first (nothing lost), and five of the
+// most pedagogically varied candidates become the graded judgement
+// exercise, avoiding a repetitive quiz where most answers are "yes".
+const depOptions = ["Likely dependency", "Probably not a dependency", "Usually not a direct dependency"];
+const depCandidates = [
+  {
+    q:"Products. Order lines normally reference products or services.",
+    order:[0,1,2], a:0,
+    why:"Likely dependency. Without valid products, the order lines have nothing to point to."
+  },
+  {
+    q:"Delivery addresses. Fulfilment may depend on migrated address data.",
+    order:[2,0,1], a:0,
+    why:"Likely dependency, where fulfilment depends on migrated address data. Confirm this against how the target actually handles delivery."
+  },
+  {
+    q:"Closed sales orders from 2012. A colleague suggests migrating these alongside the open orders, since they are the same object type.",
+    order:[0,1,2], a:1,
+    why:"Probably not a dependency. Historical closed orders are unlikely to be required merely to make current open orders work, although project-specific reporting or legal requirements could change that."
+  },
+  {
+    q:"Payment terms. May be required for invoicing and due-date calculation.",
+    order:[1,2,0], a:0,
+    why:"Likely dependency. This is exactly the kind of small reference value that can silently block invoicing at scale, as Lesson 1's Bramwell customer problem showed."
+  },
+  {
+    q:"Marketing preferences. Potentially important customer data, but is it needed to process an open sales order?",
+    order:[0,2,1], a:2,
+    why:"Usually not a direct order dependency. It may matter elsewhere in the customer record, but it is not normally a prerequisite for processing an open sales order."
+  }
+];
+const depSituations = depCandidates.map((c, idx) => ({
+  title:`Candidate ${idx+1}`,
+  question:c.q,
+  options: c.order.map(k => ({
+    label: depOptions[k],
+    correct: k === c.a,
+    feedback: (k === c.a ? "Correct." : "Look again at whether the order actually needs this to be tested.") + " " + c.why
+  }))
+}));
+
+// Section 7 — situations, fixed four-option classification reused
+// across all four situations.
+const problemOptions = [
+  "Missing or incorrectly mapped reference data",
+  "Broken relationship (referential integrity)",
+  "Scope decision, not a data-type question",
+  "Configuration mapping and duplication risk"
+];
+const problemSituations = [
+  {
+    q:"All 18,530 Bramwell customers load. When users try to create invoices, 4,200 customers fail because payment term 45E does not exist in the target.",
+    a:0,
+    why:"The customer master records are present, but a reference-data dependency is missing or incorrectly mapped. This is a good example of low-volume data creating high-volume business impact."
+  },
+  {
+    q:"42,600 sales orders and 18,530 customers load successfully. Validation finds 317 orders whose customer identifier does not match any migrated customer.",
+    a:1,
+    why:"This is primarily a relationship or referential problem. The individual order rows may be technically valid, but the business relationship has been broken."
+  },
+  {
+    q:"Bramwell has 185,000 product records, of which 63,000 have not been used for more than eight years. A manager says all 185,000 must be migrated because \u2018products are master data\u2019.",
+    a:2,
+    why:"The classification tells you what type of data it is, not whether it belongs in migration scope. Scope requires business, operational, reporting and retention decisions."
+  },
+  {
+    q:"A functional consultant tells you the new ERP already contains currencies, tax codes and units of measure because they were configured during solution build.",
+    a:3,
+    why:"Do not automatically migrate another copy. Confirm that the configured values are the correct target references, understand how legacy values map to them, and make sure downstream data uses the correct target identifiers."
+  }
+].map((s, idx) => ({
+  title:`Situation ${idx+1}`,
+  question:s.q,
+  options: problemOptions.map((label, k) => ({
+    label,
+    correct: k === s.a,
+    feedback: (k === s.a ? "Correct." : "Look again at what kind of problem this actually is.") + " " + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Just migrate customers",title:"Opening scenario: Just migrate the customers",type:"mcq",
+ html:`<p class="lead">It is three months into the Bramwell Industries transformation programme. The migration team is preparing its first meaningful customer data load.</p>
+ <p>At the morning project meeting, the Sales Operations lead says:</p>
+ <div class="quote">"Customers are our priority. Let's keep this simple. Get the customer table loaded first and we can worry about everything else afterwards."<br><span class="small">Sales Operations lead</span></div>
+ <p>The legacy ERP contains 18,530 active customer accounts. The migration team can extract those records immediately. But the target sales process also relies on:</p>
+ <ul class="framework-checks">
+   <li>customer addresses</li>
+   <li>payment terms</li>
+   <li>tax classifications</li>
+   <li>currencies</li>
+   <li>customer groups</li>
+   <li>sales representatives</li>
+   <li>contacts</li>
+   <li>products and units of measure</li>
+   <li>open sales orders</li>
+ </ul>
+ <h3>Your decision</h3>
+ <p>What is the best response?</p>`,
+ options:[
+ "Agree. Customer master data should always be migrated before anything else because it is the foundation of sales.",
+ "Agree, but include the addresses because they are part of the customer record.",
+ "First identify what the target business process needs and which data objects depend on one another. \u2018Customer\u2019 may involve much more than one table.",
+ "Wait until every related data object is completely cleansed before loading any customer data."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Too simplistic. Customer data is important, but there is no universal rule that one table called Customer should simply be loaded first. The target design and the purpose of the test determine the dependencies and sequence.",
+ "Better, but still too narrow. Addresses are an obvious dependency, but they are not the only one. Payment terms, tax values, currencies, classifications and other reference data may also be required before the customer can function correctly.",
+ "Correct. Start from what the business needs to do in the target system, then identify the data required to support it and the dependencies between those data objects.",
+ "Unnecessarily restrictive. Some data must be ready before meaningful testing, but migration work is iterative. Waiting for every related object to be perfect can delay learning and prevent early discovery of structural problems."
+ ]
+},
+{
+ id:"b2",nav:"A network of data",title:"A business process is supported by a network of data",type:"content",
+ html:`<p class="lead">In Lesson 1, Bramwell's customer load looked technically successful but failed several business-focused checks. The reason is now becoming clearer: a customer is not useful simply because a customer row exists.</p>
+ <p>Consider a basic sales process:</p>
+ <div class="visual-card">
+   <div class="visual-title">Sales process</div>
+   <ol class="framework-checks">
+     <li>Customer places order</li>
+     <li>Order is entered</li>
+     <li>Goods are dispatched</li>
+     <li>Invoice is raised</li>
+     <li>Payment is received</li>
+     <li>Transaction is reported</li>
+   </ol>
+ </div>
+ <p>Each step depends on data. To enter the order, the system may need a valid customer, delivery address, product, unit of measure, currency, price, tax treatment and payment terms. To dispatch it, warehouse and location data may be required. To invoice and post it, financial and tax configuration must already exist.</p>
+ <p>This creates one of the most useful habits in migration work:</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Do not ask only, "What table are we migrating?" Ask, "What business process must this data enable, and what else must exist for that process to work?"</p></div></div>
+ <p>That question matters to both migration specialisms. A Data Migration Consultant needs it when analysing, mapping, building and validating data. A Data Migration Lead needs it when assessing scope, dependencies, sequencing, readiness and risk.</p>`
+},
+{
+ id:"b3",nav:"Four types of data",title:"Four practical types of business data",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Organisations and software products use many different classifications for data. For migration purposes, a simple practical model is more useful than an academic taxonomy. In this programme we will use four broad types.</p>
+ <p>Explore each type in detail before moving on.</p>`,
+ items: fourTypes.map(t => ({ title:t.title, short:t.short, detail:t.detail })),
+ takeawayHtml:`<div class="callout misconception"><div class="callout-label">Important nuance</div><p>These categories are a thinking aid, not rigid boxes. The same business concept can be represented differently by different systems. What matters is understanding its role in the business process and its dependencies in the specific source and target landscape.</p></div>`
+},
+{
+ id:"b4",nav:"Small data, big impact",title:"Small data can carry enormous business importance",type:"content",
+ html:`<p class="lead">Migration teams naturally pay attention to large volumes. A table containing 40 million transactions looks important. A reference table containing 12 payment-term codes looks trivial. That instinct can be dangerous.</p>
+ <div class="visual-card">
+   <div class="visual-title">Volume is not the same as importance</div>
+   <ul class="framework-checks">
+     <li><strong>Customers, 18,530 records, looks significant:</strong> sales and receivables affected if wrong.</li>
+     <li><strong>Open sales orders, 42,600 records, looks significant:</strong> revenue and fulfilment affected if wrong.</li>
+     <li><strong>Payment terms, 12 records, not significant at first glance:</strong> invoicing, due dates and cash collection affected if wrong.</li>
+     <li><strong>Currencies, 8 records, does not look significant:</strong> financial values and transactions affected if wrong.</li>
+     <li><strong>Units of measure, 34 records, does not look significant:</strong> ordering, stock and quantities affected if wrong.</li>
+     <li><strong>Tax classifications, 16 records, does not look significant:</strong> tax calculation and compliance affected if wrong.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Migration criticality is not determined by row count. A tiny reference dataset can be a dependency for millions of records and dozens of business processes.</div>
+ <p>This is why experienced migration professionals become interested in seemingly minor fields and small lookup tables. Their importance comes from what depends on them.</p>
+ ${TPKit.fromField({
+   title:"Twelve Rows, One Weekend Lost", name:"Isabel", role:"Data Migration Consultant", project:"Retail ERP",
+   src:"/assets/audio/TwelveRows-Isabel.mp3",
+   reflection:"Has a small, easily overlooked table ever caused a disproportionately large problem on your own project?"
+ })}`
+},
+{
+ id:"b5",nav:"Dependency chain",title:"Dependencies determine what can work",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">A dependency exists when one data object, value or process relies on another being present or valid.</p>
+ <p>Imagine Bramwell wants to test an open sales order in the new system. The order contains customer BRM-10482, delivery address 003, product AX-440, unit EA, currency GBP, payment term 30D and tax classification UKSTD. The sales order record itself can be perfectly formed, but it may still fail if any of those referenced values does not exist or is invalid in the target.</p>
+ <p>A simplified, illustrative dependency chain for Bramwell's own data might look like this. Explore each layer to see why it typically sits where it does.</p>`,
+ items: dependencyChain.map(t => ({ title:t.title, short:t.short, detail:t.detail })),
+ takeawayHtml:`<div class="callout misconception"><div class="callout-label">Common trap</div><p>Memorising a standard load order and applying it to every project. This chain is illustrative, not universal: another system may require different prerequisites, some objects can be loaded in parallel, some configuration may be deployed rather than migrated, and some relationships may only be resolved after an initial load. Dependencies must be discovered from the actual target design, migration approach and business process.</p></div>`
+},
+{
+ id:"b6",nav:"Classify the candidates",title:"Build it yourself, part 1: What does an open sales order depend on?",type:"situations",
+ html:`<p class="lead">Bramwell wants its first UAT migration to include 42,600 open sales orders. Before agreeing that scope, the team needs to identify the data that may need to exist for those orders to be meaningful in the target.</p>
+ <p>Customers, units of measure, currencies and tax or reference values are also candidates here: an order generally cannot be validated, priced or taxed correctly without them. The judgement calls below are the more interesting ones. For each candidate, decide whether it is a dependency before the reasoning is revealed.</p>`,
+ items: depSituations,
+ takeawayHtml:`<div class="principle"><strong>Key phrase: "may need"</strong><br>A consultant should not turn a generic example into a universal technical rule. The correct dependency set must be confirmed against the actual target and business process.</div>`
+},
+{
+ id:"b7",nav:"Build the artefact",title:"Build it yourself, part 2: Your first migration artefact",type:"guidedSteps",
+ html:`<p class="lead">Now construct a small dependency map for Bramwell's open sales orders. This is deliberately simple. Later modules will turn this thinking into formal inventory, mapping, sequencing, validation and cutover artefacts.</p>
+ <p>Open Sales Orders depends on: Customers, Products, Units, Currency, agreed reference and configuration values, and required addresses and relationships. For each one, work out what must actually be confirmed before the order migration can be considered testable.</p>`,
+ firstLabel:"Start building the map",
+ steps:[
+   {html:`<h4>Depends on: Customers</h4><p>What must be confirmed? That the referenced customer has actually been migrated, and that the specific fields the order needs from it (status, payment terms, tax classification) are correct, not just present.</p>`},
+   {html:`<h4>Depends on: Products</h4><p>What must be confirmed? That every product referenced by an order line exists in the target under an identifier the order can actually resolve, including any products that were renumbered or restructured during migration.</p>`},
+   {html:`<h4>Depends on: Units</h4><p>What must be confirmed? That the unit of measure on each order line is valid in the target and means the same quantity it meant in the legacy system, not just that a value has loaded into the field.</p>`},
+   {html:`<h4>Depends on: Currency</h4><p>What must be confirmed? That the currency code is valid in the target and that any exchange-rate or rounding behaviour the order relies on is configured, not assumed.</p>`},
+   {html:`<h4>Depends on: agreed reference and configuration values</h4><p>What must be confirmed? That payment terms and tax classifications referenced by the order exist in the target under the agreed mapping, not merely that some value loaded without error, echoing exactly what went wrong with Bramwell's customers in Lesson 1.</p>`},
+   {html:`<h4>Depends on: required addresses and relationships</h4><p>What must be confirmed? That the delivery address the order needs is actually linked to the migrated customer record, and that the link itself survived migration, not just the two records independently.</p>`}
+ ],
+ closingHtml:`<div class="principle"><strong>Key takeaway</strong><br>A dependency map is not a diagram for its own sake. Each line on it is a question someone still needs to answer with evidence before the data can be called ready.</div>`
+},
+{
+ id:"b8",nav:"Situations",title:"Situations: What kind of data problem is this?",type:"situations",
+ html:`<p class="lead">Migration problems often look similar on the surface but come from different causes. Consider each situation before reading the discussion.</p>`,
+ items: problemSituations
+},
+{
+ id:"b9",nav:"Business context",title:"Data must be understood in business context",type:"content",
+ html:`<p class="lead">A field name can tell you surprisingly little.</p>
+ <p>Suppose a legacy customer table contains a field called STATUS with values 0, 1 and 9. A purely technical view might conclude that it is a small integer field and easy to migrate.</p>
+ <p>Before mapping it, however, the migration team needs to know:</p>
+ <ul class="framework-checks">
+   <li>What do 0, 1 and 9 mean to Bramwell?</li>
+   <li>Does the value control whether an account can trade?</li>
+   <li>Is it maintained manually or calculated?</li>
+   <li>Does the target use the same concept?</li>
+   <li>Are all three legacy values still valid?</li>
+   <li>Does the target have more or fewer statuses?</li>
+   <li>Do historical transactions depend on the legacy meaning?</li>
+ </ul>
+ <p>The same principle applies to dates, flags, codes, classifications and identifiers. Their technical datatype is only one part of the story.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Never confuse knowing the structure of data with understanding the data. A migration professional needs both.</p></div></div>
+ <h3>A shared foundation for two specialisms</h3>
+ <p>The core programme deliberately teaches the shared concept before the later specialisms diverge.</p>
+ <div class="visual-card">
+   <ul class="framework-checks">
+     <li><strong>Payment terms are a dependency for customer and order processing.</strong> Later DMC depth: how to extract, map, transform, load and troubleshoot the values. Later DML depth: how dependency readiness affects cycle planning, ownership and cutover risk.</li>
+     <li><strong>Orders depend on valid customers and products.</strong> Later DMC depth: how to implement and validate keys, lookups and load sequence. Later DML depth: how to ensure the dependency chain is ready across teams and milestones.</li>
+     <li><strong>Reference data may be tiny but critical.</strong> Later DMC depth: how to build and test the conversion logic. Later DML depth: how to make its readiness visible and ensure accountable ownership.</li>
+   </ul>
+ </div>
+ <p>At this stage, you need the shared understanding in the left-hand column. The specialist programmes will deepen the rest.</p>`
+},
+{
+ id:"b10",nav:"Reflection",title:"What does your process depend on?",type:"reflection",
+ html:`<p>Choose a business process you know reasonably well. It could be placing an order, paying a supplier, hiring an employee, receiving stock, servicing a customer or producing a financial report.</p>
+ <div class="quote">What data must already exist for that process to work?</div>
+ <p>Try to identify at least one example of master data, transactional data, reference or configuration data, and a relationship between records.</p>
+ <textarea id="reflection" placeholder="The process I know well is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/master/i, strength:"You identified a piece of master data.", gap:"If your answer contains only the obvious master record, look one step further." },
+   { test:/transact|order|invoice|payment|record created/i, strength:"You identified a piece of transactional data.", gap:"Consider what record gets created when the process actually happens." },
+   { test:/reference|config|code|classification|term/i, strength:"You identified a reference or configuration value the process quietly relies on.", gap:"What codes, configuration or reference values does the process rely on without users normally noticing them?" },
+   { test:/relat|link|connect|depend/i, strength:"You identified a relationship between records.", gap:"What relationship between records does the process depend on to make sense?" }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Placing an order relies on the customer (master data), the order itself once created (transactional data), the payment terms and tax code it references (reference and configuration data), and the link between the order and the correct delivery address (a relationship).</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=3?"You are already looking past the obvious master record to the reference values and relationships that quietly make a process work.":"Push further into all four categories, especially the reference and configuration values that users rarely notice until they are missing."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">In this lesson you have moved from thinking about single tables to thinking about the network of data a business process actually needs.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Business data is interconnected. A useful migration view starts with the process the data must support.</li>
+   <li>Master data, transactional data, reference and configuration data, and relationships provide a practical way to think about different migration needs.</li>
+   <li>Data volume does not determine business criticality. Small reference datasets can control huge numbers of transactions.</li>
+   <li>Dependencies influence migration design, sequence, testing and readiness.</li>
+   <li>A technically valid record can still be unusable if a required relationship or reference value is missing.</li>
+   <li>Data structure and business meaning are different things; professional migration work requires both.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not migrate tables in isolation. Understand the business process, the data it needs and the dependencies that make that data usable.</div>`
+},
+{
+ id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Understanding business data.</strong></p>
+ <p>You now know that Bramwell's customer information is not simply one customer table, and that open sales orders depend on a network of master, reference and relationship data.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Where source and target diverge.</strong> Bramwell's data does not live in one place. Customer information exists in its legacy ERP, CRM and locally maintained files, and the new systems represent some of those concepts differently. In Lesson 3, you will look at source systems, target systems and data models, and begin to understand why migration design requires you to understand both sides of the journey.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 1",
+  moduleTitle: "Data Migration Foundations",
+  lessonLabel: "Lesson 2: Understanding business data",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Data does not work alone",
+  storageKey: "tp_core1_lesson2_v1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3.html",
+  finalButtonLabel: "Continue to Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
