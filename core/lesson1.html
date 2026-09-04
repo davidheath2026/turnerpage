@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | What data migration actually is</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 1 — LESSON 1 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts introduced
+   here (18,420 loaded / 112 rejected / 99.4% technical load rate)
+   must stay consistent in later Core Module 1 lessons.
+============================================================== */
+
+const fiveTests=[
+  {
+    title:"Is it there?",
+    short:"Completeness",
+    detail:`<p>Did the records and fields that were agreed in scope actually arrive?</p>
+    <p><strong>Example:</strong> 12,500 active customers were expected; 12,500 are accounted for in the target or in documented exclusions.</p>`
+  },
+  {
+    title:"Is it right?",
+    short:"Accuracy",
+    detail:`<p>Are the migrated values correct after applying the agreed rules?</p>
+    <p><strong>Example:</strong> Payment terms, tax codes and customer names contain the intended target values.</p>`
+  },
+  {
+    title:"Is it connected?",
+    short:"Relationships",
+    detail:`<p>Do records still relate correctly to the other records they depend on?</p>
+    <p><strong>Example:</strong> Every migrated sales order points to a valid migrated customer and valid products.</p>`
+  },
+  {
+    title:"Does it mean the right thing?",
+    short:"Business meaning",
+    detail:`<p>Have transformations preserved or deliberately changed the business meaning correctly?</p>
+    <p><strong>Example:</strong> Legacy code C3 becomes target customer group WHOLESALE because that conversion was agreed, not because C3 happened to resemble a target code.</p>`
+  },
+  {
+    title:"Can the business use it?",
+    short:"Usability",
+    detail:`<p>Does the migrated data support the processes it is supposed to support?</p>
+    <p><strong>Example:</strong> A user can invoice a migrated sales order, post the transaction and obtain the expected financial result.</p>`
+  }
+];
+
+// Section 5 — "What does the evidence actually prove?" reframed as a
+// judgement exercise: each item is a piece of evidence, and the option
+// set is the five tests, reordered per item so the correct answer's
+// position doesn't just track the item number (1→A, 2→B, 3→C...).
+const testLabels = fiveTests.map(t => t.title);
+// [correctTestIndex, displayOrder of test indices]
+const evidenceItems = [
+  {
+    q:"18,530 active customers were in agreed scope. 18,530 are accounted for in the target and approved exclusions.",
+    order:[2,4,0,1,3], a:0,
+    why:"It accounts for the expected population rather than merely reporting the number accepted by the loader."
+  },
+  {
+    q:"A comparison of 200 sampled customers confirms that names, tax numbers, payment terms and status values match the approved transformation rules.",
+    order:[0,3,2,4,1], a:1,
+    why:"It checks the correctness of values against agreed rules."
+  },
+  {
+    q:"An automated check finds zero sales orders whose customer identifier is absent from the migrated customer population.",
+    order:[2,4,1,3,0], a:2,
+    why:"It tests a dependency between two migrated data sets."
+  },
+  {
+    q:"Legacy customer type 07 is converted to DISTRIBUTOR in the target, in accordance with the signed mapping rule.",
+    order:[0,1,4,3,2], a:3,
+    why:"It proves that a difference from legacy is deliberate and semantically correct."
+  },
+  {
+    q:"Sales users successfully create and invoice orders for ten migrated customers covering domestic, export and credit-held scenarios.",
+    order:[0,4,1,3,2], a:4,
+    why:"It demonstrates that the data supports actual target-system behaviour."
+  }
+];
+const evidenceSituations = evidenceItems.map((e, idx) => ({
+  title:`Evidence ${idx+1}`,
+  question:e.q,
+  options: e.order.map(testIdx => ({
+    label: testLabels[testIdx],
+    correct: testIdx === e.a,
+    feedback: (testIdx === e.a ? "Correct.<br>" : "Not quite \u2014 this test asks a different question.<br>") + e.why
+  }))
+}));
+
+// Section 6 — successful / not successful / not enough evidence, a
+// fixed three-option judgement reused across four situations.
+const verdictOptions = ["Successful", "Not successful", "Not enough evidence yet"];
+const verdictSituations = [
+  {
+    q:"The source contains 12,500 customers. The target contains 12,420. The migration lead says the difference is acceptable because 50 customers were inactive and 30 were duplicate accounts that the business agreed to merge.",
+    a:0,
+    why:"Potentially successful. The counts differ, but the variance is understood and supported by agreed scope and cleansing decisions. Equality of counts is not the goal; accountable completeness is."
+  },
+  {
+    q:"All 84,211 product records load without a single technical rejection. A user then notices that the legacy 20-character product identifier was loaded into a 15-character target field and several identifiers were truncated.",
+    a:1,
+    why:"Unsuccessful. Technical acceptance concealed a transformation/design defect. The data is present but not accurate."
+  },
+  {
+    q:"A customer classified as RETAIL in legacy appears as B2C in the target. A tester raises it as a migration defect.",
+    a:0,
+    why:"Not necessarily a defect. If RETAIL \u2192 B2C is the approved mapping rule, the difference is evidence that the migration transformed the data correctly."
+  },
+  {
+    q:"The legacy and target trial balances agree exactly after migration. Finance therefore declares the whole financial migration complete.",
+    a:2,
+    why:"Strong evidence, but not enough by itself. Matching totals are critical, yet they do not prove every account, dimension, open transaction or relationship is correct."
+  }
+].map((s, idx) => ({
+  title:`Situation ${idx+1}`,
+  question:s.q,
+  options: verdictOptions.map((label, k) => ({
+    label,
+    correct: k === s.a,
+    feedback: (k === s.a ? "Correct.<br>" : "Look again at what the evidence actually proves.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"99.4% successful",title:"Opening scenario \u2014 99.4% successful",type:"mcq",
+ html:`<p class="lead">It is 18:40 on Saturday, 14 November. Bramwell Industries is due to go live with its new ERP and CRM landscape on Monday morning.</p>
+ <p>The customer migration has just completed. The migration dashboard shows:</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customer records loaded</strong>18,420</div>
+   <div class="status-card"><strong>Records rejected</strong>112</div>
+   <div class="status-card"><strong>Technical load success</strong>99.4%</div>
+   <div class="status-card"><strong>Cutover window</strong>ETL completed on time</div>
+   <div class="status-card"><strong>Infrastructure errors</strong>None reported</div>
+ </div>
+ <div class="quote">"99.4%. Excellent. Customers are done. Let's move on to the sales orders."<br><span class="small">\u2014 Project manager</span></div>
+ <p>Before the team moves on, however, a consultant runs several business-focused checks. They reveal:</p>
+ <ul class="framework-checks">
+   <li>760 active customers have no valid payment terms.</li>
+   <li>94 customers have a blank tax classification.</li>
+   <li>31 key accounts have lost one or more active delivery addresses.</li>
+   <li>A further 108 customers have been assigned to the wrong customer group.</li>
+   <li>The 112 rejected records include several high-value customers expected to trade on Monday.</li>
+ </ul>
+ <h3>Your decision</h3>
+ <p>Which is the best assessment of the customer migration at this point?</p>`,
+ options:[
+ "It has been successful. A 99.4% load rate is strong enough to proceed, and the remaining issues can be corrected after go-live.",
+ "It has mostly been successful. The rejected 0.6% should be fixed, but the records that loaded successfully can be treated as correct.",
+ "There is not enough evidence to call it successful. Technical load success does not prove that the migrated customer data is complete, accurate and usable.",
+ "It has failed. A successful migration requires every target value to be identical to the legacy system."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The percentage is attractive, but it answers only one question: how many records the load mechanism accepted. It says nothing about whether accepted records contain the right values or whether the rejected records matter to Monday's business operations.",
+ "A record that loaded successfully is not necessarily a correct record. Payment terms, tax classifications and addresses can all be wrong while the import process reports success.",
+ "Correct. The load result is useful evidence, but it is only part of the evidence. The team still needs to prove that the data is complete, accurate, correctly related and usable by the business.",
+ "Migration is not always intended to reproduce the legacy system exactly. Data may be cleansed, transformed, reclassified or deliberately excluded. A difference can be correct if it reflects an agreed migration rule."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team accepts the 99.4% headline and continues without investigating the loaded records.</p>
+ <p>On Monday morning the consequences are not experienced as "data migration defects". They appear as business failures.</p>
+ <div class="visual-card">
+   <div class="visual-title">From data problem to business consequence</div>
+   <ul class="framework-checks">
+     <li><strong>Missing payment terms</strong> \u2014 orders cannot be invoiced correctly or require manual intervention, causing delayed billing and cash collection.</li>
+     <li><strong>Blank tax classification</strong> \u2014 tax calculation fails or uses an inappropriate default, creating compliance and financial risk.</li>
+     <li><strong>Missing delivery address</strong> \u2014 the warehouse cannot select the correct destination, causing delayed or misdirected deliveries.</li>
+     <li><strong>Wrong customer group</strong> \u2014 pricing, reporting or business rules behave incorrectly, causing commercial and reporting errors.</li>
+     <li><strong>Rejected key customer</strong> \u2014 the user cannot create or process transactions for that account, causing immediate operational disruption.</li>
+   </ul>
+ </div>
+ <p>This is the first important shift in how a professional migration consultant thinks:</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The business never experiences a migration as rows, files or ETL packages. It experiences the migration through the processes that either work or fail after the data arrives.</p></div></div>
+ <p>A migration team can therefore be technically busy, technically competent and technically successful while still delivering data that the business cannot safely use.</p>`
+},
+{
+ id:"b3",nav:"Not file movement",title:"Data migration is not file movement",type:"content",
+ html:`<p class="lead">At its simplest, data migration is the controlled transfer and reshaping of business information from one environment into another so that the target organisation can operate correctly with that information.</p>
+ <p>The phrase "transfer and reshaping" matters. In a real implementation, data rarely travels unchanged from one database column to another. It may need to be selected or excluded according to scope, cleansed, combined from several sources, split into a different target structure, translated into new codes, defaulted where an agreed value is missing, enriched, reformatted, or loaded in a dependency-driven sequence.</p>
+ <p>This is why the familiar phrase "extract, transform, load" describes only part of the job. A professional migration also needs decisions, ownership, validation, evidence and business acceptance.</p>
+ <div class="visual-card">
+   <div class="visual-title">Technical success and migration success</div>
+   <ul class="framework-checks">
+     <li><strong>100% loaded, wrong payment-term mapping, invoices fail</strong> \u2014 not successful.</li>
+     <li><strong>98% loaded, 2% rejected by agreed exclusion rule, business operates correctly</strong> \u2014 potentially successful.</li>
+     <li><strong>100% loaded, relationships broken, orders cannot find customers</strong> \u2014 not successful.</li>
+     <li><strong>99.4% loaded, variances understood/corrected/formally accepted, business-ready</strong> \u2014 can be successful.</li>
+   </ul>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Treating the import tool's success percentage as the migration success percentage. Import tools normally tell you whether a record passed their technical rules. They do not know whether the business meaning of the data is correct.</p></div>
+ <p>Most modern business processes depend on data that already exists before the process can begin. A sales order needs a customer. The customer may need payment terms, addresses, tax information and a valid status. The order needs products, units, prices and other reference values. Finance needs balances and accounts. Procurement needs suppliers. Warehousing needs products, sites and inventory information.</p>
+ <p>If those foundations are missing or wrong, the new application may be technically available while the organisation is operationally unable to use it.</p>`
+},
+{
+ id:"b4",nav:"The five tests",title:"The five tests of migrated data",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Throughout the Turner Page core programme we will return to five practical questions. They provide a simple way to challenge a migration result before being distracted by technical statistics.</p>
+ <p>Explore each test in detail before moving on.</p>`,
+ items: fiveTests.map(t => ({ title:t.title, short:t.short, detail:t.detail })),
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>These five tests are related but not interchangeable. A correct record count does not prove field accuracy. Accurate individual fields do not prove relationships. Structurally valid data does not prove that a business process will work.</div>`
+},
+{
+ id:"b5",nav:"What does the evidence prove?",title:"Build it yourself \u2014 What does the evidence actually prove?",type:"situations",
+ html:`<p class="lead">Bramwell's migration team produces the following evidence after reworking the customer load. For each item, decide which of the five tests it primarily supports.</p>`,
+ items: evidenceSituations,
+ takeawayHtml:`<div class="principle"><strong>Key takeaway</strong><br>The important point is not memorising five labels. It is learning to ask what a piece of migration evidence actually proves.</div>`
+},
+{
+ id:"b6",nav:"Situations",title:"Situations \u2014 Successful, unsuccessful or not enough evidence?",type:"situations",
+ html:`<p class="lead">Migration work is full of apparently simple results that require judgement. Consider each situation before reading the discussion.</p>`,
+ items: verdictSituations
+},
+{
+ id:"b7",nav:"Not a photocopy",title:"The target is not a photocopy of the legacy system",type:"content",
+ html:`<p class="lead">A common beginner assumption is that the safest migration is the one in which the target looks exactly like the source. That is often impossible and frequently undesirable.</p>
+ <p>A new system may deliberately introduce a different customer classification, a new chart of accounts, standardised country and currency codes, different organisational structures, cleaner master data, new mandatory fields, different keys and identifiers, different relationships between business objects, or a smaller historical data scope.</p>
+ <p>Therefore, a difference between source and target is not automatically an error. The real question is:</p>
+ <div class="quote">Is this difference the result of an agreed migration decision, correctly implemented and evidenced, or is it an unintended defect?</div>
+ <p>This distinction becomes increasingly important later in the programme. Mapping, transformation, cleansing and scope decisions all deliberately create differences between legacy and target data.</p>
+ <h3>What should remain unchanged?</h3>
+ <p>Some things do require exact or near-exact preservation, depending on the data and agreed rules. Examples may include opening financial balances, legally significant identifiers, quantities, dates or transactional values. Other values may legitimately change.</p>
+ <p>A consultant therefore cannot decide whether a difference is acceptable simply by looking at it. They need the migration rule, the business context and the appropriate owner or sign-off authority.</p>`
+},
+{
+ id:"b8",nav:"Thinking like a consultant",title:"Thinking like a migration consultant",type:"content",
+ html:`<p class="lead">Return to the original Bramwell dashboard. A less experienced consultant may ask:</p>
+ <div class="callout misconception"><div class="callout-label">Weak question</div><p>"How many records failed?"</p></div>
+ <p>A stronger consultant asks a sequence of questions:</p>
+ <ul class="framework-checks">
+   <li>What population did we expect to migrate?</li>
+   <li>What was deliberately excluded?</li>
+   <li>Which records failed, and are any of them business-critical?</li>
+   <li>Did the accepted records contain the expected values?</li>
+   <li>Were the agreed transformations applied correctly?</li>
+   <li>Are relationships intact?</li>
+   <li>Can the target business processes use the data?</li>
+   <li>What evidence supports those conclusions?</li>
+ </ul>
+ <p>Notice that none of these questions dismisses technical load statistics. Load statistics matter. The difference is that the consultant treats them as evidence to interpret, not as the final verdict.</p>
+ ${TPKit.fromField({
+   title:"The Dashboard That Looked Perfect", name:"Darren", role:"Data Migration Consultant", project:"Distribution ERP",
+   src:"/assets/audio/PerfectDashboard-Darren.mp3",
+   reflection:"Have you ever trusted a green dashboard that turned out to be hiding a business problem?"
+ })}
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good migration consultant is professionally suspicious of attractive headline numbers. 100% loaded, 0 errors and "green" dashboards are useful only when you understand what they measure and what they do not.</p></div></div>`
+},
+{
+ id:"b9",nav:"Reflection",title:"What would convince you?",type:"reflection",
+ html:`<p>Think about a system implementation, data conversion or large spreadsheet process you have seen before.</p>
+ <div class="quote">What would convince you that its data migration had genuinely succeeded?</div>
+ <p>Try to answer without using the words "loaded successfully". Consider what evidence you would want about completeness, accuracy, relationships, business meaning and usability.</p>
+ <textarea id="reflection" placeholder="I would want to see evidence that..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/complete|scope|population|missing/i, strength:"You considered whether the expected population actually arrived.", gap:"Consider whether the full expected population, or documented exclusions, can be accounted for." },
+   { test:/accura|correct|right value|values? match/i, strength:"You considered whether the migrated values themselves are correct.", gap:"Consider whether the migrated values are actually correct, not just present." },
+   { test:/relat|connect|depend|link|orphan/i, strength:"You considered whether relationships between records survived the migration.", gap:"Consider whether records still relate correctly to what they depend on." },
+   { test:/meaning|transform|mapping|semantic/i, strength:"You considered whether transformations preserved the correct business meaning.", gap:"Consider whether transformations changed the business meaning correctly, not just the format." },
+   { test:/use|process|operat|invoice|business/i, strength:"You considered whether the business can actually use the data in its real processes.", gap:"Consider whether a business user could actually complete a real process with the migrated data." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would want evidence that the expected population is accounted for, that sampled values are correct against agreed rules, that key relationships are intact, that transformations preserved the intended business meaning, and that real users can complete real processes with the migrated data.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=4?"This is strong professional thinking. You are already asking what evidence proves, rather than accepting a single headline figure.":"You have the foundation. Push further into all five areas: completeness, accuracy, relationships, business meaning and usability."}</div>`
+},
+{
+ id:"b10",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">In this lesson you have established the foundation for the rest of the Turner Page core programme.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Data migration is not simply moving files or rows between systems.</li>
+   <li>A technically successful load can still produce an unsuccessful migration.</li>
+   <li>Migration success must be considered in terms of completeness, accuracy, relationships, business meaning and usability.</li>
+   <li>Differences between source and target are not automatically defects; many are deliberate outcomes of scope, cleansing or transformation decisions.</li>
+   <li>Migration evidence must be interpreted in business context.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A successful migration is not data that loaded. It is data the business can trust and use.</div>`
+},
+{
+ id:"b11",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed What data migration actually is.</strong></p>
+ <p>Bramwell's customer problem has already exposed an important truth: a customer is not simply one row in one table. Payment terms, addresses, tax classifications, contacts, orders and other records all contribute to whether that customer can actually be used.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Understanding business data</strong> \u2014 you will look at the different types of business data and the dependencies between them, and start to see why migration sequence, relationships and business processes matter long before anyone writes an ETL package.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 1",
+  moduleTitle: "Data Migration Foundations",
+  lessonLabel: "Lesson 1: What data migration actually is",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Technical success is not migration success",
+  storageKey: "tp_core1_lesson1_v1",
+  nextUrl: "lesson2.html",
+  finalButtonLabel: "Continue to Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
