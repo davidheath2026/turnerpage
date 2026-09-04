@@ -261,19 +261,40 @@ const blocks=[
  takeawayHtml:`<div class="principle"><strong>Key phrase: "may need"</strong><br>A consultant should not turn a generic example into a universal technical rule. The correct dependency set must be confirmed against the actual target and business process.</div>`
 },
 {
- id:"b7",nav:"Build the artefact",title:"Build it yourself, part 2: Your first migration artefact",type:"guidedSteps",
- html:`<p class="lead">Now construct a small dependency map for Bramwell's open sales orders. This is deliberately simple. Later modules will turn this thinking into formal inventory, mapping, sequencing, validation and cutover artefacts.</p>
- <p>Open Sales Orders depends on: Customers, Products, Units, Currency, agreed reference and configuration values, and required addresses and relationships. For each one, work out what must actually be confirmed before the order migration can be considered testable.</p>`,
- firstLabel:"Start building the map",
- steps:[
-   {html:`<h4>Depends on: Customers</h4><p>What must be confirmed? That the referenced customer has actually been migrated, and that the specific fields the order needs from it (status, payment terms, tax classification) are correct, not just present.</p>`},
-   {html:`<h4>Depends on: Products</h4><p>What must be confirmed? That every product referenced by an order line exists in the target under an identifier the order can actually resolve, including any products that were renumbered or restructured during migration.</p>`},
-   {html:`<h4>Depends on: Units</h4><p>What must be confirmed? That the unit of measure on each order line is valid in the target and means the same quantity it meant in the legacy system, not just that a value has loaded into the field.</p>`},
-   {html:`<h4>Depends on: Currency</h4><p>What must be confirmed? That the currency code is valid in the target and that any exchange-rate or rounding behaviour the order relies on is configured, not assumed.</p>`},
-   {html:`<h4>Depends on: agreed reference and configuration values</h4><p>What must be confirmed? That payment terms and tax classifications referenced by the order exist in the target under the agreed mapping, not merely that some value loaded without error, echoing exactly what went wrong with Bramwell's customers in Lesson 1.</p>`},
-   {html:`<h4>Depends on: required addresses and relationships</h4><p>What must be confirmed? That the delivery address the order needs is actually linked to the migrated customer record, and that the link itself survived migration, not just the two records independently.</p>`}
+ id:"b7",nav:"Build the artefact",title:"Build it yourself, part 2: Your first migration artefact",type:"reflection",
+ html:`<p class="lead">Now construct a small dependency map for Bramwell's open sales orders yourself, in your own words. This is deliberately simple. Later modules will turn this thinking into formal inventory, mapping, sequencing, validation and cutover artefacts.</p>
+ <p>Open Sales Orders depends on: <strong>Customers, Products, Units, Currency, agreed reference and configuration values, and required addresses and relationships.</strong></p>
+ <div class="quote">For each one, what must actually be confirmed, with evidence, before the order migration can be considered testable?</div>
+ <p>Write your own answer for each of the six dependencies before checking it against the model answer below.</p>
+ <textarea id="reflection" placeholder="Customers: I would need to confirm that..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:80,
+ checks:[
+   { test:/customer/i, strength:"You addressed the customer dependency.", gap:"What must be confirmed about the customer itself, not just that it loaded?" },
+   { test:/product|identifier|renumber/i, strength:"You addressed the product dependency.", gap:"What must be confirmed about the products the order lines reference?" },
+   { test:/unit|quantity/i, strength:"You addressed the unit-of-measure dependency.", gap:"What must be confirmed about the units on each order line?" },
+   { test:/currency|exchange|rounding/i, strength:"You addressed the currency dependency.", gap:"What must be confirmed about the currency and any exchange-rate behaviour?" },
+   { test:/payment term|tax|reference|configuration|mapping/i, strength:"You addressed the reference and configuration dependency.", gap:"What must be confirmed about payment terms, tax classifications or other reference values, echoing Lesson 1's customer problem?" },
+   { test:/address|relationship|link/i, strength:"You addressed the address and relationship dependency.", gap:"What must be confirmed about the delivery address and whether the link to the customer itself survived migration?" }
  ],
- closingHtml:`<div class="principle"><strong>Key takeaway</strong><br>A dependency map is not a diagram for its own sake. Each line on it is a question someone still needs to answer with evidence before the data can be called ready.</div>`
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <ul class="framework-checks">
+   <li><strong>Customers:</strong> that the referenced customer has actually been migrated, and that the specific fields the order needs from it (status, payment terms, tax classification) are correct, not just present.</li>
+   <li><strong>Products:</strong> that every product referenced by an order line exists in the target under an identifier the order can actually resolve, including any products that were renumbered or restructured during migration.</li>
+   <li><strong>Units:</strong> that the unit of measure on each order line is valid in the target and means the same quantity it meant in the legacy system, not just that a value has loaded into the field.</li>
+   <li><strong>Currency:</strong> that the currency code is valid in the target and that any exchange-rate or rounding behaviour the order relies on is configured, not assumed.</li>
+   <li><strong>Agreed reference and configuration values:</strong> that payment terms and tax classifications referenced by the order exist in the target under the agreed mapping, not merely that some value loaded without error, echoing exactly what went wrong with Bramwell's customers in Lesson 1.</li>
+   <li><strong>Required addresses and relationships:</strong> that the delivery address the order needs is actually linked to the migrated customer record, and that the link itself survived migration, not just the two records independently.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A dependency map is not a diagram for its own sake. Each line on it is a question someone still needs to answer with evidence before the data can be called ready.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"Strong work. You worked through nearly all six dependencies with real substance, not just a label for each.":score>=5?"A solid start. Check the model answer against the dependencies you did not cover.":"Compare your answer closely against the model. Each dependency needs its own confirmed piece of evidence, not a general statement that covers all of them at once."}</div>`
 },
 {
  id:"b8",nav:"Situations",title:"Situations: What kind of data problem is this?",type:"situations",
@@ -330,7 +351,7 @@ const blocks=[
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
  <div class="quote">Placing an order relies on the customer (master data), the order itself once created (transactional data), the payment terms and tax code it references (reference and configuration data), and the link between the order and the correct delivery address (a relationship).</div>`,
- mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=3?"You are already looking past the obvious master record to the reference values and relationships that quietly make a process work.":"Push further into all four categories, especially the reference and configuration values that users rarely notice until they are missing."}</div>`
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=7?"You are already looking past the obvious master record to the reference values and relationships that quietly make a process work.":"Push further into all four categories, especially the reference and configuration values that users rarely notice until they are missing."}</div>`
 },
 {
  id:"b11",nav:"Summary",title:"Lesson summary",type:"content",
