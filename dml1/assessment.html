@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  MODULE ASSESSMENT TEMPLATE — hand-edit per module, per
+  tp-html-build-guide.md §10/§12.1. This file is NOT per-lesson —
+  it covers everything taught across one module's lessons.
+
+  When duplicating this for a new module, update:
+    1. <title> below and the "Certification assessment" copy in #intro
+    2. MODULE_ID in the script (used as the progress-record key —
+       match the folder/module naming convention, e.g. "core1", "dmc2")
+    3. The "questions" array — write 8-10 questions covering the WHOLE
+       module, not one lesson
+    4. The "Back" button's href (point at the module's final lesson's
+       lesson-complete.html)
+    5. The final "Continue" button's href after a pass (point at the
+       next module's first lesson, or a course/module overview page —
+       NOT at a certificate page; certificates are tier-level, see below)
+-->
+<title>Turner Page | DML1 Certification Assessment</title>
+<style>
+:root{
+  --ink:#102f36;
+  --deep:#005f6c;
+  --teal:#0b7f8e;
+  --aqua:#7dd8d8;
+  --mist:#f3f9f9;
+  --paper:#fff;
+  --line:#d8e9e9;
+  --good:#0b7d5b;
+  --warn:#8a6113;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);
+  color:var(--ink);
+  line-height:1.6;
+}
+.topbar{
+  background:#fff;
+  border-bottom:1px solid var(--line);
+}
+.topbar-inner{
+  max-width:1120px;
+  margin:auto;
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  gap:22px;
+}
+.logo{height:46px;width:auto}
+.brand{flex:1}
+.brand strong{display:block}
+.brand span{font-size:12px;color:#61787d}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:.25s}
+.page{
+  max-width:980px;
+  margin:36px auto 80px;
+  padding:0 20px;
+}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:clamp(26px,5vw,52px);
+  box-shadow:var(--shadow);
+}
+.kicker{
+  color:var(--teal);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+}
+h1{
+  margin:8px 0 18px;
+  font-size:clamp(34px,5vw,52px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+h2{
+  margin:8px 0 22px;
+  font-size:clamp(26px,4vw,38px);
+  line-height:1.18;
+}
+.lead{
+  color:#405b62;
+  font-size:19px;
+}
+.assessment-facts{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:28px 0;
+}
+.fact{
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#f9fcfc;
+}
+.fact strong{display:block;color:var(--deep)}
+.scenario{
+  margin:22px 0;
+  padding:20px 22px;
+  border-left:5px solid var(--aqua);
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
+  font-size:18px;
+}
+.type-hint{
+  color:var(--teal);
+  font-weight:800;
+  font-size:12.5px;
+  margin:-6px 0 16px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.options{
+  display:grid;
+  gap:12px;
+  margin:22px 0;
+}
+.option{
+  display:flex;
+  gap:13px;
+  align-items:flex-start;
+  width:100%;
+  padding:16px;
+  text-align:left;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  color:var(--ink);
+  cursor:pointer;
+  font:inherit;
+}
+.option:hover{border-color:var(--teal)}
+.option.selected{
+  border:2px solid var(--teal);
+  background:#edfafa;
+}
+.badge{
+  min-width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#e3f3f3;
+  color:var(--deep);
+  font-weight:900;
+  flex-shrink:0;
+}
+.option.selected .badge{background:var(--teal);color:#fff}
+.match-instruction{
+  margin:22px 0 16px;
+  padding:16px 20px;
+  border-left:5px solid var(--aqua);
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,#ebf8f8,#f8fcfc);
+  font-size:16px;
+}
+.match-list, .order-list{
+  display:grid;
+  gap:12px;
+  margin:22px 0;
+}
+.match-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  flex-wrap:wrap;
+}
+.match-row .situation{flex:1;min-width:220px}
+.match-row .situation strong{display:block;color:var(--deep);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.match-row select{
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#f9fcfc;
+  color:var(--ink);
+  font-weight:700;
+  font-size:15px;
+  min-width:220px;
+}
+.match-row select:focus{outline:2px solid var(--teal)}
+.order-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+}
+.order-pos{
+  min-width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#e3f3f3;
+  color:var(--deep);
+  font-weight:900;
+  flex-shrink:0;
+}
+.order-text{flex:1}
+.order-controls{display:flex;gap:6px}
+.order-btn{
+  border:0;
+  border-radius:10px;
+  padding:8px 12px;
+  font-weight:800;
+  background:#e7f5f5;
+  color:var(--deep);
+  cursor:pointer;
+  font-size:13px;
+}
+.order-btn:disabled{opacity:.35;cursor:not-allowed}
+.actions{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:34px;
+  padding-top:22px;
+  border-top:1px solid var(--line);
+}
+button{
+  border:0;
+  border-radius:13px;
+  padding:13px 20px;
+  font-weight:850;
+  cursor:pointer;
+}
+.primary{background:var(--deep);color:#fff}
+.secondary{background:#e7f5f5;color:var(--deep)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.result-head{
+  text-align:center;
+  padding-bottom:26px;
+}
+.score{
+  font-size:60px;
+  line-height:1;
+  font-weight:900;
+  color:var(--deep);
+}
+.status-pass{color:var(--good)}
+.status-fail{color:#9a3e32}
+.review{
+  margin:22px 0;
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fbfefe;
+}
+.review.correct{border-left:5px solid var(--good)}
+.review.incorrect{border-left:5px solid #b15b45}
+.answer-line{
+  margin:8px 0;
+  color:#4b656b;
+}
+.answer-block ul{margin:6px 0;padding-left:20px}
+.explanation{
+  margin-top:13px;
+  padding-top:13px;
+  border-top:1px solid var(--line);
+}
+.fb-line{margin:6px 0}
+.mentor-tip{
+  margin-top:13px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:#f3f9f9;
+  border:1px solid var(--line);
+}
+.mentor-tip strong{color:var(--deep)}
+.hidden{display:none}
+@media(max-width:760px){
+  .assessment-facts{grid-template-columns:1fr 1fr}
+  .topbar-inner{padding:10px 14px}
+  .logo{height:39px}
+  .brand span{display:none}
+  .match-row{flex-direction:column;align-items:stretch}
+  .match-row select{min-width:0;width:100%}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <img class="logo" src="/assets/turner-page-logo.png" alt="Turner Page">
+    <div class="brand">
+      <strong>DML1 Certification Assessment</strong>
+      <span>The Data Migration Lead mindset</span>
+    </div>
+    <strong id="progressText">Not started</strong>
+  </div>
+  <div class="progress-shell"><div id="progressBar" class="progress-bar" style="width:0"></div></div>
+</header>
+
+<main class="page">
+  <section id="intro" class="card">
+    <div class="kicker">Certification assessment</div>
+    <h1>DML1: The Data Migration Lead mindset</h1>
+    <p class="lead">
+      This assessment tests professional judgement across the whole module, not simple recall.
+      Read each project scenario carefully and choose the response that best reflects Turner Page thinking.
+    </p>
+
+    <div class="assessment-facts">
+      <div class="fact"><strong>10 questions</strong>Mixed formats</div>
+      <div class="fact"><strong>80% pass mark</strong>See below</div>
+      <div class="fact"><strong>No feedback</strong>Until submission</div>
+      <div class="fact"><strong>Unlimited attempts</strong>Review and retry</div>
+    </div>
+
+    <p><strong>There may be more than one plausible action. Choose the best professional response.</strong></p>
+
+    <div class="actions">
+      <button class="secondary" onclick="location.href='/dml1/lesson8-complete.html'">Back</button>
+      <button class="primary" onclick="startAssessment()">Start assessment</button>
+    </div>
+  </section>
+
+  <section id="quiz" class="card hidden"></section>
+  <section id="results" class="card hidden"></section>
+</main>
+
+<!-- Loaded only for the shared TPKit.recordProgress/getProgress helpers —
+     this page does NOT use TPKit.mount(); it's still its own separate
+     rendering system per tp-html-build-guide.md §10. -->
+<script src="/shared/turner-page-kit.js"></script>
+
+<script>
+// Change this to match the module (e.g. "core1", "dmc2", "dml3") —
+// this is the key the shared progress record stores this module's
+// assessment result under. Must match the folder/module naming
+// convention used across the site.
+const MODULE_ID = "dml1";
+// "Continue" after a pass currently goes to /index.html as a safe
+// placeholder \u2014 there is no course overview/dashboard page yet, and
+// DML2 doesn't exist. Update once either exists.
+
+const ROLES = ["ETL Lead","Business Data Owner","Data Migration Lead","Steering Committee"];
+
+const questions = [
+  {
+    type:"single",
+    title:"The final 2%",
+    scenario:`A dress rehearsal is due to begin in two hours. ETL is complete. The environment is signed off. There are no critical migration defects. Validation is reported as 98% complete.`,
+    prompt:"What is the best response?",
+    options:[
+      {text:"Yes. The remaining 2% is unlikely to matter.",
+       feedback:"A percentage close to complete can still hide a business-critical gap. Proceeding without checking what it represents is a judgement lapse, not confidence."},
+      {text:"Delay until 100%.",
+       feedback:"Waiting for a literal 100% is rarely necessary or realistic in migration delivery. The goal is understanding materiality, not chasing an arbitrary number."},
+      {text:"Confirm what remains unvalidated and whether it affects rehearsal objectives.",
+       feedback:"Percentages never make decisions on their own. Understanding what the remaining 2% represents is what should drive the rehearsal decision."},
+      {text:"Wait until every workstream confirms readiness.",
+       feedback:"Requiring universal sign-off from every workstream conflates process with judgement, and can stall delivery without adding real assurance."}
+    ],
+    correctIndex:2,
+    mentorTip:"Percentages never make decisions on their own. Understand what the remaining data represents."
+  },
+  {
+    type:"single",
+    title:"A successful migration?",
+    scenario:`The cutover completes on schedule. Every planned record loads and reconciles exactly as expected. On the Monday morning after go-live, users cannot complete standard order processing because a required workflow step was never configured.`,
+    prompt:"Which conclusion is strongest?",
+    options:[
+      {text:"The migration was technically successful, but operational readiness was not achieved \u2014 the two are not the same thing.",
+       feedback:"Migration success does not equal operational readiness. Data can be loaded and reconciled perfectly while the business is still unable to operate."},
+      {text:"The migration failed because users could not process orders.",
+       feedback:"The migration activity itself was completed as planned. Framing it as a migration failure blurs distinct causes and can misdirect corrective action."},
+      {text:"The workflow issue is unrelated to migration and should be dismissed.",
+       feedback:"Dismissing the issue as unrelated ignores that operational readiness sits alongside technical readiness in any credible go-live recommendation."},
+      {text:"Technical completion is sufficient evidence that go-live was ready.",
+       feedback:"Technical completion is necessary but not sufficient. Confusing the two is exactly the trap this scenario illustrates."}
+    ],
+    correctIndex:0,
+    mentorTip:"Migration success does not equal operational readiness."
+  },
+  {
+    type:"matching",
+    title:"Task management or workstream ownership?",
+    instruction:"Match each behaviour to the category it belongs to. Use each category as many times as needed.",
+    roles:["Task management","Workstream ownership"],
+    situations:[
+      {label:"Behaviour A", text:"Chasing each team for a status update before the weekly report.", correctRole:0,
+       feedback:"This is task management \u2014 collecting status is necessary, but it isn't the same as owning the outcome."},
+      {label:"Behaviour B", text:"Noticing a risk before anyone has asked you to look for it, and raising it unprompted.", correctRole:1,
+       feedback:"This is workstream ownership \u2014 proactively scanning for risk is one of the clearest signs of moving beyond task management."},
+      {label:"Behaviour C", text:"Completing your own assigned actions from the last meeting on time.", correctRole:0,
+       feedback:"This is task management \u2014 reliable execution matters, but it's still working within someone else's plan rather than owning the workstream."},
+      {label:"Behaviour D", text:"Recommending a course of action to governance, with assumptions and conditions stated.", correctRole:1,
+       feedback:"This is workstream ownership \u2014 forming and presenting a judgement is exactly what separates an owner from a task-doer."}
+    ],
+    mentorTip:"The Five Daily Questions exist to pull you out of task management and into genuine ownership."
+  },
+  {
+    type:"multi",
+    title:"Responsibilities",
+    scenario:`Every Turner Page engagement draws a clear line between what the Data Migration Lead owns and what belongs to other roles.`,
+    prompt:"Which of the following are core responsibilities of a Data Migration Lead? Select ALL that apply.",
+    options:[
+      {text:"Communicate migration status", correct:true,
+       feedback:"Correct. Clear, honest status communication underpins every governance decision that follows."},
+      {text:"Make the final business Go/No-Go decision", correct:false,
+       feedback:"This sits with the Steering Committee, not the Data Migration Lead. The role informs the decision; it does not make it."},
+      {text:"Ensure reconciliation is completed", correct:true,
+       feedback:"Correct. Reconciliation is core evidence that migrated data is fit for use."},
+      {text:"Personally resolve data quality issues within source systems", correct:false,
+       feedback:"Data quality within source systems belongs to the Business Data Owner. The Data Migration Lead surfaces and escalates issues rather than owning their resolution."},
+      {text:"Guarantee zero defects at cutover", correct:false,
+       feedback:"No migration can honestly guarantee zero defects. The role is to understand, mitigate and communicate residual risk, not to promise perfection."},
+      {text:"Recommend readiness", correct:true,
+       feedback:"Correct. Providing an evidence-based readiness recommendation is central to the role."}
+    ],
+    mentorTip:"The Data Migration Lead recommends and communicates. The business decides and owns."
+  },
+  {
+    type:"single",
+    title:"A scope conversation, six weeks in",
+    scenario:`A business stakeholder asks, informally, whether "the historical claims data" is included in the migration. It has never been explicitly named as in-scope or out-of-scope in any document.`,
+    prompt:"What is the most appropriate response?",
+    options:[
+      {text:"Assume it's out of scope, since it was never explicitly requested.",
+       feedback:"Assuming silence means \u201cno\u201d is exactly how scope disputes start later. An undefended boundary isn't a boundary at all."},
+      {text:"Add it to scope immediately to avoid conflict.",
+       feedback:"Quietly expanding scope to avoid a difficult conversation trades a small awkward moment now for a much larger one at cutover."},
+      {text:"Name it specifically as in-scope or out-of-scope, in writing, with the reasoning, and confirm it with the stakeholder.",
+       feedback:"A defensible scope boundary names objects specifically rather than leaving them implied. Writing it down, with reasoning, is what makes it defensible later."},
+      {text:"Refer the stakeholder to the PMO and take no further action.",
+       feedback:"Redirecting the question doesn't resolve it \u2014 scope questions about specific data objects are exactly what the Data Migration Lead should be settling and documenting."}
+    ],
+    correctIndex:2,
+    mentorTip:"A scope boundary that isn't written down and named specifically isn't a boundary \u2014 it's an assumption waiting to be tested."
+  },
+  {
+    type:"single",
+    title:"The unresolved item at 46 hours",
+    scenario:`A reconciliation variance has been open for almost two days. It's logged in the tracker with the note "Finance to review."`,
+    prompt:"What is the biggest problem with how this item is currently logged?",
+    options:[
+      {text:"It hasn't been escalated to the Steering Committee yet.",
+       feedback:"Escalation level should match the item's actual severity and age \u2014 jumping straight to Steering Committee isn't automatically the fix for a vague log entry."},
+      {text:"\u201cFinance to review\u201d is not a named owner or a target date, so the item can sit unresolved indefinitely without anyone technically being at fault.",
+       feedback:"A team can't be chased in a corridor conversation; a named person can. Without a real target date, \u201cunresolved for 48 hours\u201d never becomes a measurable breach that triggers action."},
+      {text:"The variance itself is probably not material enough to worry about.",
+       feedback:"Materiality is a real question, but it isn't evidenced here at all \u2014 the more immediate problem is that the item is structured so it can never actually be tracked to resolution."},
+      {text:"It should be reclassified as a Risk instead of an Issue.",
+       feedback:"Category matters, but changing the category doesn't fix the underlying gap: no named owner and no real date, whatever the label."}
+    ],
+    correctIndex:1,
+    mentorTip:"Owner: a named person. Target date: a real date. Without both, an item can age indefinitely with nobody at fault."
+  },
+  {
+    type:"single",
+    title:"Three Greens in a row",
+    scenario:`The migration workstream has reported Green for three consecutive weeks. Underneath, the same two risks have quietly remained open the entire time, each week re-justified as \"still manageable.\"`,
+    prompt:"What is the most appropriate reading of this situation?",
+    options:[
+      {text:"Three Greens in a row is reassuring \u2014 the trend supports continued confidence.",
+       feedback:"A status can look stable on the surface while the trend underneath is actually sliding. Three Greens in a row can still be sliding if the same risks keep getting waved through."},
+      {text:"The same risks re-justified as \u201cstill manageable\u201d for three weeks straight is itself a signal worth challenging, regardless of the headline colour.",
+       feedback:"A RAG status is only trustworthy when no status sits stale past one cycle without being re-justified on its own evidence \u2014 not simply carried forward on the same explanation each time."},
+      {text:"Since nothing has gotten worse, no action is needed.",
+       feedback:"\u201cNothing has gotten worse\u201d isn't the same as \u201cthis is being actively managed.\u201d Stagnant risk carried forward under an unchanged justification is exactly the pattern that erodes trust in a dashboard."},
+      {text:"The colour should be changed to Red immediately to force attention.",
+       feedback:"Changing the label without new evidence swaps one uninformative signal for another. The fix is investigating the underlying risks, not relabelling the symptom."}
+    ],
+    correctIndex:1,
+    mentorTip:"Track the trend, not just the snapshot. Three Greens in a row can still be sliding."
+  },
+  {
+    type:"single",
+    title:"4:47pm, the day before dress rehearsal",
+    scenario:`A defect is discovered affecting a subset of customer records. The scope is not yet fully understood. Several stakeholders are already asking questions in a group chat.`,
+    prompt:"What is the most appropriate immediate response?",
+    options:[
+      {text:"Reply in the group chat straight away with a full explanation, before investigating further.",
+       feedback:"Explaining before the scope is actually understood risks giving an answer that has to be walked back within the hour \u2014 contain the situation before you explain it."},
+      {text:"Confirm the actual scope factually, contain it from getting worse, get one rough fix-effort estimate, and decide who genuinely needs to know today.",
+       feedback:"This is the right sequence: count the scope, don't guess it; stop it getting worse before explaining; get a rough estimate rather than a precise one under time pressure; and recognise not everyone needs the same speed of communication."},
+      {text:"Wait until tomorrow's rehearsal to raise it, since the scope isn't confirmed yet.",
+       feedback:"A same-day surprise needs same-day containment and communication to the right people \u2014 waiting until the rehearsal risks the date being protected by luck rather than by management."},
+      {text:"Escalate immediately to the Steering Committee before any investigation.",
+       feedback:"Escalating before even a rough scope and fix-estimate exist gives governance nothing to act on yet \u2014 contain and understand first, then escalate with something concrete."}
+    ],
+    correctIndex:1,
+    mentorTip:"Contain before you explain. Get one rough fix-effort estimate before deciding who needs to know today."
+  },
+  {
+    type:"ordering",
+    title:"Running a meeting that actually holds",
+    prompt:"Use the arrows to place the following steps of a well-structured migration meeting in the correct order.",
+    items:["Declare the meeting's single purpose (status, decision, or problem-solving)","Review the standing decision log first, before discussing anything new","Work through the agenda items relevant to that declared purpose","Log any new decisions made, with owner and date, before the meeting closes"],
+    correctOrder:[0,1,2,3],
+    feedback:"A cadence that holds starts by confirming the past (the decision log) before debating the future, stays disciplined about what kind of meeting this actually is, and closes by capturing new decisions properly \u2014 rather than letting them evaporate the moment the call ends.",
+    mentorTip:"Confirm the past before debating the future \u2014 that's what a standing decision log, reviewed first, actually buys you."
+  },
+  {
+    type:"single",
+    title:"Three problems arrive at once",
+    scenario:`Within the same afternoon: a defect surfaces, a stakeholder asks for a recommendation on an open scope question, and a team member flags a blocker they haven't told their own manager about yet.`,
+    prompt:"Which response best reflects someone who has grown from executing a workstream into leading one?",
+    options:[
+      {text:"Handle the defect personally first, since it's the most technical of the three.",
+       feedback:"Technical familiarity isn't the deciding factor here \u2014 triaging by genuine business impact and urgency matters more than which problem feels most hands-on."},
+      {text:"Give the stakeholder a status update and say a recommendation will follow once everything technical is resolved.",
+       feedback:"Being asked for a recommendation, not just a status, is exactly the moment this role exists for \u2014 deferring it treats judgement as optional rather than the actual job."},
+      {text:"Triage all three by real business impact, give the stakeholder an evidence-based recommendation now, and treat the team member raising a blocker directly as a sign of trust worth protecting.",
+       feedback:"This reflects genuine workstream leadership: prioritising by impact rather than familiarity, being willing to give judgement when asked for it, and recognising that a team member coming to you first \u2014 rather than their own manager \u2014 is something to reinforce, not redirect."},
+      {text:"Redirect the team member back to their own manager, since that's the correct reporting line.",
+       feedback:"A team member bringing a blocker to you directly is a sign you've become a safe place to raise problems \u2014 redirecting it away discourages exactly the behaviour that makes a workstream leader effective."}
+    ],
+    correctIndex:2,
+    mentorTip:"Your team bringing you blockers, not just their manager, is a sign you've become a safe place to raise problems \u2014 protect that, don't redirect it."
+  }
+];
+
+let current = 0;
+let answers = Array(questions.length).fill(null);
+
+const intro = document.getElementById("intro");
+const quiz = document.getElementById("quiz");
+const results = document.getElementById("results");
+const progressText = document.getElementById("progressText");
+const progressBar = document.getElementById("progressBar");
+
+function startAssessment(){
+  intro.classList.add("hidden");
+  quiz.classList.remove("hidden");
+  renderQuestion();
+}
+
+function isAnswered(q, ans){
+  if(ans===null || ans===undefined) return false;
+  if(q.type==="multi") return ans.length>0;
+  if(q.type==="matching") return ans.every(v=>v!==null);
+  return true;
+}
+
+function isCorrect(q, ans){
+  if(!isAnswered(q, ans)) return false;
+  if(q.type==="single") return ans===q.correctIndex;
+  if(q.type==="multi"){
+    const correctSet = q.options.map((o,i)=>o.correct?i:null).filter(i=>i!==null).sort();
+    const ansSet = [...ans].sort();
+    return JSON.stringify(correctSet)===JSON.stringify(ansSet);
+  }
+  if(q.type==="matching") return q.situations.every((s,i)=>ans[i]===s.correctRole);
+  if(q.type==="ordering") return JSON.stringify(ans)===JSON.stringify(q.correctOrder);
+  return false;
+}
+
+function renderQuestion(){
+  const q = questions[current];
+  const pct = Math.round((current/questions.length)*100);
+  progressText.textContent = `Question ${current+1} of ${questions.length}`;
+  progressBar.style.width = pct + "%";
+
+  if(answers[current]===null){
+    if(q.type==="multi") answers[current] = [];
+    else if(q.type==="matching") answers[current] = Array(q.situations.length).fill(null);
+    else if(q.type==="ordering") answers[current] = q.items.map((_,i)=>i);
+  }
+
+  let bodyHtml = "";
+
+  if(q.type==="single"){
+    bodyHtml = `
+      <div class="scenario">${q.scenario}</div>
+      <p><strong>${q.prompt}</strong></p>
+      <div class="options">
+        ${q.options.map((option,index)=>`
+          <button class="option ${answers[current]===index ? "selected" : ""}" onclick="selectSingle(${index})">
+            <span class="badge">${String.fromCharCode(65+index)}</span>
+            <span>${option.text}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="multi"){
+    bodyHtml = `
+      ${q.scenario ? `<div class="scenario">${q.scenario}</div>` : ""}
+      <p><strong>${q.prompt}</strong></p>
+      <div class="type-hint">Select all that apply</div>
+      <div class="options">
+        ${q.options.map((option,index)=>`
+          <button class="option ${answers[current].includes(index) ? "selected" : ""}" onclick="toggleMulti(${index})">
+            <span class="badge">${String.fromCharCode(65+index)}</span>
+            <span>${option.text}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="matching"){
+    bodyHtml = `
+      <div class="match-instruction">${q.instruction}</div>
+      <div class="match-list">
+        ${q.situations.map((s,index)=>`
+          <div class="match-row">
+            <div class="situation"><strong>${s.label}</strong>${s.text}</div>
+            <select onchange="selectMatch(${index}, this.value)">
+              <option value="" ${answers[current][index]===null ? "selected" : ""}>Choose a role...</option>
+              ${q.roles.map((role,roleIndex)=>`
+                <option value="${roleIndex}" ${answers[current][index]===roleIndex ? "selected" : ""}>${role}</option>
+              `).join("")}
+            </select>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } else if(q.type==="ordering"){
+    bodyHtml = `
+      <p><strong>${q.prompt}</strong></p>
+      <div class="type-hint">Use the arrows to reorder</div>
+      <div class="order-list">
+        ${answers[current].map((itemIndex,pos)=>`
+          <div class="order-row">
+            <span class="order-pos">${pos+1}</span>
+            <span class="order-text">${q.items[itemIndex]}</span>
+            <div class="order-controls">
+              <button type="button" class="order-btn" onclick="moveItem(${pos},-1)" ${pos===0 ? "disabled" : ""}>&uarr;</button>
+              <button type="button" class="order-btn" onclick="moveItem(${pos},1)" ${pos===answers[current].length-1 ? "disabled" : ""}>&darr;</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  quiz.innerHTML = `
+    <div class="kicker">Question ${current+1} of ${questions.length}</div>
+    <h2>${q.title}</h2>
+    ${bodyHtml}
+    <div class="actions">
+      <button class="secondary" onclick="previousQuestion()" ${current===0 ? "disabled" : ""}>Previous</button>
+      <button class="primary" onclick="nextQuestion()" ${isAnswered(q, answers[current]) ? "" : "disabled"}>
+        ${current===questions.length-1 ? "Submit assessment" : "Next"}
+      </button>
+    </div>
+  `;
+}
+
+function selectSingle(index){
+  answers[current] = index;
+  renderQuestion();
+}
+
+function toggleMulti(index){
+  const set = answers[current];
+  const pos = set.indexOf(index);
+  if(pos===-1) set.push(index); else set.splice(pos,1);
+  renderQuestion();
+}
+
+function selectMatch(situationIndex, value){
+  answers[current][situationIndex] = value==="" ? null : Number(value);
+  renderQuestion();
+}
+
+function moveItem(pos, direction){
+  const arr = answers[current];
+  const target = pos + direction;
+  if(target<0 || target>=arr.length) return;
+  [arr[pos], arr[target]] = [arr[target], arr[pos]];
+  renderQuestion();
+}
+
+function previousQuestion(){
+  if(current>0){
+    current--;
+    renderQuestion();
+  }
+}
+
+function nextQuestion(){
+  if(!isAnswered(questions[current], answers[current])) return;
+  if(current < questions.length-1){
+    current++;
+    renderQuestion();
+  } else {
+    submitAssessment();
+  }
+}
+
+function formatSingleAnswer(q, index){
+  if(index===null || index===undefined) return "No answer selected";
+  return `${String.fromCharCode(65+index)}. ${q.options[index].text}`;
+}
+
+function formatMultiAnswer(q, indexes){
+  if(!indexes || indexes.length===0) return "No answer selected";
+  return `<ul>${[...indexes].sort((a,b)=>a-b).map(i=>`<li>${String.fromCharCode(65+i)}. ${q.options[i].text}</li>`).join("")}</ul>`;
+}
+
+function formatMatchingAnswer(q, roleIndexes, useCorrect){
+  return `<ul>${q.situations.map((s,i)=>{
+    const roleIndex = useCorrect ? s.correctRole : roleIndexes[i];
+    const roleText = (roleIndex===null || roleIndex===undefined) ? "Not answered" : q.roles[roleIndex];
+    return `<li>${s.label} &rarr; ${roleText}</li>`;
+  }).join("")}</ul>`;
+}
+
+function formatOrderingAnswer(q, order){
+  return `<ol>${order.map(i=>`<li>${q.items[i]}</li>`).join("")}</ol>`;
+}
+
+function getReviewParts(q, ans){
+  if(q.type==="single"){
+    return {
+      yourAnswer: formatSingleAnswer(q, ans),
+      correctAnswer: formatSingleAnswer(q, q.correctIndex),
+      feedback: `<div class="fb-line">${(ans!==null && ans!==undefined) ? q.options[ans].feedback : "No answer was selected for this question."}</div>`
+    };
+  }
+  if(q.type==="multi"){
+    const correctSet = q.options.map((o,i)=>o.correct?i:null).filter(i=>i!==null);
+    const relevant = new Set([...(ans||[]), ...correctSet]);
+    const feedback = [...relevant].sort((a,b)=>a-b).map(i=>`<div class="fb-line"><strong>${String.fromCharCode(65+i)}.</strong> ${q.options[i].feedback}</div>`).join("");
+    return {
+      yourAnswer: formatMultiAnswer(q, ans),
+      correctAnswer: formatMultiAnswer(q, correctSet),
+      feedback: feedback || "No answer was selected for this question."
+    };
+  }
+  if(q.type==="matching"){
+    const feedback = q.situations.map(s=>`<div class="fb-line"><strong>${s.label}:</strong> ${s.feedback}</div>`).join("");
+    return {
+      yourAnswer: formatMatchingAnswer(q, ans, false),
+      correctAnswer: formatMatchingAnswer(q, ans, true),
+      feedback
+    };
+  }
+  if(q.type==="ordering"){
+    const correctOrder = q.correctOrder;
+    return {
+      yourAnswer: formatOrderingAnswer(q, ans),
+      correctAnswer: formatOrderingAnswer(q, correctOrder),
+      feedback: `<div class="fb-line">${q.feedback}</div>`
+    };
+  }
+  return {yourAnswer:"", correctAnswer:"", feedback:""};
+}
+
+function submitAssessment(){
+  quiz.classList.add("hidden");
+  results.classList.remove("hidden");
+  progressBar.style.width = "100%";
+  progressText.textContent = "Assessment complete";
+
+  let score = 0;
+  questions.forEach((q,index)=>{
+    if(isCorrect(q, answers[index])) score++;
+  });
+
+  const pass = score >= Math.ceil(questions.length * 0.8);
+
+  // Record the result in the shared progress record. Certificates are
+  // tier-level (Foundations/DMC/DML) and check this record for every
+  // required module's pass — this file no longer generates a
+  // certificateId itself. See tp-html-build-guide.md §12.1/§12.7.
+  if(window.TPKit && typeof TPKit.recordProgress === "function"){
+    TPKit.recordProgress("moduleAssessment", MODULE_ID, { score, total: questions.length, passed: pass });
+  }
+
+  results.innerHTML = `
+    <div class="result-head">
+      <div class="kicker">Assessment result</div>
+      <div class="score">${score}/10</div>
+      <h2 class="${pass ? "status-pass" : "status-fail"}">${pass ? "Passed" : "Not passed this time"}</h2>
+      <p class="lead">${pass
+        ? "You have demonstrated the evidence-based judgement expected across this module."
+        : "Review the mentor feedback below, revisit the module where necessary, and try again."}</p>
+    </div>
+
+    <h2>Review your answers</h2>
+
+    ${questions.map((q,index)=>{
+      const ans = answers[index];
+      const correct = isCorrect(q, ans);
+      const parts = getReviewParts(q, ans);
+      return `
+        <article class="review ${correct ? "correct" : "incorrect"}">
+          <div class="kicker">Question ${index+1}</div>
+          <h3>${q.title}</h3>
+          ${q.scenario ? `<p>${q.scenario}</p>` : ""}
+          <div class="answer-line answer-block"><strong>Your answer:</strong> ${parts.yourAnswer}</div>
+          <div class="answer-line answer-block"><strong>Correct answer:</strong> ${parts.correctAnswer}</div>
+          <div class="explanation">
+            <strong>Mentor feedback</strong>
+            ${parts.feedback}
+          </div>
+          <div class="mentor-tip"><strong>Mentor tip:</strong> ${q.mentorTip}</div>
+        </article>
+      `;
+    }).join("")}
+
+    <div class="actions">
+      <button class="secondary" onclick="location.reload()">${pass ? "Retake assessment" : "Try again"}</button>
+      ${pass ? `<button class="primary" onclick="location.href='/index.html'">Continue</button>` :
+               `<button class="primary" onclick="location.href='/dml1/lesson8-complete.html'">Return to module</button>`}
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
