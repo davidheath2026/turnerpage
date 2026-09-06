@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Source systems, target systems and data models</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 1 — LESSON 3 DATA — content only. All chrome,
+   styling and engine behaviour come from shared/turner-page-kit.css
+   + .js. Built from the Core Module 1 Lesson 3 source manuscript
+   (source systems, target systems and data models). Follows the
+   Turner Page lesson playbook (ten-block shape, extended per its
+   own guidance where the source material genuinely needs it —
+   see the AI-principle block, which has no slot in the core ten).
+   Uses DML1 Lesson 5 as the structural/interaction benchmark.
+============================================================== */
+
+const targetContractCategories=[
+ {title:"Required and optional fields",short:"Not everything the source has is needed, and not everything needed exists in the source",
+  detail:"The target defines which fields must be populated before a record is valid at all. A source record can be perfectly complete by its own standards and still fail here if it's missing something the target insists on."},
+ {title:"Valid codes and controlled values",short:"A field accepting free text elsewhere may accept only a fixed list here",
+  detail:"Legacy 'Status: 1' means nothing to the target unless something maps it to one of the target's own approved status codes. Controlled values are exactly where semantic mismatches hide."},
+ {title:"Relationships and lookup rules",short:"A value may need to already exist elsewhere before this record can be created",
+  detail:"A sales owner field may require the identifier to already exist as a valid, active user record in the target. If it doesn't, the migration has to decide what happens: create it, default it, or reject the record."},
+ {title:"Business rules and validations",short:"Rules that only fire once real data is loaded, not before",
+  detail:"A target may silently reject a record that looks fine in isolation because it fails a rule that only makes sense in combination \u2014 for example, a credit status that isn't valid alongside a particular customer group."}
+];
+
+const sourceToTargetSteps=[
+ {html:`<h4>Step 1 \u2014 AccountID (from CustNo)</h4><p><em>Legacy value: C10482.</em></p><p>This looks like a direct mapping, but it isn't automatically one. The question to resolve is whether the legacy identifier is retained as-is, or whether the target's own uniqueness and format rules mean a new key has to be assigned instead. Looking similar on the screen doesn't settle it.</p>`},
+ {html:`<h4>Step 2 \u2014 PaymentTerms (from Terms)</h4><p><em>Legacy value: 45E.</em></p><p>This is a conversion, not a mapping. \u201c45E\u201d has to be understood in business terms first, then matched to whichever target payment-term code carries the same agreed meaning \u2014 not whichever code merely looks closest.</p>`},
+ {html:`<h4>Step 3 \u2014 SalesOwnerID (from Rep)</h4><p><em>Legacy value: SMITHJ.</em></p><p>This is a lookup, and a fragile one. It depends on SMITHJ resolving to the correct, currently active user identifier in the target \u2014 and on a decision for what happens if that salesperson has since left.</p>`},
+ {html:`<h4>Step 4 \u2014 CustomerGroup (no source field)</h4><p><em>Legacy value: none.</em></p><p>This is a genuine gap, not a mapping problem at all. The value has to come from somewhere \u2014 derived, defaulted, enriched from another source, or supplied by the business \u2014 and that decision has to be made deliberately rather than left for someone to quietly invent during build.</p>`}
+];
+
+const conflictSituations=[
+ {
+   title:"Sales owner",
+   question:"ERP and CRM both say J Smith. The sales workbook says A Patel. What's the right first move?",
+   options:[
+     {label:"Trust ERP and CRM since they agree with each other.",correct:false,
+      feedback:"Two systems agreeing isn't the same as two systems being independently correct \u2014 they may simply share the same stale source, or nobody has updated CRM to match a recent handover."},
+     {label:"Find out whether the workbook reflects a recent account reassignment that hasn't been entered anywhere else yet.",correct:true,
+      feedback:"Correct. The workbook is exactly the kind of source that captures a recent change before the systems of record catch up. Majority agreement isn't evidence of accuracy \u2014 recency and reason are."},
+     {label:"Average the two answers into a shared ownership record.",correct:false,
+      feedback:"Sales ownership isn't the kind of attribute that can be split by averaging \u2014 it needs one accountable owner confirmed, not a technical compromise between conflicting values."}
+   ]
+ },
+ {
+   title:"Payment terms",
+   question:"ERP says 45E, the workbook says 30D, and CRM doesn't hold payment terms at all. Which source is authoritative here?",
+   options:[
+     {label:"CRM, because it's the newest system.",correct:false,
+      feedback:"CRM doesn't even hold this attribute, so it can't be authoritative for it by default \u2014 not holding a value at all is different from holding an outdated one."},
+     {label:"Finance, as the business owner of commercial payment terms, regardless of which system currently shows what.",correct:true,
+      feedback:"Correct. Payment terms are a Finance-owned commercial decision. The right question isn't which system's number to trust, but which business owner can confirm what's actually agreed with this customer."},
+     {label:"Whichever value is more common across Bramwell's customer base generally.",correct:false,
+      feedback:"A typical value across other customers says nothing about what was actually agreed with this specific customer \u2014 that's a business fact, not a statistical one."}
+   ]
+ },
+ {
+   title:"Phone number",
+   question:"ERP shows an older number; CRM and the workbook agree on a newer one. What does this suggest?",
+   options:[
+     {label:"CRM and the workbook are both right because they agree.",correct:false,
+      feedback:"They may simply have been updated from the same recent conversation, while ERP genuinely hasn't been touched \u2014 agreement between two sources is a clue worth following up, not proof on its own."},
+     {label:"This is a case where the evidence happens to point the same way as a simple recency rule would \u2014 but it's still worth confirming, not assuming.",correct:true,
+      feedback:"Correct. The two newer, matching sources are reasonably strong evidence here \u2014 but the reasoning is \u201ctwo independent, more recent sources agree,\u201d not \u201cnewer always wins.\u201d The distinction matters the next time recency and correctness don't line up so neatly."},
+     {label:"Ignore it, since a phone number is too minor to investigate.",correct:false,
+      feedback:"An outdated contact detail is a genuine operational risk after go-live, even if it feels minor next to payment terms \u2014 low apparent stakes isn't a reason to skip the same reasoning."}
+   ]
+ },
+ {
+   title:"Segment",
+   question:"ERP says WHOLESALE, CRM says Key Account, and the workbook says Strategic. All three could plausibly be true at once. What's the real issue?",
+   options:[
+     {label:"One of the three must be wrong, and the migration team needs to find out which.",correct:false,
+      feedback:"These aren't necessarily competing facts \u2014 a customer can genuinely be wholesale by pricing tier, a key account by relationship management, and strategic by future potential, all at the same time."},
+     {label:"Confirm whether the target actually needs one single segment value, or whether it has room for more than one classification dimension.",correct:true,
+      feedback:"Correct. Before resolving a conflict, confirm there actually is one. If the target genuinely only has room for a single segment field, that's a real decision to make \u2014 but the problem may be the target's structure, not the source data."},
+     {label:"Pick whichever value the most senior stakeholder prefers.",correct:false,
+      feedback:"Seniority isn't evidence of correctness for a factual classification question \u2014 and it sidesteps the more useful question of whether the target's data model can even hold what's actually true."}
+   ]
+ }
+];
+
+const knowledgeCheckItems=[
+ {
+   title:"Check 1",
+   question:"A source and target field share the same name and the same sample value. What does that prove?",
+   options:[
+     {label:"That they're safe to map directly.",correct:false,
+      feedback:"Not on its own. Structural similarity is a reason to investigate the business meaning, not a substitute for checking it."},
+     {label:"Nothing on its own \u2014 it needs the business meaning confirmed too.",correct:true,
+      feedback:"Correct. Identical names and values are evidence to investigate, not proof of equivalent meaning."}
+   ]
+ },
+ {
+   title:"Check 2",
+   question:"Finance owns billing data in the ERP; Sales owns contacts in the CRM. Is this a problem to fix?",
+   options:[
+     {label:"Yes \u2014 there should be one single customer master system.",correct:false,
+      feedback:"Not necessarily. Authority can legitimately exist at attribute or domain level rather than one whole system owning everything."},
+     {label:"No \u2014 this is a normal pattern, as long as ownership is agreed and documented.",correct:true,
+      feedback:"Correct. Different attributes can have different legitimate owners. The goal is clarity, not forcing one system to be master of everything."}
+   ]
+ },
+ {
+   title:"Check 3",
+   question:"A required target field has no equivalent anywhere in the source systems. What should NOT happen?",
+   options:[
+     {label:"The migration team quietly invents a default value during build, without a documented decision.",correct:true,
+      feedback:"Correct \u2014 this is exactly what shouldn't happen. A gap needs a deliberate, traceable decision: derive it, enrich it, default it with agreement, or have the business supply it."},
+     {label:"The gap is raised to the business for a decision on how to populate it.",correct:false,
+      feedback:"This is actually the right response, not the wrong one \u2014 re-read the question, which asks what should NOT happen."}
+   ]
+ },
+ {
+   title:"Check 4",
+   question:"An AI tool confidently suggests mapping source TERMS directly to target PaymentTerms because both contain the value 30. What's the risk?",
+   options:[
+     {label:"None \u2014 matching values are reliable evidence of a correct mapping.",correct:false,
+      feedback:"The lesson's own example shows this exact case going wrong: legacy 30 and target 30 can mean different things (30 days from invoice vs. 30 days from month end) despite matching values."},
+     {label:"The AI has no way of knowing Bramwell's actual approved business meaning unless a human verifies it.",correct:true,
+      feedback:"Correct. AI can accelerate first-pass suggestions, but a plausible-looking match still needs human validation against the real, approved business meaning."}
+   ]
+ },
+ {
+   title:"Check 5",
+   question:"Which best describes what the target data model represents?",
+   options:[
+     {label:"An empty container waiting to be filled with whatever the source provides.",correct:false,
+      feedback:"This is the common beginner mental model the lesson specifically warns against."},
+     {label:"A contract \u2014 a set of rules the migrated data must satisfy before it becomes valid and usable.",correct:true,
+      feedback:"Correct. Required fields, controlled values, relationships and business rules all shape what the migration has to do before data is accepted."}
+   ]
+ },
+ {
+   title:"Check 6",
+   question:"Three separate systems hold slightly different versions of the same customer's segment. What's the first thing worth checking?",
+   options:[
+     {label:"Which system is technically newest.",correct:false,
+      feedback:"Recency alone doesn't resolve which classification is correct, especially when more than one might genuinely be true at once."},
+     {label:"Whether the target actually requires a single segment value, or has room for more than one classification.",correct:true,
+      feedback:"Correct. Before resolving a conflict, confirm one genuinely exists \u2014 the values may all be legitimately true along different dimensions."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Which system owns the customer?",title:"Which system owns the customer?",type:"mcq",
+ html:`<div class="promise-card">
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ </div>
+ <p class="lead">Bramwell Industries is replacing a legacy ERP and several surrounding applications. The migration team is preparing to design the customer migration.</p>
+ <p>A workshop reveals that customer information exists in three places. Finance says the legacy ERP is the official customer record. Sales says the CRM holds the most current information. Regional Sales says a sales workbook contains recent changes not yet entered anywhere else. The target landscape will also split customer information between a new ERP and CRM platform.</p>
+ <div class="quote">\u201cWhich system is the customer master? Tell me which one to extract.\u201d \u2014 the project manager</div>
+ <h3>What is the best response?</h3>`,
+ options:["Use the ERP. ERP systems are always the master source for customer data.","Use the CRM because Sales says it contains the newest information.","Use all three and take the most recently updated value for every field.","Do not choose a system yet. Determine which source is authoritative for each required business attribute and how conflicts will be resolved."],
+ feedback:[
+ "A dangerous assumption. The ERP may be authoritative for some attributes, but the system type doesn't prove ownership \u2014 sales contacts or account hierarchy may legitimately be mastered elsewhere.",
+ "Recency is not authority. The newest value isn't automatically the approved value. CRM may be right for some information and wrong for other information, such as credit status or tax treatment.",
+ "A tempting technical shortcut. Combining sources may be necessary, but \u201clatest timestamp wins\u201d is a business rule, not a neutral technical fact \u2014 it has to be justified and agreed, not assumed.",
+ "This is the best response. Source authority may exist at system, object or even field level. The migration team must understand ownership, meaning and conflict rules before designing the migration."
+ ]
+},
+{
+ id:"b2",nav:"Two different worlds",title:"What happens next: two different data worlds",type:"content",
+ html:`<p class="lead">The team takes option D. Instead of naming one system as \u201cthe\u201d customer master, they work attribute by attribute: Finance confirms authority over billing and credit data, Sales confirms authority over contacts and account hierarchy, and a documented rule is agreed for anything genuinely contested.</p>
+ <p>It takes longer than picking one system and moving on. But six weeks later, when a data-quality question comes up about a customer's credit status, there's already a documented answer for who owns that fact \u2014 rather than a scramble to work it out under pressure, with go-live approaching.</p>
+ <p>The phrase \u201csource-to-target\u201d can sound simple: take data from the old system and put it into the new one. Real migrations are rarely one-to-one. The source side may include one or more ERP systems, CRM applications, HR or payroll systems, warehouse applications, bespoke databases, Excel workbooks, and archived systems. The target side may also contain several applications and data stores, each representing the same customer differently.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Migration design is not a journey from one database to another. It is a controlled translation between two business and data landscapes.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>A migration professional needs enough system understanding to ask good questions, without needing to be the functional expert for every application involved.</div>`
+},
+{
+ id:"b3",nav:"Source questions",title:"What do we actually need to know about a source?",type:"content",
+ html:`<p class="lead">At foundation level, nobody needs to become a database administrator or an application specialist. What's needed is enough understanding to know whether a source is actually usable for migration.</p>
+ <ul class="framework-checks">
+   <li><strong>What is here?</strong> Which objects, tables, files and fields contain potentially relevant data?</li>
+   <li><strong>What does it mean?</strong> What does each important field or value mean to the business?</li>
+   <li><strong>Who owns it?</strong> Who can confirm meaning, quality and which values should be trusted?</li>
+   <li><strong>How complete is it?</strong> Are required records or attributes missing?</li>
+   <li><strong>How reliable is it?</strong> Are there duplicates, obsolete records, invalid values or inconsistent conventions?</li>
+   <li><strong>How is it related?</strong> What keys and relationships connect the data?</li>
+   <li><strong>How can we access it?</strong> Can it be extracted reliably, repeatedly and at the required volume?</li>
+   <li><strong>What is authoritative?</strong> If the same information exists elsewhere, which source or rule takes precedence?</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Finding a table is not the same as understanding a source. A later module turns these questions into formal data discovery, inventory and profiling \u2014 for now, the questions themselves are what matter.</div>`
+},
+{
+ id:"b4",nav:"The target is a contract",title:"The target is a contract, not an empty container",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">A common beginner mental model is that the target system is simply somewhere to place the old data. In reality, the target imposes rules. Open each one.</p>`,
+ items: targetContractCategories,
+ checkpoint:{
+   question:"A target field has no equivalent source field anywhere. What does the target's own nature tell you about how to treat this?",
+   options:["It's a technical bug to route around during build.","It's a genuine requirement the migration must deliberately satisfy, one way or another."],
+   feedback:"Correct mindset: the target is a contract. A required field with no source isn't a bug to quietly work around \u2014 it's a real requirement that needs a deliberate decision, not a silent workaround."
+ }
+},
+{
+ id:"b5",nav:"Structure is not meaning",title:"Structure is not meaning",type:"content",
+ html:`<p class="lead">Suppose Bramwell has a source field called TERMS containing the value 30. A target system also has a payment-term field containing a valid code 30. It would be easy to map 30 to 30.</p>
+ <p>But what if legacy 30 means \u201c30 days from invoice date\u201d, while target 30 means \u201c30 days from end of month\u201d? The values look identical and the technical data types are compatible, but the business meaning is different.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Mapping fields because their names, formats or values look similar.</strong></p><p>Structural similarity is evidence to investigate, not proof of semantic equivalence. The reverse can also happen \u2014 two fields can look completely different while carrying equivalent meaning, such as a source Y/N mapping to a target true/false, or source country \u201cUK\u201d needing target ISO code \u201cGB\u201d.</p></div>
+ <div class="principle"><strong>Two questions, every time</strong><br>1. Can this source value technically fit the target?<br>2. Does it represent the correct business meaning in the target?</div>`
+},
+{
+ id:"b6",nav:"Build it yourself",title:"First-pass source-to-target analysis",type:"guidedSteps",
+ html:`<p class="lead">Bramwell's legacy customer record for account C10482 needs to become a valid target Account record. Before revealing the analysis, think about what kind of question each field raises \u2014 a direct mapping, a lookup, a conversion, or a genuine gap.</p>`,
+ firstLabel:"Start the analysis",
+ steps: sourceToTargetSteps,
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Even this small example already contains a direct-looking mapping, a conversion, a lookup and a genuine gap. A later module turns this into a controlled field-level mapping artefact with transformation rules, ownership, approval and change history \u2014 this is deliberately just the beginning of that.</p></div></div>`
+},
+{
+ id:"b7",nav:"Conflicting truths",title:"Multiple sources and conflicting truths",type:"content",
+ html:`<p class="lead">Return to Bramwell's three customer sources. For account C10482, the migration team finds the customer name recorded consistently, but the sales owner, payment terms, phone number and segment all disagree across ERP, CRM and the sales workbook.</p>
+ <p>There is no safe generic rule such as \u201cERP wins\u201d, \u201cCRM wins\u201d or \u201clatest value wins\u201d. Different attributes may have different owners and different reasons for disagreement. A professional response identifies the required target attribute, the candidate sources, the business meaning in each source, the accountable owner, the rule for resolving conflicts, and the evidence that the rule was applied.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A source-of-truth decision is a business decision supported by data analysis. It should not be hidden inside ETL logic because a developer needed to choose something.</p></div></div>`
+},
+{
+ id:"b8",nav:"Where AI fits",title:"AI can accelerate analysis, but it cannot own the decision",type:"content",
+ html:`<p class="lead">Source-to-target analysis is an obvious place to use AI. Given field names, descriptions and sample values, an AI tool can suggest likely field matches, identify naming similarities, propose transformation logic, summarise data-model differences, draft SQL or profiling queries, and highlight fields that need clarification. That can save substantial time.</p>
+ <p>But consider the TERMS example from earlier in this lesson. An AI model may see TERMS and PaymentTerms, observe the same value 30, and confidently suggest a direct mapping. It has no way of knowing Bramwell's actual approved commercial meaning unless that context is provided and verified by a person.</p>
+ <div class="callout misconception"><div class="callout-label">AI principle</div><p>Use AI to accelerate investigation and produce a first pass. Do not allow a plausible suggestion to become an approved migration decision without human validation, appropriate business ownership and traceability. The same rule applies to generated SQL, transformation logic and summaries: useful drafts still need professional validation.</p></div>`
+},
+{
+ id:"b9",nav:"What would you do?",title:"Reading the moment: multiple sources in practice",type:"situations",
+ html:`<p class="lead">Four moments where the right call about source authority isn't obvious at first glance.</p>`,
+ items: conflictSituations
+},
+{
+ id:"b10",nav:"Reflection",title:"Two spreadsheets, one question",type:"reflection",
+ html:`<p>Imagine you are given two spreadsheets: one labelled Legacy Customer, one labelled New Customer. The column names appear broadly similar.</p>
+ <div class="quote">\u201cWhat would you need to know before you were comfortable saying that the data could be mapped?\u201d</div>
+ <textarea id="reflection" placeholder="Before I'd be comfortable, I'd need to know..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/meaning|semantic/i, strength:"You looked past column names to actual business meaning, which is the core distinction this lesson is built around.", gap:"Consider what would prove a column actually carries the same business meaning, not just a similar name." },
+   { test:/owner|owns|accountable/i, strength:"You considered who can actually confirm meaning and ownership, rather than assuming the spreadsheet speaks for itself.", gap:"Think about who would need to confirm meaning and ownership before you trusted either sheet." },
+   { test:/valid|value|complete|missing|quality/i, strength:"You thought about data quality and completeness, not just structural similarity.", gap:"Consider whether the values themselves are valid, complete and reliable, not just present." },
+   { test:/key|relationship|link/i, strength:"You considered how records relate to each other, not just individual fields in isolation.", gap:"Think about what keys or relationships would need to line up between the two sheets." },
+   { test:/target|rule|require/i, strength:"You recognised that the target's own rules shape what counts as an acceptable mapping.", gap:"Consider what rules the New Customer sheet's target system might impose that the old one never had to satisfy." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"You're already looking well past column names to the questions that actually matter \u2014 the discipline now is asking them this thoroughly on every field, not just the obviously tricky ones.":"Good start. If your answer was mainly about comparing column names, push further: what would actually prove a source value means the right thing in the target?"}</div>`
+},
+{
+ id:"kc1",nav:"Knowledge check",title:"Quick knowledge check",type:"situations",
+ html:`<p class="lead">A short, ungraded check \u2014 test what stuck, no score, no pressure.</p>`,
+ items: knowledgeCheckItems
+},
+{
+ id:"b11",nav:"Summary",title:"If you remember nothing else",type:"content",
+ html:`<p class="lead">Migration commonly connects multiple source systems to one or more target systems, and understanding both sides properly is what makes a mapping safe rather than assumed.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>A source must be understood in terms of content, meaning, ownership, quality, relationships, access and authority.</li>
+   <li>The target is not an empty container \u2014 its data model and business rules create requirements migration data must satisfy.</li>
+   <li>Technical similarity between fields does not prove equivalent business meaning, and different attributes can legitimately have different authoritative sources.</li>
+   <li>Source-to-target decisions should be explicit and traceable, and AI can accelerate first-pass analysis, but accountable humans must validate the decisions.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Understand both worlds. A safe migration translates agreed business meaning from the source landscape into the structure and rules of the target landscape.</div>`
+},
+{
+ id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Source systems, target systems and data models.</strong></p>
+ <p>Bramwell's migration team now understands that customer data comes from several sources, that authority may differ by attribute, and that the target imposes its own structure and rules.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>The data migration lifecycle \u2014 following the work from discovery and design through build, proof and production cutover.</strong></p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next source-to-target conversation, and notice whether the meaning question actually got asked, or just the structural one.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 1",
+  moduleTitle: "Data Migration Foundations",
+  lessonLabel: "Lesson 3: Source systems, target systems and data models",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Understanding both sides before you map anything",
+  storageKey: "tp_core1_lesson3_v1",
+  lessonId: "core1-lesson3",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

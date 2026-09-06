@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Scope, strategy and the migration team</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 1 — LESSON 5 DATA — content only. Built from the
+   Core Module 1 Lesson 5 source manuscript (scope, strategy and
+   the migration team). This is the FINAL lesson of Core Module 1
+   — it closes the Bramwell narrative from Lessons 1-4 and returns
+   to the 99.4% customer-load problem from Lesson 1. Extended
+   beyond the standard ten blocks because it is deliberately both
+   a lesson and a module capstone.
+============================================================== */
+
+const scopeDimensions=[
+ {title:"Data domain or object",short:"Customers, suppliers, products, employees, assets, open orders, balances, documents",
+  detail:"The starting question everyone asks \u2014 but naming the objects is only the first dimension, not the whole answer."},
+ {title:"Population",short:"All records, active only, selected business units, or an agreed rule",
+  detail:"\u201cCustomers\u201d could mean 18,530 active accounts or 1.8 million records including everything ever created. The word alone doesn't say which."},
+ {title:"History",short:"Current/open data only, a defined number of years, or full history",
+  detail:"Bramwell has 22 years of sales invoice history. Whether that means 22 years, 7 years, or open items only is a separate decision from whether invoices are in scope at all."},
+ {title:"Organisation",short:"Which companies, legal entities, countries, sites or divisions",
+  detail:"A scope statement that doesn't name which parts of the business it covers isn't precise enough to build against."},
+ {title:"Attributes",short:"All fields, or only those required by the target and agreed needs",
+  detail:"Bringing every field a source happens to hold, rather than only what the target and business genuinely need, quietly inflates the whole migration."},
+ {title:"Related content",short:"Attachments, notes, images, documents, audit history",
+  detail:"Bramwell has approximately 240,000 customer attachments. Whether these are in scope is a separate decision from whether the customer records themselves are."},
+ {title:"Treatment",short:"Migrate, transform, consolidate, archive, retain in legacy, or deliberately discard",
+  detail:"Not everything in scope has to mean \u201cmove it as-is.\u201d Legitimate treatments range from full migration to leaving something accessible in a retained legacy system."}
+];
+
+const rolesList=[
+ {title:"Data Migration Lead",short:"Coordinates and controls the migration workstream",
+  detail:"Owns the approach, dependencies, readiness, risks and delivery of the migration workstream as a whole."},
+ {title:"Data Migration Consultant",short:"Performs migration analysis and delivery work",
+  detail:"Profiling, mapping, transformation, execution, validation and issue investigation \u2014 the hands-on analytical and technical work."},
+ {title:"Business/Data Owner",short:"Owns business meaning and quality decisions",
+  detail:"Decides what the data should mean and what quality expectations and outcomes are acceptable \u2014 the business authority the migration team doesn't have."},
+ {title:"Functional/System Consultant",short:"Explains target processes and configuration",
+  detail:"Understands target structures, validations and application behaviour \u2014 the bridge between migration and the wider solution design."},
+ {title:"Technical/ETL resource",short:"Implements extraction and migration tooling",
+  detail:"Specialist technical build where it's genuinely needed, whatever the underlying technology."},
+ {title:"Project/Cutover team",short:"Coordinates migration with the wider implementation",
+  detail:"Connects the migration workstream to environments, business activities and the production transition as a whole."},
+ {title:"Business users/testers",short:"Confirm migrated data supports real operational processes",
+  detail:"The final, essential check \u2014 that migrated data actually works for the people who have to use it every day."}
+];
+
+const ownershipSituations=[
+ {
+   title:"Excluding inactive customers",
+   question:"The migration team wants to exclude customers inactive for more than seven years. Who should actually decide this?",
+   options:[
+     {label:"The migration team decides unilaterally, since they understand the data best.",correct:false,
+      feedback:"Understanding the data isn't the same as owning the business consequence of excluding it. This is a scope rule with real business impact."},
+     {label:"The migration team analyses impact and dependencies; the appropriate business/data owner approves the actual scope rule.",correct:true,
+      feedback:"Correct. Analysis and recommendation sit with migration; the accountable approval sits with the business owner."}
+   ]
+ },
+ {
+   title:"Which duplicate supplier record survives",
+   question:"3,400 probable duplicate supplier records are identified. Who decides which record of each pair actually survives?",
+   options:[
+     {label:"The migration consultant, since they found the duplicates and understand the patterns.",correct:false,
+      feedback:"Finding and quantifying the issue is genuinely migration's job. Deciding which legal supplier record the business no longer needs is not."},
+     {label:"The business/data owner should own the rule or individual decision, supported by migration's analysis.",correct:true,
+      feedback:"Correct. The migration team moves and transforms data according to agreed rules \u2014 it doesn't manufacture business authority it doesn't have."}
+   ]
+ },
+ {
+   title:"An unexplained \u00a312,000 variance",
+   question:"Reconciliation shows an unexplained \u00a312,000 receivables variance. Can the migration team simply accept it and move on?",
+   options:[
+     {label:"Yes, if it's small relative to the total receivables balance.",correct:false,
+      feedback:"Size alone doesn't make this a migration decision to make unilaterally \u2014 accepting a financial variance requires the right business and governance ownership, whatever the amount."},
+     {label:"No \u2014 this needs Finance/business ownership and agreed governance, not a unilateral consultant decision.",correct:true,
+      feedback:"Correct. An unexplained financial variance is exactly the kind of thing that needs an accountable business decision, not a quiet technical write-off."}
+   ]
+ },
+ {
+   title:"Changing a mandatory target field to optional",
+   question:"Build is blocked because a target field is mandatory and the business hasn't supplied a value for some records. Someone suggests just changing the field to optional. Whose call is this?",
+   options:[
+     {label:"The migration team's, as a pragmatic workaround to keep testing moving.",correct:false,
+      feedback:"Changing how the target itself behaves isn't a migration workaround to reach for quietly \u2014 it changes what the live system will accept from every future user, not just this migration."},
+     {label:"Normally a target solution/business design decision, not something migration should change as a workaround.",correct:true,
+      feedback:"Correct. This is a solution design decision with consequences well beyond the migration \u2014 it needs to go through the right design and business channel."}
+   ]
+ }
+];
+
+const scopeViewSteps=[
+ {html:`<h4>Step 1 \u2014 Active customers (18,530)</h4><p><strong>Initial position: likely migrate.</strong></p><p>Even a strong \u201clikely migrate\u201d still needs the definition of \u201cactive\u201d confirmed, dependencies checked, target requirements understood, and an accountable owner named \u2014 \u201clikely\u201d is a starting point, not an approved decision.</p>`},
+ {html:`<h4>Step 2 \u2014 Historical customers (approx. 1.7 million inactive)</h4><p><strong>Initial position: challenge full migration.</strong></p><p>The real question isn't whether it's technically possible \u2014 it's why they're operationally needed, whether retention or reporting genuinely requires it, and whether legacy or archive access could serve the same purpose for far less cost.</p>`},
+ {html:`<h4>Step 3 \u2014 22 years of sales invoice history</h4><p><strong>Initial position: evaluate options, don't default to \u201call of it.\u201d</strong></p><p>This needs operational need, legal retention requirements, reporting access, volume and performance, and target usability weighed against each other \u2014 not settled by \u201cwe've always kept it.\u201d</p>`},
+ {html:`<h4>Step 4 \u2014 Customer attachments (approx. 240,000 files)</h4><p><strong>Initial position: a separate scope decision entirely.</strong></p><p>File types, security, relevance, the extraction/loading mechanism, storage and validation all need their own consideration \u2014 attachments being \u201cassociated\u201d with customers doesn't mean they're automatically in scope alongside them.</p>`}
+];
+
+const overSteppingSituations=[
+ {
+   title:"Situation 1 \u2014 \u2018Just default it\u2019",
+   question:"The target requires CustomerGroup. Business hasn't agreed a rule. A developer suggests defaulting every customer to STANDARD so testing can continue.",
+   options:[
+     {label:"Refuse outright \u2014 no default value should ever be used before business agrees a rule.",correct:false,
+      feedback:"A temporary, clearly controlled test default can genuinely be useful. The real risk isn't the default itself \u2014 it's the default quietly becoming mistaken for the production rule."},
+     {label:"Allow it as a clearly controlled, clearly temporary test default, not a substitute for the actual required business decision.",correct:true,
+      feedback:"Correct. This keeps testing moving without letting a convenience quietly become policy \u2014 as long as it's genuinely controlled and clearly temporary."}
+   ]
+ },
+ {
+   title:"Situation 2 \u2014 The extra country",
+   question:"Two months before a major cycle, Belgium is added to the migration wave. The project manager calls it a small scope change since the same objects are involved.",
+   options:[
+     {label:"Accept the framing \u2014 same objects means it really is a small change.",correct:false,
+      feedback:"Same objects doesn't mean same everything. Belgium may introduce entirely different sources, codes, tax and reference data, owners, volumes and exceptions."},
+     {label:"Challenge the assumption and assess the actual impact before accepting it as small.",correct:true,
+      feedback:"Correct. \u201cSame objects\u201d is exactly the kind of surface-level similarity that hides a much bigger real impact underneath."}
+   ]
+ },
+ {
+   title:"Situation 3 \u2014 The reluctant owner",
+   question:"Finance says migration should decide which old supplier accounts to close, because \u201cyou understand the data better than us.\u201d",
+   options:[
+     {label:"Accept the responsibility, since migration genuinely does understand the data best.",correct:false,
+      feedback:"Understanding the data is exactly why migration can provide strong analysis \u2014 it isn't a reason to accept a business closure decision that isn't migration's to make."},
+     {label:"Provide clear analysis and recommendations, but escalate the ownership gap rather than silently deciding.",correct:true,
+      feedback:"Correct. Closure is a business decision. Making the evidence clear and naming the ownership gap protects the decision, rather than quietly absorbing authority migration doesn't have."}
+   ]
+ },
+ {
+   title:"Situation 4 \u2014 The perfect technical estimate",
+   question:"The technical team confirms 22 years of invoices can be loaded in seven hours, comfortably within the cutover window. Does this settle the scope question?",
+   options:[
+     {label:"Yes \u2014 if it fits technically and in time, that's sufficient justification to migrate it.",correct:false,
+      feedback:"Fitting the window is useful evidence, but it's only one factor. Business need, mapping complexity, quality, validation, reconciliation and target usability all still need weighing."},
+     {label:"No \u2014 it's useful evidence, but insufficient on its own to approve the scope.",correct:true,
+      feedback:"Correct. Technical feasibility answers \u201ccan we\u201d, not \u201cshould we\u201d \u2014 the scope decision still needs the wider business questions answered too."}
+   ]
+ }
+];
+
+const knowledgeCheckItems=[
+ {
+   title:"Check 1",
+   question:"A Finance Director asks to migrate absolutely everything, since \u201cnobody can complain later that something is missing.\u201d What's the strongest response?",
+   options:[
+     {label:"Agree \u2014 migrating everything is the safest option.",correct:false,
+      feedback:"\u2018Everything\u2019 is still a scope decision, and one that can significantly increase build, cleansing, testing and cutover effort."},
+     {label:"Break \u2018everything\u2019 into domains and time periods, understand the need for each, and get explicit scope decisions from the appropriate owners.",correct:true,
+      feedback:"Correct. This is the response that treats scope as something to be deliberately decided, not defaulted to the largest possible answer."}
+   ]
+ },
+ {
+   title:"Check 2",
+   question:"Which best captures why \u201cmigrate customers\u201d isn't a sufficiently precise scope statement?",
+   options:[
+     {label:"It doesn't specify which customers, from which sources, with which history, and into which target structures.",correct:true,
+      feedback:"Correct. A real scope statement needs domain, population, history, organisation, attributes, related content and treatment all considered."},
+     {label:"It's precise enough \u2014 \u201ccustomers\u201d is a clear enough object to build against.",correct:false,
+      feedback:"The object name alone leaves population, history and treatment completely open \u2014 all of which change the actual scope of work significantly."}
+   ]
+ },
+ {
+   title:"Check 3",
+   question:"What's the key Core-level distinction between Big Bang and phased/wave-based rollout strategy?",
+   options:[
+     {label:"Big Bang moves everything in one transition; phased moves groups in stages, creating coexistence and repeated migration requirements.",correct:true,
+      feedback:"Correct. Each pattern creates different migration questions \u2014 concentrated risk in one window versus repeatable process across waves."},
+     {label:"There's no real difference at Core level \u2014 the migration work is identical either way.",correct:false,
+      feedback:"The rollout approach changes real migration questions, like repeatability and cross-wave dependency handling, even at foundation level."}
+   ]
+ },
+ {
+   title:"Check 4",
+   question:"3,400 probable duplicate supplier records are found. What can the migration consultant do without needing business approval first?",
+   options:[
+     {label:"Profile the duplicates, quantify the issue, and propose cleansing rules with examples.",correct:true,
+      feedback:"Correct. Analysis, quantification and recommendation are migration's job. Deciding which legal record the business no longer needs is not."},
+     {label:"Decide independently which supplier record is correct and proceed with cleansing.",correct:false,
+      feedback:"This is exactly the line the lesson draws \u2014 migration surfaces and recommends, but doesn't silently decide which legal record the business keeps."}
+   ]
+ },
+ {
+   title:"Check 5",
+   question:"What's the common trap when a business decision is running late and blocking build or testing?",
+   options:[
+     {label:"The migration team quietly chooses a value so work can continue, without flagging it as a placeholder.",correct:true,
+      feedback:"Correct. This solves today's technical blockage while creating tomorrow's accountability problem \u2014 exactly the trap to avoid."},
+     {label:"The migration team escalates the missing decision and waits for a business answer.",correct:false,
+      feedback:"This is actually the right response, not the trap \u2014 re-read the question, which asks about the common trap to avoid."}
+   ]
+ },
+ {
+   title:"Check 6",
+   question:"Bramwell's customer load reported 99.4% technical success back in Lesson 1. After this module, what has actually changed?",
+   options:[
+     {label:"The number itself has improved with better analysis.",correct:false,
+      feedback:"The number hasn't changed at all \u2014 what's changed is the ability to interpret what it does and doesn't actually prove."},
+     {label:"Nothing about the number itself \u2014 but your ability to interpret what it actually proves has changed completely.",correct:true,
+      feedback:"Correct. That's the whole point of this module: the same headline figure means something very different once you know what to ask about it."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Migrate everything",title:"Opening scenario: Migrate all our history",type:"mcq",
+ html:`<div class="promise-card">
+ <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
+ </div>
+ <p class="lead">Bramwell Industries is beginning detailed scope discussions. During a workshop, the Finance Director says:</p>
+ <div class="quote">\u201cWe've kept the data for a reason. I want all of it in the new system. Customers, suppliers, products, orders, invoices, everything. If we migrate everything, nobody can complain later that something is missing.\u201d</div>
+ <p>The migration team establishes that Bramwell has 22 years of sales invoice history, 1.8 million customer records (1.7 million inactive or historical), 18,530 currently active customers, 185,000 product records (63,000 with no activity for over eight years), 42,600 open sales orders, open accounts receivable and payable, legacy reporting systems that will remain accessible after go-live, and statutory retention requirements for some historical information.</p>
+ <h3>What is the strongest response from the migration team?</h3>`,
+ options:["Agree. Migrating everything is safest because it eliminates scope decisions and ensures no data is lost.","Reject the request. Historical data should always remain in an archive rather than be migrated into a new operational system.","Break 'everything' into data domains and time periods, understand why each is needed, assess dependencies and constraints, and obtain explicit scope decisions from the appropriate owners.","Ask the technical team to estimate how many hours it will take to load all 22 years. If it fits the cutover window, migrate it."],
+ feedback:[
+ "Scope has not disappeared. 'Everything' is still a scope decision. It can increase build, cleansing, testing, reconciliation, storage and cutover effort, and may introduce obsolete or inappropriate data into the new system.",
+ "Too absolute. Archiving can be the right answer for some history, but not all projects have the same operational, legal or reporting requirements. The decision needs evidence and ownership, not a blanket rule.",
+ "This is the best response. The consultant helps make the scope decision explicit by separating the data, understanding the need and consequences, and ensuring the appropriate business owners decide what must move.",
+ "Technical feasibility is only one factor. A load can fit technically and still be unnecessary, expensive to validate, poor for target usability, or inconsistent with retention and business requirements."
+ ]
+},
+{
+ id:"b2",nav:"Scope dimensions",title:"Scope is more than a list of tables",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Migration scope answers a deceptively simple question: what data will move into the target? A useful answer needs several dimensions. Open each one.</p>`,
+ items: scopeDimensions,
+ checkpoint:{
+   question:"Is \u201cmigrate customers\u201d a sufficiently precise scope statement on its own?",
+   options:["Yes, once you know the object is customers, the rest can be figured out during build.","No, it still leaves population, history, organisation, attributes and treatment completely open."],
+   feedback:"Correct: a scope statement such as \u201cmigrate customers\u201d is not sufficiently precise. Which customers, from which sources, with which history and related data, into which target structures?"
+ }
+},
+{
+ id:"b3",nav:"More data isn't safer",title:"More data is not automatically safer",type:"content",
+ html:`<p class="lead">The instinct to migrate everything is understandable \u2014 it feels conservative. If the old system has the data, why take the risk of leaving it behind?</p>
+ <p>But every additional record brought into the migration may need to be extracted, profiled, understood, mapped, cleansed, loaded, validated and reconciled, then supported after go-live. Historical data can also contain old codes, obsolete relationships and structures that no longer fit the target.</p>
+ <div class="principle"><strong>Core principle</strong><br>The safest scope is not the largest or smallest scope. It is the scope that is justified, agreed, achievable and testable.</div>
+ <p><strong>Bramwell's invoice history, weighed as options:</strong> migrating all 22 years makes all history available but brings large volume, legacy structures and heavier reconciliation. Migrating the last 7 years reduces volume but needs another access route for older history. Open items only is operationally simplest but needs legacy/archive access for reporting. A hybrid \u2014 open items plus selected recent history plus archive \u2014 balances both, but needs a clear archive solution.</p>
+ <p>The migration professional can analyse these options. The final business scope should be owned and approved by the appropriate stakeholders.</p>`
+},
+{
+ id:"b4",nav:"Downstream consequences",title:"Scope decisions create downstream consequences",type:"content",
+ html:`<p class="lead">Scope isn't a document that sits at the front of a project plan. It changes the work throughout the lifecycle. Including 22 years of invoices means higher volumes and broader reconciliation. Excluding inactive customers needs an agreed inactivity rule and evidence that required transactions don't depend on them. Including attachments means extraction, storage and security all need designing and testing. Adding another legal entity brings potential new sources, codes, owners and exceptions into scope.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Treating a scope change as \u2018just a few more fields\u2019 or \u2018one extra table.\u2019 The real impact may run through discovery, mapping, build, testing, timing and cutover \u2014 not just the field count itself.</p></div>`
+},
+{
+ id:"b5",nav:"Rollout strategy",title:"Migration strategy changes how the work is delivered",type:"content",
+ html:`<p class="lead">Scope answers what moves. Migration strategy also considers how the organisation transitions to the target. At foundation level, three patterns are useful to understand.</p>
+ <p><strong>Big Bang</strong> \u2014 the agreed organisation moves in one main production transition. Can simplify coexistence, but concentrates risk into a narrower window and needs strong dependency readiness.</p>
+ <p><strong>Phased or wave-based</strong> \u2014 business units, countries or sites move in stages. Reduces the size of each transition, but creates coexistence and repeated migration requirements, and needs careful cross-wave dependency handling.</p>
+ <p><strong>Hybrid</strong> \u2014 many programmes combine both. Each country might have a Big Bang go-live, but countries themselves migrate in waves.</p>
+ <div class="callout misconception"><div class="callout-label">Important boundary</div><p>Core learners need to understand how rollout strategy affects migration. Choosing the enterprise rollout strategy and leading the programme-level trade-offs belongs primarily in the Data Migration Lead specialisation.</p></div>`
+},
+{
+ id:"b6",nav:"Strategy changes questions",title:"Strategy changes migration questions",type:"content",
+ html:`<p class="lead">Suppose Bramwell has operations in the UK, Norway, Belgium and Germany. The rollout approach changes what migration actually has to answer.</p>
+ <ul class="framework-checks">
+   <li><strong>All countries go live together</strong> \u2014 can all source populations, dependencies and teams be ready for one cutover? Can volumes fit the window?</li>
+   <li><strong>Countries go live one at a time</strong> \u2014 how will migrated and legacy businesses interact, and is the process repeatable for each wave?</li>
+   <li><strong>Finance goes first, CRM later</strong> \u2014 which customer attributes must exist in each target at each stage, and how are systems synchronised during coexistence?</li>
+   <li><strong>One pilot site, then wider rollout</strong> \u2014 what will genuinely be learned from the pilot, and which rules can actually be reused?</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Migration does not operate independently of the wider implementation approach \u2014 the rollout strategy is one of the things that shapes it.</div>`
+},
+{
+ id:"b7",nav:"Who does what",title:"Who does what in a migration?",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Data migration is cross-functional. No single role should understand, decide and execute everything. Open each role.</p>`,
+ items: rolesList,
+ checkpoint:{
+   question:"On a small project, one person might perform several of these roles. Does that change who's accountable for each one?",
+   options:["Yes \u2014 combining roles in one person removes the need for separate accountability.","No \u2014 the accountabilities stay distinct even if one person happens to hold more than one of them."],
+   feedback:"Correct: actual job titles vary, and one person may perform several roles on a small project. The important question is not the job title \u2014 it's whether analysis, implementation, business decision-making and acceptance each have a clear accountable owner."
+ }
+},
+{
+ id:"b8",nav:"Moves data, owns meaning",title:"The migration team moves data; the business owns meaning",type:"content",
+ html:`<p class="lead">This distinction is fundamental and returns throughout the Core programme. A consultant may discover that Bramwell has 3,400 apparent duplicate supplier records. The consultant can profile the duplicates, identify matching patterns, quantify the issue, propose cleansing rules, and show examples and consequences.</p>
+ <p>But the consultant should not silently decide which legal supplier records the business no longer needs.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>The migration team moves and transforms data according to agreed rules. The business owns what the data should mean and which business outcomes are acceptable.</p></div></div>
+ <p>This doesn't mean the consultant simply waits for instructions. Strong consultants challenge, analyse, recommend and make consequences visible. They make better decisions possible \u2014 they don't manufacture business authority they don't have.</p>`
+},
+{
+ id:"b9",nav:"Whose decision is it?",title:"Whose decision is it?",type:"situations",
+ html:`<p class="lead">For each Bramwell situation, decide who should analyse, recommend, decide or implement.</p>`,
+ items: ownershipSituations,
+ takeawayHtml:`<div class="callout misconception"><div class="callout-label">Common trap</div><p>When a business decision is late, it can be tempting for the migration team to choose a value so build or testing can continue. That may solve today's technical blockage while creating tomorrow's accountability problem.</p></div>`
+},
+{
+ id:"b10",nav:"Build a scope view",title:"Build it yourself: create a first scope view",type:"guidedSteps",
+ html:`<p class="lead">Bramwell needs a first-pass scope discussion. Before revealing each one, think about what you'd propose as an initial position, and what still needs deciding before it becomes approved scope.</p>`,
+ firstLabel:"Start the scope view",
+ steps: scopeViewSteps,
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>You've now created the beginnings of a first Migration Scope View: object, population, proposed treatment, and the rationale or questions still needing an owner's decision. Later modules add evidence and detail; the DML specialisation goes further into formal scope control and workstream governance.</p></div></div>`
+},
+{
+ id:"b11",nav:"Without overstepping",title:"Situations: consultant judgement without overstepping",type:"situations",
+ html:`<p class="lead">Four moments where the right call about ownership isn't obvious at first glance.</p>`,
+ items: overSteppingSituations
+},
+{
+ id:"b12",nav:"Core and the two paths",title:"The Core foundation and the two specialist paths",type:"content",
+ html:`<p class="lead">Module 1 has deliberately stayed on common ground. Both future career routes need to understand what a migration is, the data it moves, the systems it connects, the lifecycle it follows, and the decisions and people around it.</p>
+ <p>Later, the <strong>Data Migration Consultant</strong> deepens into analysing populations and implementing agreed scope rules, building repeatable processes for the chosen rollout strategy, working effectively with business and functional owners, executing detailed migration activities, and turning approved decisions into migration logic and evidence.</p>
+ <p>The <strong>Data Migration Lead</strong> deepens into establishing and controlling scope, impact and stakeholder agreement, planning and coordinating migration across waves and teams, creating clarity, governance and escalation, leading readiness and delivery across the lifecycle, and driving timely decisions while managing unresolved risk.</p>
+ <div class="principle"><strong>Key takeaway</strong><br>Neither specialist path replaces the Core. The DMC needs enough end-to-end understanding to build the right thing. The DML needs enough delivery understanding to lead work intelligently.</div>`
+},
+{
+ id:"b13",nav:"Would you accept 99.4%?",title:"Module 1 challenge: would you accept 99.4% now?",type:"content",
+ html:`<p class="lead">Return to the first screen of Module 1. Bramwell's customer load reported 99.4% technical success. At that point, the headline looked reassuring.</p>
+ <p>After five lessons, here's what you'd now want to know before accepting that migration as ready: what exactly was in scope, and what was deliberately excluded? Which source systems contributed customer information? Who owned conflicting attributes and migration decisions? How did source values map to target structures and business meaning? Which reference data and relationships did customers depend on? Were the migration processes designed and tested through the lifecycle? Were rejected and accepted records both investigated properly? Is the data complete, accurate, connected and meaningful? Can Bramwell's business processes actually use it? What evidence exists, and who has accepted the result?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Module insight</div><p>The number has not changed. Your ability to interpret it has.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"What changed your view most?",type:"reflection",
+ html:`<p>Which part of this module has changed your view of data migration most \u2014 technical load success versus business success, data dependencies, source and target meaning, the iterative lifecycle, or scope and ownership?</p>
+ <div class="quote">\u201cWrite one thing you would now challenge on a migration project that you might previously have accepted.\u201d</div>
+ <textarea id="reflection" placeholder="The thing that's changed my view most is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/challenge|question|push back/i, strength:"You named something concrete you'd now challenge, rather than staying general \u2014 that's exactly what strong migration professionals do.", gap:"Name one specific thing on a real project you'd now challenge rather than accept at face value." },
+   { test:/scope|owner|ownership/i, strength:"You connected your answer to scope or ownership, which is where a lot of quiet risk actually hides.", gap:"Consider whether scope or ownership questions are part of what's changed for you." },
+   { test:/meaning|semantic|source|target/i, strength:"You connected your answer to source/target meaning, a genuinely easy thing to overlook before this module.", gap:"Consider whether the source-versus-target meaning distinction is part of what's changed for you." },
+   { test:/success|technical|business/i, strength:"You engaged directly with the technical-success-versus-business-success distinction that opened this whole module.", gap:"Consider revisiting the technical-success-versus-business-success distinction from Lesson 1." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"Strong reflection \u2014 you're already thinking like someone who challenges assumptions because they hide risk, not for the sake of being difficult.":"Good start. Strong migration professionals aren't difficult for the sake of it \u2014 they challenge assumptions specifically when those assumptions hide risk, missing evidence or an unowned decision. Try naming one assumption like that."}</div>`
+},
+{
+ id:"kc1",nav:"Knowledge check",title:"Quick knowledge check",type:"situations",
+ html:`<p class="lead">A short, ungraded check \u2014 test what stuck, no score, no pressure.</p>`,
+ items: knowledgeCheckItems
+},
+{
+ id:"b15",nav:"Module 1 summary",title:"Module 1 summary: if you remember nothing else",type:"content",
+ html:`<p class="lead">Five lessons ago, 99.4% technical success looked like the whole answer. Here's what actually makes a migration succeed.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Data migration is a controlled business and technical process, not simple file movement.</li>
+   <li>Business data is interconnected through master data, transactions, reference/configuration data and relationships.</li>
+   <li>Migration translates business meaning between source and target landscapes, and the target imposes structures and rules migration must satisfy.</li>
+   <li>Migration runs through Discover, Design, Build, Prove and Cut over, with iteration between stages.</li>
+   <li>Scope must be explicit across data objects, populations, history, organisation and treatment, and rollout strategy affects sequence, repeatability and risk.</li>
+   <li>Migration is cross-functional: analysis, implementation, business decisions and acceptance all need appropriate ownership, and the migration team should challenge and recommend, never silently assume business authority.</li>
+ </ul>
+ <div class="principle"><strong>Module 1 takeaway</strong><br>A professional migration starts with understanding: the business, the data, the systems, the lifecycle, the scope, and who owns the decisions.</div>`
+},
+{
+ id:"b16",nav:"Module complete",title:"Module 1 complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Core Module 1: Data Migration Foundations.</strong></p>
+ <p>You now have the foundation needed to move from understanding migration to investigating real data.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned across this module?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next module</h3>
+ <p><strong>Module 2 \u2014 Data Profiling & Data Quality.</strong> Bramwell's assumptions will be tested against its actual legacy landscape: discovering systems, building a data inventory, profiling what is really there, and identifying quality problems.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next scope conversation, and notice whether \u201cmigrate everything\u201d is being treated as a decision, or as an escape from making one.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 1",
+  moduleTitle: "Data Migration Foundations",
+  lessonLabel: "Lesson 5: Scope, strategy and the migration team",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "The final lesson of Core Module 1",
+  storageKey: "tp_core1_lesson5_v1",
+  lessonId: "core1-lesson5",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Complete Module 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
