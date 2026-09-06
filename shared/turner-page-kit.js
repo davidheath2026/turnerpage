@@ -492,6 +492,60 @@ renderers.valuable = ({ b, lesson, state, save, next }) => {
    Builds the page chrome (topbar, sidebar, progress) inside `root`,
    then drives the block-by-block render loop using `config.blocks`.
 ------------------------------------------------------------------------ */
+
+/* ---------- Shared progress record -------------------------------------
+   One central learner record, written by every lesson (on completion)
+   and every module assessment (on submission), so certificate pages and
+   any future learner dashboard have one place to check learner state
+   rather than each lesson/assessment working in isolation.
+
+   Shape (see tp-html-build-guide.md §12.2):
+     {
+       learnerId: "...",
+       lessons:           { "<lessonId>": { completed, completedAt } },
+       moduleAssessments: { "<moduleId>": { passed, score, completedAt } },
+       certificates:      { "<tier>":     { issued, issuedAt, certificateId } }
+     }
+
+   Usable from lesson files (via TPKit, already loaded) AND from the
+   standalone assessment.html/lesson-complete.html files, which don't use
+   TPKit.mount() but can still include turner-page-kit.js just for these
+   two helpers.
+------------------------------------------------------------------------ */
+const PROGRESS_KEY = "tpProgress";
+
+function getLearnerId(){
+  const learner = JSON.parse(
+    localStorage.getItem("tpCurrentLearner") || localStorage.getItem("tpLearner") || "{}"
+  );
+  return learner.email || learner.name || "unknown-learner";
+}
+
+function getProgress(){
+  return JSON.parse(localStorage.getItem(PROGRESS_KEY) ||
+    '{"lessons":{},"moduleAssessments":{},"certificates":{}}');
+}
+
+// kind: "lesson" | "moduleAssessment" | "certificate"
+// key: the lessonId / moduleId / tier name this record is about
+// data: extra fields to store (score, passed, certificateId, etc.)
+function recordProgress(kind, key, data){
+  const p = getProgress();
+  p.learnerId = getLearnerId();
+  const bucket = kind === "lesson" ? "lessons"
+               : kind === "moduleAssessment" ? "moduleAssessments"
+               : kind === "certificate" ? "certificates"
+               : null;
+  if(!bucket){ console.warn("TPKit.recordProgress: unknown kind", kind); return p; }
+  p[bucket][key] = Object.assign(
+    { completedAt: new Date().toISOString() },
+    kind === "lesson" ? { completed: true } : {},
+    data || {}
+  );
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+  return p;
+}
+
 function mount(root, config){
   const STORAGE_KEY = config.storageKey;
   let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"index":0,"completed":[],"answers":{}}');
@@ -593,6 +647,14 @@ function mount(root, config){
         state.index++; save(); render(); scrollTo({top:0, behaviour:"smooth"});
       } else {
         save(); updateChrome();
+        // Record this lesson as complete in the shared progress record.
+        // config.lessonId is a new, explicit field — see build guide §12.7.
+        // Backward-compatible: silently does nothing if lessonId isn't set,
+        // so older lesson files don't error, they just don't get recorded
+        // until retrofitted with a lessonId.
+        if(config.lessonId){
+          recordProgress("lesson", config.lessonId, {});
+        }
         window.location.href = config.nextUrl;
       }
     };
@@ -603,6 +665,6 @@ function mount(root, config){
   render();
 }
 
-window.TPKit = { mount, icons, fromField, promiseCard };
+window.TPKit = { mount, icons, fromField, promiseCard, recordProgress, getProgress };
 
 })();
