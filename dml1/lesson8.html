@@ -26,9 +26,9 @@
    than introducing an isolated new framework. Follows the Turner
    Page lesson playbook (ten-block shape). Click-tested against
    the real turner-page-kit.js.
-   NOTE: nextUrl points to ../home.html as a safe placeholder —
-   there is no module-complete/dashboard page wired up yet. Update
-   once DML2 begins or a proper hub page exists.
+   RESOLVED: nextUrl now points to lesson8-complete.html — the final
+   lesson of the module, which offers the module assessment. See
+   tp-html-build-guide.md §10/§12.1.
 ============================================================== */
 
 const growthSigns=[
@@ -236,8 +236,9 @@ const LESSON_CONFIG = {
   lessonShortLabel: "Lesson 8",
   lessonTagline: "Applying it all, and evolving beyond your first migration",
   storageKey: "tp_lesson8_v1",
-  nextUrl: "../home.html",
-  finalButtonLabel: "Return to your dashboard",
+  lessonId: "dml1-lesson8",
+  nextUrl: "lesson8-complete.html",
+  finalButtonLabel: "Finish Lesson 8 \u2192",
   blocks: blocks
 };
 

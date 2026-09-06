@@ -473,13 +473,13 @@ const LESSON_CONFIG = {
   lessonShortLabel: "Lesson 2",
   lessonTagline: "From mindset to accountability",
   storageKey: "tp_lesson2_v1",
-  // NOTE: this still points to lesson2-assessment.html, which does not
-  // yet exist in the repo — Dave to confirm whether Lesson 2 (and every
-  // future lesson) should route to its own dedicated assessment page,
-  // or to the single shared assessment.html already in the repo. Update
-  // this one line once that's decided; nothing else needs to change.
-  nextUrl: "lesson2-assessment.html",
-  finalButtonLabel: "Continue to the Lesson 2 assessment →",
+  lessonId: "dml1-lesson2",
+  // Decided: assessments are per-MODULE, not per-lesson (see
+  // tp-html-build-guide.md §10/§12.1). Every lesson routes to its own
+  // lesson-complete.html; only the module's final lesson's complete
+  // page offers the assessment.
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 →",
   blocks: blocks
 };
 
