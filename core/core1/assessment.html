@@ -20,7 +20,7 @@
        next module's first lesson, or a course/module overview page —
        NOT at a certificate page; certificates are tier-level, see below)
 -->
-<title>Turner Page | [MODULE NAME] Certification Assessment</title>
+<title>Turner Page | DML1 Certification Assessment</title>
 <style>
 :root{
   --ink:#102f36;
@@ -303,8 +303,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
   <div class="topbar-inner">
     <img class="logo" src="/assets/turner-page-logo.png" alt="Turner Page">
     <div class="brand">
-      <strong>[Module Name] Certification Assessment</strong>
-      <span>Turner Page Academy</span>
+      <strong>DML1 Certification Assessment</strong>
+      <span>The Data Migration Lead mindset</span>
     </div>
     <strong id="progressText">Not started</strong>
   </div>
@@ -314,7 +314,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 <main class="page">
   <section id="intro" class="card">
     <div class="kicker">Certification assessment</div>
-    <h1>[Module name]</h1>
+    <h1>DML1: The Data Migration Lead mindset</h1>
     <p class="lead">
       This assessment tests professional judgement across the whole module, not simple recall.
       Read each project scenario carefully and choose the response that best reflects Turner Page thinking.
@@ -330,7 +330,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
     <p><strong>There may be more than one plausible action. Choose the best professional response.</strong></p>
 
     <div class="actions">
-      <button class="secondary" onclick="location.href='/coreN/lessonN-complete.html'">Back</button>
+      <button class="secondary" onclick="location.href='/dml1/lesson8-complete.html'">Back</button>
       <button class="primary" onclick="startAssessment()">Start assessment</button>
     </div>
   </section>
@@ -349,7 +349,10 @@ button:disabled{opacity:.42;cursor:not-allowed}
 // this is the key the shared progress record stores this module's
 // assessment result under. Must match the folder/module naming
 // convention used across the site.
-const MODULE_ID = "MODULE_ID_PLACEHOLDER";
+const MODULE_ID = "dml1";
+// "Continue" after a pass currently goes to /index.html as a safe
+// placeholder \u2014 there is no course overview/dashboard page yet, and
+// DML2 doesn't exist. Update once either exists.
 
 const ROLES = ["ETL Lead","Business Data Owner","Data Migration Lead","Steering Committee"];
 
@@ -378,7 +381,7 @@ const questions = [
     scenario:`The cutover completes on schedule. Every planned record loads and reconciles exactly as expected. On the Monday morning after go-live, users cannot complete standard order processing because a required workflow step was never configured.`,
     prompt:"Which conclusion is strongest?",
     options:[
-      {text:"The migration was technically successful, but operational readiness was not achieved — the two are not the same thing.",
+      {text:"The migration was technically successful, but operational readiness was not achieved \u2014 the two are not the same thing.",
        feedback:"Migration success does not equal operational readiness. Data can be loaded and reconciled perfectly while the business is still unable to operate."},
       {text:"The migration failed because users could not process orders.",
        feedback:"The migration activity itself was completed as planned. Framing it as a migration failure blurs distinct causes and can misdirect corrective action."},
@@ -389,6 +392,23 @@ const questions = [
     ],
     correctIndex:0,
     mentorTip:"Migration success does not equal operational readiness."
+  },
+  {
+    type:"matching",
+    title:"Task management or workstream ownership?",
+    instruction:"Match each behaviour to the category it belongs to. Use each category as many times as needed.",
+    roles:["Task management","Workstream ownership"],
+    situations:[
+      {label:"Behaviour A", text:"Chasing each team for a status update before the weekly report.", correctRole:0,
+       feedback:"This is task management \u2014 collecting status is necessary, but it isn't the same as owning the outcome."},
+      {label:"Behaviour B", text:"Noticing a risk before anyone has asked you to look for it, and raising it unprompted.", correctRole:1,
+       feedback:"This is workstream ownership \u2014 proactively scanning for risk is one of the clearest signs of moving beyond task management."},
+      {label:"Behaviour C", text:"Completing your own assigned actions from the last meeting on time.", correctRole:0,
+       feedback:"This is task management \u2014 reliable execution matters, but it's still working within someone else's plan rather than owning the workstream."},
+      {label:"Behaviour D", text:"Recommending a course of action to governance, with assumptions and conditions stated.", correctRole:1,
+       feedback:"This is workstream ownership \u2014 forming and presenting a judgement is exactly what separates an owner from a task-doer."}
+    ],
+    mentorTip:"The Five Daily Questions exist to pull you out of task management and into genuine ownership."
   },
   {
     type:"multi",
@@ -413,122 +433,102 @@ const questions = [
   },
   {
     type:"single",
-    title:"Knowing your role",
-    scenario:`Every role on a migration programme carries a distinct set of responsibilities, and it is easy for those boundaries to blur under delivery pressure.`,
-    prompt:"Which statement is LEAST consistent with the role of a Data Migration Lead?",
+    title:"A scope conversation, six weeks in",
+    scenario:`A business stakeholder asks, informally, whether "the historical claims data" is included in the migration. It has never been explicitly named as in-scope or out-of-scope in any document.`,
+    prompt:"What is the most appropriate response?",
     options:[
-      {text:"Understand what reported metrics do and do not tell you.",
-       feedback:"This is fully consistent with the role — understanding what metrics do and do not show underpins good judgement."},
-      {text:"Present recommendations together with assumptions and conditions.",
-       feedback:"This is fully consistent with the role — recommendations should always be presented with their assumptions and conditions made explicit."},
-      {text:"Resolve business ownership questions where no decision has been made.",
-       feedback:"One of the hardest disciplines is resisting the temptation to make business decisions for the business. Resolving ownership questions is not the Data Migration Lead's call to make."},
-      {text:"Challenge conclusions not supported by available information.",
-       feedback:"This is fully consistent with the role — challenging unsupported conclusions is exactly the scrutiny a Data Migration Lead should apply."}
+      {text:"Assume it's out of scope, since it was never explicitly requested.",
+       feedback:"Assuming silence means \u201cno\u201d is exactly how scope disputes start later. An undefended boundary isn't a boundary at all."},
+      {text:"Add it to scope immediately to avoid conflict.",
+       feedback:"Quietly expanding scope to avoid a difficult conversation trades a small awkward moment now for a much larger one at cutover."},
+      {text:"Name it specifically as in-scope or out-of-scope, in writing, with the reasoning, and confirm it with the stakeholder.",
+       feedback:"A defensible scope boundary names objects specifically rather than leaving them implied. Writing it down, with reasoning, is what makes it defensible later."},
+      {text:"Refer the stakeholder to the PMO and take no further action.",
+       feedback:"Redirecting the question doesn't resolve it \u2014 scope questions about specific data objects are exactly what the Data Migration Lead should be settling and documenting."}
     ],
     correctIndex:2,
-    mentorTip:"One of the hardest disciplines is resisting the temptation to make business decisions for the business."
-  },
-  {
-    type:"matching",
-    title:"Who owns the decision?",
-    instruction:"Match each situation to the role that owns the decision. Use each role ONCE ONLY.",
-    roles:ROLES,
-    situations:[
-      {label:"Situation A", text:"Production cutover needs formal approval.", correctRole:3,
-       feedback:"Cutover approval is a governance decision made by the Steering Committee, informed by the migration recommendation."},
-      {label:"Situation B", text:"A migration recommendation needs to be prepared for governance.", correctRole:2,
-       feedback:"Preparing an evidence-based readiness recommendation is precisely the Data Migration Lead's role."},
-      {label:"Situation C", text:"A transformation fails during the load.", correctRole:0,
-       feedback:"Technical transformation failures are diagnosed and resolved by the ETL Lead, who owns the technical build."},
-      {label:"Situation D", text:"Profiling identifies duplicate supplier records.", correctRole:1,
-       feedback:"Decisions about which records are correct belong to the business, not migration. The Business Data Owner owns data quality decisions."}
-    ],
-    mentorTip:"Award one mark only if all four are matched correctly — each role carries a distinct, non-interchangeable responsibility."
+    mentorTip:"A scope boundary that isn't written down and named specifically isn't a boundary \u2014 it's an assumption waiting to be tested."
   },
   {
     type:"single",
-    title:"The Severity 1 defect",
-    scenario:`Two days before go-live, a defect is logged: customer records fail to load for one legal entity. The defect management tool automatically flags it as Severity 1 and blocking.`,
-    prompt:"What is the most appropriate response?",
+    title:"The unresolved item at 46 hours",
+    scenario:`A reconciliation variance has been open for almost two days. It's logged in the tracker with the note "Finance to review."`,
+    prompt:"What is the biggest problem with how this item is currently logged?",
     options:[
-      {text:"Accept the Severity 1 label and recommend No-Go immediately.",
-       feedback:"Severity labels support judgement. They do not replace judgement. Recommending No-Go purely because of a label skips the analysis a defensible decision requires."},
-      {text:"Investigate the defect's actual business impact, scope and available mitigation before it informs the recommendation.",
-       feedback:"Severity labels support judgement. They do not replace judgement. Understanding scope, impact and mitigation is what turns a label into a decision."},
-      {text:"Downgrade the severity so it does not block the go-live decision.",
-       feedback:"Changing the label to avoid an uncomfortable conversation hides risk rather than assessing it — the opposite of the transparency the role requires."},
-      {text:"Ignore the label, since severity classifications are not reliable.",
-       feedback:"Severity classifications are a useful starting signal, even if imperfect. Ignoring them entirely discards information rather than investigating it."}
+      {text:"It hasn't been escalated to the Steering Committee yet.",
+       feedback:"Escalation level should match the item's actual severity and age \u2014 jumping straight to Steering Committee isn't automatically the fix for a vague log entry."},
+      {text:"\u201cFinance to review\u201d is not a named owner or a target date, so the item can sit unresolved indefinitely without anyone technically being at fault.",
+       feedback:"A team can't be chased in a corridor conversation; a named person can. Without a real target date, \u201cunresolved for 48 hours\u201d never becomes a measurable breach that triggers action."},
+      {text:"The variance itself is probably not material enough to worry about.",
+       feedback:"Materiality is a real question, but it isn't evidenced here at all \u2014 the more immediate problem is that the item is structured so it can never actually be tracked to resolution."},
+      {text:"It should be reclassified as a Risk instead of an Issue.",
+       feedback:"Category matters, but changing the category doesn't fix the underlying gap: no named owner and no real date, whatever the label."}
     ],
     correctIndex:1,
-    mentorTip:"Severity labels support judgement. They do not replace judgement."
+    mentorTip:"Owner: a named person. Target date: a real date. Without both, an item can age indefinitely with nobody at fault."
+  },
+  {
+    type:"single",
+    title:"Three Greens in a row",
+    scenario:`The migration workstream has reported Green for three consecutive weeks. Underneath, the same two risks have quietly remained open the entire time, each week re-justified as \"still manageable.\"`,
+    prompt:"What is the most appropriate reading of this situation?",
+    options:[
+      {text:"Three Greens in a row is reassuring \u2014 the trend supports continued confidence.",
+       feedback:"A status can look stable on the surface while the trend underneath is actually sliding. Three Greens in a row can still be sliding if the same risks keep getting waved through."},
+      {text:"The same risks re-justified as \u201cstill manageable\u201d for three weeks straight is itself a signal worth challenging, regardless of the headline colour.",
+       feedback:"A RAG status is only trustworthy when no status sits stale past one cycle without being re-justified on its own evidence \u2014 not simply carried forward on the same explanation each time."},
+      {text:"Since nothing has gotten worse, no action is needed.",
+       feedback:"\u201cNothing has gotten worse\u201d isn't the same as \u201cthis is being actively managed.\u201d Stagnant risk carried forward under an unchanged justification is exactly the pattern that erodes trust in a dashboard."},
+      {text:"The colour should be changed to Red immediately to force attention.",
+       feedback:"Changing the label without new evidence swaps one uninformative signal for another. The fix is investigating the underlying risks, not relabelling the symptom."}
+    ],
+    correctIndex:1,
+    mentorTip:"Track the trend, not just the snapshot. Three Greens in a row can still be sliding."
+  },
+  {
+    type:"single",
+    title:"4:47pm, the day before dress rehearsal",
+    scenario:`A defect is discovered affecting a subset of customer records. The scope is not yet fully understood. Several stakeholders are already asking questions in a group chat.`,
+    prompt:"What is the most appropriate immediate response?",
+    options:[
+      {text:"Reply in the group chat straight away with a full explanation, before investigating further.",
+       feedback:"Explaining before the scope is actually understood risks giving an answer that has to be walked back within the hour \u2014 contain the situation before you explain it."},
+      {text:"Confirm the actual scope factually, contain it from getting worse, get one rough fix-effort estimate, and decide who genuinely needs to know today.",
+       feedback:"This is the right sequence: count the scope, don't guess it; stop it getting worse before explaining; get a rough estimate rather than a precise one under time pressure; and recognise not everyone needs the same speed of communication."},
+      {text:"Wait until tomorrow's rehearsal to raise it, since the scope isn't confirmed yet.",
+       feedback:"A same-day surprise needs same-day containment and communication to the right people \u2014 waiting until the rehearsal risks the date being protected by luck rather than by management."},
+      {text:"Escalate immediately to the Steering Committee before any investigation.",
+       feedback:"Escalating before even a rough scope and fix-estimate exist gives governance nothing to act on yet \u2014 contain and understand first, then escalate with something concrete."}
+    ],
+    correctIndex:1,
+    mentorTip:"Contain before you explain. Get one rough fix-effort estimate before deciding who needs to know today."
   },
   {
     type:"ordering",
-    title:"The migration lifecycle",
-    prompt:"Use the arrows to place the following stages of the migration lifecycle in the correct order.",
-    items:["Dress Rehearsal","Initial Profiling","Production Cutover","Validation & Reconciliation"],
-    correctOrder:[1,3,0,2],
-    feedback:"Each stage builds the evidence the next one depends on. Profiling establishes what data exists, validation and reconciliation confirm it is fit for use, the dress rehearsal proves the process can be executed under real conditions, and only then is cutover approved.",
-    mentorTip:"Each stage exists to build the evidence the next stage depends on."
+    title:"Running a meeting that actually holds",
+    prompt:"Use the arrows to place the following steps of a well-structured migration meeting in the correct order.",
+    items:["Declare the meeting's single purpose (status, decision, or problem-solving)","Review the standing decision log first, before discussing anything new","Work through the agenda items relevant to that declared purpose","Log any new decisions made, with owner and date, before the meeting closes"],
+    correctOrder:[0,1,2,3],
+    feedback:"A cadence that holds starts by confirming the past (the decision log) before debating the future, stays disciplined about what kind of meeting this actually is, and closes by capturing new decisions properly \u2014 rather than letting them evaporate the moment the call ends.",
+    mentorTip:"Confirm the past before debating the future \u2014 that's what a standing decision log, reviewed first, actually buys you."
   },
   {
     type:"single",
-    title:"The green dashboard",
-    scenario:`The migration dashboard reported to the Steering Committee is entirely green. When challenged, the team explains that it measures task completion, defect counts and environment availability — not user access, operational continuity or risk acceptance.`,
-    prompt:"Which response is LEAST appropriate?",
+    title:"Three problems arrive at once",
+    scenario:`Within the same afternoon: a defect surfaces, a stakeholder asks for a recommendation on an open scope question, and a team member flags a blocker they haven't told their own manager about yet.`,
+    prompt:"Which response best reflects someone who has grown from executing a workstream into leading one?",
     options:[
-      {text:"Present the dashboard as sufficient evidence of full readiness, since governance has already agreed what it measures.",
-       feedback:"Dashboards only report what they measure. Presenting an incomplete measure as sufficient evidence misrepresents readiness, even if governance agreed the metrics in advance."},
-      {text:"Explain clearly what the dashboard does and does not measure before it is used to support a recommendation.",
-       feedback:"This is an appropriate response — being transparent about scope and gaps is exactly what turns a status report into a trustworthy input."},
-      {text:"Gather the additional evidence needed to cover the gaps the dashboard does not address.",
-       feedback:"This is an appropriate response — closing evidence gaps before making a recommendation is core to the role."},
-      {text:"Flag to the Steering Committee that the dashboard shows status, not complete readiness.",
-       feedback:"This is an appropriate response — flagging the limits of what a dashboard shows protects the credibility of the recommendation."}
+      {text:"Handle the defect personally first, since it's the most technical of the three.",
+       feedback:"Technical familiarity isn't the deciding factor here \u2014 triaging by genuine business impact and urgency matters more than which problem feels most hands-on."},
+      {text:"Give the stakeholder a status update and say a recommendation will follow once everything technical is resolved.",
+       feedback:"Being asked for a recommendation, not just a status, is exactly the moment this role exists for \u2014 deferring it treats judgement as optional rather than the actual job."},
+      {text:"Triage all three by real business impact, give the stakeholder an evidence-based recommendation now, and treat the team member raising a blocker directly as a sign of trust worth protecting.",
+       feedback:"This reflects genuine workstream leadership: prioritising by impact rather than familiarity, being willing to give judgement when asked for it, and recognising that a team member coming to you first \u2014 rather than their own manager \u2014 is something to reinforce, not redirect."},
+      {text:"Redirect the team member back to their own manager, since that's the correct reporting line.",
+       feedback:"A team member bringing a blocker to you directly is a sign you've become a safe place to raise problems \u2014 redirecting it away discourages exactly the behaviour that makes a workstream leader effective."}
     ],
-    correctIndex:0,
-    mentorTip:"Dashboards only report what they measure."
-  },
-  {
-    type:"multi",
-    title:"Building confidence",
-    scenario:`Governance keeps asking the same question before approving cutover: how do you actually know it's ready?`,
-    prompt:"Which of the following give genuine confidence that a migration is ready for go-live? Select ALL that apply.",
-    options:[
-      {text:"All defects have been closed", correct:false,
-       feedback:"Closure is rarely absolute, and severity labels support judgement rather than replace it. Zero open defects is not the same as zero risk."},
-      {text:"Reconciliation is completed", correct:true,
-       feedback:"Correct. Reconciliation is the core evidence that what was migrated matches what should have been migrated."},
-      {text:"The dashboard is entirely green", correct:false,
-       feedback:"A dashboard only reports what it is built to measure. An all-green dashboard is reassuring, not conclusive."},
-      {text:"Remaining risks are accepted", correct:true,
-       feedback:"Correct. Formal acceptance of residual risk by the right owner is what makes a recommendation defensible, not the absence of risk."},
-      {text:"ETL has finished running", correct:false,
-       feedback:"Technical completion is necessary but not sufficient — migration success does not equal operational readiness."},
-      {text:"Users can complete business processes", correct:true,
-       feedback:"Correct. This is direct evidence of operational readiness — data existing is not the same as the business being able to work with it."}
-    ],
-    mentorTip:"Confidence comes from evidence across data, process and people — not from any single green signal."
-  },
-  {
-    type:"single",
-    title:"The Steering Committee",
-    scenario:`Overall migration evidence is strong, but one non-critical reconciliation item remains open, with a clear owner and an agreed mitigation plan for hypercare.`,
-    prompt:"What is the most appropriate recommendation to the Steering Committee?",
-    options:[
-      {text:"Recommend Go with no conditions, since the outstanding item is not critical.",
-       feedback:"Omitting a known open item, even a minor one, understates the residual risk governance is entitled to see."},
-      {text:"Recommend No-Go until every reconciliation item, however minor, is closed.",
-       feedback:"Requiring absolute closure of every item regardless of materiality is not proportionate, and can stall delivery without adding real assurance."},
-      {text:"Avoid making a recommendation and ask the Steering Committee to decide without one.",
-       feedback:"Withholding a recommendation leaves the Steering Committee without the judgement they are relying on the Data Migration Lead to provide."},
-      {text:"Recommend a conditional Go, clearly stating the outstanding item, its owner and the agreed mitigation.",
-       feedback:"Recommendations can legitimately be conditional. Stating the item, owner and mitigation gives governance a clear, defensible basis for their decision."}
-    ],
-    correctIndex:3,
-    mentorTip:"Recommendations can legitimately be conditional."
+    correctIndex:2,
+    mentorTip:"Your team bringing you blockers, not just their manager, is a sign you've become a safe place to raise problems \u2014 protect that, don't redirect it."
   }
 ];
 
@@ -813,8 +813,8 @@ function submitAssessment(){
 
     <div class="actions">
       <button class="secondary" onclick="location.reload()">${pass ? "Retake assessment" : "Try again"}</button>
-      ${pass ? `<button class="primary" onclick="location.href='/PLACEHOLDER_NEXT_MODULE_OR_OVERVIEW.html'">Continue</button>` :
-               `<button class="primary" onclick="location.href='/coreN/lessonN-complete.html'">Return to module</button>`}
+      ${pass ? `<button class="primary" onclick="location.href='/index.html'">Continue</button>` :
+               `<button class="primary" onclick="location.href='/dml1/lesson8-complete.html'">Return to module</button>`}
     </div>
   `;
 }
