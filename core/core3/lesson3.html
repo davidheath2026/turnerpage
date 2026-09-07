@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Transformations, defaults and business rules</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 3 — LESSON 3 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-2 and the story bible:
+   CustomerGroup distribution STANDARD 14,982 / KEY 1,936 / EXPORT
+   1,244 / INTERNAL 260 / STD 61 / "STANDARD" with a trailing space 29
+   / 99 18; 18 German records with source CustomerGroup 99 remain
+   unresolved.
+============================================================== */
+
+const rulePatterns = [
+  {
+   title:"Direct",
+   short:"Move the value without business transformation",
+   detail:`<p><strong>Example:</strong> customer name, where source and target meaning and representation align.</p>`
+  },
+  {
+   title:"Translate / lookup",
+   short:"Convert a source code using an approved cross-reference",
+   detail:`<p><strong>Example:</strong> 45E &rarr; the target payment-term code.</p>`
+  },
+  {
+   title:"Standardise",
+   short:"Normalise known equivalent variants",
+   detail:`<p><strong>Example:</strong> STD and STANDARD with a trailing space &rarr; STANDARD.</p>`
+  },
+  {
+   title:"Convert",
+   short:"Change datatype, units, format or technical representation",
+   detail:`<p><strong>Example:</strong> a text date &rarr; the target date datatype.</p>`
+  },
+  {
+   title:"Split",
+   short:"Separate one source value into multiple target values",
+   detail:`<p><strong>Example:</strong> a combined address &rarr; its components, where reliable.</p>`
+  },
+  {
+   title:"Combine",
+   short:"Create one target value from several inputs",
+   detail:`<p><strong>Example:</strong> an approved concatenation of name/address components.</p>`
+  },
+  {
+   title:"Derive",
+   short:"Calculate a target value from defined source conditions",
+   detail:`<p><strong>Example:</strong> a target classification from approved attributes.</p>`
+  },
+  {
+   title:"Default",
+   short:"Supply a fixed value for a clearly defined population",
+   detail:`<p><strong>Example:</strong> Language = EN, where the business rule applies.</p>`
+  },
+  {
+   title:"Enrich",
+   short:"Obtain the value from another controlled source",
+   detail:`<p><strong>Example:</strong> a delivery zone from a regional workbook.</p>`
+  }
+];
+
+// Section 8 — "Test the rule with examples before building it". The
+// learner predicts the output of Bramwell's CustomerGroup rule for
+// each representative case before the answer is revealed. Options are
+// reordered per item so the correct answer's position does not track
+// the item number.
+const outputLabels = ["STANDARD", "KEY", "EXPORT", "INTERNAL", "EXCEPTION", "Requires an approved precedence rule"];
+const ruleTestItems = [
+  {
+   q:"CustomerGroup = STD",
+   order:[0,1,4,2,3,5], a:0,
+   why:"STD is an approved variant that standardises to STANDARD once the business confirms the two mean the same thing."
+  },
+  {
+   q:"CustomerGroup = KEY",
+   order:[1,3,0,5,2,4], a:1,
+   why:"KEY is already an approved, authoritative value. It is preserved as KEY, not reinterpreted."
+  },
+  {
+   q:"CustomerGroup = 99",
+   order:[4,2,0,5,1,3], a:4,
+   why:"99's meaning is not yet confirmed. Until it is resolved, it stays an exception rather than being force-mapped to anything."
+  },
+  {
+   q:"CustomerGroup is blank; Strategic-account flag = Y",
+   order:[3,1,5,0,4,2], a:1,
+   why:"Where the business has accepted the derivation, a strategic-account flag of Y points to KEY."
+  },
+  {
+   q:"CustomerGroup is blank; Export indicator = Y",
+   order:[5,0,2,1,4,3], a:2,
+   why:"Where the business has accepted the derivation, an export indicator of Y points to EXPORT."
+  },
+  {
+   q:"CustomerGroup is blank; Strategic-account flag = Y; Internal-company indicator = Y",
+   order:[0,4,5,2,1,3], a:5,
+   why:"Two conditions are both true at once. Without an approved precedence rule stating which one wins, the output cannot be safely predicted."
+  },
+  {
+   q:"CustomerGroup is blank; all derivation inputs are also blank",
+   order:[2,3,1,4,0,5], a:4,
+   why:"With nothing to derive from and no approved default, this case is an exception, not a guess."
+  }
+];
+const ruleTestSituations = ruleTestItems.map((r, idx) => ({
+  title:`Test case ${idx+1}`,
+  question:r.q,
+  options: r.order.map(li => ({
+    label: outputLabels[li],
+    correct: li === r.a,
+    feedback: (li === r.a ? "Correct.<br>" : "Not quite. Check what the approved rule actually says for this case.<br>") + r.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Just default it",title:"Opening scenario: Just default it",type:"mcq",
+ html:`<p class="lead">Bramwell's target requires CustomerGroup for every migrated customer. The source ERP has no single field that maps cleanly to it. The current active population contains several known customer types, and profiling has already shown variation across countries and legacy classifications.</p>
+ <div class="quote">"If CustomerGroup cannot be derived, set it to STANDARD. That guarantees every customer loads."<br><span class="small">Migration developer, proposed rule</span></div>
+ <p>The rule would eliminate load failures and make the field 100% complete.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Approve it. A mandatory target field needs a value, and STANDARD is the most common group.",
+ "Reject all defaults. Mandatory fields should always be populated from source data.",
+ "Do not approve the default until the business can justify that STANDARD is correct for a defined population. Technical completeness is not evidence of business correctness.",
+ "Use STANDARD for the first migration cycle and ask users to correct wrong values during UAT."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The most common value is not automatically the correct fallback for every record.",
+ "Defaults can be legitimate when the business rule genuinely supports them. The problem is unjustified defaulting, not defaulting itself.",
+ "Correct. A default is a business rule expressed through migration logic. It needs an applicable population, rationale and approval.",
+ "A knowingly weak default can contaminate the test population and make business users perform avoidable cleansing in the target."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to approve STANDARD-for-everyone without justification.</p>
+ <p>Someone actually asks the business: is STANDARD correct for every customer with no clear group, or only some of them?</p>
+ <div class="visual-card">
+   <div class="visual-title">What asking the question reveals</div>
+   <ul class="framework-checks">
+     <li>Some blank-group customers turn out to have a reliable strategic-account flag that should route them to KEY instead.</li>
+     <li>Some have an export indicator that should route them to EXPORT.</li>
+     <li>A small population has no reliable signal at all, and genuinely needs to be flagged as an exception rather than guessed at.</li>
+   </ul>
+ </div>
+ <p>The blanket STANDARD default would have quietly reclassified genuine key accounts and export customers, not just filled a gap. Refusing the easy answer is what surfaces that.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A default is a business rule expressed through migration logic, not a technical convenience.</p></div></div>`
+},
+{
+ id:"b3",nav:"Controlled translation",title:"Transformation is controlled translation",type:"content",
+ html:`<p class="lead">A transformation changes the source representation so that agreed business meaning is expressed correctly in the target.</p>
+ <div class="visual-card">
+   <div class="visual-title">Examples</div>
+   <ul class="framework-checks">
+     <li><strong>Country = UK &rarr; CountryCode = GB:</strong> approved code translation.</li>
+     <li><strong>CustomerGroup = STD &rarr; CustomerGroup = STANDARD:</strong> approved standardisation.</li>
+     <li><strong>Legacy Status = 1 &rarr; target status/control = ACTIVE:</strong> approved business cross-reference.</li>
+     <li><strong>REP = SMITHJ &rarr; target SalesOwner ID:</strong> lookup to target worker.</li>
+     <li><strong>Date stored as text &rarr; target date datatype:</strong> technical format conversion.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Transform representation when meaning is understood. Do not use transformation logic to hide meaning that has not been agreed.</div>`
+},
+{
+ id:"b4",nav:"Rule patterns",title:"The main rule patterns",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Explore each pattern before moving on. A single target field can use more than one of them: CustomerGroup, for instance, might be derived for one population, enriched for another, and left unresolved for exceptions.</p>`,
+ items: rulePatterns,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>Naming the pattern is not bureaucracy. It tells a reviewer or developer exactly where the risk, the dependency and the testing effort actually sit.</div>`
+},
+{
+ id:"b5",nav:"Business language first",title:"Write rules in business language first",type:"content",
+ html:`<p class="lead">Before translating a rule into SQL, Power Query, Python, SSIS or another tool, make sure it can be explained clearly.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak description versus stronger rule</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "Clean CustomerGroup." <strong>Stronger:</strong> "Trim leading/trailing spaces. Translate STD to STANDARD. Preserve KEY, EXPORT and INTERNAL. Value 99 remains an exception pending business decision."</li>
+     <li><strong>Weak:</strong> "Fix countries." <strong>Stronger:</strong> "Translate approved legacy country codes through CountryCrossReference. Unknown values are rejected for review; do not infer."</li>
+     <li><strong>Weak:</strong> "Calculate customer type." <strong>Stronger:</strong> "If the approved business conditions A and B are met, assign target group X; otherwise follow the documented decision table."</li>
+     <li><strong>Weak:</strong> "Default language." <strong>Stronger:</strong> "For UK customer population only, where source language is blank and the business has approved English as the operating language, set target Language = EN."</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page technique</div><p>If the rule cannot be explained unambiguously in plain language, it is not ready to become code.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Default Nobody Defended", name:"Zoe", role:"Data Migration Consultant", project:"Manufacturing ERP",
+   src:"/assets/audio/core3-lesson3-fromfield-zoe.mp3",
+   reflection:"Have you seen a default value survive purely because nobody was asked to justify it out loud?"
+ })}`
+},
+{
+ id:"b6",nav:"Defaults and derivation",title:"Defaults are rules, not gap-fillers, and derivation needs a decision table",type:"content",
+ html:`<p class="lead">Defaults are attractive because they make missing data disappear. A good default answers which exact population it applies to, why the value is correct for that population, who approved it, whether the target itself already provides the default, what happens outside the defined population, and how many records will receive it.</p>
+ <p>A default language of EN may be appropriate for a defined UK operating population. Applying EN to every blank language across UK, Norway, Belgium and Germany would require a very different justification.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Using a default to improve completeness statistics. A field can become 100% populated while becoming less accurate.</p></div>
+ <p>Derived values are often more complex than a single IF statement. Suppose Bramwell agrees that target CustomerGroup can be derived for part of the population.</p>
+ <div class="visual-card">
+   <div class="visual-title">A decision table for CustomerGroup</div>
+   <ul class="framework-checks">
+     <li><strong>Approved strategic-account flag = Y:</strong> KEY</li>
+     <li><strong>Export indicator = Y and not strategic:</strong> EXPORT</li>
+     <li><strong>Internal-company indicator = Y:</strong> INTERNAL</li>
+     <li><strong>None of the above and approved standard criteria met:</strong> STANDARD</li>
+     <li><strong>Conditions conflict or required inputs missing:</strong> EXCEPTION</li>
+   </ul>
+ </div>
+ <p>Once this is written down, real questions become visible: what happens if Strategic = Y and Internal = Y at the same time? Which condition takes precedence? Are the source flags reliable enough? Does the rule apply in every country?</p>
+ <div class="principle"><strong>Core principle</strong><br>Complex derivations should expose precedence and exception conditions explicitly. Do not rely on the order in which a developer happened to write the code.</div>`
+},
+{
+ id:"b7",nav:"Test the rule",title:"Build it yourself: test Bramwell's CustomerGroup rule",type:"situations",
+ html:`<p class="lead">The proposed rule trims source CustomerGroup, translates STD to STANDARD, preserves confirmed KEY, EXPORT and INTERNAL values, leaves 99 unresolved, and applies an approved derivation only where the business has accepted it. Predict the output for each representative case before the answer is revealed.</p>`,
+ items: ruleTestSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Examples expose ambiguity faster than prose. If two competent people predict different outputs for the same input, the rule is not finished. The learner is building a Transformation Rule Specification: target field, applicable population, inputs, rule, precedence, output, exception treatment, owner and test examples.</p></div></div>`
+},
+{
+ id:"b8",nav:"Exceptions and clever rules",title:"Exception handling is part of the rule, and beware of clever rules",type:"content",
+ html:`<p class="lead">Every rule has a boundary. A robust specification describes what happens when a lookup value is missing, a required input is blank, two conditions conflict, a value falls outside the expected range, a source code is new, or a referenced target record does not exist.</p>
+ <div class="principle"><strong>Core principle</strong><br>A transformation rule is incomplete until you know what happens when it cannot produce a safe answer.</div>
+ <p>Migration logic can become sophisticated very quickly. Suppose a developer proposes: "If payment terms are blank, infer them from the customer's average invoice due-date pattern over the last 12 months." Technically possible does not mean appropriate.</p>
+ <div class="visual-card">
+   <div class="visual-title">Questions to ask before approving a clever rule</div>
+   <ul class="framework-checks">
+     <li>Has the business approved this as a valid way to determine contractual payment terms?</li>
+     <li>Could historical behaviour differ from the agreed commercial term?</li>
+     <li>Are there enough transactions for every customer?</li>
+     <li>Would the result be explainable and auditable?</li>
+     <li>Is a simpler controlled business correction available?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>The cleverest transformation is not necessarily the safest. Prefer the simplest rule that correctly expresses the approved business decision.</div>`
+},
+{
+ id:"b9",nav:"New defects and reuse",title:"Transformation can create new defects, and rules should be reusable",type:"content",
+ html:`<p class="lead">Even a well-intentioned rule can damage data.</p>
+ <div class="visual-card">
+   <div class="visual-title">Transformation risks</div>
+   <ul class="framework-checks">
+     <li><strong>Over-standardisation:</strong> merging distinct business codes because their labels look similar.</li>
+     <li><strong>Bad parsing:</strong> splitting inconsistent free-text addresses into the wrong components.</li>
+     <li><strong>Silent truncation:</strong> cutting values to fit a shorter target field.</li>
+     <li><strong>False defaulting:</strong> replacing unknown values with the most common value.</li>
+     <li><strong>Incorrect precedence:</strong> one derivation condition overrides a more important one.</li>
+     <li><strong>Failed lookup:</strong> a missing cross-reference returns blank without being reported.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Migration does not merely carry source quality into the target. Poor transformation logic can manufacture entirely new defects.</p></div></div>
+ <p>If UK &rarr; GB is the approved country translation, it should not be implemented differently across Customer, Supplier and Address mappings without a reason. Reusable rules and cross-references reduce inconsistent treatment, make testing easier, simplify change and improve traceability. But reuse must still respect context: a shared code list may be reusable while object-specific business rules are not.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Copying a transformation from one object because the field name looks the same, without confirming that the business meaning is also the same.</p></div>`
+},
+{
+ id:"b10",nav:"Judgement calls",title:"Judgement calls: would you approve the rule?",type:"content",
+ html:`<p class="lead">Five situations show why approval needs real scrutiny.</p>
+ <div class="quote">92% of customers are STANDARD, so the team proposes STANDARD for every blank CustomerGroup.</div>
+ <p>Do not approve from frequency alone. Establish whether the default is valid for the affected population.</p>
+ <div class="quote">Source country UK must become target GB under the approved target country list.</div>
+ <p>A controlled translation is appropriate, assuming the source meaning is confirmed and the cross-reference is governed.</p>
+ <div class="quote">Target CustomerName allows 60 characters; 27 source names are longer. The developer proposes truncating to the first 60 characters.</div>
+ <p>Do not silently truncate business identity. Determine target options and a business-approved treatment for the affected records.</p>
+ <div class="quote">Inactive source salespeople are automatically replaced with the current regional manager.</div>
+ <p>This may be valid only if the business explicitly owns and approves that reassignment rule. It is not a technical default.</p>
+ <div class="quote">Every profiled payment-term value currently exists in the cross-reference.</div>
+ <p>Still define exception behaviour. New or changed source values may appear in later extracts.</p>`
+},
+{
+ id:"b11",nav:"AI and transformation",title:"AI can draft transformations quickly",type:"content",
+ html:`<p class="lead">AI is particularly useful for translating plain-English rules into candidate technical logic and vice versa.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Draft SQL CASE statements from approved decision tables</li>
+     <li>Suggest Power Query transformations</li>
+     <li>Identify missing branches in a rule</li>
+     <li>Generate test cases and edge cases</li>
+     <li>Compare similar transformation rules for inconsistency</li>
+     <li>Summarise complex logic in business language</li>
+   </ul>
+ </div>
+ <p>The risk is equally clear: AI can produce convincing logic for a rule that was never valid in the first place.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to implement and challenge an approved rule. Do not use it to invent the business decision that the rule is supposed to represent.</p></div></div>`
+},
+{
+ id:"b12",nav:"Reflection",title:"Fails loudly, or always succeeds?",type:"reflection",
+ html:`<p>Consider two kinds of transformation rule.</p>
+ <div class="quote">Which is more dangerous: a transformation that fails loudly, or one that always produces a valid target value?</div>
+ <p>The second can be more dangerous. A rule that always returns something can hide uncertainty and create plausible but incorrect data.</p>
+ <textarea id="reflection" placeholder="I think the more dangerous case is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/hide|mask|plausible|conceal/i, strength:"You recognised that always producing a value can hide uncertainty behind a plausible-looking result.", gap:"Consider how a rule that never fails can hide genuine uncertainty behind a plausible-looking answer." },
+   { test:/fail|exception|loudly|reject/i, strength:"You considered the value of a rule that fails visibly rather than silently.", gap:"Consider the advantage of a rule that fails loudly: at least the problem is visible." },
+   { test:/incorrect|wrong|defect|quality/i, strength:"You connected an always-succeeding rule to the risk of manufacturing incorrect data.", gap:"Consider how an always-succeeding rule can quietly manufacture incorrect data." },
+   { test:/exception|professional|safest/i, strength:"You recognised that producing an exception can be the safest, most professional outcome.", gap:"Consider that sometimes producing an exception is the safest and most professional result." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The rule that always produces a valid value is more dangerous. A rule that fails loudly at least surfaces the problem for someone to investigate. A rule that always succeeds can quietly manufacture plausible but incorrect data, and nobody notices until much later, if at all.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature migration judgement. You understand that an exception can be the safer outcome.":"You have made a start. Push further into why an always-succeeding rule is actually the riskier one, not the safer one."}</div>`
+},
+{
+ id:"b13",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's mapping now contains more than destinations. It contains explicit translation logic, defined defaults, derivations and exception treatments.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Transformation is controlled translation of agreed business meaning.</li>
+   <li>Common rule patterns include translation, standardisation, conversion, split, combine, derivation, default and enrichment.</li>
+   <li>Write the business rule clearly before implementing it technically.</li>
+   <li>Defaults require a defined population, rationale and approval.</li>
+   <li>Complex derivations need explicit conditions, precedence and exception handling.</li>
+   <li>Representative examples help expose ambiguous rules before build.</li>
+   <li>Exception behaviour is part of the transformation specification.</li>
+   <li>Over-clever transformations can create new data-quality defects.</li>
+   <li>Reusable rules improve consistency when the underlying business meaning is genuinely shared.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A good transformation does not merely produce a value the target will accept. It produces the value the business has agreed is correct, or it exposes the exception.</div>`
+},
+{
+ id:"b14",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A mandatory target field has no reliable source. The developer proposes defaulting every blank to the most common value. What is the correct response?",
+   options:[
+     {label:"Approve it, since a mandatory field needs some value", correct:false, feedback:"Not quite. Frequency does not make a value correct for every record."},
+     {label:"Reject any default outright", correct:false, feedback:"Not quite. Defaults can be legitimate when genuinely justified for a defined population."},
+     {label:"Require an applicable population, a rationale and approval before accepting the default", correct:true, feedback:"Correct. A default is a business rule expressed through migration logic, not a technical shortcut."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"STD and STANDARD with a trailing space both need to become STANDARD once business confirms they mean the same thing. What kind of rule is this?",
+   options:[
+     {label:"Standardisation", correct:true, feedback:"Correct. This normalises known equivalent variants into one approved value."},
+     {label:"Enrichment", correct:false, feedback:"Not quite. Enrichment brings in a value from another controlled source; this is not that."},
+     {label:"Exclusion", correct:false, feedback:"Not quite. Nothing is being removed from migration here."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A derivation rule has two conditions that could both be true for the same customer at once. What must the specification include?",
+   options:[
+     {label:"Nothing further; the developer can decide in code", correct:false, feedback:"Not quite. Leaving precedence to whichever order a developer happens to write is exactly the risk to avoid."},
+     {label:"An explicit precedence rule stating which condition wins", correct:true, feedback:"Correct. Complex derivations must expose precedence and exception conditions explicitly."},
+     {label:"A rule that always returns the first matching condition alphabetically", correct:false, feedback:"Not quite. Precedence needs a genuine business rule, not an arbitrary technical convention."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Why test a transformation rule against representative example cases before building it?",
+   options:[
+     {label:"Because examples expose ambiguity faster than prose; if two people predict different outputs, the rule is not finished", correct:true, feedback:"Correct. This is exactly what representative test cases are for."},
+     {label:"Because testing replaces the need to write the rule in plain language", correct:false, feedback:"Not quite. Both plain language and test examples matter; neither replaces the other."},
+     {label:"Because every rule that passes its test cases is automatically approved", correct:false, feedback:"Not quite. Passing test cases proves the rule is unambiguous, not that it has business approval."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Which is generally the more dangerous transformation?",
+   options:[
+     {label:"One that rejects or flags an exception when it cannot produce a safe answer", correct:false, feedback:"Not quite. A visible failure at least surfaces the problem."},
+     {label:"One that always produces a valid-looking target value, even when the input was genuinely uncertain", correct:true, feedback:"Correct. Always succeeding can hide uncertainty behind plausible but incorrect data."},
+     {label:"Neither is more dangerous than the other", correct:false, feedback:"Not quite. One of these specifically hides problems rather than surfacing them."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"A developer proposes inferring blank payment terms from a customer's historical invoice due-date pattern. What should happen before this is approved?",
+   options:[
+     {label:"Approve it immediately, since it is technically achievable", correct:false, feedback:"Not quite. Technically possible does not mean appropriate."},
+     {label:"Check whether the business has approved this as a valid way to determine a contractual term, and whether a simpler correction exists", correct:true, feedback:"Correct. The cleverest transformation is not necessarily the safest."},
+     {label:"Reject it automatically because it uses historical data", correct:false, feedback:"Not quite. The issue is business approval and risk, not the mere use of historical data."}
+   ]
+  }
+ ]
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Transformations, defaults and business rules.</strong></p>
+ <p>Next you will move beyond individual fields and deal with the connections that make migrated data work together.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Reference data, relationships and dependencies:</strong> you will move beyond individual fields and deal with the connections that make migrated data work together.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 3",
+  moduleTitle: "Data Mapping",
+  lessonLabel: "Lesson 3: Transformations, defaults and business rules",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Or it exposes the exception",
+  storageKey: "tp_core3_lesson3_v1",
+  lessonId: "core3-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

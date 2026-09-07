@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Reference data, relationships and dependencies</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 3 — LESSON 4 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-3 and the story bible: open
+   sales order SO-78452, customer C10482, delivery address
+   C10482-DEL-02, product PRD-44781, site UK01, warehouse WH-BRI,
+   currency GBP, payment terms 45E, delivery terms STDROAD.
+============================================================== */
+
+const referenceTreatments = [
+  {
+   title:"Migrated",
+   short:"A project may migrate approved legacy reference values into the new target",
+   detail:`<p>Where legacy reference values are still correct and the target expects the same concept, they can simply move across as approved migration data.</p>`
+  },
+  {
+   title:"Configured in target",
+   short:"Some values are set up in target configuration before business data loads",
+   detail:`<p><strong>Example:</strong> payment terms or tax codes may be created as part of target configuration, ready for business data to reference once it arrives.</p>`
+  },
+  {
+   title:"Cross-referenced",
+   short:"A legacy value maps to an existing target value through an approved reference",
+   detail:`<p><strong>Example:</strong> legacy UK maps to target GB; legacy term 45E maps to an existing target payment-term code.</p>`
+  },
+  {
+   title:"Derived from target context",
+   short:"A target value depends on legal entity, country or another configuration choice",
+   detail:`<p>The correct target value is not fixed; it depends on which context the record sits in once it reaches the target.</p>`
+  },
+  {
+   title:"Retired",
+   short:"A legacy code has no valid future-state equivalent",
+   detail:`<p>Some legacy reference values genuinely have no home in the target and require an explicit treatment rather than a forced mapping.</p>`
+  }
+];
+
+// Section 8 — "Map the order dependencies". The learner matches each
+// order value to the dependency that must be proven before the order
+// is migration-ready. Options are reordered per item so the correct
+// answer's position does not track the item number, and distractors
+// are genuine dependencies belonging to OTHER order values.
+const dependencyLabels = [
+  "Target customer exists and can be resolved",
+  "Address exists, is linked to the customer and has the correct delivery purpose",
+  "Target product exists",
+  "Target site/reference exists for the legal entity",
+  "Target warehouse exists and is valid for the site/context",
+  "Product is released and configured for operational use at that site",
+  "Target currency/reference exists",
+  "Approved cross-reference resolves to configured target payment terms",
+  "Approved target delivery term exists in the relevant context"
+];
+const orderItems = [
+  {
+   q:"Customer C10482",
+   order:[0,3,6,2,8,5,1,4,7], a:0,
+   why:"An order is only usable if the customer it names actually exists, and can be resolved, in the target."
+  },
+  {
+   q:"Delivery address C10482-DEL-02",
+   order:[5,1,7,3,0,8,2,6,4], a:1,
+   why:"Loaded address fields are not enough on their own. The address record must exist, be linked to the right customer, and carry the correct delivery purpose."
+  },
+  {
+   q:"Product PRD-44781",
+   order:[4,6,2,0,3,7,8,1,5], a:2,
+   why:"The order line names a product. That product must exist as a migrated or configured record in the target before the line can resolve."
+  },
+  {
+   q:"Site UK01",
+   order:[7,0,3,5,1,6,4,2,8], a:3,
+   why:"A site code on an order is only meaningful if that site actually exists as a valid reference for the relevant legal entity."
+  },
+  {
+   q:"Warehouse WH-BRI",
+   order:[2,4,8,6,0,3,1,5,7], a:4,
+   why:"A warehouse code needs to exist and be valid for its site or context, not merely be present as text on the order."
+  },
+  {
+   q:"Product PRD-44781 at site UK01 / warehouse WH-BRI",
+   order:[3,5,0,7,2,1,8,6,4], a:5,
+   why:"Product existence alone is not enough. The product must actually be released and configured for operational use at that specific site and warehouse."
+  },
+  {
+   q:"Currency GBP",
+   order:[8,2,6,4,0,7,3,1,5], a:6,
+   why:"Every transaction currency needs to exist as an approved reference value in the target before the order can be processed correctly."
+  },
+  {
+   q:"Payment terms 45E",
+   order:[1,6,7,3,5,0,4,8,2], a:7,
+   why:"45E is a source code. The order is only migration-ready once an approved cross-reference resolves it to a configured target payment term."
+  },
+  {
+   q:"Delivery terms STDROAD",
+   order:[6,0,4,8,1,3,5,2,7], a:8,
+   why:"A valid-looking code still needs to exist as an approved delivery term in the relevant target context, not just pass basic format validation."
+  }
+];
+const orderSituations = orderItems.map((o, idx) => ({
+  title:`Order value ${idx+1}`,
+  question:o.q,
+  options: o.order.map(li => ({
+    label: dependencyLabels[li],
+    correct: li === o.a,
+    feedback: (li === o.a ? "Correct.<br>" : "Not quite. That dependency belongs to a different value on this order.<br>") + o.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Every field passed",title:"Opening scenario: Every field passed",type:"mcq",
+ html:`<p class="lead">Bramwell has loaded a test set of 2,000 open sales orders. The migration report looks excellent.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Order numbers populated</strong>100%</div>
+   <div class="status-card"><strong>Customer numbers populated</strong>100%</div>
+   <div class="status-card"><strong>Product numbers populated</strong>100%</div>
+   <div class="status-card"><strong>Currency populated</strong>100%</div>
+   <div class="status-card"><strong>Order quantities valid</strong>100%</div>
+   <div class="status-card"><strong>Dates accepted by target</strong>100%</div>
+ </div>
+ <p>But when users open the target: 146 orders refer to customers that do not exist in the migrated company, 83 order lines refer to products that are not released for the required site, and 27 orders use delivery terms that are valid codes but not configured for the relevant legal entity.</p>
+ <div class="quote">"The order mapping is correct. Every required field loaded."<br><span class="small">Developer</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Agree. These are target-configuration issues and therefore outside data migration.",
+ "Agree for now. Relationships can be repaired after the transaction data has loaded.",
+ "The field mappings may be individually correct, but the migration is not functionally complete. Relationships, reference data and prerequisites must be mapped and validated as part of the migration design.",
+ "Remove the affected orders from the next test cycle."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Another team may own target configuration, but migration must identify and test the dependency because migrated data relies on it.",
+ "Loading disconnected transactions can create misleading success metrics and make later diagnosis harder.",
+ "Correct. A migrated value is useful only when the target can resolve and use the relationship it represents.",
+ "Removing records may be appropriate only under an approved scope rule. It does not solve the dependency."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and treats relationships as part of the migration design, not an afterthought.</p>
+ <p>Each of the three failure categories gets traced back to its actual cause.</p>
+ <div class="visual-card">
+   <div class="visual-title">What tracing the failures reveals</div>
+   <ul class="framework-checks">
+     <li><strong>146 orders, missing customers:</strong> an approved scope rule had excluded a set of customers, but nobody checked whether any open orders still referenced them.</li>
+     <li><strong>83 order lines, unreleased products:</strong> the products themselves migrated correctly, but the product-site release step, owned by another team, had not yet run for this site.</li>
+     <li><strong>27 orders, unconfigured delivery terms:</strong> the codes were valid in general, but had never been set up for this particular legal entity.</li>
+   </ul>
+ </div>
+ <p>None of these three problems shows up in a field-level report, because every field genuinely did load. All three only appear once someone asks whether the thing each value refers to actually exists and works in context.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Do not only ask whether the value is valid. Ask whether the thing it refers to exists and works in the target context.</p></div></div>`
+},
+{
+ id:"b3",nav:"Data works together",title:"Data has to work together, and what reference data actually is",type:"content",
+ html:`<p class="lead">A migration object rarely stands alone. An open sales order can depend on a migrated customer, a valid delivery address, migrated products, product-site or product-warehouse setup, units of measure, currencies, payment terms, delivery terms, tax configuration, and salespeople or organisational structures.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not only ask whether the value is valid. Ask whether the thing it refers to exists and works in the target context.</div>
+ <p>Reference data is the controlled set of values used to classify, describe or constrain other business data.</p>
+ <div class="visual-card">
+   <div class="visual-title">Reference data examples</div>
+   <ul class="framework-checks">
+     <li><strong>Country codes:</strong> used by customers, suppliers, addresses.</li>
+     <li><strong>Currencies:</strong> used by orders, invoices, prices.</li>
+     <li><strong>Payment terms:</strong> used by customers, suppliers, transactions.</li>
+     <li><strong>Units of measure:</strong> used by products and order lines.</li>
+     <li><strong>Customer groups:</strong> used by customers and downstream rules/reporting.</li>
+     <li><strong>Delivery terms:</strong> used by customers, suppliers, orders.</li>
+     <li><strong>Tax classifications:</strong> used by customers, suppliers, products, transactions.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A ten-row reference table can determine whether hundreds of thousands of migrated records behave correctly.</p></div></div>`
+},
+{
+ id:"b4",nav:"Reference data treatments",title:"Reference data can be migrated, configured or cross-referenced",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Not all reference data follows the same treatment. Explore each option before moving on.</p>`,
+ items: referenceTreatments,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>The mapping must know not only the target value, but where that target value comes from and when it will exist.</div>`
+},
+{
+ id:"b5",nav:"Cross-references and relationships",title:"A cross-reference is a controlled mapping asset, and relationships are business meaning too",type:"content",
+ html:`<p class="lead">A cross-reference translates one controlled value set into another.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell's country cross-reference</div>
+   <ul class="framework-checks">
+     <li><strong>UK &rarr; GB:</strong> approved</li>
+     <li><strong>NOR &rarr; NO:</strong> approved</li>
+     <li><strong>BEL &rarr; BE:</strong> approved</li>
+     <li><strong>GER &rarr; DE:</strong> approved</li>
+     <li><strong>ZZZ &rarr; ?:</strong> unresolved</li>
+   </ul>
+ </div>
+ <p>A good cross-reference should make visible the source value, the target value, its meaning where useful, the applicable population or company, its status, its owner, and its effective version or change history where needed.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Embedding code translations directly in ETL logic while the mapping workbook simply says "convert country". The business decision then becomes hidden inside code.</p></div>
+ <p>Consider Bramwell customer C10482, Harrison Trade Supplies Ltd. Its delivery address is not merely a set of address fields. The target may require a customer record, a separate address/location record, a relationship linking that address to the customer, an address purpose such as Delivery, country/reference data, and possibly a primary/default indicator. All address fields could be perfectly transformed while the delivery relationship is missing.</p>
+ <div class="principle"><strong>Core principle</strong><br>Migrating the records without migrating the relationship can preserve the data and still destroy its business use.</div>`
+},
+{
+ id:"b6",nav:"Natural keys",title:"Natural keys and target identifiers",type:"content",
+ html:`<p class="lead">Source relationships often use identifiers that do not exist in the same form in the target.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell's identifier problem</div>
+   <ul class="framework-checks">
+     <li><strong>Source customer:</strong> CustNo = C10482</li>
+     <li><strong>Target customer:</strong> system-generated internal ID = 784321</li>
+     <li><strong>Source sales order:</strong> Customer = C10482</li>
+     <li><strong>Target sales order:</strong> must reference target customer ID 784321, or an accepted business key</li>
+   </ul>
+ </div>
+ <p>The migration process needs a reliable way to resolve the relationship: using a stable business/natural key accepted by the target, retaining a source-to-target identifier cross-reference, looking up the target-generated identifier after parent records load, or using target-supported alternate keys.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A target-generated ID does not remove the relationship problem. It changes how the migration must resolve it.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Order That Loaded Nowhere", name:"Darren", role:"Data Migration Consultant", project:"Distribution ERP",
+   src:"/assets/audio/core3-lesson4-fromfield-darren.mp3",
+   reflection:"Have you seen a transaction load with every field green, only to find the record it depended on was never actually there?"
+ })}`
+},
+{
+ id:"b7",nav:"Map the order",title:"Build it yourself: map the order dependencies",type:"situations",
+ html:`<p class="lead">Bramwell is preparing to migrate open sales order SO-78452. For each value on the order, identify the dependency that must be proven before the order can be considered migration-ready.</p>`,
+ items: orderSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Dependency Map: migrated object &rarr; referenced object/reference/configuration &rarr; resolution rule &rarr; prerequisite &rarr; validation evidence.</p></div></div>`
+},
+{
+ id:"b8",nav:"Sequencing",title:"Dependencies create sequencing, and circular dependencies need deliberate design",type:"content",
+ html:`<p class="lead">If Object B requires Object A, the migration cannot treat their order as arbitrary.</p>
+ <div class="visual-card">
+   <div class="visual-title">A simplified Bramwell sequence</div>
+   <ul class="framework-checks">
+     <li><strong>1. Target configuration/reference prerequisites:</strong> currencies, terms, sites, warehouses, units.</li>
+     <li><strong>2. Foundational master data:</strong> customers, suppliers, products.</li>
+     <li><strong>3. Related master structures:</strong> addresses, product-site relationships, contacts.</li>
+     <li><strong>4. Transactions:</strong> open sales orders, purchase orders, open balances.</li>
+     <li><strong>5. Relationship/process validation:</strong> orders resolve customers/products and can be used operationally.</li>
+   </ul>
+ </div>
+ <p>Real programmes may use different technical methods and may load some objects in parallel. The principle is dependency-driven sequencing, not a universal fixed order.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Load sequence should follow dependency, not convenience.</div>
+ <p>Sometimes two target objects appear to depend on each other. A customer may require a primary delivery address, while the address record itself requires the customer to exist. Possible target-supported treatments include creating the parent first with the relationship temporarily unset, loading the child record, updating the parent with the child identifier, using an alternate key or target-supported relationship mechanism, or splitting the load into controlled passes.</p>
+ <div class="callout misconception"><div class="callout-label">Core boundary</div><p>Core learners need to recognise circular dependency and ensure it is designed. Detailed implementation mechanics belong in Module 4 and DMC specialisation.</p></div>`
+},
+{
+ id:"b9",nav:"Orphans and scope",title:"Relationships need profiling too, and scope decisions can create orphans",type:"content",
+ html:`<p class="lead">Before build, source analysis should test whether relationships are actually resolvable. Sales orders whose customer number does not exist in the in-scope population, order lines whose product is missing, customers referencing payment terms absent from the approved cross-reference, and delivery addresses with no parent customer are all examples of orphan relationships.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Do not wait for a target load to discover that the source relationship is already broken.</p></div></div>
+ <p>A source relationship may be valid before scope is applied and invalid afterwards. Bramwell decides not to migrate inactive customers, but an open transaction still references one of those inactive customers. The migration now needs a business decision: include the required customer despite the broader exclusion rule, exclude or close the transaction under an approved rule, move the transaction to another valid customer only if the business approves that treatment, or change the scope rule.</p>
+ <div class="principle"><strong>Core principle</strong><br>Scope must be referentially coherent. Do not exclude a parent population without checking what in-scope data depends on it.</div>`
+},
+{
+ id:"b10",nav:"Configuration dependencies",title:"Configuration dependencies belong on the migration radar",type:"content",
+ html:`<p class="lead">Migration teams do not necessarily own target configuration, but they cannot ignore it.</p>
+ <div class="visual-card">
+   <div class="visual-title">A mapping may depend on</div>
+   <ul class="framework-checks">
+     <li>Legal entities</li>
+     <li>Sites and warehouses</li>
+     <li>Tax groups</li>
+     <li>Payment terms</li>
+     <li>Units of measure</li>
+     <li>Number sequences</li>
+     <li>Financial dimensions</li>
+     <li>Organisational structures</li>
+     <li>Users/workers</li>
+     <li>Product release/setup</li>
+   </ul>
+ </div>
+ <p>If those prerequisites are late or changed, migration mappings and tests can fail.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>You do not have to own a dependency to be affected by it. Make it visible early.</div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: what is really wrong?",type:"content",
+ html:`<p class="lead">Five situations show why passing field validation is never the whole story.</p>
+ <div class="quote">An order contains customer C10482 and the value passes format validation, but C10482 was excluded from the customer migration.</div>
+ <p>The field is valid but the relationship is unusable. Revisit scope or transaction treatment.</p>
+ <div class="quote">The source customer has payment term 45E, but no approved target equivalent has yet been agreed. The target contains several apparently plausible payment terms.</div>
+ <p>Do not select a plausible target value simply because it exists. The relationship cannot be considered migration-ready until the business has approved the correct target treatment for 45E.</p>
+ <div class="quote">Product PRD-44781 exists globally in the target but is not released for site UK01.</div>
+ <p>Record existence alone is insufficient. Validate the relationship and context required by the business process.</p>
+ <div class="quote">All address fields loaded successfully, but users cannot select the address for delivery.</div>
+ <p>Investigate relationship or purpose setup, not merely the address field values.</p>
+ <div class="quote">The target generates new customer identifiers on every test reload.</div>
+ <p>Do not hard-code transient IDs into transaction mappings. Use a repeatable resolution mechanism or a refreshed cross-reference.</p>`
+},
+{
+ id:"b12",nav:"AI and dependencies",title:"AI can help reveal dependency gaps",type:"content",
+ html:`<p class="lead">AI can support dependency analysis when supplied with approved schemas, mapping content and project documentation.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Identify likely foreign-key or parent-child relationships</li>
+     <li>Compare mapping objects for missing prerequisites</li>
+     <li>Summarise reference-data usage across mappings</li>
+     <li>Flag inconsistent cross-reference treatments</li>
+     <li>Generate candidate dependency diagrams</li>
+     <li>Suggest test cases for orphan relationships</li>
+   </ul>
+ </div>
+ <p>But inferred relationships must be verified. A technical schema relationship does not always describe the full business dependency.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to expose connections worth investigating. Prove the dependency with target design, source evidence and business/process knowledge.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"How many things have to be right?",type:"reflection",
+ html:`<p>Think about an object such as an open sales order.</p>
+ <div class="quote">How many other migrated or configured objects must be correct before that one order is genuinely usable?</div>
+ <p>This is why migration professionals learn to think in dependency chains rather than isolated tables. A transaction can only be as usable as the master data, reference data and relationships beneath it.</p>
+ <textarea id="reflection" placeholder="Before this order is genuinely usable..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/customer|address|product|site|warehouse/i, strength:"You named specific master-data or reference objects the order genuinely depends on.", gap:"Consider naming the specific objects, such as customer, address, product or site, that this order actually depends on." },
+   { test:/configur|exist|prerequisite/i, strength:"You considered configuration or prerequisites that must exist before the order can work.", gap:"Consider configuration or prerequisites, not just migrated data, that must already exist." },
+   { test:/chain|depend|network/i, strength:"You framed this as a dependency chain rather than a single isolated check.", gap:"Consider framing this as a chain of dependencies rather than one single check." },
+   { test:/usable|process|operat/i, strength:"You tied your answer back to whether the order can actually be used in a real business process.", gap:"Consider whether the order could actually be used in a real business process, not just whether it loaded." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before this order is genuinely usable, its customer, delivery address, product, site, warehouse, currency, payment terms and delivery terms all need to exist, be correctly linked, and be configured for this specific context. A transaction is only ever as usable as the dependency chain sitting beneath it.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely strong dependency thinking. You are seeing the order as a chain, not a single record.":"You have made a start. Push further into naming the specific objects and configuration this particular order depends on."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's mapping now describes not only individual values, but the network of reference data, parent records and configuration that makes those values usable.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Reference data is usually low-volume but can control large populations of migrated data.</li>
+   <li>Reference values may be migrated, configured, cross-referenced or retired.</li>
+   <li>Cross-references are controlled mapping assets, not hidden pieces of ETL code.</li>
+   <li>Relationships carry business meaning and must be migrated or reconstructed correctly.</li>
+   <li>Target-generated identifiers require a repeatable relationship-resolution method.</li>
+   <li>Dependencies influence migration sequencing.</li>
+   <li>Circular dependencies need deliberate target-specific design.</li>
+   <li>Source and scoped populations should be profiled for orphan relationships before load.</li>
+   <li>Scope decisions can accidentally break valid relationships.</li>
+   <li>Target configuration may be owned elsewhere but remains a migration dependency.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A migrated record is not successful because its fields loaded. It is successful when its references resolve and it can participate in the target business process.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"2,000 test orders load with every field 100% populated, but 146 reference customers that do not exist in the target. What does this show?",
+   options:[
+     {label:"The migration is complete, since every field loaded successfully", correct:false, feedback:"Not quite. Field-level success says nothing about whether the referenced records actually exist."},
+     {label:"Field mappings can be individually correct while the migration is still not functionally complete", correct:true, feedback:"Correct. A migrated value is only useful when the target can resolve and use the relationship it represents."},
+     {label:"The 146 orders should simply be deleted from the test", correct:false, feedback:"Not quite. Deleting the evidence does not resolve the underlying dependency problem."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Which best describes reference data?",
+   options:[
+     {label:"A large, high-volume population that rarely affects anything else", correct:false, feedback:"Not quite. Reference data is usually low-volume but can control huge populations of other data."},
+     {label:"A controlled set of values used to classify, describe or constrain other business data", correct:true, feedback:"Correct. A ten-row reference table can determine whether hundreds of thousands of records behave correctly."},
+     {label:"Any field that is optional in the target", correct:false, feedback:"Not quite. Reference data is defined by its controlling role, not by whether a field is optional."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Country UK maps to target GB through an approved table. What kind of reference-data treatment is this?",
+   options:[
+     {label:"Retired", correct:false, feedback:"Not quite. Retired means the legacy code has no valid future-state equivalent at all."},
+     {label:"Cross-referenced", correct:true, feedback:"Correct. A legacy value maps to an existing target value through an approved reference."},
+     {label:"Derived from target context", correct:false, feedback:"Not quite. This mapping does not depend on which context the record sits in; it is a fixed translation."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A customer requires a primary delivery address, but the address record itself requires the customer to exist first. What is this an example of?",
+   options:[
+     {label:"An orphan relationship", correct:false, feedback:"Not quite. An orphan relationship is a reference to something that does not exist at all."},
+     {label:"A circular dependency, needing deliberate target-specific design", correct:true, feedback:"Correct. Two objects appear to depend on each other, which needs a designed resolution such as a temporary unset relationship."},
+     {label:"A data-quality defect", correct:false, feedback:"Not quite. This is a structural sequencing challenge, not a defect in the data itself."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Bramwell excludes inactive customers from scope, but an in-scope open order still references one. What should happen?",
+   options:[
+     {label:"Ignore it; the exclusion rule already covers the situation", correct:false, feedback:"Not quite. This creates exactly the kind of orphan relationship that needs a business decision."},
+     {label:"A business decision is needed: include the customer, exclude the transaction, reassign it, or change the scope rule", correct:true, feedback:"Correct. Scope must be referentially coherent, not just applied in isolation."},
+     {label:"Let the migration team decide silently, since this is a technical matter", correct:false, feedback:"Not quite. This is a scope decision requiring business authority, not a technical judgement call."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why should migration teams track target configuration dependencies even when they do not own that configuration?",
+   options:[
+     {label:"Because migration should always take over ownership of configuration", correct:false, feedback:"Not quite. Ownership can sit elsewhere; the point is visibility, not ownership transfer."},
+     {label:"Because migration mappings and tests can fail if a prerequisite is late or changed, even if migration does not own it", correct:true, feedback:"Correct. You do not have to own a dependency to be affected by it."},
+     {label:"Configuration dependencies never actually affect migration outcomes", correct:false, feedback:"Not quite. They very much can, which is exactly why they need to stay visible."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Reference data, relationships and dependencies.</strong></p>
+ <p>This final lesson in Module 3 addresses what happens next: keeping hundreds or thousands of mapping decisions controlled as the project evolves.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Managing the mapping through approval and change:</strong> you will deal with the final challenge, keeping hundreds or thousands of mapping decisions controlled as the source, target and business requirements continue to evolve.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 3",
+  moduleTitle: "Data Mapping",
+  lessonLabel: "Lesson 4: Reference data, relationships and dependencies",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Ask whether the thing it refers to actually exists",
+  storageKey: "tp_core3_lesson4_v1",
+  lessonId: "core3-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Understanding the source and target</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 3 — LESSON 1 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Modules 1-2 and the story bible: customer
+   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ, status
+   1, country UK, address 18 King Street, Bristol, BS1 4AB, UK.
+============================================================== */
+
+const mappingComplexities = [
+  {
+   title:"Same name, different meaning",
+   short:"A familiar field name can hide a completely different business behaviour",
+   detail:`<p>Source STATUS uses 1 (active for ordering), 2 (on hold), 3 (closed) and 9 (historical). The target has CustomerStatus with only ACTIVE and INACTIVE.</p>
+   <p>A careless mapping of 1 &rarr; ACTIVE and everything else &rarr; INACTIVE could remove an on-hold customer from operational use entirely, if the target actually handles credit or order blocking through a separate field.</p>`
+  },
+  {
+   title:"Different structure, same meaning",
+   short:"Source and target can look nothing alike and still represent the same idea",
+   detail:`<p>Bramwell's source stores salesperson as a login code: REP = SMITHJ. The target requires an internal SalesOwner identifier linked to a worker record.</p>
+   <p>The mapping is not "SMITHJ becomes SalesOwner". It is closer to "source salesperson code, through an approved cross-reference, to the target SalesOwner record identifier". The business meaning survives; the technical representation changes completely.</p>`
+  },
+  {
+   title:"One field, many targets",
+   short:"A single source value can need to become several target fields",
+   detail:`<p>Bramwell stores FULL_ADDRESS as one combined value: 18 King Street, Bristol, BS1 4AB, UK. The target requires AddressLine1, City, Postcode and CountryCode separately.</p>
+   <p>The important question is not whether the text can technically be split. It is whether the source format is consistent enough, across the whole population, to split it reliably.</p>`
+  },
+  {
+   title:"Several sources, one target field",
+   short:"More than one system can each hold part of the same target value",
+   detail:`<p>A target DeliveryInstruction field could be fed by an ERP delivery note ("deliver before 12:00"), a CRM account note ("call warehouse 30 minutes before arrival"), and the Norway delivery workbook ("gate 3, winter access only").</p>
+   <p>The mapping question is not which field has the closest name. It is which source is authoritative for which part of the information, and who approves the combination rule.</p>`
+  },
+  {
+   title:"No source, still a decision",
+   short:"A missing source field does not excuse the mapping row from a decision",
+   detail:`<p>Bramwell's target CustomerGroup field has no obvious source on Harrison Trade Supplies Ltd. That does not mean the row can be left blank.</p>
+   <p>Possible treatments include deriving it from other attributes, enriching it from another approved source, applying an approved default, populating it manually, or escalating because no valid treatment has yet been agreed.</p>`
+  }
+];
+
+// Section 7 — "Analyse Harrison Trade Supplies". The learner matches
+// each candidate mapping to the question that must genuinely be
+// answered before it can be approved. Distractors are real questions
+// that belong to OTHER candidate mappings, not invented nonsense.
+// Options are reordered per item so the correct answer's position
+// does not track the item number.
+const questionLabels = [
+  "Is C10482 globally unique, or only unique within a company? Does the target need a new numbering scheme?",
+  "Is the source name already the approved legal or trading name? Are there target length or character restrictions?",
+  "What exactly does 45E mean? Does the target contain an equivalent term, and who approves the cross-reference?",
+  "Which target worker represents SMITHJ? What happens if that user is inactive or absent from the target?",
+  "What does source status 1 permit operationally? Does the target represent status using one field or several controls?",
+  "Does the target expect GB? Is this simple code translation, or does country also affect tax or address rules?",
+  "Is the target field mandatory? Can it be derived, enriched, defaulted, or does the business need to provide it?"
+];
+const harrisonItems = [
+  {
+   q:"CustNo = C10482 &rarr; CustomerNumber",
+   order:[0,3,5,1,2,4,6], a:0,
+   why:"Structural similarity is not the risk here. The real question is about numbering scope and scheme, which needs answering before this can be called direct."
+  },
+  {
+   q:"Name = Harrison Trade Supplies Ltd &rarr; CustomerName",
+   order:[2,1,4,0,6,3,5], a:1,
+   why:"This mapping looks obvious, but legal-name accuracy and target length or character limits are exactly the kind of thing an obvious match can hide."
+  },
+  {
+   q:"Terms = 45E &rarr; PaymentTerms",
+   order:[5,4,2,6,0,1,3], a:2,
+   why:"45E is a source code, not a target value. Its meaning, the target equivalent and who approves the cross-reference all need answering before this row can be approved."
+  },
+  {
+   q:"Rep = SMITHJ &rarr; SalesOwner",
+   order:[1,6,3,5,2,0,4], a:3,
+   why:"This is a lookup to a person record, not a value translation. The question is which target worker represents SMITHJ, and what happens if that worker is inactive or missing."
+  },
+  {
+   q:"Status = 1 &rarr; CustomerStatus",
+   order:[6,0,4,2,1,5,3], a:4,
+   why:"The field names look aligned, but what source status 1 actually permits, and whether the target represents that through one field or several controls, is the real open question."
+  },
+  {
+   q:"Country = UK &rarr; CountryCode",
+   order:[3,2,5,0,6,4,1], a:5,
+   why:"Country almost always needs a cross-reference, and here it also potentially affects tax and address rules, not just a code swap."
+  },
+  {
+   q:"No direct source &rarr; CustomerGroup",
+   order:[4,1,0,6,3,2,5], a:6,
+   why:"With no source field at all, the first question is whether the target field is mandatory and how it could legitimately be derived, enriched, defaulted or escalated."
+  }
+];
+const harrisonSituations = harrisonItems.map((h, idx) => ({
+  title:`Candidate mapping ${idx+1}`,
+  question:h.q,
+  options: h.order.map(li => ({
+    label: questionLabels[li],
+    correct: li === h.a,
+    feedback: (li === h.a ? "Correct.<br>" : "Not quite. That question belongs to a different candidate mapping.<br>") + h.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The fields already match",title:"Opening scenario: The fields already match",type:"mcq",
+ html:`<p class="lead">Bramwell is preparing to map active customers into its new ERP. A technical analyst produces an automated source-to-target comparison.</p>
+ <div class="visual-card">
+   <div class="visual-title">Automated comparison</div>
+   <ul class="framework-checks">
+     <li><strong>CustNo &rarr; CustomerNumber:</strong> 98% confidence</li>
+     <li><strong>Name &rarr; CustomerName:</strong> 99% confidence</li>
+     <li><strong>Terms &rarr; PaymentTerms:</strong> 97% confidence</li>
+     <li><strong>Country &rarr; CountryCode:</strong> 96% confidence</li>
+     <li><strong>Status &rarr; CustomerStatus:</strong> 99% confidence</li>
+     <li><strong>Rep &rarr; SalesOwner:</strong> 93% confidence</li>
+   </ul>
+ </div>
+ <div class="quote">"This one is easy. The names are almost identical and the data types line up. We can auto-map these and concentrate on the fields with lower confidence."<br><span class="small">Technical analyst</span></div>
+ <p>You already know from Bramwell's earlier analysis that source value TERMS = 30 does not necessarily mean the same thing as target value 30.</p>
+ <h3>Your decision</h3>
+ <p>What should happen next?</p>`,
+ options:[
+ "Accept all mappings above 95% confidence and validate them during testing.",
+ "Reject automated mapping completely because field names are unreliable.",
+ "Use the suggestions as candidates, then verify source meaning, target meaning, valid values, business rules, dependencies and ownership before approving the mappings.",
+ "Ask the ETL developer to load a sample and see whether the target accepts it."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A high-confidence match can still be semantically wrong. Technical confidence does not prove business meaning.",
+ "Automated suggestions can save time and expose likely matches. The problem is treating a suggestion as an approved mapping.",
+ "Correct. Mapping begins with understanding. The team must establish what the source value means and what the target requires before deciding how the two relate.",
+ "A system can successfully load a value that is wrong for the business. Technical acceptance is not mapping validation."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and treats the automated suggestions as candidates, not conclusions.</p>
+ <p>For each of the six "easy" fields, someone actually checks source meaning against target meaning.</p>
+ <div class="visual-card">
+   <div class="visual-title">What checking actually finds</div>
+   <ul class="framework-checks">
+     <li><strong>Terms &rarr; PaymentTerms:</strong> the 97% confidence match still needs a cross-reference. Source 45E has no confirmed target equivalent at all.</li>
+     <li><strong>Country &rarr; CountryCode:</strong> the target expects ISO alpha-2 codes. UK is not a valid target value; it needs translating to GB.</li>
+     <li><strong>Status &rarr; CustomerStatus:</strong> the source has four operational states; the target field only has two. Something will be lost unless another target control absorbs the difference.</li>
+     <li><strong>Rep &rarr; SalesOwner:</strong> the source holds a login code; the target needs an internal worker identifier, resolved through a lookup that does not yet exist.</li>
+   </ul>
+ </div>
+ <p>None of these four "easy" fields turns out to be a simple copy. Every one of them needed the analyst's confident 97-99% figures interrogated before anyone could safely call them direct.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Map meaning to meaning. Fields are only the structures that carry it.</p></div></div>`
+},
+{
+ id:"b3",nav:"Translation, not matching",title:"Mapping is translation, not column matching",type:"content",
+ html:`<p class="lead">A field-level mapping often appears as a simple line: Source TERMS &rarr; Target PaymentTerms. But the real mapping question is what business meaning TERMS represents in the source, what business meaning PaymentTerms requires in the target, and what rule safely translates between them.</p>
+ <div class="visual-card">
+   <div class="visual-title">That translation may be</div>
+   <ul class="framework-checks">
+     <li>Direct</li>
+     <li>Renamed</li>
+     <li>Reformatted</li>
+     <li>Converted</li>
+     <li>Derived</li>
+     <li>Defaulted</li>
+     <li>Looked up</li>
+     <li>Combined</li>
+     <li>Split</li>
+     <li>Excluded</li>
+     <li>Dependent on another field or source</li>
+   </ul>
+ </div>
+ <p>For each important source field, ask more than "what is the column called?"</p>
+ <div class="visual-card">
+   <div class="visual-title">Understand the source before you map from it</div>
+   <ul class="framework-checks">
+     <li><strong>Meaning:</strong> what does the field mean to the business?</li>
+     <li><strong>Population:</strong> which records use it?</li>
+     <li><strong>Values:</strong> what values actually occur?</li>
+     <li><strong>Format:</strong> how is it stored and formatted?</li>
+     <li><strong>Rules:</strong> what source-system validation or business rule controls it?</li>
+     <li><strong>History:</strong> has its meaning or use changed over time?</li>
+     <li><strong>Authority:</strong> who can confirm what it means?</li>
+     <li><strong>Quality:</strong> what did profiling reveal about blanks, invalid values or variants?</li>
+     <li><strong>Dependencies:</strong> does its meaning depend on another field, entity or source?</li>
+   </ul>
+ </div>
+ <p>Module 2 already gave Bramwell evidence about CustomerGroup, payment terms and customer status. Mapping should use that evidence rather than starting again from field names.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Mapping from a data dictionary alone. Documentation may describe intended use; profiling shows actual use; business SMEs explain operational meaning. Strong mapping uses all three.</p></div>`
+},
+{
+ id:"b4",nav:"Understand the target",title:"Understand the target before you map to it",type:"content",
+ html:`<p class="lead">The target is not an empty copy of the source. It has its own model, rules and intended business processes.</p>
+ <div class="visual-card">
+   <div class="visual-title">What to establish about the target</div>
+   <ul class="framework-checks">
+     <li><strong>Purpose:</strong> what business concept does the target field represent?</li>
+     <li><strong>Requirement:</strong> is it mandatory, optional or conditionally required?</li>
+     <li><strong>Datatype/format:</strong> what structure will the target accept?</li>
+     <li><strong>Valid values:</strong> is there an approved code or reference list?</li>
+     <li><strong>Default behaviour:</strong> does the target apply a default if no value is supplied?</li>
+     <li><strong>Relationships:</strong> does the value need to reference another target record?</li>
+     <li><strong>Configuration:</strong> does target setup need to exist before the value can be loaded?</li>
+     <li><strong>Process impact:</strong> which business process uses the field after migration?</li>
+     <li><strong>Authority:</strong> who can approve the intended target treatment?</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The target model is a contract. A mapping must satisfy its structure, rules and business purpose, not merely its import format.</p></div></div>
+ ${TPKit.fromField({
+   title:"Same Name, Different Government", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/core3-lesson1-fromfield-nadia.mp3",
+   reflection:"Have you ever trusted a field because its name looked familiar, only to find it meant something different in the target?"
+ })}`
+},
+{
+ id:"b5",nav:"Five ways mapping hides complexity",title:"Five ways mapping hides complexity",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">A mapping row is not always the simple one-to-one line it appears to be. Explore each of these five patterns before moving on.</p>`,
+ items: mappingComplexities,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>Same name does not mean same meaning, and different structure does not mean different meaning. A mapping is only safe once both sides have genuinely been understood.</div>`
+},
+{
+ id:"b6",nav:"Analyse Harrison Trade Supplies",title:"Build it yourself: analyse Harrison Trade Supplies",type:"situations",
+ html:`<p class="lead">Return to Bramwell customer C10482, Harrison Trade Supplies Ltd. For each candidate mapping, decide which question must genuinely be answered before it can be approved.</p>`,
+ items: harrisonSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner has begun a Source-Target Analysis Sheet. It deliberately comes before the detailed mapping workbook. Its job is to expose meaning, rules and unanswered questions before technical mapping decisions harden.</p></div></div>`
+},
+{
+ id:"b7",nav:"Conclusions, not assumptions",title:"Direct mapping is a conclusion, and every field still needs a decision",type:"content",
+ html:`<p class="lead">A direct mapping means the source value can move to the target without business transformation, apart from any purely technical representation the load requires.</p>
+ <div class="visual-card">
+   <div class="visual-title">Before calling a mapping direct, check</div>
+   <ul class="framework-checks">
+     <li>The meanings are equivalent</li>
+     <li>The source population is appropriate</li>
+     <li>The target accepts the source representation</li>
+     <li>Valid values align</li>
+     <li>No additional dependency changes the interpretation</li>
+     <li>The target does not require a different level of granularity</li>
+   </ul>
+ </div>
+ <p>Name &rarr; CustomerName may be direct. Country UK &rarr; CountryCode GB is not direct, even though the business concept is obvious: it contains an explicit translation rule.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Calling a mapping "one-to-one" because there is one source field and one target field. One-to-one describes structure, not necessarily transformation complexity.</p></div>
+ <p>The source may also contain fields with no target equivalent. The value may be obsolete, the target may derive it elsewhere, the information may belong in an archive, or the field may still be required but missed by the target design. Do not automatically drop unmatched source fields.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Every source field gets a decision. Every required target field gets a source. This does not mean every physical source column must appear in the main business mapping workbook; it means every migration-relevant source attribute should have an explicit treatment.</div>
+ <p>Not every unanswered mapping question should be sent to the same person either. What source code 45E means is a question for a source SME or business data owner. Which target payment term should represent it needs a business owner and functional consultant together. Whether SMITHJ can be matched to a target worker needs business/HR input alongside migration analysis.</p>
+ <div class="callout misconception"><div class="callout-label">Core boundary</div><p>The migration professional should drive clarity and document the answer. They should not manufacture business decisions simply because a mapping row needs completing.</p></div>`
+},
+{
+ id:"b8",nav:"Judgement calls",title:"Judgement calls: is this mapping ready?",type:"content",
+ html:`<p class="lead">Five situations show why "ready" needs real scrutiny, not just a filled-in row.</p>
+ <div class="quote">Source and target both contain payment term 30. Source means 30 days from invoice date; target code 30 means 30 days end of month.</div>
+ <p>Not ready. Identical code values hide different business meaning. Find or configure the correct target treatment.</p>
+ <div class="quote">Source CountryCode and target CountryCode have identical names. Source values are UK, NOR, BEL; target expects ISO alpha-2 codes.</div>
+ <p>Not direct. The field names match but the value domains do not. An approved code cross-reference is required.</p>
+ <div class="quote">The target requires CustomerGroup, but no source field exists. Sales says "just default STANDARD".</div>
+ <p>Not ready until the default is justified and approved for the relevant population. Profiling already showed multiple customer groups at Bramwell.</p>
+ <div class="quote">ERP and CRM both hold customer email. ERP is populated on 65% of active customers; CRM on 91%, but 1,240 customers have different values in the two systems.</div>
+ <p>Completeness alone does not establish authority. Investigate how each is maintained, intended use, recency and business ownership before defining the rule.</p>
+ <div class="quote">A source field called TYPE2 is populated on 99.8% of customers. No current user can explain it, but an old interface uses it.</div>
+ <p>Do not map or discard it on appearance. Trace its use, inspect distributions and interface logic, and determine whether it carries migration-relevant meaning.</p>`
+},
+{
+ id:"b9",nav:"AI and mapping",title:"AI is excellent at candidate mappings",type:"content",
+ html:`<p class="lead">Mapping is one of the strongest practical uses of AI in migration.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Compare source and target field names and descriptions</li>
+     <li>Suggest likely semantic matches</li>
+     <li>Summarise profiling evidence alongside candidate mappings</li>
+     <li>Identify unmapped required target fields</li>
+     <li>Propose code cross-references for review</li>
+     <li>Draft transformation descriptions</li>
+     <li>Highlight mappings whose source and target datatypes or value domains differ</li>
+   </ul>
+ </div>
+ <p>But AI sees patterns in the information supplied to it. It does not own Bramwell's business meaning.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>AI can propose the mapping. Evidence and accountable people approve the meaning.</p></div></div>
+ <p>Client data, schemas and mapping content should only be used with approved tools and appropriate information-security controls.</p>`
+},
+{
+ id:"b10",nav:"Reflection",title:"The dangerous match",type:"reflection",
+ html:`<p>Consider two possible mapping candidates.</p>
+ <div class="quote">Which is more dangerous in migration: a source and target field that look completely different, or two fields that look identical?</div>
+ <p>The identical pair can be more dangerous because similarity encourages assumption. Obvious differences force the team to investigate.</p>
+ <textarea id="reflection" placeholder="I think the more dangerous case is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/identical|similar|same name|look alike/i, strength:"You considered why an identical or similar-looking pair can be the more dangerous case.", gap:"Consider why a pair that looks identical might actually be the more dangerous one." },
+   { test:/assum|confiden|trust/i, strength:"You connected similarity to the assumption it encourages.", gap:"Consider how similarity encourages assumption, where an obvious difference forces investigation instead." },
+   { test:/investigat|question|check|verify/i, strength:"You considered that a visible difference actually forces useful investigation.", gap:"Consider that an obvious difference has one advantage: it forces someone to ask a question." },
+   { test:/meaning|business/i, strength:"You connected your answer to business meaning rather than just field structure.", gap:"Consider business meaning, not just how the fields are structured." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The identical pair is more dangerous. A field that looks completely different forces someone to stop and ask what it actually means, which usually surfaces the real mapping questions early. A field with the same name invites the assumption that no investigation is needed, which is exactly how a wrong mapping slips through unnoticed.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely sound mapping instinct. You are suspicious of easy matches, which is exactly the right professional habit.":"You have made a start. Push further into why similarity specifically encourages people to skip verification."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's customer mapping is no longer a list of similar field names.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Data mapping translates business meaning from source to target; it is not simply column matching.</li>
+   <li>Source analysis should establish meaning, population, values, rules, history, ownership, quality and dependencies.</li>
+   <li>Target analysis should establish purpose, requirements, valid values, configuration, relationships and process impact.</li>
+   <li>Same field names can hide different meanings, while different structures can represent the same meaning.</li>
+   <li>Direct mapping is a conclusion reached after analysis, not a default assumption.</li>
+   <li>One source can feed several target fields, and several sources can contribute to one target field.</li>
+   <li>Missing source values and unmatched source attributes still require explicit decisions.</li>
+   <li>Mapping questions should be answered by the people with the appropriate business, functional or technical authority.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Understand both worlds before connecting them. A mapping is safe only when you can explain the meaning on both sides and the rule that links them.</div>`
+},
+{
+ id:"b12",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A source and target field share the same name and a 99% automated confidence score. What should happen next?",
+   options:[
+     {label:"Approve it immediately; a 99% match is effectively certain", correct:false, feedback:"Not quite. Technical confidence measures name and type similarity, not business meaning."},
+     {label:"Treat it as a candidate and verify meaning, values, rules and ownership before approving", correct:true, feedback:"Correct. A high-confidence match can still be semantically wrong."},
+     {label:"Reject it, since automated suggestions cannot be trusted at all", correct:false, feedback:"Not quite. Automated suggestions are useful; the problem is treating a suggestion as an approved mapping."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Source REP holds a login code, and the target requires an internal worker identifier. What is the real mapping relationship?",
+   options:[
+     {label:"A direct one-to-one copy of the login code into the target field", correct:false, feedback:"Not quite. The technical representation is completely different on each side."},
+     {label:"A lookup: the source code resolves, through an approved cross-reference, to a target worker record", correct:true, feedback:"Correct. The business meaning is preserved even though the structures look nothing alike."},
+     {label:"No mapping is possible unless the field names match", correct:false, feedback:"Not quite. Structural difference does not mean the fields cannot be mapped."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Country UK must become target GB under the approved cross-reference. Why is this NOT a direct mapping?",
+   options:[
+     {label:"Because the business concept is unclear", correct:false, feedback:"Not quite. The business concept (country) is perfectly clear."},
+     {label:"Because it contains an explicit translation rule, even though one source field maps to one target field", correct:true, feedback:"Correct. One-to-one describes structure, not transformation complexity."},
+     {label:"Because country is never migrated", correct:false, feedback:"Not quite. Country is migrated; it just needs translating first."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"The target field CustomerGroup has no obvious source field on a given customer record. What should happen to that mapping row?",
+   options:[
+     {label:"Leave it blank, since there is nothing to map", correct:false, feedback:"Not quite. A missing source does not remove the need for a decision."},
+     {label:"Give it an explicit treatment: derive, enrich, default, escalate or another agreed approach", correct:true, feedback:"Correct. Every required target field gets a source or an explicit treatment."},
+     {label:"Delete the row from the mapping workbook", correct:false, feedback:"Not quite. Removing the row would hide an unresolved decision rather than answering it."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Who is best placed to confirm what source code 45E actually means to the business?",
+   options:[
+     {label:"A source subject-matter expert or business data owner", correct:true, feedback:"Correct. Meaning questions belong with the people who understand the source."},
+     {label:"The migration developer implementing the ETL", correct:false, feedback:"Not quite. Implementation authority is not the same as business meaning authority."},
+     {label:"Whoever is available to answer quickly", correct:false, feedback:"Not quite. The right authority matters more than availability."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Which pairing is generally more dangerous in migration mapping?",
+   options:[
+     {label:"Two fields that look completely different", correct:false, feedback:"Not quite. An obvious difference tends to force useful investigation."},
+     {label:"Two fields that look identical", correct:true, feedback:"Correct. Similarity encourages assumption, which is exactly how a wrong mapping slips through."},
+     {label:"Neither is more dangerous than the other", correct:false, feedback:"Not quite. Similarity carries a specific, well-documented risk of its own."}
+   ]
+  }
+ ]
+},
+{
+ id:"b13",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Understanding the source and target.</strong></p>
+ <p>The team has identified the business questions, target rules and ownership decisions that sit behind Bramwell's apparent field matches.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building field-level mappings:</strong> you will turn that understanding into a controlled mapping workbook that specifies source, target, transformation, ownership, status and approval at field level.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 3",
+  moduleTitle: "Data Mapping",
+  lessonLabel: "Lesson 1: Understanding the source and target",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Map meaning to meaning",
+  storageKey: "tp_core3_lesson1_v1",
+  lessonId: "core3-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

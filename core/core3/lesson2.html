@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building field-level mappings</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 3 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lesson 1 and the story bible: customer
+   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ, status
+   1, country UK.
+============================================================== */
+
+const mappingTypes = [
+  {
+   title:"Direct",
+   short:"Source meaning and value can populate the target without business transformation",
+   detail:`<p><strong>Example:</strong> Name &rarr; CustomerName, where source and target meaning and representation align.</p>`
+  },
+  {
+   title:"Lookup / cross-reference",
+   short:"The source value must be translated using an approved reference",
+   detail:`<p><strong>Example:</strong> 45E &rarr; the target payment-term code, resolved through an approved cross-reference table.</p>`
+  },
+  {
+   title:"Transform",
+   short:"The value must be reformatted, standardised, split, combined or converted",
+   detail:`<p><strong>Example:</strong> UK &rarr; GB, a controlled code translation rather than a business decision.</p>`
+  },
+  {
+   title:"Derived",
+   short:"The target value is calculated from one or more source attributes",
+   detail:`<p><strong>Example:</strong> CustomerGroup derived from approved source criteria such as strategic-account or export indicators.</p>`
+  },
+  {
+   title:"Default",
+   short:"An approved fixed value is used for a defined population",
+   detail:`<p><strong>Example:</strong> default Language = EN, but only for an agreed, clearly defined population.</p>`
+  },
+  {
+   title:"Enrichment",
+   short:"The value comes from another controlled source",
+   detail:`<p><strong>Example:</strong> a delivery zone obtained from the Norway delivery workbook.</p>`
+  },
+  {
+   title:"Exclude / no migration",
+   short:"The source attribute is deliberately not migrated",
+   detail:`<p><strong>Example:</strong> an obsolete legacy flag retained only in the archive, not loaded to the target.</p>`
+  },
+  {
+   title:"Target/system generated",
+   short:"The target creates the value rather than migration",
+   detail:`<p><strong>Example:</strong> a target-generated technical identifier that migration never supplies directly.</p>`
+  }
+];
+
+// Section 7 — "Complete Harrison Trade Supplies". The learner assesses
+// the status of each mapping row before the suggested workbook is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const statusLabels = [
+  "Ready for approval",
+  "Open: confirm cross-reference target value",
+  "Open: functional confirmation needed",
+  "Open: business decision required"
+];
+const mappingRowItems = [
+  {
+   q:"CustomerNumber: source CustNo = C10482, type Direct, populate from CustNo subject to a confirmed uniqueness/numbering rule.",
+   order:[0,2,1,3], a:0,
+   why:"The source, target, type and rule are all stated, and the uniqueness rule has already been confirmed. This row is genuinely build-ready."
+  },
+  {
+   q:"PaymentTerms: source Terms = 45E, type Lookup, use the approved cross-reference to return the target term. Unmapped values are exceptions.",
+   order:[1,3,0,2], a:1,
+   why:"The rule and exception handling are well described, but 45E still has no confirmed target equivalent. That single open question is what keeps this row from being ready."
+  },
+  {
+   q:"SalesOwner: source Rep = SMITHJ, type Lookup, resolve through an approved salesperson-to-target-worker cross-reference. Missing or inactive target worker is an exception.",
+   order:[2,0,3,1], a:2,
+   why:"The cross-reference concept and exception handling are defined, but whether SMITHJ can actually be matched to a target worker still needs business and HR confirmation."
+  },
+  {
+   q:"CustomerStatus: source Status = 1, type Lookup/transform, map source business status to the approved target status/control treatment.",
+   order:[3,1,2,0], a:2,
+   why:"What source status 1 actually permits operationally, and whether the target represents that through one field or several controls, has not yet been functionally confirmed."
+  },
+  {
+   q:"CountryCode: source Country = UK, type Lookup/transform, translate the legacy country code through the approved cross-reference, for example UK to GB.",
+   order:[0,1,3,2], a:0,
+   why:"The rule is specific, the cross-reference is approved, and the example is concrete. This row is ready for approval."
+  },
+  {
+   q:"CustomerGroup: no direct source, type Derive/enrich/default, treatment not yet approved. Do not build an assumed STANDARD default.",
+   order:[3,2,0,1], a:3,
+   why:"With no source and no approved treatment, this is explicitly an open business decision. Building an assumed default here would be exactly the trap the lesson warns against."
+  }
+];
+const mappingRowSituations = mappingRowItems.map((m, idx) => ({
+  title:`Mapping row ${idx+1}`,
+  question:m.q,
+  options: m.order.map(li => ({
+    label: statusLabels[li],
+    correct: li === m.a,
+    feedback: (li === m.a ? "Correct.<br>" : "Not quite. Look again at what is actually still unresolved in this row.<br>") + m.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The workbook is finished",title:"Opening scenario: The mapping workbook is finished",type:"mcq",
+ html:`<p class="lead">Bramwell's customer mapping workbook has been circulated for build.</p>
+ <div class="visual-card">
+   <div class="visual-title">The circulated workbook</div>
+   <ul class="framework-checks">
+     <li>CustNo &rarr; CustomerNumber</li>
+     <li>Name &rarr; CustomerName</li>
+     <li>Terms &rarr; PaymentTerms</li>
+     <li>Rep &rarr; SalesOwner</li>
+     <li>Status &rarr; CustomerStatus</li>
+     <li>Country &rarr; CountryCode</li>
+     <li>No source shown &rarr; CustomerGroup</li>
+   </ul>
+ </div>
+ <p>The migration developer asks three questions: how should 45E be converted into the target payment-term value? What happens if SMITHJ has no active target worker record? What value should CustomerGroup receive when there is no direct source?</p>
+ <div class="quote">"Those details were discussed in workshops. The workbook shows the fields, so the mapping is complete."<br><span class="small">Analyst</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "The analyst is right. Transformation detail belongs in the ETL specification, not the mapping.",
+ "The workbook is incomplete. A mapping must contain enough information for the approved treatment to be understood, built and tested without relying on workshop memory.",
+ "The developer should decide the missing rules because implementation detail is a technical responsibility.",
+ "Build the direct mappings first and leave all non-direct mappings until UAT."
+ ],
+ _correctIndex:1,
+ feedback:[
+ "The mapping does not need executable code, but it must describe the agreed business treatment clearly enough for implementation and testing.",
+ "Correct. The mapping is the controlled translation specification between source and target. Important decisions should be visible in the artefact, not trapped in meeting notes or individual memory.",
+ "Developers can propose technical approaches, but they should not invent missing business rules.",
+ "Non-direct mappings often contain the greatest risk and should be resolved early enough to influence build and testing."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option B and refuses to call the workbook finished while three real questions remain unanswered.</p>
+ <p>Each question gets a named owner and a place in the workbook itself, not just a memory of a workshop conversation.</p>
+ <div class="visual-card">
+   <div class="visual-title">From "discussed in workshops" to written down</div>
+   <ul class="framework-checks">
+     <li><strong>45E &rarr; PaymentTerms:</strong> logged as an open cross-reference question, owned by the business payment-terms owner, with a required-by date before build.</li>
+     <li><strong>SMITHJ &rarr; SalesOwner:</strong> logged as an open exception-handling question, owned jointly by HR and migration analysis.</li>
+     <li><strong>No source &rarr; CustomerGroup:</strong> logged as an open business decision, since profiling already showed this population has real variation.</li>
+   </ul>
+ </div>
+ <p>Six months from now, when the original analyst has moved to another project, a new developer can open the workbook and see exactly what is resolved, what is still open, and who owns each open question. That is what "complete" actually needs to mean.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A mapping is complete when another competent person can understand what must happen without needing the original mapper beside them.</p></div></div>`
+},
+{
+ id:"b3",nav:"What a mapping must achieve",title:"What a field-level mapping needs to achieve",type:"content",
+ html:`<p class="lead">A useful mapping answers five basic questions.</p>
+ <div class="visual-card">
+   <div class="visual-title">Five questions a mapping must answer</div>
+   <ul class="framework-checks">
+     <li><strong>Where does the value come from?</strong> Source object, field or other approved source.</li>
+     <li><strong>Where does it go?</strong> Target object and field.</li>
+     <li><strong>What happens to it?</strong> Direct move, lookup, transformation, derivation, default, enrichment, exclusion or other treatment.</li>
+     <li><strong>Why is that treatment correct?</strong> Business rule, target requirement or approved decision.</li>
+     <li><strong>Is the decision ready to build?</strong> Status, owner and any unresolved question.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>The mapping workbook should describe the decision. Code implements the decision. Test evidence proves the decision worked.</div>`
+},
+{
+ id:"b4",nav:"Start from the target too",title:"Start from the target, not only the source",type:"content",
+ html:`<p class="lead">A source-driven mapping exercise asks "where can each source field go?" That is useful, but incomplete. The stronger control is also target-driven.</p>
+ <div class="visual-card">
+   <div class="visual-title">Target-driven questions</div>
+   <ul class="framework-checks">
+     <li>What target fields exist?</li>
+     <li>Which are required for the migrated population?</li>
+     <li>Which are populated by target configuration or system logic?</li>
+     <li>Which need migration data?</li>
+     <li>Which have no source yet?</li>
+     <li>Which depend on another target record?</li>
+   </ul>
+ </div>
+ <p>This prevents required target fields such as Bramwell's CustomerGroup from disappearing simply because no obvious source field exists.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Every source field gets a decision. Every required target field gets a source or an explicit treatment.</div>`
+},
+{
+ id:"b5",nav:"Mapping types",title:"Mapping types make complexity visible",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">The exact workbook columns will vary by project, but naming the mapping type helps reviewers and developers focus on where rules, dependencies and testing matter most. Explore each type before moving on.</p>`,
+ items: mappingTypes,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>A single target field can use more than one pattern. CustomerGroup, for instance, might be derived for one population, enriched for another, and left unresolved for exceptions.</div>`
+},
+{
+ id:"b6",nav:"Write buildable rules",title:"Write rules so they can be built and tested",type:"content",
+ html:`<p class="lead">Compare these mapping descriptions.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak rule versus stronger rule</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "Convert payment terms." <strong>Stronger:</strong> "Map source TERMS to target PaymentTerms using the approved PaymentTerms cross-reference. Unmapped source values reject from the migration output and are reported for resolution."</li>
+     <li><strong>Weak:</strong> "Fix country." <strong>Stronger:</strong> "Translate approved legacy country codes to target ISO alpha-2 codes using CountryCrossReference. Do not infer unknown codes."</li>
+     <li><strong>Weak:</strong> "Default customer group." <strong>Stronger:</strong> "For customer population X only, set CustomerGroup = STANDARD where the approved business rule applies; otherwise flag as unresolved."</li>
+     <li><strong>Weak:</strong> "Map salesperson." <strong>Stronger:</strong> "Match source REP to the approved SalesOwner cross-reference and return the target worker identifier. Missing or inactive matches are exceptions."</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page technique</div><p>A good mapping rule states the input, the treatment, and what should happen when the rule cannot be satisfied.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Workbook That Looked Finished", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/core3-lesson2-fromfield-elena.mp3",
+   reflection:"Have you seen a mapping workbook that looked complete, right up until someone asked what happens on the exception path?"
+ })}`
+},
+{
+ id:"b7",nav:"Complete the workbook",title:"Build it yourself: complete Harrison Trade Supplies",type:"situations",
+ html:`<p class="lead">Use customer C10482, Harrison Trade Supplies Ltd, and assess the status of each mapping row before the suggested workbook is revealed.</p>`,
+ items: mappingRowSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>This is the beginning of Bramwell's Customer Mapping Workbook. Notice how few rows were genuinely build-ready on first pass, even though every row had something written in it.</p></div></div>`
+},
+{
+ id:"b8",nav:"Failure paths and profiling",title:"Unmapped values need a failure treatment, and mapping should talk to profiling",type:"content",
+ html:`<p class="lead">Suppose the payment-term cross-reference contains 30D, 45E and 60D, but the source profile later finds term CASHX. The mapping should already say what happens when a source value has no approved target mapping.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible failure treatments</div>
+   <ul class="framework-checks">
+     <li>Reject the record from the migration output</li>
+     <li>Route it to an exception file</li>
+     <li>Leave the target blank only if explicitly permitted</li>
+     <li>Use an approved default only for the defined population</li>
+     <li>Stop the relevant load if the value is critical</li>
+   </ul>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Defining only the happy path. Migration rules must also describe what happens when source data does not satisfy the expected rule.</p></div>
+ <p>A mapping can also look complete until it meets the real source distribution. Bramwell's CustomerGroup profile found STANDARD, KEY, EXPORT, INTERNAL, STD, STANDARD with a trailing space, and 99. If the mapping workbook only documents STANDARD, KEY, EXPORT and INTERNAL, it is not complete for the profiled population.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Profiling tells mapping what exists. Mapping tells profiling what needs to be tested.</p></div></div>`
+},
+{
+ id:"b9",nav:"Dependencies and status",title:"Dependencies should be visible, and status should describe maturity",type:"content",
+ html:`<p class="lead">Some mappings cannot work until another object or configuration exists.</p>
+ <div class="visual-card">
+   <div class="visual-title">Mapping dependency examples</div>
+   <ul class="framework-checks">
+     <li><strong>SalesOwner lookup:</strong> target worker/user record must exist and the cross-reference must be approved.</li>
+     <li><strong>PaymentTerms lookup:</strong> target payment-term configuration must exist.</li>
+     <li><strong>Product warehouse:</strong> target product and warehouse/site relationships must exist.</li>
+     <li><strong>Currency:</strong> approved target currency/reference value must exist.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>A field mapping can be logically correct and still fail because the thing it points to does not yet exist.</div>
+ <p>Avoid a single Complete flag. A practical status set distinguishes draft, question open, ready for review, approved, build-ready, and changed/re-review required. The important point is to distinguish "someone typed something in the row" from "this decision is ready to implement".</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Mapping status should show decision maturity, not spreadsheet completion.</div>
+ <p>Completeness itself works in both directions. A source-driven check asks whether migration-relevant source attributes have an explicit treatment. A target-driven check asks whether all target fields required for the migration population have been addressed.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A mapping can be 100% complete from the source perspective and still leave mandatory target fields empty.</p></div></div>`
+},
+{
+ id:"b10",nav:"Judgement calls",title:"Judgement calls: is the mapping row complete?",type:"content",
+ html:`<p class="lead">Five situations show why a filled-in row is not automatically a finished one.</p>
+ <div class="quote">Source and target both contain Currency. The row says Direct. Source profile contains GBP, EUR and NOK; target reference contains GBP, EUR and NOK.</div>
+ <p>Potentially complete, but confirm business meaning and the target reference dependency. Direct should be a conclusion, not shorthand for "same field name".</p>
+ <div class="quote">Target Language is mandatory. Mapping says Default EN.</div>
+ <p>Incomplete unless the population for which EN is valid, and the approving business rule, are made explicit.</p>
+ <div class="quote">Source salesperson code maps through a cross-reference. The row does not say what happens when no match exists.</div>
+ <p>Incomplete. Failure and exception treatment is part of the rule.</p>
+ <div class="quote">Legacy CustomerClass2 has no target field. The mapper leaves it out of the workbook.</div>
+ <p>Potentially dangerous. Confirm whether it is migration-relevant and explicitly record exclusion or retention where appropriate.</p>
+ <div class="quote">A target functional consultant changes the allowed CustomerGroup configuration after mappings were approved.</div>
+ <p>The affected mappings need impact assessment and re-review. Approval is not permanent when the underlying target rule changes.</p>`
+},
+{
+ id:"b11",nav:"AI and the workbook",title:"AI can accelerate the workbook",type:"content",
+ html:`<p class="lead">AI can help create and review field-level mappings at scale.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Generate candidate source-target matches</li>
+     <li>Classify mapping types</li>
+     <li>Draft plain-English transformation descriptions</li>
+     <li>Compare mapping rows against source profiling results</li>
+     <li>Identify required target fields with no treatment</li>
+     <li>Flag inconsistent rules across similar objects</li>
+     <li>Summarise open questions for review</li>
+   </ul>
+ </div>
+ <p>The highest-value use is often not generating the first mapping, but reviewing a large workbook for omissions and inconsistency.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to find candidate answers and missing questions. Approval still belongs to accountable humans using project evidence.</p></div></div>`
+},
+{
+ id:"b12",nav:"Reflection",title:"Handing over the workbook",type:"reflection",
+ html:`<p>Imagine handing your mapping workbook to a competent migration developer.</p>
+ <div class="quote">If they had attended none of the workshops, what questions would they still need to ask before they could build it correctly?</div>
+ <p>Those questions are clues to information that may be missing from the mapping. The objective is not to eliminate all conversation, but to prevent critical business rules from existing only in people's heads.</p>
+ <textarea id="reflection" placeholder="They would still need to ask..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/exception|fail|missing|no match/i, strength:"You considered what happens when the rule cannot be satisfied.", gap:"Consider what the developer would need to know about the exception or failure path." },
+   { test:/rule|treatment|meaning/i, strength:"You considered whether the actual business rule or treatment is written down clearly.", gap:"Consider whether the rule itself, not just the field names, is written down clearly enough." },
+   { test:/depend|configur|exist/i, strength:"You considered dependencies the mapping relies on.", gap:"Consider what the mapping depends on that might not yet exist in the target." },
+   { test:/owner|approv|decision/i, strength:"You considered who owns or has approved the underlying decision.", gap:"Consider whether it is clear who owns or approved this decision." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">They would still need to ask what happens when a lookup fails to find a match, what population a default actually applies to, which target configuration the mapping depends on, and who approved each non-obvious rule. Those are exactly the questions a complete mapping should already answer.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is a genuinely strong list. You are thinking like the developer who has to build this without you in the room.":"You have made a start. Push further into the specific gaps a newcomer would hit first: exceptions, dependencies and ownership."}</div>`
+},
+{
+ id:"b13",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now has the structure of a real mapping workbook rather than a list of matching field names.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>A field-level mapping is more than a source-target field cross-reference.</li>
+   <li>It should make source, target, mapping type, rule, dependency, ownership and status visible.</li>
+   <li>Mappings should be checked from both source and target perspectives.</li>
+   <li>Rules need to describe what happens when expected values cannot be mapped.</li>
+   <li>Profiling and mapping should continuously inform one another.</li>
+   <li>Dependencies matter because a valid value may still fail if the referenced target data or configuration does not exist.</li>
+   <li>Mapping status should reflect decision maturity.</li>
+   <li>A mapping should contain enough information for implementation and testing without relying on workshop memory.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>If the rule is important enough to build, it is important enough to write down clearly.</div>`
+},
+{
+ id:"b14",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A mapping row shows a source field and a target field, with the transformation detail only discussed in a past workshop. Is the mapping complete?",
+   options:[
+     {label:"Yes, since the field names are recorded", correct:false, feedback:"Not quite. A cross-reference of field names is not the same as a complete mapping specification."},
+     {label:"No, the agreed treatment must be visible in the mapping itself, not only in workshop memory", correct:true, feedback:"Correct. Important decisions should live in the artefact, not in people's memories."},
+     {label:"Yes, provided the developer attended the workshop", correct:false, feedback:"Not quite. Relying on a specific person's memory is exactly the risk a mapping should remove."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Why should a mapping exercise be target-driven as well as source-driven?",
+   options:[
+     {label:"So that required target fields with no obvious source, like CustomerGroup, are not silently missed", correct:true, feedback:"Correct. A source-only exercise can let a mandatory target field disappear entirely."},
+     {label:"Because the target is always more important than the source", correct:false, feedback:"Not quite. Neither direction is inherently more important; each catches different gaps."},
+     {label:"Because target fields never need a source", correct:false, feedback:"Not quite. Most target fields still need a source or an explicit alternative treatment."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A rule reads simply 'Convert payment terms.' What is missing?",
+   options:[
+     {label:"Nothing; the intent is obvious", correct:false, feedback:"Not quite. This is exactly the weak-rule pattern the lesson warns against."},
+     {label:"The specific cross-reference to use and what happens to unmapped values", correct:true, feedback:"Correct. A good rule states the input, the treatment, and the failure path."},
+     {label:"The name of the developer who will implement it", correct:false, feedback:"Not quite. Who implements it is a project-management detail, not a rule-quality issue."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A payment-term cross-reference covers 30D, 45E and 60D. A later extract contains CASHX. What should the mapping already specify?",
+   options:[
+     {label:"Nothing; unexpected values simply load with a blank", correct:false, feedback:"Not quite. Silent blanks hide a real problem rather than surfacing it."},
+     {label:"What happens when a source value has no approved target mapping, such as rejection or routing to an exception file", correct:true, feedback:"Correct. Failure treatment is part of the rule, not an afterthought."},
+     {label:"That the whole load should stop regardless of the value's importance", correct:false, feedback:"Not quite. Stopping the load is only one of several possible treatments, and not always the right one."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A mapping row is logically correct, but the target worker record it depends on does not yet exist. What does this show?",
+   options:[
+     {label:"The mapping itself is wrong and needs to be redesigned", correct:false, feedback:"Not quite. The mapping logic can be entirely correct while still depending on something missing."},
+     {label:"A mapping can be logically correct and still fail because a dependency does not yet exist", correct:true, feedback:"Correct. Dependencies need to be visible in the mapping, not discovered at build time."},
+     {label:"Dependencies are a technical concern that never belongs in the mapping workbook", correct:false, feedback:"Not quite. Dependencies belong in the mapping precisely because they affect whether it can work."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why is 'mapping 95% complete' a weak status report?",
+   options:[
+     {label:"Because it may just mean 95% of rows have text in them, not that 95% are approved and build-ready", correct:true, feedback:"Correct. Status should reflect decision maturity, not spreadsheet completion."},
+     {label:"Because percentages should never be used in migration reporting", correct:false, feedback:"Not quite. The issue is what the percentage actually measures, not percentages in general."},
+     {label:"Because a mapping should always be either 0% or 100% complete", correct:false, feedback:"Not quite. Maturity is genuinely a spectrum of states, not a binary."}
+   ]
+  }
+ ]
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building field-level mappings.</strong></p>
+ <p>The next lesson focuses on the rows that contain the most judgement and risk: transformations, defaults and derivations.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Transformations, defaults and business rules:</strong> you will define how source values are converted, derived, standardised and defaulted, without allowing convenient technical logic to replace approved business meaning.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 3",
+  moduleTitle: "Data Mapping",
+  lessonLabel: "Lesson 2: Building field-level mappings",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "If it is important enough to build, it is important enough to write down",
+  storageKey: "tp_core3_lesson2_v1",
+  lessonId: "core3-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

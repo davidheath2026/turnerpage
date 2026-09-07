@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Managing the mapping through approval and change</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 3 — LESSON 5 DATA (final lesson of the module). All
+   chrome, styling and engine behaviour come from shared/
+   turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-4 and the story bible: 18
+   German records with source CustomerGroup 99 remain unresolved;
+   CustomerGroup mapping STD/STANDARD-space -> STANDARD, KEY -> KEY,
+   EXPORT -> EXPORT, INTERNAL -> INTERNAL, 99 -> exception.
+============================================================== */
+
+const decisionStates = [
+  {
+   title:"Populated",
+   short:"Someone has entered a proposed mapping",
+   detail:`<p>The row exists and contains text, but nothing about it has been checked yet.</p>`
+  },
+  {
+   title:"Analysed",
+   short:"Source, target and rule have been sufficiently understood",
+   detail:`<p>Meaning has been established on both sides, and a candidate rule has been drafted.</p>`
+  },
+  {
+   title:"Ready for review",
+   short:"The mapper believes the proposal is clear enough for the appropriate reviewer",
+   detail:`<p>The row is a genuine proposal now, not just a placeholder, and is ready to be checked by someone with authority.</p>`
+  },
+  {
+   title:"Approved",
+   short:"The accountable authority has accepted the business/functional decision",
+   detail:`<p>A named, appropriate person has actually said yes to this specific rule.</p>`
+  },
+  {
+   title:"Build-ready",
+   short:"The approved rule and dependencies are sufficiently defined for implementation",
+   detail:`<p>Everything a developer needs, including exception handling and dependencies, is now written down.</p>`
+  },
+  {
+   title:"Built",
+   short:"The migration logic implements the rule",
+   detail:`<p>Code now exists that is intended to carry out the approved decision.</p>`
+  },
+  {
+   title:"Tested",
+   short:"Evidence shows the implemented rule behaves as expected for the tested population",
+   detail:`<p>The claim that the rule works is now backed by evidence, not just confidence.</p>`
+  }
+];
+
+// Section 6 — "Resolve Bramwell's value 99". A genuinely sequential
+// walkthrough: each step depends on having completed the one before
+// it, so this uses guidedSteps rather than a graded quiz type.
+const value99Steps = [
+  { title:"Clarify meaning", html:`<p>Confirm how CustomerGroup 99 was actually used, not only what old documentation says. All 18 active customers carrying this value belong to the German legal entity. An old customer-service procedure describes group 99 as "special export accounts", but that description alone is not evidence of current use.</p>` },
+  { title:"Check target intent", html:`<p>Understand which future-state classifications represent these customers. The target business design contains STANDARD, KEY, INTERNATIONAL and INTERNAL. The target no longer uses the legacy "special export" concept at all, so there is no automatic home for group 99.</p>` },
+  { title:"Segment if necessary", html:`<p>Six of the 18 customers are currently flagged as strategic accounts. That is a meaningful difference: the six strategic accounts may not deserve the same treatment as the other twelve.</p>` },
+  { title:"Obtain authority", html:`<p>The business or data owner, not the migration team, approves the future-state treatment for each segment. The word "export" in an old procedure is not, on its own, a reason to choose INTERNATIONAL.</p>` },
+  { title:"Record the rule", html:`<p>Update the mapping with the agreed population, transformation and exception treatment, stated clearly enough that a developer who was not in the room could implement it correctly.</p>` },
+  { title:"Assess impact", html:`<p>Identify build, cross-reference, test and configuration changes the new rule requires, including anywhere else CustomerGroup 99 might already be assumed or referenced.</p>` },
+  { title:"Retest", html:`<p>Prove the changed rule on the affected population specifically, not just on the wider CustomerGroup mapping as a whole.</p>` }
+];
+
+// Section 13 — "What level of control is needed?" The learner
+// matches each situation to the level of control it actually requires.
+// Options are reordered per item so the correct answer's position
+// does not track the item number.
+const controlLabels = [
+  "Simple edit; no business reapproval needed",
+  "Documentation clarification; confirm no implementation impact",
+  "Business/target rule changed; assess and reapprove",
+  "Not an authorised business decision; confirm authority and applicable population first",
+  "Potentially significant impact across mapping, cleansing and build",
+  "Technical control/testing may be sufficient, depending on project process"
+];
+const controlItems = [
+  {
+   q:"A later extract contains source country code ENG, not seen in earlier profiling. A developer assumes it means GB and adds the translation.",
+   order:[0,3,1,5,4,2], a:2,
+   why:"Do not silently extend the rule. This is a new source value with an unconfirmed meaning, so it needs confirmation, approval of the cross-reference, and updated mapping/test evidence, exactly like any other business/target rule change."
+  },
+  {
+   q:"A mapping note changes from 'convert UK code' to 'translate legacy UK to ISO GB'. The implemented rule is unchanged.",
+   order:[4,2,1,0,3,5], a:1,
+   why:"This may be documentation clarification rather than a new business decision. Record it appropriately without unnecessary escalation, once it is confirmed the underlying rule truly has not changed."
+  },
+  {
+   q:"Target design adds mandatory CustomerSegment after customer mappings were already approved.",
+   order:[1,5,3,0,4,2], a:4,
+   why:"Assess all customer mappings, source availability, cleansing/default options, and build and test impact. A new mandatory field arriving after approval is a material change, not a minor edit."
+  },
+  {
+   q:"The developer replaces a slow lookup implementation with a faster method that produces identical approved outputs.",
+   order:[5,0,2,4,1,3], a:5,
+   why:"The business mapping itself may not require reapproval, since the approved rule and its output are unchanged, but technical testing should still prove the outputs genuinely remain identical."
+  },
+  {
+   q:"A sales manager emails the developer directly, asking to map all blank CustomerGroup values to STANDARD.",
+   order:[2,4,0,1,5,3], a:3,
+   why:"An email request from a stakeholder is not automatically an authorised mapping decision. Confirm who actually has authority over this decision and which population it would apply to before treating it as approved."
+  }
+];
+const controlSituations = controlItems.map((c, idx) => ({
+  title:`Situation ${idx+1}`,
+  question:c.q,
+  options: c.order.map(li => ({
+    label: controlLabels[li],
+    correct: li === c.a,
+    feedback: (li === c.a ? "Correct.<br>" : "Not quite. Consider who actually has authority here, and how far the consequences reach.<br>") + c.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Approved yesterday, wrong today",title:"Opening scenario: Approved yesterday, wrong today",type:"mcq",
+ html:`<p class="lead">Bramwell's CustomerGroup mapping was approved two weeks ago. The migration build now implements STD &rarr; STANDARD, STANDARD with a trailing space &rarr; STANDARD, KEY &rarr; KEY, EXPORT &rarr; EXPORT, INTERNAL &rarr; INTERNAL, and 99 &rarr; exception.</p>
+ <p>During a functional workshop, the target team announces that the future-state design will replace EXPORT with INTERNATIONAL. A business analyst edits the mapping workbook directly: EXPORT &rarr; INTERNATIONAL.</p>
+ <div class="quote">"It is only one mapping row."<br><span class="small">Business analyst, on why no change reference was created</span></div>
+ <p>The existing ETL still produces EXPORT. Test cases still expect EXPORT. A target configuration workbook still lists EXPORT.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "The workbook is the master document, so the edit automatically becomes the new approved rule.",
+ "Ask the developer to update the ETL immediately because the new target design is more recent.",
+ "Treat this as a controlled mapping change: confirm authority, record the decision, identify affected build/configuration/tests, update the approved mapping and then implement and retest consistently.",
+ "Leave the original mapping unchanged until the next migration cycle is complete."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A workbook can record a decision, but the act of changing it does not create authority.",
+ "The ETL is only one affected artefact. Configuration, test expectations, documentation and possibly other objects may also need to change.",
+ "Correct. Mapping changes need traceability and impact assessment so that the project changes one decision consistently rather than creating several competing versions of the truth.",
+ "The timing of implementation should be controlled, but the change itself must be assessed rather than ignored."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and treats the EXPORT-to-INTERNATIONAL edit as a controlled change rather than a quiet cell edit.</p>
+ <p>Someone actually checks everywhere EXPORT appears.</p>
+ <div class="visual-card">
+   <div class="visual-title">What checking finds</div>
+   <ul class="framework-checks">
+     <li>The ETL cross-reference table still needs updating to produce INTERNATIONAL.</li>
+     <li>Six existing test cases explicitly expect EXPORT as an output and now need rewriting.</li>
+     <li>The target configuration workbook, owned by a different team, still lists EXPORT as a valid value and needs its own update.</li>
+     <li>A reconciliation report used by Finance still groups customers under EXPORT for reporting.</li>
+   </ul>
+ </div>
+ <p>One "small" edit turns out to touch four separate artefacts, each owned by a different person. Skipping the change process would have left three of those four quietly out of step with the fourth.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Never ask only "what row changed?" Ask "what depends on this decision?"</p></div></div>`
+},
+{
+ id:"b3",nav:"A decision set",title:"Mapping is a decision set, not just a spreadsheet",type:"content",
+ html:`<p class="lead">By this stage, Bramwell's mapping contains decisions about what source data means, which target fields receive it, which values are translated, which defaults or derivations apply, which reference values are used, how relationships are resolved, and what happens to exceptions.</p>
+ <p>Those decisions influence build, test, reconciliation, business processes and ultimately production data.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>The mapping workbook is valuable because it records controlled decisions. The spreadsheet itself is not the control.</div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Reporting "mapping 95% complete" when 95% of rows contain text but many have unresolved questions or no approval. Completion, approval and build-readiness are different states, and should not be collapsed into a single Complete flag.</p></div>
+ <p>Explore the maturity states a mapping decision genuinely passes through, below.</p>`
+},
+{
+ id:"b4",nav:"Decision maturity",title:"Completion, approval and build-readiness are different",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">These states may overlap differently on different projects, but they should never be collapsed into a single Complete flag. Explore each before moving on.</p>`,
+ items: decisionStates,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>"Someone typed something in the row" and "this decision is ready to implement" are two very different claims. Status should distinguish them.</div>`
+},
+{
+ id:"b5",nav:"Matching authority",title:"Approval should match the decision",type:"content",
+ html:`<p class="lead">Different mapping questions require different knowledge and authority.</p>
+ <div class="visual-card">
+   <div class="visual-title">Who actually decides</div>
+   <ul class="framework-checks">
+     <li><strong>What does source code 45E mean?</strong> Source SME / business data owner.</li>
+     <li><strong>Which future-state payment term should represent it?</strong> Business owner with target functional input.</li>
+     <li><strong>Should inactive historical customers migrate?</strong> Business/scope authority.</li>
+     <li><strong>Is STANDARD an acceptable default for a defined population?</strong> Business data owner.</li>
+     <li><strong>Can the target field accept the proposed format?</strong> Target functional/technical specialist.</li>
+     <li><strong>How should the approved rule be implemented technically?</strong> Migration/technical team.</li>
+     <li><strong>Is a residual exception acceptable?</strong> Appropriate business/data owner under project controls.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Approval is not about collecting signatures. It is about making sure the person accepting the decision has the authority and knowledge to do so.</p></div></div>`
+},
+{
+ id:"b6",nav:"Questions on the record",title:"Questions should not disappear into meeting notes",type:"content",
+ html:`<p class="lead">A mapping workshop may generate dozens of unresolved questions: what does legacy CustomerGroup 99 mean? Does 45E map to an existing target term or require new configuration? Should inactive salespeople be replaced by a regional owner?</p>
+ <div class="visual-card">
+   <div class="visual-title">A practical mapping question log</div>
+   <ul class="framework-checks">
+     <li><strong>Question/decision required:</strong> the exact issue to resolve.</li>
+     <li><strong>Affected object/field:</strong> where the decision applies.</li>
+     <li><strong>Evidence/context:</strong> profile result, example values, target rule or process impact.</li>
+     <li><strong>Decision owner:</strong> who must answer or approve.</li>
+     <li><strong>Required by:</strong> the migration milestone or build dependency.</li>
+     <li><strong>Status:</strong> open, answered, approved, superseded.</li>
+     <li><strong>Decision/reference:</strong> the agreed answer and traceable reference.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>If an unanswered question can change the migrated data, it needs to remain visible until it is resolved.</div>
+ ${TPKit.fromField({
+   title:"The Cell That Became Law", name:"Isabel", role:"Data Migration Consultant", project:"Retail ERP",
+   src:"/assets/audio/core3-lesson5-fromfield-isabel.mp3",
+   reflection:"Have you seen an unapproved workbook edit quietly become the rule everyone built to, simply because nobody challenged it?"
+ })}`
+},
+{
+ id:"b7",nav:"Resolve value 99",title:"Build it yourself: resolve Bramwell's value 99",type:"guidedSteps",
+ html:`<p class="lead">Bramwell's source profile found 18 active customers with CustomerGroup = 99. The mapping currently says source 99 &rarr; EXCEPTION, status Question open. Walk through a strong decision process, one step at a time, rather than jumping straight to an answer.</p>`,
+ steps: value99Steps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner has used a Mapping Decision Record: issue &rarr; evidence &rarr; decision &rarr; authority &rarr; affected mappings &rarr; implementation impact &rarr; test evidence. Notice that INTERNATIONAL was never chosen just because an old description contained the word "export".</p></div></div>`
+},
+{
+ id:"b8",nav:"Blast radius",title:"A mapping change has a blast radius, and not every change needs bureaucracy",type:"content",
+ html:`<p class="lead">Changing one mapping row can affect more than one file. For Bramwell's EXPORT &rarr; INTERNATIONAL change, check the customer mapping workbook, the transformation/cross-reference table, target CustomerGroup configuration, ETL or transformation logic, profiling/exception rules, test cases and expected results, reconciliation/reporting logic, other objects that use CustomerGroup, and training or process documentation if the business meaning changed.</p>
+ <div class="principle"><strong>Core principle</strong><br>Control the consequence, not the keystroke.</div>
+ <p>Control should still be proportionate, though.</p>
+ <div class="visual-card">
+   <div class="visual-title">Matching control to the change</div>
+   <ul class="framework-checks">
+     <li><strong>Correcting a spelling mistake in a note:</strong> simple edit, no business impact.</li>
+     <li><strong>Clarifying wording without changing logic:</strong> update documentation, confirm no implementation impact.</li>
+     <li><strong>Changing UK &rarr; GB to UK &rarr; UK:</strong> business/target rule changed, assess and reapprove.</li>
+     <li><strong>Adding a newly discovered source code to a cross-reference:</strong> assess meaning, approve treatment, update build/test.</li>
+     <li><strong>Changing a target field from optional to mandatory:</strong> potentially significant impact across mapping, cleansing and build.</li>
+     <li><strong>Changing a technical implementation while preserving the approved rule:</strong> technical control/testing may be sufficient.</li>
+   </ul>
+ </div>
+ <p>The objective is not to create paperwork for its own sake. It is to ensure consequential changes are understood and propagated.</p>`
+},
+{
+ id:"b9",nav:"Which control level?",title:"Build it yourself: what level of control is needed?",type:"situations",
+ html:`<p class="lead">For each situation, decide the level of control genuinely needed before the reasoning is revealed.</p>`,
+ items: controlSituations,
+ takeawayHtml:`<div class="principle"><strong>Key takeaway</strong><br>Proportionate control is not the same as no control. A wording fix and a mandatory-field change deserve very different levels of scrutiny, but neither should be decided silently.</div>`
+},
+{
+ id:"b10",nav:"Versioning and traceability",title:"Versioning prevents competing truths, and traceability makes a migration explainable",type:"content",
+ html:`<p class="lead">A common failure pattern: business has Mapping_v7_Final.xlsx, the developer built from Mapping_v6.xlsx, the test team copied expected values from Mapping_v5_FINAL2.xlsx, and a workshop note contains a newer decision than all three.</p>
+ <div class="visual-card">
+   <div class="visual-title">A controlled approach should make it obvious</div>
+   <ul class="framework-checks">
+     <li>Which mapping version is current</li>
+     <li>Which version was approved</li>
+     <li>Which version the build implements</li>
+     <li>Which version a migration cycle tested</li>
+     <li>What changed between relevant versions</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Version control is not administrative tidiness. It lets you explain exactly which set of mapping decisions produced a migration result.</p></div></div>
+ <p>For an important mapping, a reviewer should be able to follow the chain: source evidence &rarr; mapping decision &rarr; approval &rarr; implemented rule &rarr; migration output &rarr; test/validation evidence.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell's CustomerGroup example, traced</div>
+   <ul class="framework-checks">
+     <li><strong>Source evidence:</strong> STD, STANDARD-space and 99 identified during profiling.</li>
+     <li><strong>Decision:</strong> STD and STANDARD-space standardise to STANDARD; 99 initially remains exception.</li>
+     <li><strong>Approval:</strong> customer data owner approves standardisation rule.</li>
+     <li><strong>Implementation:</strong> cross-reference/transformation applies approved translations.</li>
+     <li><strong>Output:</strong> affected customers receive target CustomerGroup.</li>
+     <li><strong>Validation:</strong> output profile confirms expected groups and no unapproved source values were silently defaulted.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page insight</strong><br>Traceability makes a migration explainable. When a value is challenged, the team can show where the rule came from and how it was proved.</div>`
+},
+{
+ id:"b11",nav:"What happens when things change",title:"What happens when source or target changes?",type:"content",
+ html:`<p class="lead">Mappings can change because the world around them changes.</p>
+ <div class="visual-card">
+   <div class="visual-title">Common change sources</div>
+   <ul class="framework-checks">
+     <li><strong>Source change:</strong> a new source code appears after profiling.</li>
+     <li><strong>Target change:</strong> a field becomes mandatory or a reference value is renamed.</li>
+     <li><strong>Scope change:</strong> another country or historical population enters scope.</li>
+     <li><strong>Business decision:</strong> a default is withdrawn or a classification rule changes.</li>
+     <li><strong>Data-quality discovery:</strong> a supposedly direct field contains previously unseen variants.</li>
+     <li><strong>Dependency change:</strong> target configuration or object sequencing changes.</li>
+   </ul>
+ </div>
+ <p>The response is not automatically "redo all mappings". Instead: identify affected mapping rows and rules, assess downstream impact, obtain any required new decision or approval, update the controlled mapping, implement the change, and retest affected logic and relationships.</p>
+ <p>As Bramwell moves into later build and migration cycles, the team also needs a stable mapping baseline for each execution: which approved mapping set the cycle is intended to test, which changes arrived after the baseline, and which test evidence relates to which rule version.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>If the rules changed between cycles, record that fact. Otherwise you may attribute a different result to the wrong cause.</div>`
+},
+{
+ id:"b12",nav:"AI and mapping control",title:"AI can help control large mapping sets",type:"content",
+ html:`<p class="lead">Large programmes may contain thousands of mapping rows. AI can help reviewers identify change and inconsistency.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Compare mapping versions and summarise material differences</li>
+     <li>Identify changed rules without updated approval/status</li>
+     <li>Find inconsistent treatments of the same reference values</li>
+     <li>Link open questions to affected mappings</li>
+     <li>Suggest impact areas when a target field changes</li>
+     <li>Draft change summaries for human review</li>
+   </ul>
+ </div>
+ <p>AI-generated impact analysis is a starting point, not proof that every dependency has been found.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to make change easier to see. Keep authority, approval and final impact judgement with accountable project people.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"Open question, or quiet obsolescence?",type:"reflection",
+ html:`<p>Consider two kinds of risk.</p>
+ <div class="quote">Which is more dangerous: a mapping decision that is obviously unresolved, or one that was approved months ago and has quietly become obsolete?</div>
+ <p>Open questions attract attention. Old approvals can create false confidence. Good mapping control keeps both uncertainty and change visible.</p>
+ <textarea id="reflection" placeholder="I think the more dangerous case is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/obsolete|quietly|false confidence|out of date/i, strength:"You considered how an old, quietly obsolete approval can create false confidence.", gap:"Consider how a mapping that was approved months ago can quietly become wrong without anyone noticing." },
+   { test:/attention|visible|open question|flagged/i, strength:"You noted that open questions at least attract attention.", gap:"Consider that an obviously unresolved question has one advantage: it is visible and attracts attention." },
+   { test:/change|monitor|review|reassess/i, strength:"You considered the need to keep reviewing approved decisions as things change.", gap:"Consider what it would take to notice when an approved decision has stopped being correct." },
+   { test:/traceab|version|control/i, strength:"You connected your answer to version control or traceability.", gap:"Consider how version control and traceability help catch a decision that has quietly gone stale." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The quietly obsolete approval is more dangerous. An open question is visible and demands attention by definition. An old approval that nobody revisits can sit there looking settled long after the underlying source, target or business context has moved on, and nothing forces anyone to notice.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature mapping-control thinking. You understand that settled-looking decisions still need active revisiting.":"You have made a start. Push further into what would actually prompt someone to revisit an old, apparently settled decision."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson and Module 3 summary",type:"content",
+ html:`<p class="lead">Bramwell now has more than a mapping workbook. It has a controlled translation specification that can be explained, built, tested and changed without losing the decisions behind it.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Mapping is a decision set, not just a spreadsheet.</li>
+   <li>Completion, approval and build-readiness are different states and should never be collapsed into one Complete flag.</li>
+   <li>Approval authority should match the specific decision, not default to whoever is available.</li>
+   <li>Open questions need a visible log, not a place in someone's memory of a workshop.</li>
+   <li>A mapping change has a blast radius; ask what depends on the decision, not just what row changed.</li>
+   <li>Control should be proportionate: not every change needs the same level of scrutiny.</li>
+   <li>Version control and traceability let a team explain exactly which decisions produced a migration result.</li>
+ </ul>
+ <div class="visual-card">
+   <div class="visual-title">Across Module 3</div>
+   <ul class="framework-checks">
+     <li><strong>Lesson 1</strong> established that mapping translates business meaning, not merely field names.</li>
+     <li><strong>Lesson 2</strong> turned that understanding into a controlled field-level mapping specification.</li>
+     <li><strong>Lesson 3</strong> defined transformations, defaults, derivations and exception rules.</li>
+     <li><strong>Lesson 4</strong> connected mappings through reference data, relationships and dependencies.</li>
+     <li><strong>Lesson 5</strong> keeps those decisions controlled as they are approved, implemented, tested and changed.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Module principle</strong><br>Every source field gets a decision. Every required target field gets a source or explicit treatment. Every material mapping decision stays traceable as the project changes.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"An analyst edits a mapping workbook cell directly, with no change reference, because 'it is only one row.' What is the risk?",
+   options:[
+     {label:"There is no real risk; editing the workbook is the same as approving the change", correct:false, feedback:"Not quite. Editing a cell does not create authority or propagate the decision anywhere else."},
+     {label:"Other artefacts that depend on the old value, such as ETL, tests or configuration, may now silently disagree with it", correct:true, feedback:"Correct. A mapping change has a blast radius wider than the row itself."},
+     {label:"The risk only matters if the workbook is shared with more than one person", correct:false, feedback:"Not quite. The risk exists regardless of how many people can see the workbook."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A mapping row contains text and looks filled in. What does that alone tell you about its readiness?",
+   options:[
+     {label:"That it is approved and ready to build", correct:false, feedback:"Not quite. Populated, approved and build-ready are different, distinct states."},
+     {label:"Only that someone has proposed something; approval and build-readiness are separate questions", correct:true, feedback:"Correct. 'Mapping 95% complete' can hide rows that are populated but not yet approved."},
+     {label:"That it has already been tested", correct:false, feedback:"Not quite. Testing comes even later in the maturity sequence than approval."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Who should decide whether STANDARD is an acceptable default for a defined customer population?",
+   options:[
+     {label:"The migration developer implementing the load", correct:false, feedback:"Not quite. Implementation authority is not the same as business authority over a default."},
+     {label:"The business data owner", correct:true, feedback:"Correct. Approval should match the decision; this is a business judgement, not a technical one."},
+     {label:"Whichever stakeholder emails the request first", correct:false, feedback:"Not quite. An informal request is not automatically an authorised decision."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Business has Mapping_v7_Final.xlsx, the developer built from v6, and testers used v5_FINAL2. What problem does this illustrate?",
+   options:[
+     {label:"A naming-convention issue with no real consequence", correct:false, feedback:"Not quite. Different people are working from genuinely different sets of decisions."},
+     {label:"Competing truths: without version control, nobody can be sure which decisions produced which result", correct:true, feedback:"Correct. Version control lets a team explain exactly which mapping decisions produced an outcome."},
+     {label:"Nothing; as long as all three files eventually get merged, this is fine", correct:false, feedback:"Not quite. Merging after the fact does not resolve the deeper problem of untracked divergence."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A developer replaces a slow lookup with a faster one that produces identical approved outputs. What is the appropriate level of control?",
+   options:[
+     {label:"Full business reapproval of the underlying mapping decision", correct:false, feedback:"Not quite. The business decision itself has not changed, only its technical implementation."},
+     {label:"Technical testing to confirm the outputs genuinely remain unchanged, without necessarily reapproving the business rule", correct:true, feedback:"Correct. Control should be proportionate to what has actually changed."},
+     {label:"No control at all, since the change is purely technical", correct:false, feedback:"Not quite. Even a purely technical change still needs proof that behaviour is unchanged."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Which is generally the more dangerous risk in a long-running migration programme?",
+   options:[
+     {label:"A mapping decision that is obviously still open and unresolved", correct:false, feedback:"Not quite. An open question at least attracts attention and gets tracked."},
+     {label:"A mapping decision that was approved months ago and has quietly become obsolete", correct:true, feedback:"Correct. Old approvals can create false confidence precisely because nobody is prompted to revisit them."},
+     {label:"Neither poses any real risk once the mapping workbook has been signed off", correct:false, feedback:"Not quite. Sign-off does not make a mapping immune to becoming outdated."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Managing the mapping through approval and change, and Core Module 3.</strong></p>
+ <p>Bramwell now has a controlled translation specification that can be explained, built, tested and changed without losing the decisions behind it. Module 4 moves from specification into execution.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p><strong>Module 4: Staging, ETL &amp; Migration Build.</strong> Lesson 1 begins with designing the migration pipeline.</p>
+ <p>Before moving on, complete the Core Module 3 assessment to confirm what you have learned across all five lessons.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 3",
+  moduleTitle: "Data Mapping",
+  lessonLabel: "Lesson 5: Managing the mapping through approval and change",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Control the consequence, not the keystroke",
+  storageKey: "tp_core3_lesson5_v1",
+  lessonId: "core3-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
