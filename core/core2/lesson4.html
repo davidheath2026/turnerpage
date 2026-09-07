@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Turning data problems into a cleansing plan</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 2 — LESSON 4 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-3 and 5 and the story bible:
+   760 missing payment terms; 94 blank tax classification; 31 key
+   accounts missing delivery address; 108 unrecognised CustomerGroup
+   values; 96 records in duplicate tax-registration findings.
+============================================================== */
+
+const treatmentOptions = [
+  {
+   title:"1. Correct at source",
+   short:"Change the legacy data so the corrected value is available to future extracts",
+   detail:`<p>Best when the source system is still actively maintained, the business can identify the correct value, the same defect would otherwise recur in every extract, and the corrected value matters to current operations as well as migration.</p>
+   <p><strong>Common trap:</strong> running a one-off source cleansing exercise without changing the process that creates the bad data. The next extract then contains new defects.</p>`
+  },
+  {
+   title:"2. Transform during migration",
+   short:"Apply a controlled, documented rule while preparing target data",
+   detail:`<p>Useful for legitimate source-to-target standardisation, or where the source cannot represent the target form. Bramwell storing country as UK while the target expects GB is a normal transformation, not a data-quality fix, provided the mapping is agreed.</p>
+   <p><strong>Turner Page principle:</strong> use migration logic to translate agreed meaning, not to conceal unresolved meaning.</p>`
+  },
+  {
+   title:"3. Enrich",
+   short:"Obtain or derive missing information from another agreed source",
+   detail:`<p>Useful when required target data does not exist in the primary source. Bramwell's Norway delivery workbook, supplying local delivery-zone codes, is an enrichment requirement rather than a simple ERP cleansing defect.</p>
+   <p><strong>Common trap:</strong> calling a spreadsheet "temporary cleansing data" without controlling who can change it, which version is used, or how it matches back to the source population.</p>`
+  },
+  {
+   title:"4. Exclude",
+   short:"Remove records or values from migration under an agreed scope or quality rule",
+   detail:`<p>Appropriate only when exclusion is authorised and dependencies are understood. Bramwell may decide not to migrate obsolete customer records that meet an approved inactivity rule, but the rule, its approver, its reproducibility and its dependencies all need answers first.</p>
+   <p><strong>Turner Page insight:</strong> "we dropped the bad records" is not cleansing. It is an uncontrolled loss of scope unless the exclusion is explicit and approved.</p>`
+  },
+  {
+   title:"5. Accept as an exception",
+   short:"Migrate or retain the issue because the business impact is acceptable",
+   detail:`<p>Requires explicit acceptance where material. An accepted exception should still record what the issue is, which population is affected, why it is being accepted, what business impact remains, and who accepted it.</p>
+   <p><strong>Core principle:</strong> acceptance is a controlled decision, not the absence of a fix.</p>`
+  },
+  {
+   title:"6. Escalate / decide",
+   short:"Hold the treatment open because a business, functional, compliance or scope decision is required",
+   detail:`<p>Correct when the migration team does not have the authority to choose the answer. Bramwell's unresolved CustomerGroup code 99 is exactly this kind of gap: something the team can surface clearly, but not resolve alone.</p>`
+  }
+];
+
+// Section 9 — "Create Bramwell's cleansing plan". The learner chooses
+// a treatment before the suggested plan is revealed. Options are
+// reordered per item so the correct answer's position does not track
+// the item number.
+const treatmentLabels = ["Correct at source", "Transform", "Enrich", "Exclude", "Accept as exception", "Escalate/decide"];
+const cleansingItems = [
+  {
+   q:"760 active customers have no valid payment terms. Account managers can identify the correct terms for most of these customers country by country.",
+   order:[3,0,5,1,4,2], a:0,
+   why:"The business can identify the correct value and the source stays actively maintained, so correcting at source is the strongest treatment, with a controlled mapping used only where a reliable legacy-to-target code rule genuinely exists."
+  },
+  {
+   q:"94 customers have a blank tax classification, and it is not yet clear whether the field is required for every customer type or country.",
+   order:[1,4,0,2,3,5], a:5,
+   why:"Nobody yet knows the applicability rule, and the migration team cannot decide what tax classification law requires. This is an escalate/decide case: a business or tax-owner decision is needed before any correction, transformation or acceptance makes sense."
+  },
+  {
+   q:"31 key accounts have no active delivery address under the current relationship rule, and several are trading again this month.",
+   order:[5,2,4,0,1,3], a:0,
+   why:"These are operationally live accounts. Correcting or obtaining the real address at source, so the current process also benefits, is the strongest first treatment given the operational urgency."
+  },
+  {
+   q:"108 active customers use CustomerGroup values outside the proposed target list. Most are STD, STANDARD with a trailing space, and 99, once analysed by frequency.",
+   order:[2,5,1,4,0,3], a:1,
+   why:"Once the business confirms that STD and STANDARD (with a trailing space) mean the same thing as STANDARD, converting them is a controlled, agreed transformation. The genuinely unknown code, 99, still needs to be escalated separately."
+  },
+  {
+   q:"96 records are involved in duplicate tax-registration-number findings, and it is not yet known whether these are genuine duplicate accounts or valid multi-site relationships.",
+   order:[0,3,5,2,1,4], a:5,
+   why:"The migration team cannot tell a genuine duplicate from a legitimate multi-account relationship on its own. This needs a business review before any exclusion, merge or acceptance is chosen."
+  }
+];
+const cleansingSituations = cleansingItems.map((c, idx) => ({
+  title:`Finding ${idx+1}`,
+  question:c.q,
+  options: c.order.map(li => ({
+    label: treatmentLabels[li],
+    correct: li === c.a,
+    feedback: (li === c.a ? "Correct.<br>" : "Not quite. Think about who actually has the authority to resolve this.<br>") + c.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"We can fix that in ETL",title:"Opening scenario: We can fix that in the migration",type:"mcq",
+ html:`<p class="lead">Bramwell's first customer profile has produced several clear findings.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>No valid payment terms</strong>760</div>
+   <div class="status-card"><strong>Blank tax classification</strong>94</div>
+   <div class="status-card"><strong>Key accounts, no active delivery address</strong>31</div>
+   <div class="status-card"><strong>CustomerGroup outside proposed list</strong>108</div>
+   <div class="status-card"><strong>Records in duplicate tax-number findings</strong>96</div>
+ </div>
+ <div class="quote">"Most of that is easy. Give me the rules and I can clean it in the transformation. No point changing the legacy system this close to go-live."<br><span class="small">Migration developer</span></div>
+ <div class="quote">"No. The business should clean everything in the source so we know the legacy system is correct before migration."<br><span class="small">Customer Services Manager</span></div>
+ <h3>Your decision</h3>
+ <p>Which response is strongest?</p>`,
+ options:[
+ "The developer is right. Migration transformations are the safest place to correct all source-data problems.",
+ "Customer Services is right. Every defect must be corrected in the source before it can be migrated.",
+ "Choose the treatment issue by issue. Understand the cause, target requirement, business impact, ownership, repeatability and timing, then decide whether to correct at source, transform, enrich, exclude, accept or escalate.",
+ "Do nothing until UAT. Business users can identify which problems actually matter when they test the migrated data."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Some controlled corrections belong in migration logic, but hiding unresolved business decisions inside ETL can create poor traceability and repeat the same source problem every cycle.",
+ "The source may be retiring, frozen, externally managed, or incapable of storing the target-required value. Some migration-specific transformations are legitimate.",
+ "Correct. Cleansing is a treatment decision, not a single technique. The right response depends on what is wrong, why it matters and where the most controlled correction can be made.",
+ "UAT should help prove the migration, not become the first serious cleansing exercise. Known issues should already have a treatment plan."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and works through the findings issue by issue rather than picking a single universal answer.</p>
+ <p>For the profile finding "760 of 18,530 active customers have no valid payment term under the current reference list", before deciding what to do, the team needs to know several things.</p>
+ <div class="visual-card">
+   <div class="visual-title">Questions before treatment, not after</div>
+   <ul class="framework-checks">
+     <li>Are the terms genuinely missing, or merely coded differently?</li>
+     <li>Which countries or customer groups are affected?</li>
+     <li>Does the target require a payment term?</li>
+     <li>Is there a reliable rule for deriving one?</li>
+     <li>Can the business correct the source?</li>
+     <li>Will new bad records continue to be created?</li>
+     <li>Who owns the business decision?</li>
+     <li>What happens if the issue remains at cutover?</li>
+   </ul>
+ </div>
+ <p>Answering these for even one finding takes real work. Doing it for all five, rather than reaching for one blanket rule, is what turns a profiling result into an actual plan.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Profiling tells you where the data does not meet an expectation. Cleansing planning decides how, where and by whom that gap will be resolved.</p></div></div>`
+},
+{
+ id:"b3",nav:"Six treatments",title:"The six treatment options",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Most migration data-quality findings can be managed through one or more of six practical treatments. Explore each before moving on.</p>`,
+ items: treatmentOptions,
+ takeawayHtml:`<div class="principle"><strong>Core principle</strong><br>Cleansing does not mean making every source record perfect. It means getting the in-scope data to an agreed, usable state for migration and business operation.</div>`
+},
+{
+ id:"b4",nav:"Choosing correction over exclusion",title:"When correction is strong, and when acceptance is legitimate",type:"content",
+ html:`<p class="lead">Source correction has an important advantage: the improved data flows into later extracts and may benefit the live legacy process before go-live. It is particularly strong when the source system is still actively maintained, the business can identify the correct value, the same defect would otherwise recur in every extract, and the source provides a controlled way to update it.</p>
+ <p>For Bramwell, if the 760 missing payment terms are genuine omissions and account managers can identify the correct terms, correcting them in the live source may be the best treatment.</p>
+ <p>Perfect data is rarely a realistic migration objective, though. Suppose six historical customer records contain a legacy note format that cannot be reproduced exactly in the target. The records are legally retained, the core customer data is valid, and the note is available in the archive. The business may reasonably decide the limitation is acceptable, provided the acceptance is explicit: what the issue is, which population is affected, why it is being accepted, what business impact remains, who accepted it, and whether any workaround exists.</p>
+ <div class="principle"><strong>Core principle</strong><br>Acceptance is a controlled decision, not the absence of a fix.</div>
+ ${TPKit.fromField({
+   title:"The Rule Nobody Owned", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/core2-lesson4-fromfield-farah.mp3",
+   reflection:"Have you seen a data problem quietly patched inside ETL that should really have gone back to the business?"
+ })}`
+},
+{
+ id:"b5",nav:"Build the plan",title:"Build it yourself: create Bramwell's cleansing plan",type:"situations",
+ html:`<p class="lead">Take five of Bramwell's customer findings and propose an initial treatment for each before the suggested plan is revealed.</p>`,
+ items: cleansingSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner has created the first Data Cleansing Plan: finding, affected population, proposed treatment, owner, priority, evidence/action and status. This plan will evolve as the business resolves issues.</p></div></div>`
+},
+{
+ id:"b6",nav:"Prioritise by consequence",title:"Prioritise the plan by consequence, not by count",type:"content",
+ html:`<p class="lead">A list of 200 data-quality issues is not a cleansing strategy. The team needs to know what matters first.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful prioritisation factors</div>
+   <ul class="framework-checks">
+     <li><strong>Business impact:</strong> what process fails or degrades if the issue remains?</li>
+     <li><strong>Migration impact:</strong> will it reject, mis-map, break relationships or prevent reconciliation?</li>
+     <li><strong>Population/concentration:</strong> how many records are affected, and where?</li>
+     <li><strong>Criticality:</strong> does it affect key accounts, financial balances, compliance or operational continuity?</li>
+     <li><strong>Lead time:</strong> does resolution require substantial business investigation or external input?</li>
+     <li><strong>Recurrence:</strong> will new defects continue to appear before cutover?</li>
+     <li><strong>Dependency:</strong> does resolving this issue unblock other objects or mappings?</li>
+   </ul>
+ </div>
+ <p>The 31 missing delivery addresses may therefore outrank hundreds of cosmetic formatting problems.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Prioritise by consequence and lead time, not by whichever issue has the biggest count or loudest stakeholder.</div>`
+},
+{
+ id:"b7",nav:"Ownership and recurrence",title:"Cleansing needs ownership, and fixing the process as well as the records",type:"content",
+ html:`<p class="lead">Migration can identify and track quality problems, but business cleansing often depends on people outside the migration team.</p>
+ <div class="visual-card">
+   <div class="visual-title">What a useful cleansing plan should show</div>
+   <ul class="framework-checks">
+     <li>Issue/finding</li>
+     <li>Defined affected population</li>
+     <li>Business impact</li>
+     <li>Agreed treatment</li>
+     <li>Business decision owner</li>
+     <li>Person/team performing the action</li>
+     <li>Target date or required-by milestone</li>
+     <li>Current status and latest measured count</li>
+   </ul>
+ </div>
+ <p>This makes progress measurable. Instead of "payment terms cleansing is ongoing", the team can report that the affected population has fallen from 760 to 214 under the same reproducible profile.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>If cleansing progress cannot be measured against the same rule that found the issue, "almost done" is just an opinion.</p></div></div>
+ <p>Bramwell cleans all 760 payment-term exceptions. A week later, the profile finds 23 new ones. The cleansing task was completed. The quality problem was not. Ask why new defects can still be created: is a field optional in one entry screen? Does an interface bypass validation? Does a regional process use an obsolete code? Are users copying old records?</p>
+ <div class="principle"><strong>Core principle</strong><br>Record cleansing removes existing defects. Process correction prevents the source from manufacturing replacements.</div>`
+},
+{
+ id:"b8",nav:"Judgement calls",title:"Judgement calls: choosing the treatment",type:"content",
+ html:`<p class="lead">Five situations show why the same-looking issue can need a different answer.</p>
+ <div class="quote">Product colours include GREY, GRAY and GREY with a trailing space. The target uses GREY.</div>
+ <p>If business confirms equivalence, controlled transformation is reasonable. Source correction may also help if the legacy system remains active.</p>
+ <div class="quote">A target-required tax classification is blank for 94 customers and cannot be reliably derived.</div>
+ <p>Do not invent a default. Business or tax ownership must provide or approve the treatment.</p>
+ <div class="quote">400,000 customers have had no activity for 15 years and have no open transactions.</div>
+ <p>This is primarily a scope/retention decision. Exclusion may be appropriate, but only under an agreed rule with dependency and access considerations.</p>
+ <div class="quote">A matching tool says 82 supplier pairs are 97% likely to be duplicates.</div>
+ <p>Use the result to prioritise review, not to merge automatically. Business meaning and transaction dependencies must be considered.</p>
+ <div class="quote">The target requires a new reporting classification that has never existed in the legacy ERP, but Finance has approved a derivation based on two legacy attributes.</div>
+ <p>A controlled migration derivation may be the correct treatment. Document and test the rule rather than forcing an artificial source-system change.</p>
+ <p>AI can be valuable when a profile produces thousands of exceptions: clustering similar free-text values, suggesting likely standardisation groups, or drafting cleansing rules for review. It might suggest that STD, STANDARD and STANDARD with a trailing space should all become STANDARD. That is a useful hypothesis. It is not approval.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to accelerate pattern recognition and propose treatments. Business meaning, acceptable risk and production rules still require human validation and ownership.</p></div></div>`
+},
+{
+ id:"b9",nav:"Reflection",title:"Source problems, or hidden ETL rules?",type:"reflection",
+ html:`<p>Consider two migration projects.</p>
+ <div class="quote">Which would you prefer on a migration project: a source system containing known data-quality problems, or a transformation process containing dozens of rules that silently correct them?</div>
+ <p>Neither is automatically better. The important questions are whether the issues are understood, the treatment is appropriate, the rule is controlled, and the outcome can be explained.</p>
+ <textarea id="reflection" placeholder="I would prefer..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/understood|understand|known|visible/i, strength:"You focused on whether the issue is understood rather than simply hidden.", gap:"Consider whether the issue is genuinely understood, wherever it sits." },
+   { test:/control|govern|approv|agreed/i, strength:"You considered whether the treatment is controlled and approved.", gap:"Consider whether the rule or correction is controlled and properly approved." },
+   { test:/traceab|explain|evidence/i, strength:"You considered whether the outcome can be explained and traced.", gap:"Consider whether someone could explain, later, exactly why the data looks the way it does." },
+   { test:/recur|repeat|process/i, strength:"You considered whether the underlying process would keep creating the same problem.", gap:"Consider whether the source process itself would keep generating the same defect." },
+   { test:/neither|depend|context/i, strength:"You recognised that the right answer depends on context rather than a fixed preference.", gap:"Consider that neither option is automatically better; it depends on the specific case." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Neither is automatically better. I would prefer whichever option is understood, controlled and explainable. A known source issue with a clear owner and plan can be perfectly manageable. A pile of undocumented ETL rules quietly correcting the same problem every cycle is a much bigger risk, even if it looks tidier on the surface.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature judgement. You are resisting the pull of a single universal answer.":"You have made a start. Push further into what would make either option controlled and explainable, rather than picking one as inherently safer."}</div>`
+},
+{
+ id:"b10",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now has a cleansing plan rather than a collection of profiling statistics.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Profiling findings need explicit treatment before they become a cleansing plan.</li>
+   <li>The main treatments are source correction, migration transformation, enrichment, exclusion, accepted exception and escalation/decision.</li>
+   <li>Source correction is strong when the source should remain accurate and can be reliably fixed.</li>
+   <li>Migration transformations are appropriate for agreed translation and standardisation, not hidden business decisions.</li>
+   <li>Enrichment needs controlled sources, ownership and matching rules.</li>
+   <li>Exclusions and accepted exceptions must be explicit and authorised.</li>
+   <li>Cleansing priority should reflect business impact, migration impact, criticality, lead time, recurrence and dependencies.</li>
+   <li>Progress should be measured by rerunning the same profiling rule.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not just find bad data. Decide what should happen to it, who owns the decision, and how you will prove the problem is being reduced.</div>`
+},
+{
+ id:"b11",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"760 missing payment terms could genuinely be fixed at source. What makes source correction the strong choice here?",
+   options:[
+     {label:"It is always the fastest option available", correct:false, feedback:"Not quite. Speed is not the deciding factor; reliability and ongoing benefit are."},
+     {label:"The source stays actively maintained and the business can supply the correct value, so future extracts also benefit", correct:true, feedback:"Correct. Correcting at source stops the same defect recurring in later extracts."},
+     {label:"It avoids the need for any business ownership", correct:false, feedback:"Not quite. Source correction still needs a business owner to identify the right value."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Converting Bramwell's legacy value UK to the target value GB, once the mapping is agreed, is an example of which treatment?",
+   options:[
+     {label:"Exclusion", correct:false, feedback:"Not quite. Nothing is being removed from scope here."},
+     {label:"Transformation", correct:true, feedback:"Correct. This is a controlled, agreed translation of meaning, not a data-quality fix."},
+     {label:"Accepted exception", correct:false, feedback:"Not quite. Nothing here is being tolerated as a residual limitation."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"The migration team cannot decide whether a tax classification can legally be left blank. What should happen?",
+   options:[
+     {label:"The migration team should choose a sensible default", correct:false, feedback:"Not quite. Inventing a default here is exactly the trap to avoid."},
+     {label:"The issue should be escalated for a business or tax-owner decision", correct:true, feedback:"Correct. Some decisions genuinely sit outside the migration team's authority."},
+     {label:"The records should be excluded from migration", correct:false, feedback:"Not quite. Exclusion is a separate decision, not a shortcut around unresolved meaning."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A cleansing task reduces a defect from 760 to 0, but 23 new defects appear the following week. What is the correct reading?",
+   options:[
+     {label:"Cleansing succeeded and the issue is now closed", correct:false, feedback:"Not quite. The record backlog was cleared, but the underlying problem was not."},
+     {label:"The records were cleansed, but the process creating bad data was not fixed", correct:true, feedback:"Correct. Record cleansing and process correction are two different jobs."},
+     {label:"The new 23 records prove the original cleansing was invalid", correct:false, feedback:"Not quite. The original correction can still be valid; the source process is the separate issue."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Which factor should NOT be the main driver of cleansing priority?",
+   options:[
+     {label:"Business and migration impact", correct:false, feedback:"Not quite. These are exactly the right drivers of priority."},
+     {label:"The raw number of affected records alone", correct:true, feedback:"Correct. A small population can carry very high consequence; count alone is not enough."},
+     {label:"Lead time and recurrence", correct:false, feedback:"Not quite. Both genuinely affect how urgently an issue should be tackled."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"What must an accepted exception still include?",
+   options:[
+     {label:"Nothing further, since the issue has been accepted", correct:false, feedback:"Not quite. Acceptance is a controlled decision, not the absence of a record."},
+     {label:"What the issue is, the affected population, the business impact, and who accepted it", correct:true, feedback:"Correct. An accepted exception should remain fully visible, not quietly dropped."},
+     {label:"A commitment to resolve it fully before the next migration cycle", correct:false, feedback:"Not quite. An accepted exception is, by definition, not going to be resolved before then."}
+   ]
+  }
+ ]
+},
+{
+ id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Turning data problems into a cleansing plan.</strong></p>
+ <p>Each important issue now has a proposed treatment, evidence requirement and owner. But a plan does not improve the data by itself.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Driving data quality improvement:</strong> you will learn how migration teams turn a cleansing plan into sustained progress, measure readiness, and deal with business cleansing that is late, disputed or repeatedly creating new defects.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 2",
+  moduleTitle: "Data Profiling & Data Quality",
+  lessonLabel: "Lesson 4: Turning data problems into a cleansing plan",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Decide what should happen to it, and who owns that decision",
+  storageKey: "tp_core2_lesson4_v1",
+  lessonId: "core2-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

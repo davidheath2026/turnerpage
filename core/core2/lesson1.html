@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Discovering the data landscape</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 2 — LESSON 1 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   (three formally documented systems; Norway delivery workbook;
+   SupplierClass.accdb; WarehousePro; FX monthly CSV; LegacyDocs
+   share; OldSales; personal sales tracker with 74 prospects) must
+   stay consistent with Core Module 2 Lessons 2-5 and the story bible.
+============================================================== */
+
+const hiddenSourceTypes = [
+  {
+    title:"Excel workbook",
+    short:"A local classification or process not supported in the ERP",
+    detail:`<p>Someone needed to track something the core system could not, so a workbook grew up around the gap.</p>
+    <p><strong>Migration relevance:</strong> may contain enrichment values or attributes the target actually requires.</p>`
+  },
+  {
+    title:"Access database",
+    short:"A department built a lightweight operational solution",
+    detail:`<p>Often more structured than a spreadsheet, and often just as invisible to the formal architecture.</p>
+    <p><strong>Migration relevance:</strong> may hold authoritative reference or relationship data.</p>`
+  },
+  {
+    title:"CSV upload",
+    short:"An external provider supplies recurring values",
+    detail:`<p>A file lands on a shared drive every month and someone uploads it by hand. It looks routine. It is still a source.</p>
+    <p><strong>Migration relevance:</strong> may be required to recreate target reference or configuration data.</p>`
+  },
+  {
+    title:"Shared folder",
+    short:"Documents or attachments managed separately from the record",
+    detail:`<p>Certificates, agreements and correspondence often live beside the system, not inside it.</p>
+    <p><strong>Migration relevance:</strong> may become its own distinct migration object rather than a field on another one.</p>`
+  },
+  {
+    title:"Old application",
+    short:"The current system only holds part of the history",
+    detail:`<p>A predecessor system is kept running, quietly, because nobody has resolved what should happen to its data.</p>
+    <p><strong>Migration relevance:</strong> may be needed for historical scope or later reconciliation.</p>`
+  },
+  {
+    title:"Manual list",
+    short:"The business manages exceptions outside the system",
+    detail:`<p>A list of overrides, exceptions or workarounds that formal validation would have rejected.</p>
+    <p><strong>Migration relevance:</strong> may reveal cleansing rules, overrides or attributes missing from the primary source.</p>`
+  }
+];
+
+// Section 6 — "Expand Bramwell's landscape". The learner classifies
+// each newly discovered candidate source by migration role before the
+// reasoning is revealed. Options are reordered per item so the correct
+// answer's position does not track the item number.
+const classificationLabels = [
+  "Primary migration source",
+  "Enrichment/reference source",
+  "Validation/reconciliation source",
+  "Archive/reference only",
+  "Out of scope/irrelevant"
+];
+const discoveryItems = [
+  {
+    q:"Norway delivery workbook: contains delivery instructions and local delivery-zone codes for active customers, owned by the Regional Customer Service Manager.",
+    order:[1,0,3,4,2], a:1,
+    why:"The workbook does not create the customer record itself, but the target delivery process needs the local delivery-zone codes it holds. That makes it an enrichment source for customer/delivery data, not a primary source or something to dismiss as irrelevant."
+  },
+  {
+    q:"SupplierClass.accdb: approved supplier classifications maintained by Purchasing in a small Access database, used to decide who Bramwell is allowed to buy from.",
+    order:[3,1,0,2,4], a:1,
+    why:"The primary supplier record still lives in Bramwell ERP. This database supplies an extra attribute, the approved classification, that the target supplier object will need. That is an enrichment role, sitting alongside the ERP as its primary source."
+  },
+  {
+    q:"WarehousePro: a warehouse application that creates product-site-location combinations that do not exist anywhere in the ERP.",
+    order:[2,4,0,1,3], a:0,
+    why:"Product-site-location relationships are their own migration object, and this is the only place they are actually maintained. Nothing else in the landscape can supply them, which makes WarehousePro the primary source for that object."
+  },
+  {
+    q:"Monthly treasury CSV: exchange rates downloaded from the treasury provider and manually uploaded into the ERP.",
+    order:[4,1,3,0,2], a:1,
+    why:"Exchange rates support finance transactions rather than being a business object in their own right. That is a textbook enrichment/reference role, useful to profiling and mapping but not something migrated as a population of its own."
+  },
+  {
+    q:"LegacyDocs share: roughly 240,000 scanned supplier certificates and customer agreements, with ownership currently unclear.",
+    order:[0,2,4,3,1], a:3,
+    why:"Nobody has proposed loading 240,000 scanned documents into the new customer or supplier records. The likely role is archive: access needs to be preserved somewhere, but the documents are not expected to become target data themselves."
+  },
+  {
+    q:"Personal sales tracker: one salesperson's spreadsheet of 74 prospects who are not yet customers and sit outside the agreed ERP customer scope.",
+    order:[2,0,4,1,3], a:4,
+    why:"This one has been discovered, and discovery does not automatically create scope. The 74 prospects fall outside the agreed active-customer population, so unless a business reason changes that, the file is out of scope for this migration."
+  }
+];
+const discoverySituations = discoveryItems.map((d, idx) => ({
+  title:`Discovery ${idx+1}`,
+  question:d.q,
+  options: d.order.map(li => ({
+    label: classificationLabels[li],
+    correct: li === d.a,
+    feedback: (li === d.a ? "Correct.<br>" : "Not quite. Look again at what this source actually supplies.<br>") + d.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"We already know the systems",title:"Opening scenario: We already know the source systems",type:"mcq",
+ html:`<p class="lead">Bramwell Industries has approved the high-level migration scope. The programme architecture shows three legacy systems.</p>
+ <div class="visual-card">
+   <div class="visual-title">The documented architecture</div>
+   <ul class="framework-checks">
+     <li><strong>Bramwell ERP:</strong> finance, purchasing, sales and inventory.</li>
+     <li><strong>Bramwell CRM:</strong> customers, contacts and sales activity.</li>
+     <li><strong>PeopleCore:</strong> employees and organisational data.</li>
+   </ul>
+ </div>
+ <div class="quote">"Good news. Architecture has already documented the legacy landscape, so discovery is basically done. You can start profiling the ERP and CRM extracts."<br><span class="small">Project manager</span></div>
+ <p>During your first two business conversations, however, you hear that:</p>
+ <ul class="framework-checks">
+   <li>the Norway team maintains customer delivery instructions in a shared Excel workbook</li>
+   <li>Purchasing uses a small Access database to manage approved supplier classifications</li>
+   <li>Finance manually uploads monthly exchange-rate files</li>
+   <li>a warehouse application creates product-location combinations that do not exist in the ERP</li>
+   <li>some customer contacts are maintained only in Outlook distribution lists</li>
+ </ul>
+ <h3>Your decision</h3>
+ <p>What should you do next?</p>`,
+ options:[
+ "Ignore the additional sources unless they appear in the formal architecture. The approved system list defines migration scope.",
+ "Start profiling ERP and CRM immediately and add the other sources later if testing shows that data is missing.",
+ "Treat the architecture as a starting hypothesis. Investigate the wider business data landscape, work out which additional sources affect in-scope target data or processes, and record the evidence and ownership.",
+ "Add every spreadsheet, database and local application to migration scope so nothing can be missed."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Architecture diagrams are valuable, but they are usually designed to show systems, not every operational data source. Important migration data can live outside the formal application landscape.",
+ "Testing will expose some omissions, but waiting until then means mappings, build and test preparation may already be based on an incomplete landscape.",
+ "Correct. Start with existing documentation, then verify it through business and technical discovery. Additional sources only become migration-relevant once their relationship to scope and target requirements is understood.",
+ "A source can be relevant without becoming a migration source. Some files may inform cleansing, provide reference values, support reconciliation or reveal a business process without needing to be loaded."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose you take option C: treat the architecture as a hypothesis, not a conclusion.</p>
+ <p>Over the next few days you follow up on each conversation rather than filing it as background colour.</p>
+ <div class="visual-card">
+   <div class="visual-title">What each lead turns out to mean</div>
+   <ul class="framework-checks">
+     <li><strong>Norway delivery workbook:</strong> the only place local delivery-zone codes exist for active customers. The target delivery process cannot run without them.</li>
+     <li><strong>SupplierClass.accdb:</strong> Purchasing will not approve a supplier for payment without checking it first. It quietly gates a live business process.</li>
+     <li><strong>Monthly treasury CSV:</strong> the source of every exchange rate Finance currently relies on. No exchange rate, no accurate multi-currency transaction.</li>
+     <li><strong>WarehousePro:</strong> generates product-location combinations the ERP has never heard of. Some target inventory processes would fail silently without them.</li>
+     <li><strong>Outlook distribution lists:</strong> the only record of some customer contacts, held entirely outside any system with a backup or an owner.</li>
+   </ul>
+ </div>
+ <p>None of this proves that all five belong in migration scope. It proves that the three-system architecture was never a complete description of Bramwell's data landscape, and that finding this out now is considerably cheaper than finding it out during test cycle one.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The documented architecture tells you where applications sit. It does not tell you where the business currently keeps the information it depends on.</p></div></div>`
+},
+{
+ id:"b3",nav:"Two landscapes",title:"The documented landscape and the real landscape",type:"content",
+ html:`<p class="lead">Most programmes already have useful documentation: architecture diagrams, application inventories, interface lists, process maps and scope documents. Use them. Do not confuse them with a complete description of how the business actually creates and maintains data.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the real landscape often contains</div>
+   <ul class="framework-checks">
+     <li>Core enterprise applications</li>
+     <li>Satellite or specialist applications</li>
+     <li>Local databases</li>
+     <li>Spreadsheets and CSV files</li>
+     <li>Manual uploads and downloads</li>
+     <li>Shared folders</li>
+     <li>Third-party platforms</li>
+     <li>Interfaces that transform or enrich data</li>
+     <li>Historical systems kept for reference</li>
+     <li>Business-maintained lists outside formal IT ownership</li>
+   </ul>
+ </div>
+ <p>Discovery is not best begun by opening a profiling tool. The first job is to establish the landscape and the people who understand it, using questions rather than queries.</p>
+ <div class="visual-card">
+   <div class="visual-title">Discovery questions that come before any tool</div>
+   <ul class="framework-checks">
+     <li><strong>Business process:</strong> which processes will the target need to perform on day one?</li>
+     <li><strong>Data:</strong> what information does each process depend on?</li>
+     <li><strong>Systems:</strong> where is that information currently created, maintained and consumed?</li>
+     <li><strong>Ownership:</strong> who understands and owns the data?</li>
+     <li><strong>Alternatives:</strong> is any part of it maintained outside the main system?</li>
+     <li><strong>Interfaces:</strong> does another application alter, enrich or replicate it?</li>
+     <li><strong>History:</strong> has the system or process changed over time?</li>
+     <li><strong>Access:</strong> how can the data be extracted, and how often?</li>
+     <li><strong>Scope:</strong> which populations are relevant to the agreed migration scope?</li>
+     <li><strong>Evidence:</strong> what documentation, extracts or examples can verify what people tell us?</li>
+   </ul>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Treating a signed-off architecture pack as proof that the data landscape is fully understood. A diagram shows systems. It rarely shows every operational habit built up around them.</p></div>
+ <div class="principle"><strong>Core principle</strong><br>Discovery combines documentation, conversations and data evidence. None of the three is sufficient on its own.</div>`
+},
+{
+ id:"b4",nav:"Follow the process",title:"Follow the business process to find the data",type:"content",
+ html:`<p class="lead">Suppose the project scope says "migrate open sales orders". It is tempting to search the ERP for an order header and order-line table and declare the source discovered. Instead, follow the process.</p>
+ <div class="visual-card">
+   <div class="visual-title">What a usable open sales order actually depends on</div>
+   <ul class="framework-checks">
+     <li>Customer and delivery address</li>
+     <li>Product</li>
+     <li>Unit of measure</li>
+     <li>Warehouse or site</li>
+     <li>Price or discount references</li>
+     <li>Salesperson</li>
+     <li>Currency</li>
+     <li>Tax configuration</li>
+     <li>Payment terms</li>
+     <li>Order status and fulfilment state</li>
+   </ul>
+ </div>
+ <p>Now ask where each dependency is actually maintained. At Bramwell, that question reveals that warehouse assignments are generated in WarehousePro, and some delivery instructions are held in the Norway workbook, neither of which appears on the architecture diagram.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page technique</div><p>Start with an in-scope business object, follow its dependencies through the business process, then trace those dependencies back to their real sources.</p></div></div>
+ <p>This is often more effective than asking a broad question such as "are there any other systems?" People do not always think of a spreadsheet or a manual file as a system.</p>
+ ${TPKit.fromField({
+   title:"The Referral List Nobody Diagrammed", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/core2-lesson1-fromfield-priya.mp3",
+   reflection:"Has a source outside the official architecture ever turned out to matter more than the diagram suggested?"
+ })}`
+},
+{
+ id:"b5",nav:"Six hidden sources",title:"Six familiar shapes of hidden source",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Hidden sources are not necessarily secret or badly managed. They are often perfectly normal responses to gaps between formal systems and operational needs. Explore each shape before moving on.</p>`,
+ items: hiddenSourceTypes,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>The objective is not to condemn these sources. It is to understand what role each one plays and whether that role matters to the migration.</div>`
+},
+{
+ id:"b6",nav:"Expand the landscape",title:"Build it yourself: expand Bramwell's landscape",type:"situations",
+ html:`<p class="lead">You begin with the three systems from the architecture diagram. Interviews and document review reveal six further candidate sources. For each one, decide how you would classify it before the reasoning is revealed.</p>`,
+ items: discoverySituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Discover broadly. Classify deliberately. Migrate only what the agreed scope and target requirements justify.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>None of these six sources was condemned or automatically approved. Each was assessed on what it actually supplies to the target.</div>`
+},
+{
+ id:"b7",nav:"Classify and own",title:"Not every discovered source becomes a migration source, and ownership is part of discovery",type:"content",
+ html:`<p class="lead">Discovery should be broad. Migration scope should still be controlled. Bramwell's personal sales tracker has been discovered. Its 74 prospects, outside the agreed active-customer population, do not automatically belong in scope simply because the file now has a name.</p>
+ <div class="visual-card">
+   <div class="visual-title">Five classifications for a discovered source</div>
+   <ul class="framework-checks">
+     <li><strong>Primary migration source:</strong> supplies records or attributes that will be loaded to the target.</li>
+     <li><strong>Enrichment/reference source:</strong> provides values used to complete or transform migration data.</li>
+     <li><strong>Validation/reconciliation source:</strong> provides evidence used to check migrated results.</li>
+     <li><strong>Archive/reference only:</strong> must remain accessible but is not loaded into the target.</li>
+     <li><strong>Out of scope/irrelevant:</strong> does not affect agreed migration scope or required target processes.</li>
+   </ul>
+ </div>
+ <p>Finding data without finding someone who can explain it leaves a major gap. For each important source, the team needs people who can answer different kinds of question.</p>
+ <div class="visual-card">
+   <div class="visual-title">Whose knowledge does the team actually need?</div>
+   <ul class="framework-checks">
+     <li><strong>What the fields and values mean:</strong> a business subject-matter expert or data steward.</li>
+     <li><strong>Which records are valid or obsolete:</strong> a business or data owner.</li>
+     <li><strong>How the application stores and extracts data:</strong> a technical or application specialist.</li>
+     <li><strong>How the target process should work:</strong> a functional or system consultant.</li>
+     <li><strong>Whether a business rule is acceptable:</strong> an accountable business owner.</li>
+   </ul>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Recording the person who can extract the data as the person authorised to decide what the data should mean. Technical knowledge does not automatically confer authority over business meaning.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A source without an identified, knowledgeable owner is itself a migration risk.</p></div></div>`
+},
+{
+ id:"b8",nav:"Judgement calls",title:"Judgement calls: evidence over confident recollection",type:"content",
+ html:`<p class="lead">Discovery conversations often contain statements such as "we stopped using that system years ago" or "all active customers are in ERP". Treat these as useful leads, not proven facts.</p>
+ <div class="visual-card">
+   <div class="visual-title">What counts as evidence</div>
+   <ul class="framework-checks">
+     <li>Recent record counts</li>
+     <li>Sample extracts</li>
+     <li>Last-updated dates</li>
+     <li>Interface logs</li>
+     <li>File modification history</li>
+     <li>System usage information</li>
+     <li>Queries showing populated values</li>
+     <li>Comparison across entities or countries</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Discovery converts assumptions into evidence. The more important the assumption, the stronger the evidence should be.</div>
+ <p>None of this requires distrusting stakeholders. People describe the process they know. Data often reveals exceptions, historical behaviour and local variations that no individual sees end to end. Four situations show why:</p>
+ <div class="quote">A manager says an old customer database is no longer used. IT shows it received 12,000 updates last month.</div>
+ <p>Do not decide from either statement alone. Establish what the updates are, which process creates them, whether the data affects in-scope customers, and who understands the application.</p>
+ <div class="quote">A workbook contains only 38 rows, while the ERP has millions of records. The project manager says it is too small to matter.</div>
+ <p>Volume does not determine criticality. If those 38 rows define valid tax, status or routing rules, they may affect a very large migrated population.</p>
+ <div class="quote">The UK and Norway both use the same ERP instance, so the team assumes one discovery exercise covers both.</div>
+ <p>Check configuration, local processes, code usage, external files and business practices. A shared application does not guarantee a shared data landscape.</p>
+ <div class="quote">A critical Access database feeds supplier classifications, but the person who created it left Bramwell two years ago.</div>
+ <p>Treat ownership and knowledge loss as a risk in its own right. Find current users, inspect the data and process, identify technical support, and establish who can now own the business decisions.</p>`
+},
+{
+ id:"b9",nav:"AI and discovery",title:"AI can help search the landscape, but context still matters",type:"content",
+ html:`<p class="lead">AI can support discovery when the team has large amounts of documentation, schema information or interview notes.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Extracting candidate system and data-object names from workshop notes</li>
+     <li>Comparing schemas or file headers for similarities</li>
+     <li>Suggesting questions based on missing ownership or unexplained dependencies</li>
+     <li>Grouping repeated issues from discovery notes</li>
+   </ul>
+ </div>
+ <p>But AI can only reason from the material it receives. If nobody mentions SupplierClass.accdb, an AI summary of the architecture pack cannot magically know that Purchasing depends on it.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>AI can accelerate discovery analysis. It cannot replace talking to the people who run the business or inspecting the evidence they reveal.</p></div></div>
+ <p>Absolute completeness is difficult to prove, and new information can emerge later in any migration. A practical discovery checkpoint is stronger when each in-scope domain has candidate sources, key dependencies have been traced, peripheral sources have been investigated, owners are recorded, and unknowns are visible rather than hidden.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Calling discovery complete because the workshop calendar is complete. Meetings are activities. Understanding is the outcome.</p></div>`
+},
+{
+ id:"b10",nav:"Reflection",title:"Where would you look?",type:"reflection",
+ html:`<p>Think of an organisation you know.</p>
+ <div class="quote">Where would you look for important business data that might not appear on the official architecture diagram?</div>
+ <p>Consider departmental spreadsheets, shared drives, manual upload files, local databases, old systems, third-party portals, and personal or team-maintained lists. A strong answer does more than name a hidden source: it explains which business process it supports and why the target might depend on the information it contains.</p>
+ <textarea id="reflection" placeholder="I would look at..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/spreadsheet|workbook|excel/i, strength:"You considered spreadsheets or workbooks maintained outside the formal system.", gap:"Consider departmental spreadsheets that quietly carry business logic no system was built to hold." },
+   { test:/shared (drive|folder)|drive/i, strength:"You considered shared drives or folders as a source of migration-relevant material.", gap:"Consider shared drives or folders that hold documents, attachments or lists nobody formally owns." },
+   { test:/manual|upload|access database|database/i, strength:"You considered manually maintained files or local databases.", gap:"Consider manual uploads or small local databases departments build to cover a gap in the core system." },
+   { test:/old|legacy|historical|predecessor/i, strength:"You considered older or historical systems kept for reference.", gap:"Consider old or predecessor systems kept running only for part of the history." },
+   { test:/process|depend|business/i, strength:"You connected the hidden source to a specific business process it supports.", gap:"Go further: explain which business process depends on the hidden source, not just that it exists." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would look at spreadsheets used by regional teams for local rules the core system does not support, shared drives holding documents tied to a business record, small departmental databases built to cover an operational gap, and predecessor systems still consulted for history. For each one, I would ask which business process depends on it and who could confirm its meaning.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is a genuinely useful discovery instinct. You are already asking what a hidden source supports, not just where it sits.":"You have made a start. Push further into naming the actual business process a hidden source would support, and who could confirm what it means."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's official three-system architecture has already expanded into a much richer data landscape.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Existing architecture and system documentation are valuable starting points, not proof that the data landscape is complete.</li>
+   <li>The real data landscape includes formal systems, peripheral applications, files, interfaces and locally maintained sources.</li>
+   <li>Discovery should begin with business processes, data dependencies and ownership, then use tools and extracts to test what has been learned.</li>
+   <li>Hidden sources are not automatically bad and do not automatically belong in migration scope.</li>
+   <li>Discovered sources should be classified by their migration role.</li>
+   <li>Important source claims should be supported by evidence rather than confident recollection alone.</li>
+   <li>Ownership and knowledge gaps are part of the migration risk landscape.</li>
+   <li>Discovery is mature enough to move on once assumptions and gaps are visible, not once every unknown has vanished.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not migrate the landscape shown on the diagram. Discover the landscape the business actually uses.</div>`
+},
+{
+ id:"b12",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"An architecture diagram shows three systems. What is the safest way to treat that diagram?",
+   options:[
+     {label:"As proof that discovery is complete", correct:false, feedback:"Not quite. Architecture diagrams show systems, not every operational habit built around them."},
+     {label:"As a starting hypothesis to verify through conversation and evidence", correct:true, feedback:"Correct. Documentation, conversations and evidence each contribute something the others cannot."},
+     {label:"As irrelevant, since only interviews matter", correct:false, feedback:"Not quite. Documentation is a genuinely useful starting point, just not a complete one."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A departmental Access database has no identified owner. What does this represent?",
+   options:[
+     {label:"A minor inconvenience with no real consequence", correct:false, feedback:"Not quite. A source nobody can explain is a real migration risk, not a paperwork gap."},
+     {label:"A migration risk in its own right", correct:true, feedback:"Correct. A source without a knowledgeable owner is itself a risk, whatever the data inside it turns out to be."},
+     {label:"Evidence that the database should be excluded from discovery", correct:false, feedback:"Not quite. Missing ownership is a reason to investigate harder, not a reason to stop looking."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Which best describes an 'enrichment' source?",
+   options:[
+     {label:"It supplies the primary record that will be loaded to the target", correct:false, feedback:"Not quite. That describes a primary migration source."},
+     {label:"It provides values used to complete or transform migration data", correct:true, feedback:"Correct. Enrichment sources support other data rather than being loaded as a population of their own."},
+     {label:"It must remain accessible but is never loaded into the target", correct:false, feedback:"Not quite. That describes an archive/reference-only source."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A source has been discovered and confirmed to exist. What follows automatically?",
+   options:[
+     {label:"It must be migrated, since it has now been found", correct:false, feedback:"Not quite. Discovery and migration scope are different questions."},
+     {label:"Nothing yet. Discovery is broad; migration scope is controlled separately", correct:true, feedback:"Correct. A discovered source still needs to be classified before any scope decision follows."},
+     {label:"It should be treated as irrelevant unless it appears in the architecture pack", correct:false, feedback:"Not quite. Plenty of migration-relevant sources sit outside the formal architecture."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"'Nobody uses that spreadsheet any more.' What is the strongest response?",
+   options:[
+     {label:"Accept the statement and move on", correct:false, feedback:"Not quite. Confident recollection is a lead, not proof."},
+     {label:"Look for evidence such as usage data, modification history or recent extracts", correct:true, feedback:"Correct. Evidence should scale with how important the assumption is."},
+     {label:"Assume the opposite is true and add it to scope regardless", correct:false, feedback:"Not quite. The answer is to check, not to guess in either direction."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"How would you know discovery is mature enough to move into detailed inventory work?",
+   options:[
+     {label:"Every workshop on the calendar has taken place", correct:false, feedback:"Not quite. Meetings are activities. Understanding is the outcome that actually matters."},
+     {label:"Candidate sources, dependencies, owners and unknowns are visible, even if some remain open", correct:true, feedback:"Correct. Discovery does not need to be perfect, only sufficiently visible to build on."},
+     {label:"No new source has been mentioned for two weeks", correct:false, feedback:"Not quite. Silence is not the same as completeness."}
+   ]
+  }
+ ]
+},
+{
+ id:"b13",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Discovering the data landscape.</strong></p>
+ <p>Bramwell's official three-system architecture has already expanded into a much richer data landscape. Some newly discovered sources may feed migration, some may support validation or archive requirements, and some may prove irrelevant.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building the data inventory:</strong> the next job is to turn discovery into a controlled inventory. You will capture what has been found, identify the data objects within each source, record ownership and volumes, and create a working foundation for profiling and migration scope.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 2",
+  moduleTitle: "Data Profiling & Data Quality",
+  lessonLabel: "Lesson 1: Discovering the data landscape",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Do not migrate the landscape shown on the diagram",
+  storageKey: "tp_core2_lesson1_v1",
+  lessonId: "core2-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

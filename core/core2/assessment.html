@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turner Page | Core Module 2 Assessment</title>
+<style>
+:root{
+  --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
+  --mist:#f3f9f9; --paper:#fff; --line:#d8e9e9; --good:#0b7d5b; --warn:#a05a08;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);color:var(--ink);line-height:1.6}
+.topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.topbar-inner{max-width:1120px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:22px}
+.logo{height:44px;width:auto}.brand{flex:1}.brand strong{display:block}.brand span{font-size:12px;color:#61787d}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:width .3s ease}
+.page{max-width:840px;margin:36px auto 80px;padding:0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(24px,5vw,48px);box-shadow:var(--shadow)}
+.kicker{color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+h1{margin:8px 0 12px;font-size:clamp(28px,4vw,38px);line-height:1.12;letter-spacing:-.02em}
+h2{margin:0 0 18px;font-size:22px;line-height:1.35}
+.lead{max-width:680px;color:#405b62;font-size:17px}
+.qstep{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:800;margin-bottom:10px}
+.options{display:grid;gap:11px;margin:18px 0}
+.option{display:flex;align-items:flex-start;gap:12px;width:100%;border:1px solid var(--line);background:white;border-radius:16px;padding:15px;text-align:left;color:var(--ink);cursor:pointer;font:inherit;transition:.15s}
+.option:hover{border-color:var(--teal)}
+.option.selected{border:2px solid var(--teal);background:#edfafa}
+.badge{min-width:28px;height:28px;border-radius:50%;background:#e3f3f3;color:var(--deep);display:grid;place-items:center;font-weight:900;font-size:13px;flex-shrink:0}
+.matching-row{border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;background:#fbfefe}
+.matching-row p{margin:0 0 10px;font-weight:600}
+select{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);font:inherit;background:#fff;color:var(--ink)}
+.order-list{list-style:none;padding:0;margin:18px 0;display:grid;gap:10px}
+.order-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px 16px;background:#fbfefe}
+.order-item .pos{min-width:26px;height:26px;border-radius:50%;background:var(--deep);color:#fff;display:grid;place-items:center;font-weight:900;font-size:12px;flex-shrink:0}
+.order-item .txt{flex:1}
+.order-item .arrows{display:flex;gap:6px}
+.order-item button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-weight:900;color:var(--deep)}
+.order-item button:disabled{opacity:.3;cursor:not-allowed}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:30px}
+button.nav-btn{border:0;border-radius:13px;padding:13px 22px;font-weight:850;cursor:pointer;font-size:15px}
+.primary{background:var(--deep);color:#fff}
+.primary:disabled{background:#b9d4d4;cursor:not-allowed}
+.secondary{background:#e7f5f5;color:var(--deep)}
+.secondary:disabled{opacity:.4;cursor:not-allowed}
+.result-banner{border-radius:20px;padding:26px;margin:0 0 26px;text-align:center}
+.result-banner.pass{background:linear-gradient(135deg,#0b7d5b,#0ea87a);color:#fff}
+.result-banner.fail{background:linear-gradient(135deg,#a05a08,#c98420);color:#fff}
+.result-banner .score{font-size:44px;font-weight:900;margin:6px 0}
+.review-item{border:1px solid var(--line);border-radius:18px;padding:18px 20px;margin-bottom:14px;background:#fbfefe}
+.review-item h3{margin:0 0 8px;font-size:16px}
+.review-item .tag{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:4px 10px;margin-bottom:10px}
+.tag.correct{background:#e3f6ee;color:var(--good)}
+.tag.incorrect{background:#fdecec;color:#a3372f}
+.mentor-tip{background:linear-gradient(135deg,#005f6c,#0b7f8e);color:#fff;border-radius:16px;padding:16px 18px;margin-top:10px;font-size:14.5px}
+.mentor-tip strong{color:#a9eeee}
+.promise{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);color:#647d82;text-align:center;font-size:13px}
+.hidden{display:none}
+@media(max-width:640px){
+  .actions{flex-direction:column-reverse}.actions button{width:100%}
+  .topbar-inner{padding:10px 14px}.logo{height:36px}.brand span{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="/index.html" aria-label="Return to home"><img class="logo" src="/assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="brand"><strong>Turner Page Academy</strong><span>Core Module 2: Data Profiling &amp; Data Quality</span></div>
+  </div>
+  <div class="progress-shell"><div id="topProgress" class="progress-bar"></div></div>
+</header>
+
+<main class="page">
+  <section class="card" id="quizCard">
+    <div class="kicker">Module assessment</div>
+    <h1>Core Module 2 Certification Assessment</h1>
+    <p class="lead">Ten questions covering all five lessons: discovery, inventory, profiling, cleansing planning and quality improvement. You need 8 out of 10 to pass. Answer each question to unlock the next.</p>
+
+    <div id="quizArea"></div>
+
+    <div class="actions">
+      <button id="backBtn" class="nav-btn secondary" type="button">Back</button>
+      <button id="nextBtn" class="nav-btn primary" type="button">Next</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="resultCard">
+    <div id="resultBanner"></div>
+    <h2>Review your answers</h2>
+    <div id="reviewArea"></div>
+    <div class="actions">
+      <button id="retryBtn" class="nav-btn secondary" type="button">Retry the assessment</button>
+      <button id="finishBtn" class="nav-btn primary" type="button">Return to course home</button>
+    </div>
+  </section>
+
+  <div class="promise">
+    <strong>The Turner Page Promise</strong><br>
+    Professional data migration training and certification.
+  </div>
+</main>
+
+<!-- Loaded only for the shared TPKit.recordProgress/getProgress helpers.
+     This page does not use TPKit.mount() or any lesson block type; it
+     is its own self-contained quiz engine per tp-html-build-guide.md
+     §10, rescoped to module level per §12.1: this file's only job is
+     to record a pass/fail + score for Core Module 2, nothing more.
+     Certificate issuance is a separate, not-yet-built tier page. -->
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+const MODULE_ID = "core2";
+const PASS_MARK = 8; // out of 10 — hardcoded, matches current site-wide convention
+
+/* ==============================================================
+   QUESTIONS. Four types, matching the established assessment
+   engine: single, multi, matching, ordering. Scoring is all-or-
+   nothing per question, per the established convention:
+     single    — correct if the selected index matches correctIndex
+     multi     — correct only if the selected set exactly equals
+                 the set of options flagged correct:true
+     matching  — correct only if every situation is matched to its
+                 correctRole index
+     ordering  — correct only if the full sequence matches
+                 correctOrder exactly
+============================================================== */
+const questions = [
+{
+  type:"single",
+  prompt:"Bramwell's architecture diagram shows three systems, but interviews reveal several more. What is the safest way to treat the diagram?",
+  options:[
+    {label:"As proof that discovery is complete", correct:false},
+    {label:"As a starting hypothesis, to be verified through business conversations and evidence", correct:true},
+    {label:"As irrelevant, since only interviews matter", correct:false},
+    {label:"As a complete list of every data source Bramwell has", correct:false}
+  ],
+  mentorTip:"Documentation, conversations and evidence each contribute something the others cannot. None of the three is sufficient alone."
+},
+{
+  type:"single",
+  prompt:"A critical Access database has no identified owner; the person who built it left the company two years ago. What does this represent?",
+  options:[
+    {label:"A minor inconvenience with no real consequence", correct:false},
+    {label:"A migration risk in its own right, whatever the data inside it turns out to be", correct:true},
+    {label:"Evidence that the database should be dropped from discovery", correct:false},
+    {label:"Proof that the data itself must be poor quality", correct:false}
+  ],
+  mentorTip:"A source without a knowledgeable owner is itself a migration risk. Finding current users and re-establishing ownership comes before judging the data."
+},
+{
+  type:"multi",
+  prompt:"Select every field that belongs in a strong migration data inventory row.",
+  options:[
+    {label:"Business owner", correct:true},
+    {label:"Volume, with its definition and date", correct:true},
+    {label:"Server name and connection string only", correct:false},
+    {label:"Current scope status (proposed, confirmed, under review)", correct:true},
+    {label:"Every physical column in the source table", correct:false}
+  ],
+  mentorTip:"A strong inventory records enough to drive the next migration decision: owner, defined volume and scope status. It should not become a technical table catalogue."
+},
+{
+  type:"single",
+  prompt:"Why is the row 'Bramwell ERP: in scope' too broad for a migration data inventory?",
+  options:[
+    {label:"It hides the different populations, owners, volumes and treatments that actually exist inside that one system", correct:true},
+    {label:"It uses the wrong technical terminology", correct:false},
+    {label:"Bramwell ERP is not actually in migration scope", correct:false},
+    {label:"A system-level row is always the correct level of detail", correct:false}
+  ],
+  mentorTip:"Inventory at the level at which migration decisions are actually made: the business object or population, not the application name."
+},
+{
+  type:"matching",
+  prompt:"Match each profiling question to the lens of the Turner Page Profiling Lens it belongs to.",
+  roles:["Population","Completeness","Uniqueness","Validity","Distribution","Relationships"],
+  situations:[
+    {q:"How many active customers exist in each country?", correctRole:0},
+    {q:"Are CustomerID values genuinely unique?", correctRole:2},
+    {q:"Do all key accounts have at least one active delivery address?", correctRole:5},
+    {q:"Which CustomerGroup values are actually used, including rare or unexpected ones?", correctRole:4}
+  ],
+  mentorTip:"Population asks how much data exists; uniqueness asks whether a supposed key really is one; relationships asks whether dependencies hold; distribution asks how values are actually used across the population."
+},
+{
+  type:"single",
+  prompt:"A field is populated on 100% of active customer records. What does that tell you on its own?",
+  options:[
+    {label:"That the field is definitely correct and fit for the target process", correct:false},
+    {label:"Only that no value is missing; distribution may still reveal a meaning problem", correct:true},
+    {label:"That every value in the field is unique", correct:false},
+    {label:"That the field can be safely ignored during profiling", correct:false}
+  ],
+  mentorTip:"A field can be 100% complete and still be unusable. Distribution reveals meaning that a null count cannot."
+},
+{
+  type:"single",
+  prompt:"760 customers are missing valid payment terms. Account managers can reliably supply the correct terms, and the source system remains actively maintained. What is the strongest first treatment?",
+  options:[
+    {label:"Correct at source", correct:true},
+    {label:"Exclude the affected customers from migration", correct:false},
+    {label:"Accept the gap as an exception", correct:false},
+    {label:"Escalate for a business decision before doing anything else", correct:false}
+  ],
+  mentorTip:"When the source is actively maintained and the business can identify the correct value, correcting at source is the strongest treatment: it also benefits every future extract."
+},
+{
+  type:"multi",
+  prompt:"Select every option that is one of the six established cleansing treatments.",
+  options:[
+    {label:"Correct at source", correct:true},
+    {label:"Transform during migration", correct:true},
+    {label:"Ignore until user acceptance testing", correct:false},
+    {label:"Enrich from another agreed source", correct:true},
+    {label:"Automatically merge duplicate candidates without business review", correct:false},
+    {label:"Escalate for a decision", correct:true}
+  ],
+  mentorTip:"The six treatments are correct at source, transform, enrich, exclude, accept as an exception, and escalate/decide. Waiting for UAT or merging automatically are exactly the shortcuts the lesson warns against."
+},
+{
+  type:"ordering",
+  prompt:"Put the core steps of the data quality improvement loop into the correct order.",
+  items:["Correct","Profile","Reprofile","Assign","Prioritise"],
+  correctOrder:[1,4,3,0,2],
+  mentorTip:"Profile, prioritise, assign, correct, reprofile. Skipping the reprofile step is how a team ends up reporting activity instead of evidence."
+},
+{
+  type:"single",
+  prompt:"A cleansing backlog falls sharply, but new defects keep appearing at a similar rate every week. What must the team track in addition to the shrinking backlog?",
+  options:[
+    {label:"Nothing further; a shrinking backlog is sufficient evidence of success", correct:false},
+    {label:"The flow of new defects being created, not just the stock of old ones being cleared", correct:true},
+    {label:"Only the total record count in the source system", correct:false},
+    {label:"Whether the project status report says green or red", correct:false}
+  ],
+  mentorTip:"Data quality can improve while the process creating bad data remains broken. Track both the stock of existing defects and the flow of new ones."
+}
+];
+
+/* ==============================================================
+   ENGINE
+============================================================== */
+let current = 0;
+let answers = new Array(questions.length).fill(null);
+let orderState = {}; // per-question working order for "ordering" type
+
+const quizArea = document.getElementById("quizArea");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+const topProgress = document.getElementById("topProgress");
+
+function isAnswered(i){
+  const a = answers[i];
+  const q = questions[i];
+  if(q.type === "single") return a !== null && a !== undefined;
+  if(q.type === "multi") return Array.isArray(a) && a.length > 0;
+  if(q.type === "matching") return Array.isArray(a) && a.length === q.situations.length && a.every(v => v !== null && v !== undefined);
+  if(q.type === "ordering") return true; // an order always exists once rendered
+  return false;
+}
+
+function renderSingle(q, i){
+  const wrap = document.createElement("div"); wrap.className = "options";
+  q.options.forEach((opt, j) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "option" + (answers[i] === j ? " selected" : "");
+    btn.innerHTML = `<span class="badge">${String.fromCharCode(65+j)}</span><span>${opt.label}</span>`;
+    btn.onclick = () => { answers[i] = j; render(); };
+    wrap.appendChild(btn);
+  });
+  quizArea.appendChild(wrap);
+}
+
+function renderMulti(q, i){
+  if(!Array.isArray(answers[i])) answers[i] = [];
+  const wrap = document.createElement("div"); wrap.className = "options";
+  q.options.forEach((opt, j) => {
+    const chosen = answers[i].includes(j);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "option" + (chosen ? " selected" : "");
+    btn.innerHTML = `<span class="badge">${chosen ? "\u2713" : "+"}</span><span>${opt.label}</span>`;
+    btn.onclick = () => {
+      const s = new Set(answers[i]);
+      s.has(j) ? s.delete(j) : s.add(j);
+      answers[i] = [...s];
+      render();
+    };
+    wrap.appendChild(btn);
+  });
+  quizArea.appendChild(wrap);
+  quizArea.insertAdjacentHTML("beforeend", `<p class="qstep">Select every option that applies</p>`);
+}
+
+function renderMatching(q, i){
+  if(!Array.isArray(answers[i])) answers[i] = new Array(q.situations.length).fill(null);
+  q.situations.forEach((s, j) => {
+    const row = document.createElement("div"); row.className = "matching-row";
+    const p = document.createElement("p"); p.textContent = s.q;
+    row.appendChild(p);
+    const sel = document.createElement("select");
+    sel.insertAdjacentHTML("beforeend", `<option value="" disabled ${answers[i][j]===null?"selected":""}>Choose the matching lens...</option>`);
+    q.roles.forEach((role, k) => {
+      sel.insertAdjacentHTML("beforeend", `<option value="${k}" ${answers[i][j]===k?"selected":""}>${role}</option>`);
+    });
+    sel.onchange = (e) => { answers[i][j] = parseInt(e.target.value, 10); render(); };
+    row.appendChild(sel);
+    quizArea.appendChild(row);
+  });
+}
+
+function renderOrdering(q, i){
+  if(!orderState[i]) orderState[i] = q.items.map((_, idx) => idx); // initial scrambled order = item order as given
+  const order = orderState[i];
+  const list = document.createElement("ul"); list.className = "order-list";
+  order.forEach((itemIdx, pos) => {
+    const li = document.createElement("li"); li.className = "order-item";
+    li.innerHTML = `<span class="pos">${pos+1}</span><span class="txt">${q.items[itemIdx]}</span>
+      <span class="arrows">
+        <button type="button" data-dir="up" ${pos===0?"disabled":""}>&uarr;</button>
+        <button type="button" data-dir="down" ${pos===order.length-1?"disabled":""}>&darr;</button>
+      </span>`;
+    li.querySelector('[data-dir="up"]').onclick = () => { if(pos>0){ [order[pos-1],order[pos]]=[order[pos],order[pos-1]]; answers[i]=[...order]; render(); } };
+    li.querySelector('[data-dir="down"]').onclick = () => { if(pos<order.length-1){ [order[pos+1],order[pos]]=[order[pos],order[pos+1]]; answers[i]=[...order]; render(); } };
+    list.appendChild(li);
+  });
+  answers[i] = [...order];
+  quizArea.appendChild(list);
+  quizArea.insertAdjacentHTML("beforeend", `<p class="qstep">Use the arrows to put the steps in order, earliest first</p>`);
+}
+
+function render(){
+  const q = questions[current];
+  quizArea.innerHTML = "";
+  quizArea.insertAdjacentHTML("beforeend", `<div class="qstep">Question ${current+1} of ${questions.length}</div><h2>${q.prompt}</h2>`);
+  if(q.type === "single") renderSingle(q, current);
+  else if(q.type === "multi") renderMulti(q, current);
+  else if(q.type === "matching") renderMatching(q, current);
+  else if(q.type === "ordering") renderOrdering(q, current);
+
+  backBtn.disabled = current === 0;
+  const isLast = current === questions.length - 1;
+  nextBtn.textContent = isLast ? "Submit assessment" : "Next";
+  nextBtn.disabled = !isAnswered(current);
+
+  topProgress.style.width = Math.round(((current) / questions.length) * 100) + "%";
+}
+
+backBtn.onclick = () => { if(current > 0){ current--; render(); window.scrollTo({top:0, behavior:"smooth"}); } };
+nextBtn.onclick = () => {
+  if(!isAnswered(current)) return;
+  const isLast = current === questions.length - 1;
+  if(!isLast){
+    current++; render(); window.scrollTo({top:0, behavior:"smooth"});
+  } else {
+    submit();
+  }
+};
+
+function isCorrect(q, a){
+  if(q.type === "single") return a === q.options.findIndex(o => o.correct);
+  if(q.type === "multi"){
+    const correctSet = q.options.map((o,idx)=>o.correct?idx:null).filter(v=>v!==null).sort().join(",");
+    const givenSet = [...a].sort((x,y)=>x-y).join(",");
+    return correctSet === givenSet;
+  }
+  if(q.type === "matching") return q.situations.every((s, j) => a[j] === s.correctRole);
+  if(q.type === "ordering") return JSON.stringify(a) === JSON.stringify(q.correctOrder);
+  return false;
+}
+
+function correctAnswerText(q){
+  if(q.type === "single") return q.options.find(o=>o.correct).label;
+  if(q.type === "multi") return q.options.filter(o=>o.correct).map(o=>o.label).join("; ");
+  if(q.type === "matching") return q.situations.map(s => `"${s.q}" &rarr; ${q.roles[s.correctRole]}`).join("<br>");
+  if(q.type === "ordering") return q.correctOrder.map(idx => q.items[idx]).join(" &rarr; ");
+  return "";
+}
+
+function givenAnswerText(q, a){
+  if(q.type === "single") return a===null||a===undefined ? "No answer" : q.options[a].label;
+  if(q.type === "multi") return a.map(idx => q.options[idx].label).join("; ") || "No answer";
+  if(q.type === "matching") return q.situations.map((s,j) => `"${s.q}" &rarr; ${a[j]===null||a[j]===undefined?"not answered":q.roles[a[j]]}`).join("<br>");
+  if(q.type === "ordering") return a.map(idx => q.items[idx]).join(" &rarr; ");
+  return "";
+}
+
+function submit(){
+  let score = 0;
+  const results = questions.map((q, i) => {
+    const correct = isCorrect(q, answers[i]);
+    if(correct) score++;
+    return { q, correct, given: answers[i] };
+  });
+  const passed = score >= PASS_MARK;
+
+  document.getElementById("quizCard").classList.add("hidden");
+  const resultCard = document.getElementById("resultCard");
+  resultCard.classList.remove("hidden");
+  topProgress.style.width = "100%";
+
+  const banner = document.getElementById("resultBanner");
+  banner.innerHTML = `<div class="result-banner ${passed?"pass":"fail"}">
+    <div class="kicker" style="color:#fff">${passed?"Assessment passed":"Not yet a pass"}</div>
+    <div class="score">${score}/10</div>
+    <p>${passed
+      ? "You have passed the Core Module 2 assessment. This result counts towards the Foundations, DMC and DML certificates."
+      : `You need ${PASS_MARK} out of 10 to pass. Review the questions below, then retry when you are ready.`}</p>
+  </div>`;
+
+  const reviewArea = document.getElementById("reviewArea");
+  reviewArea.innerHTML = "";
+  results.forEach((r, i) => {
+    const div = document.createElement("div"); div.className = "review-item";
+    div.innerHTML = `<span class="tag ${r.correct?"correct":"incorrect"}">${r.correct?"Correct":"Incorrect"}</span>
+      <h3>Question ${i+1}: ${r.q.prompt}</h3>
+      <p><strong>Your answer:</strong> ${givenAnswerText(r.q, r.given)}</p>
+      ${r.correct ? "" : `<p><strong>Correct answer:</strong> ${correctAnswerText(r.q)}</p>`}
+      <div class="mentor-tip"><strong>Mentor tip</strong><br>${r.q.mentorTip}</div>`;
+    reviewArea.appendChild(div);
+  });
+
+  if(window.TPKit && typeof TPKit.recordProgress === "function"){
+    TPKit.recordProgress("moduleAssessment", MODULE_ID, { score, passed });
+  }
+
+  document.getElementById("retryBtn").onclick = () => {
+    current = 0;
+    answers = new Array(questions.length).fill(null);
+    orderState = {};
+    document.getElementById("resultCard").classList.add("hidden");
+    document.getElementById("quizCard").classList.remove("hidden");
+    render();
+    window.scrollTo({top:0, behavior:"smooth"});
+  };
+  document.getElementById("finishBtn").onclick = () => { window.location.href = "/index.html"; };
+}
+
+render();
+</script>
+</body>
+</html>

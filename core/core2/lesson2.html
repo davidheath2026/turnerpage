@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building the data inventory</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 2 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lesson 1, Lessons 3-5 and the story
+   bible: 18,530 active customers; approx. 1.7m inactive/historical
+   customers; 185,000 products; 42,600 open sales orders; approx.
+   240,000 customer files.
+============================================================== */
+
+// Section 6 — "Bramwell's first data inventory". The learner assigns
+// a migration role to each inventory row before the reasoning is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const roleLabels = ["Primary", "Enrichment", "Validation", "Archive", "Out of scope"];
+const inventoryItems = [
+  {
+   q:"Active customers, sourced from Bramwell ERP + CRM, 18,530 records, scope status proposed in scope.",
+   order:[0,2,4,1,3], a:0,
+   why:"This is the operational customer population the target needs to run the business. It is exactly the kind of population that gets loaded, which makes it a primary migration object."
+  },
+  {
+   q:"Customer delivery instructions, sourced from the Norway delivery workbook, volume unknown, scope status under review.",
+   order:[3,1,0,4,2], a:1,
+   why:"The workbook does not define the customer. It supplies local delivery-zone information the target delivery process needs alongside the primary customer record, which is an enrichment role."
+  },
+  {
+   q:"Supplier classifications, sourced from SupplierClass.accdb, volume unknown, scope status under review.",
+   order:[4,0,1,3,2], a:1,
+   why:"Suppliers themselves come from Bramwell ERP. This database adds the approved classification attribute on top, which is an enrichment role rather than a primary population."
+  },
+  {
+   q:"Product-site-location relationships, sourced from WarehousePro, volume unknown, scope status under review.",
+   order:[2,4,0,3,1], a:0,
+   why:"Nothing else in the landscape holds these combinations. Since the target needs them and no other source can supply them, this is a primary migration object in its own right."
+  },
+  {
+   q:"Historical invoices older than 10 years, sourced from OldSales, volume unknown, scope status undecided.",
+   order:[1,3,2,0,4], a:3,
+   why:"Nobody has proposed loading decade-old invoices into the new platform. The likely treatment is archive: access preserved, but not migrated as active target data."
+  },
+  {
+   q:"Customer/supplier documents, sourced from the LegacyDocs share, approximately 240,000 files, scope status undecided, ownership unclear.",
+   order:[0,3,1,4,2], a:3,
+   why:"A quarter of a million scanned files are not target master-data records. The realistic treatment is archive, provided ownership and access can be resolved."
+  }
+];
+const inventorySituations = inventoryItems.map((it, idx) => ({
+  title:`Row ${idx+1}`,
+  question:it.q,
+  options: it.order.map(li => ({
+    label: roleLabels[li],
+    correct: li === it.a,
+    feedback: (li === it.a ? "Correct.<br>" : "Not quite. Consider what this row actually supplies to the target.<br>") + it.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"We already have a list",title:"Opening scenario: We already have a system list",type:"mcq",
+ html:`<p class="lead">After the discovery work, Bramwell's project manager updates the migration tracker.</p>
+ <div class="visual-card">
+   <div class="visual-title">The updated tracker</div>
+   <ul class="framework-checks">
+     <li><strong>Bramwell ERP:</strong> owner IT, status in scope.</li>
+     <li><strong>Bramwell CRM:</strong> owner Sales, status in scope.</li>
+     <li><strong>PeopleCore:</strong> owner HR, status in scope.</li>
+     <li><strong>WarehousePro:</strong> owner IT, status to review.</li>
+     <li><strong>SupplierClass.accdb:</strong> owner Procurement, status to review.</li>
+     <li><strong>Norway delivery workbook:</strong> owner Customer Service, status to review.</li>
+   </ul>
+ </div>
+ <div class="quote">"I've built the data inventory from what you found. Six sources, owners and scope status. That should be enough to start mapping."<br><span class="small">Project manager</span></div>
+ <p>But Bramwell ERP alone contains customers, suppliers, products, sites, warehouses, open sales orders, purchase orders, receivables, payables and years of historical transactions.</p>
+ <h3>Your decision</h3>
+ <p>What is missing from the project manager's inventory?</p>`,
+ options:[
+ "Nothing important. Mapping is performed system by system, so the source list is sufficient.",
+ "Only technical details such as server name, database name and connection string.",
+ "The inventory needs to break sources into migration-relevant data objects and populations, with information such as business ownership, volume, scope, history, dependencies, extraction and known concerns.",
+ "Every source table and column should be listed before any migration work can continue."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A system list tells you where data may live. It does not tell you what customer, supplier, product or transaction populations exist, which are in scope, who owns them or how large and complex they are.",
+ "Technical access matters, but an inventory built only around infrastructure still misses the business objects the migration must control.",
+ "Correct. The useful unit of migration planning is normally the data object or population within a source, not merely the application name.",
+ "Table and column inventories can be useful during technical analysis, but cataloguing every physical field across every system is not the purpose of the migration data inventory."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose you accept option C and push past the system list.</p>
+ <p>You go back to the project manager with a short question for each of the six systems: "which populations inside this one actually matter to migration, and what do we currently know about them?"</p>
+ <div class="visual-card">
+   <div class="visual-title">What one line, "Bramwell ERP: in scope", turns into</div>
+   <ul class="framework-checks">
+     <li>Active customers, 18,530, owner to confirm</li>
+     <li>Inactive or historical customers, approximately 1.7 million, scope undecided</li>
+     <li>Suppliers, volume unknown, owner to confirm</li>
+     <li>Products, 185,000, owner to confirm</li>
+     <li>Open sales orders, 42,600, owner Sales Operations</li>
+     <li>Open receivables and payables, volume unknown, owner Finance</li>
+   </ul>
+ </div>
+ <p>One row on the project manager's tracker has just become at least six rows on a working inventory, each of which can now have its own scope decision, owner and volume. That is the point.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Systems are containers. Migration scope is made of data populations.</p></div></div>`
+},
+{
+ id:"b3",nav:"Inventory vs application list",title:"A data inventory is not an application inventory",type:"content",
+ html:`<p class="lead">The distinction is simple but important.</p>
+ <div class="visual-card">
+   <div class="visual-title">Application inventory vs migration data inventory</div>
+   <ul class="framework-checks">
+     <li><strong>Lists systems or applications</strong> versus <strong>lists migration-relevant data objects and populations within those systems.</strong></li>
+     <li><strong>Useful for architecture and ownership</strong> versus <strong>useful for scope, profiling, mapping, build, testing and migration planning.</strong></li>
+     <li><strong>Example: Bramwell ERP</strong> versus <strong>examples: active customers, suppliers, products, open sales orders, open receivables.</strong></li>
+     <li><strong>May have one system owner</strong> versus <strong>different data objects may have different business owners.</strong></li>
+     <li><strong>Usually relatively stable</strong> versus <strong>evolves as discovery, profiling and scope decisions develop.</strong></li>
+   </ul>
+ </div>
+ <p>One source system may contain ten migration objects. One migration object may also depend on several sources. The inventory needs to support both realities.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Systems are containers. Migration scope is made of data populations.</p></div></div>
+ <p>A useful inventory should allow someone joining the migration team to understand, at a glance, what data exists and what is currently known about it.</p>
+ <div class="visual-card">
+   <div class="visual-title">What a strong inventory field records</div>
+   <ul class="framework-checks">
+     <li><strong>Data object:</strong> the business population being considered, such as Customer, Supplier, Product or Open Sales Order.</li>
+     <li><strong>Source:</strong> the system, file or application from which it originates.</li>
+     <li><strong>Business owner:</strong> who can own decisions about meaning, quality and acceptance.</li>
+     <li><strong>Subject-matter contact:</strong> who understands how the data is actually used.</li>
+     <li><strong>Volume:</strong> approximate or measured population size, with the basis and date where relevant.</li>
+     <li><strong>History/population rule:</strong> active only? open only? seven years? specific legal entities?</li>
+     <li><strong>Migration relevance:</strong> primary source, enrichment, validation, archive or out of scope.</li>
+     <li><strong>Current scope status:</strong> in scope, out of scope, proposed, undecided or under review.</li>
+     <li><strong>Dependencies:</strong> other data the object needs to work in the target.</li>
+     <li><strong>Extraction/access:</strong> how the data can be obtained and any constraints.</li>
+     <li><strong>Known concerns:</strong> quality, ownership, volume, duplication, missing attributes or other risks.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Record enough information to drive the next migration decisions. Do not turn the inventory into a database catalogue that nobody can maintain.</div>`
+},
+{
+ id:"b4",nav:"Choosing granularity",title:"Choose the right level of granularity",type:"content",
+ html:`<p class="lead">Too little detail makes the inventory useless. Too much detail makes it unmanageable.</p>
+ <div class="visual-card">
+   <div class="visual-title">Three candidate inventory rows</div>
+   <ul class="framework-checks">
+     <li><strong>Bramwell ERP:</strong> too broad. It hides the different populations, owners, volumes and migration treatments.</li>
+     <li><strong>CUSTOMER_MASTER.CUST_STATUS:</strong> usually too technical for the main inventory. This belongs later, in source analysis or mapping.</li>
+     <li><strong>Active customers:</strong> a useful migration level. It describes a business population that can have scope, volume, ownership and dependencies.</li>
+   </ul>
+ </div>
+ <p>A good rule is to ask whether the row can have a meaningful answer to these questions: is it in scope? How many are there? Who owns the business decision? What target object does it relate to? What does it depend on? How will we know it migrated correctly? If the row is too broad to answer them, split it. If it is so detailed that thousands of rows would be required before any useful decision can be made, move that detail to a lower-level artefact.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page technique</div><p>Inventory at the level at which migration decisions are made. Map later at the level at which transformation decisions are made.</p></div></div>
+ ${TPKit.fromField({
+   title:"The System List That Wasn't an Inventory", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/core2-lesson2-fromfield-marcus.mp3",
+   reflection:"Have you seen a system list mistaken for a genuine data inventory before?"
+ })}`
+},
+{
+ id:"b5",nav:"Volume is not just a number",title:"Volume is not just a number",type:"content",
+ html:`<p class="lead">Bramwell has approximately 1.8 million customer records. That number is useful, but it is not yet a useful migration population.</p>
+ <div class="visual-card">
+   <div class="visual-title">One system, several very different populations</div>
+   <ul class="framework-checks">
+     <li><strong>All customer records:</strong> approximately 1.8 million. Shows total source scale.</li>
+     <li><strong>Currently active customers:</strong> 18,530. Likely operational migration population.</li>
+     <li><strong>Inactive/historical customers:</strong> approximately 1.7 million. Requires an explicit scope/history decision.</li>
+     <li><strong>Active customers missing valid payment terms:</strong> 760. A quality issue within the likely migration population.</li>
+     <li><strong>Active customers with blank tax classification:</strong> 94. Potential target/process impact.</li>
+     <li><strong>Key accounts with missing active delivery addresses:</strong> 31. A small population with potentially high operational impact.</li>
+   </ul>
+ </div>
+ <p>Counts also need context. Ask: when was the count taken? What rule produced it? Does it include duplicates? Does it include deleted or archived records? Does it cover all legal entities? Can the count be reproduced?</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Writing "18,530 customers" in the inventory without recording what "active" means. A precise number based on an unclear rule creates false confidence.</p></div>`
+},
+{
+ id:"b6",nav:"Build the inventory",title:"Build it yourself: Bramwell's first data inventory",type:"situations",
+ html:`<p class="lead">Using the discoveries from Lesson 1, decide the migration role for each row of Bramwell's first working inventory before the reasoning is revealed.</p>`,
+ items: inventorySituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good inventory is not a historical record of what the team knew at the start. It is the current shared view of the data landscape relevant to migration.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>The learner should now add three things to each row: migration role, known dependencies, and the next question or evidence needed. This is intentionally incomplete: a professional inventory makes unknowns visible instead of filling them with guesses.</div>`
+},
+{
+ id:"b7",nav:"Unknown is a valid value",title:"Unknown is a valid value, and ownership must be specific enough to act",type:"content",
+ html:`<p class="lead">Migration teams sometimes dislike blank cells. That can lead to invented owners, guessed volumes or premature scope labels.</p>
+ <div class="visual-card">
+   <div class="visual-title">Two ways to write the same uncertain row</div>
+   <ul class="framework-checks">
+     <li><strong>Poor inventory:</strong> "Supplier volume: 25,000." "Owner: IT."</li>
+     <li><strong>Stronger inventory:</strong> "Supplier volume: Unknown. ERP query required. Owner: Maria to provide extract by Friday." "Business owner: Unknown. Procurement uses the data; Finance also maintains payment attributes. Ownership to resolve."</li>
+   </ul>
+ </div>
+ <p>The second version is less complete but more useful because it distinguishes knowledge from assumption and creates an action. Use controlled values such as Unknown, To confirm, Under review or Not yet measured where appropriate, then attach an owner or next action to important gaps.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Visible uncertainty can be managed. Hidden uncertainty cannot.</div>
+ <p>"Business" is not an owner. "IT" is usually not enough either. A useful inventory distinguishes between the business/data owner who owns decisions (for example, the Head of Procurement owning supplier classification decisions), the subject-matter expert who understands how the data is actually used (a senior buyer, say), the technical source contact who can explain the structure and extraction, and the migration owner responsible for progressing the object. The same person can fill more than one role, but the responsibilities should still be clear.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Recording the person who can extract the data as the person authorised to decide what the data should mean.</p></div>`
+},
+{
+ id:"b8",nav:"Dependencies and scope maturity",title:"Dependencies belong in the inventory early, and scope status should show decisions, not optimism",type:"content",
+ html:`<p class="lead">You do not need a complete dependency model before profiling begins, but obvious dependencies should already be visible.</p>
+ <div class="visual-card">
+   <div class="visual-title">Early dependency examples</div>
+   <ul class="framework-checks">
+     <li><strong>Open sales orders</strong> depend on customers, products, addresses, sites/warehouses, units, currencies, and tax/reference values.</li>
+     <li><strong>Suppliers</strong> depend on payment terms, currencies, tax classifications, and bank/payment data where in scope.</li>
+     <li><strong>Products</strong> depend on units, product groups, sites, warehouses, and reference classifications.</li>
+     <li><strong>Open receivables</strong> depend on customers, currencies, financial dimensions/accounts, and payment terms.</li>
+     <li><strong>Customer delivery instructions</strong> depend on customer identity, delivery address/location, and local routing codes.</li>
+   </ul>
+ </div>
+ <p>Why capture them now? Because an apparently complete inventory can still be incomplete if it lists objects without the data needed to make those objects usable.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Inventory tells you what exists. Dependencies begin to tell you what must exist together.</p></div></div>
+ <p>Avoid a simple Yes/No scope column when important decisions are still open. A practical status set distinguishes proposed in scope, confirmed in scope, under review, undecided, archive/retain legacy, and out of scope. The exact labels can vary; the important point is to prevent an assumption from quietly becoming an approved decision.</p>
+ <div class="principle"><strong>Core principle</strong><br>A scope column should reveal decision maturity, not conceal it.</div>`
+},
+{
+ id:"b9",nav:"Judgement calls",title:"Judgement calls: is the inventory good enough?",type:"content",
+ html:`<p class="lead">Four situations show why "good enough" is a judgement, not a checkbox.</p>
+ <div class="quote">The migration team has a 2,400-row inventory containing every table in the ERP, but it does not identify which tables represent customers, products or orders.</div>
+ <p>It is a technical catalogue, not yet a useful migration inventory. Retain it as source documentation, then create a business-object view that supports scope, ownership and planning.</p>
+ <div class="quote">Every Finance data object lists the Finance Director as owner.</div>
+ <p>That may be formally correct, but identify the people who actually understand each population as well. Decision authority and subject-matter knowledge are different.</p>
+ <div class="quote">Monday's customer query returns 18,530 active customers. Two weeks later it returns 18,611.</div>
+ <p>That is not automatically a problem. The live source may be changing. Record the query and rule and date so volumes can be interpreted and reproduced.</p>
+ <div class="quote">No one can yet extract the 240,000 customer attachments by customer ID, although the files are known to exist.</div>
+ <p>Do not guess. Record the known approximate volume, the extraction uncertainty and the action required. Extraction feasibility is itself relevant inventory information.</p>
+ <p>The inventory begins during discovery, but it should not be frozen after the first workshop. It changes as profiling produces reliable volumes and quality findings, scope decisions are approved, new sources or populations are discovered, ownership becomes clearer, and mapping exposes missing dependencies.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good inventory is not a historical record of what the team knew at the start. It is the current shared view of the data landscape relevant to migration.</p></div></div>`
+},
+{
+ id:"b10",nav:"AI and the inventory",title:"AI can help maintain the inventory, but it should not invent it",type:"content",
+ html:`<p class="lead">AI can be useful when source documentation is large or inconsistent.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Extract candidate data objects and owners from workshop notes</li>
+     <li>Compare multiple system inventories and highlight likely duplicates</li>
+     <li>Summarise known concerns by data object</li>
+     <li>Identify rows with missing ownership or scope status</li>
+     <li>Suggest possible dependencies for human review</li>
+     <li>Standardise descriptions and terminology</li>
+   </ul>
+ </div>
+ <p>But a generated owner, scope status or volume is not evidence.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to organise and challenge the inventory. Do not allow it to turn unknowns into plausible-looking facts.</p></div></div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"What would you add first?",type:"reflection",
+ html:`<p>Imagine you joined Bramwell tomorrow and were given only its six-system source list.</p>
+ <div class="quote">Which three inventory fields would you want added first, and why?</div>
+ <p>There is no single correct combination. Strong answers connect the chosen fields to an immediate migration decision or risk. For example, volume matters because it affects scale and testing; owner matters because decisions need authority; a population rule matters because a count without a definition may be misleading.</p>
+ <textarea id="reflection" placeholder="I would want to add..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/volume|scale|size|count/i, strength:"You considered volume and how it affects scale, testing and planning.", gap:"Consider volume: it drives scale, testing effort and how big a problem really is." },
+   { test:/owner|authority|decision/i, strength:"You considered ownership and who has authority to decide.", gap:"Consider ownership: decisions need someone with the authority to make them." },
+   { test:/population|rule|definition|active|history/i, strength:"You considered how a population is defined, not just counted.", gap:"Consider the population rule: a count without a clear definition can mislead." },
+   { test:/depend|relat|link/i, strength:"You considered dependencies between data objects.", gap:"Consider dependencies: an object can look complete while missing what it needs to actually work." },
+   { test:/scope|status|confirm|proposed/i, strength:"You considered scope status and how mature the decision really is.", gap:"Consider scope status: it should show how firm a decision is, not just yes or no." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would add volume with its definition and date, business ownership distinguished from technical contact, and scope status that shows whether a decision is proposed or confirmed. Together these tell me how big the problem is, who can decide about it, and how firm that decision currently is.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is strong inventory thinking. You are connecting fields to decisions, not just listing headings.":"You have made a start. Push further into explaining why each field you chose actually changes a migration decision."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now has more than a list of applications.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>A migration data inventory is different from an application or technical table inventory.</li>
+   <li>The useful inventory level is normally the business data object or population at which migration decisions are made.</li>
+   <li>A strong inventory records source, ownership, volume, population/history, migration relevance, scope status, dependencies, access and known concerns.</li>
+   <li>Volumes need definitions, dates and reproducible rules where possible.</li>
+   <li>Unknown is better than a confident guess, provided important unknowns have visible actions.</li>
+   <li>Ownership should distinguish business authority, subject-matter knowledge and technical source knowledge.</li>
+   <li>Scope status should show whether a decision is proposed, confirmed, under review or unresolved.</li>
+   <li>The inventory is a living migration control artefact that becomes richer as profiling and delivery progress.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>If you cannot describe the migration population, its source, its owner, its size and its status, you do not yet control it.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"What is the main difference between an application inventory and a migration data inventory?",
+   options:[
+     {label:"There is no real difference; they serve the same purpose", correct:false, feedback:"Not quite. One lists systems; the other lists the populations inside them."},
+     {label:"A migration data inventory breaks systems into the business objects and populations migration decisions are actually made about", correct:true, feedback:"Correct. Systems are containers; migration scope is made of data populations."},
+     {label:"A migration data inventory only needs to list technical table and column names", correct:false, feedback:"Not quite. That level of detail belongs to source analysis, not the main inventory."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"An inventory row reads simply 'Bramwell ERP: in scope.' What is the problem?",
+   options:[
+     {label:"Nothing; system-level rows are the correct level of detail", correct:false, feedback:"Not quite. This hides very different populations, owners and treatments inside one system."},
+     {label:"It is too broad to answer questions like volume, owner or scope for any specific population", correct:true, feedback:"Correct. If a row cannot answer those questions, it needs splitting."},
+     {label:"It should instead list every column in the ERP", correct:false, feedback:"Not quite. That would be far too detailed for the main inventory."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Which is the stronger way to record an unresolved supplier volume?",
+   options:[
+     {label:"Guess a plausible number so the cell is not blank", correct:false, feedback:"Not quite. A confident guess creates false certainty."},
+     {label:"Write 'Unknown, ERP query required, owner to provide extract by Friday'", correct:true, feedback:"Correct. Visible uncertainty with an owner and an action is more useful than a guess."},
+     {label:"Leave the row out of the inventory until the number is known", correct:false, feedback:"Not quite. The gap itself is useful information and should stay visible."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Every Finance data object lists the Finance Director as owner. What should the inventory also capture?",
+   options:[
+     {label:"Nothing further; formal ownership is enough", correct:false, feedback:"Not quite. Formal ownership and hands-on subject-matter knowledge are different things."},
+     {label:"The subject-matter experts who actually understand how each population is used", correct:true, feedback:"Correct. Decision authority and subject-matter knowledge should both be visible."},
+     {label:"A replacement owner, since one person cannot own every Finance object", correct:false, feedback:"Not quite. One person can legitimately own several objects; the gap is elsewhere."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A customer count changes from 18,530 to 18,611 two weeks later. What should the inventory record?",
+   options:[
+     {label:"Nothing; assume the first count was simply wrong", correct:false, feedback:"Not quite. A live source can genuinely change over time."},
+     {label:"The query, rule and date behind each count, so the change can be interpreted", correct:true, feedback:"Correct. Reproducibility is what turns a number into evidence."},
+     {label:"Only the most recent count, since it is the most up to date", correct:false, feedback:"Not quite. Without the rule and date, a lone number cannot be interpreted or reproduced."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Which scope status best shows genuine decision maturity, rather than optimism?",
+   options:[
+     {label:"A simple Yes/No column", correct:false, feedback:"Not quite. Yes/No can hide how firm a decision really is."},
+     {label:"Labels such as proposed in scope, confirmed in scope, or under review", correct:true, feedback:"Correct. A good scope status reveals maturity instead of concealing it."},
+     {label:"No scope column at all, since status changes too often to track", correct:false, feedback:"Not quite. Status should be tracked and updated, not omitted."}
+   ]
+  }
+ ]
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building the data inventory.</strong></p>
+ <p>Bramwell now has the beginnings of a controlled view of the actual populations that migration may need to handle. Some of the most important cells still say Unknown, and that is exactly where the next lesson begins.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Profiling data and finding what is really there:</strong> you will query and examine the source data itself to replace assumptions with evidence about completeness, uniqueness, patterns, distributions and quality.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 2",
+  moduleTitle: "Data Profiling & Data Quality",
+  lessonLabel: "Lesson 2: Building the data inventory",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Systems are containers. Scope is made of data populations",
+  storageKey: "tp_core2_lesson2_v1",
+  lessonId: "core2-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

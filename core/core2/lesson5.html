@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Driving data quality improvement</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 2 — LESSON 5 DATA (final lesson of the module). All
+   chrome, styling and engine behaviour come from shared/
+   turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-4 and the story bible: payment
+   terms 760 -> 214 (23 new exceptions in week 3); tax classification
+   94 -> 91; key-account delivery addresses 31 -> 7; CustomerGroup
+   108 -> 18; duplicate tax-number candidates 96 -> 96 (unchanged).
+============================================================== */
+
+const improvementLoop = [
+  {
+   title:"1. Profile",
+   short:"Measure the current population using an agreed, reproducible rule",
+   detail:`<p>The starting point of every cycle. Without a reproducible rule, later comparisons cannot be trusted.</p>`
+  },
+  {
+   title:"2. Prioritise",
+   short:"Focus effort on the issues with the greatest migration/business consequence and lead time",
+   detail:`<p>Not every finding deserves equal attention. Consequence and lead time decide the order of work.</p>`
+  },
+  {
+   title:"3. Assign",
+   short:"Make the decision owner and action owner explicit",
+   detail:`<p>The same person can hold both roles, but the responsibilities should always be named separately.</p>`
+  },
+  {
+   title:"4. Correct",
+   short:"Apply the agreed treatment: source correction, transformation, enrichment, exclusion or accepted exception",
+   detail:`<p>This is where Lesson 4's six treatments are actually put into effect.</p>`
+  },
+  {
+   title:"5. Reprofile",
+   short:"Run the same check again against the new data population",
+   detail:`<p>The same rule, run again, is what turns "we did some work" into evidence.</p>`
+  },
+  {
+   title:"6. Investigate recurrence",
+   short:"If new defects appear, understand how they are being created",
+   detail:`<p>A falling total can hide a source process that keeps manufacturing new problems.</p>`
+  },
+  {
+   title:"7. Assess readiness",
+   short:"Judge the remaining issue against the requirements of the next migration stage",
+   detail:`<p>The question is never "is the data perfect?" It is whether the data is controlled enough for what happens next.</p>`
+  }
+];
+
+// Section 6 — "Create Bramwell's quality scorecard". The learner
+// matches each issue's trend to its correct interpretation before the
+// suggested scorecard is revealed. Distractors are genuine
+// interpretations of the OTHER issues, not invented nonsense, so the
+// match takes real thought. Options are reordered per item so the
+// correct answer's position does not track the item number.
+const scorecardLabels = [
+  "Strong reduction, but 23 new defects mean recurrence needs investigating",
+  "Little movement; resolve the applicability/ownership decision urgently",
+  "Strong reduction in a critical population; complete the remaining key accounts",
+  "Strong reduction; resolve the remaining unknown values and lock the mapping decision",
+  "No progress; start a business review to determine whether these are genuine duplicates"
+];
+const scorecardItems = [
+  {
+   q:"Payment terms: 760 in Week 0, 214 in Week 3. 23 new exceptions appeared during Week 3.",
+   order:[1,0,3,4,2], a:0,
+   why:"The backlog has fallen sharply, which is genuinely good news, but 23 new records appearing in the same week means the process creating bad data is still active and needs its own investigation."
+  },
+  {
+   q:"Blank tax classification: 94 in Week 0, 91 in Week 3.",
+   order:[4,2,1,0,3], a:1,
+   why:"Almost no movement over three weeks on a population where applicability itself is still unresolved. This needs an urgent decision, not more waiting."
+  },
+  {
+   q:"Key accounts with no active delivery address: 31 in Week 0, 7 in Week 3.",
+   order:[3,0,2,1,4], a:2,
+   why:"A strong reduction, and one that matters because it touches a small, operationally critical population. The remaining seven deserve focused attention, not a victory lap."
+  },
+  {
+   q:"Unrecognised CustomerGroup values: 108 in Week 0, 18 in Week 3.",
+   order:[0,1,4,3,2], a:3,
+   why:"A strong reduction overall. What remains is the harder residue: values that still need a locked mapping decision rather than further easy wins."
+  },
+  {
+   q:"Duplicate tax-registration candidates: 96 in Week 0, 96 in Week 3.",
+   order:[2,3,0,4,1], a:4,
+   why:"Zero movement. Nobody has actually started the business review needed to tell a genuine duplicate from a legitimate multi-account relationship."
+  }
+];
+const scorecardSituations = scorecardItems.map((s, idx) => ({
+  title:`Issue ${idx+1}`,
+  question:s.q,
+  options: s.order.map(li => ({
+    label: scorecardLabels[li],
+    correct: li === s.a,
+    feedback: (li === s.a ? "Correct.<br>" : "Not quite. Look again at what this specific trend is telling you.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"90% complete",title:"Opening scenario: 90% complete",type:"mcq",
+ html:`<p class="lead">Three weeks after Bramwell's cleansing plan was agreed, the project status report says:</p>
+ <div class="quote">Customer cleansing: 90% complete. GREEN.</div>
+ <p>You ask for the evidence. The team provides the following.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>No valid payment terms</strong>760 &rarr; 214</div>
+   <div class="status-card"><strong>Blank tax classification</strong>94 &rarr; 91</div>
+   <div class="status-card"><strong>Key accounts, no delivery address</strong>31 &rarr; 7</div>
+   <div class="status-card"><strong>Unrecognised CustomerGroup</strong>108 &rarr; 18</div>
+   <div class="status-card"><strong>Duplicate tax-number candidates</strong>96 &rarr; 96, review not started</div>
+ </div>
+ <p>You also learn that 23 new payment-term exceptions appeared after the previous cleansing run.</p>
+ <h3>Your decision</h3>
+ <p>What is the strongest assessment?</p>`,
+ options:[
+ "Keep the status green because the overall team believes cleansing is 90% complete.",
+ "Change the status to red because any unresolved data-quality issue means cleansing has failed.",
+ "Replace the subjective percentage with issue-level evidence, trend, criticality, recurrence and required-by dates. Some areas are improving strongly; others are barely moving or have not started.",
+ "Ask the migration team to correct the remaining records directly so the status can return to green."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "90% complete sounds precise, but it does not explain which issues remain, whether critical populations are affected, or whether new defects are still being created.",
+ "Migration programmes can proceed with controlled exceptions and open actions. The question is whether the remaining risk is understood and acceptable for the next stage.",
+ "Correct. Data quality should be managed through measurable findings, trends, ownership and impact rather than an unsupported completion percentage.",
+ "The migration team can support, automate and sometimes implement agreed treatments, but it should not quietly take over business decisions simply to improve status reporting."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose you take option C and refuse to accept a single percentage as the answer.</p>
+ <p>You go back with one question per issue: what does the trend, the criticality and the required-by date actually say?</p>
+ <div class="visual-card">
+   <div class="visual-title">What "90% complete" turns into</div>
+   <ul class="framework-checks">
+     <li><strong>Payment terms:</strong> genuinely improving, but still generating 23 new defects a week. Not closed.</li>
+     <li><strong>Tax classification:</strong> barely moved in three weeks, and the applicability rule is still unresolved. This is stalled, not 97% done.</li>
+     <li><strong>Delivery addresses:</strong> a real success story on a small, high-value population, with seven accounts still to finish.</li>
+     <li><strong>CustomerGroup:</strong> strong progress, with a genuinely hard residue of unknown values left behind.</li>
+     <li><strong>Duplicate candidates:</strong> exactly where it started three weeks ago. Nobody has begun the review.</li>
+   </ul>
+ </div>
+ <p>One green status has just become five different stories, two of which need urgent attention despite the reassuring headline.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Profile. Correct. Reprofile. Improvement is demonstrated by evidence, not by activity.</p></div></div>`
+},
+{
+ id:"b3",nav:"The improvement loop",title:"Data quality improvement is a managed loop",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">The cleansing plan is not the end of the process. Improvement requires a repeatable loop. Explore each step before moving on.</p>`,
+ items: improvementLoop,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>Every step matters. Skipping reprofiling or recurrence investigation is how a team ends up reporting activity instead of evidence.</div>`
+},
+{
+ id:"b4",nav:"Whose decision, whose visibility",title:"The business owns data quality; migration owns visibility",type:"content",
+ html:`<p class="lead">This boundary matters for both future Data Migration Consultants and Data Migration Leads.</p>
+ <p>The migration team should not decide that a customer deserves 30-day terms, that two suppliers are the same legal entity, or that a tax classification can be ignored. But the migration team does have professional responsibilities.</p>
+ <div class="visual-card">
+   <div class="visual-title">Business ownership versus migration responsibility</div>
+   <ul class="framework-checks">
+     <li><strong>Business:</strong> defines what correct data means. <strong>Migration:</strong> identifies and quantifies migration-relevant quality problems.</li>
+     <li><strong>Business:</strong> provides or approves corrected values. <strong>Migration:</strong> makes affected populations and impacts visible.</li>
+     <li><strong>Business:</strong> approves cleansing rules and acceptable exceptions. <strong>Migration:</strong> implements agreed migration treatments where appropriate.</li>
+     <li><strong>Business:</strong> decides whether residual risk is acceptable. <strong>Migration:</strong> reprofiles and provides evidence of remaining risk.</li>
+     <li><strong>Business:</strong> owns the ongoing business process. <strong>Migration:</strong> highlights recurrence and source-process weaknesses.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The business owns the quality decision. The migration team owns the discipline of making the migration consequence visible.</p></div></div>
+ <p>A single count also tells you the current position; a trend tells you whether the problem is moving.</p>
+ <div class="visual-card">
+   <div class="visual-title">Payment terms, week by week</div>
+   <ul class="framework-checks">
+     <li><strong>Week 0:</strong> 760</li>
+     <li><strong>Week 1:</strong> 522</li>
+     <li><strong>Week 2:</strong> 331</li>
+     <li><strong>Week 3:</strong> 214, with 23 new exceptions created that same week</li>
+   </ul>
+ </div>
+ <p>That looks encouraging, but the detail matters. The team has two different questions to answer: how quickly are existing defects being corrected, and how quickly are new defects being created? A falling total can hide a continuing source-process problem.</p>
+ <div class="principle"><strong>Core principle</strong><br>Data quality can improve while the process creating bad data remains broken. Track both the stock of defects and the flow of new defects.</div>`
+},
+{
+ id:"b5",nav:"Same rule, same evidence",title:"Use the same rule to prove improvement",type:"content",
+ html:`<p class="lead">Suppose Week 0 counted customers with PaymentTerms IS NULL. Week 3 counts customers whose payment terms are not found in the approved reference table. The numbers cannot be compared reliably, because the definition changed.</p>
+ <div class="visual-card">
+   <div class="visual-title">What to retain for every important quality measure</div>
+   <ul class="framework-checks">
+     <li>The exact population definition</li>
+     <li>The profiling rule/query</li>
+     <li>The source extract or run date</li>
+     <li>Reference lists or thresholds used</li>
+     <li>Segmentation where relevant</li>
+     <li>The result and interpretation</li>
+   </ul>
+ </div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Changing the quality rule while reporting the trend, then claiming improvement because the later number is smaller.</p></div>
+ ${TPKit.fromField({
+   title:"The Green Status That Wasn't", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/core2-lesson5-fromfield-owen.mp3",
+   reflection:"Have you seen a status report say more about team morale than about the actual state of the data?"
+ })}`
+},
+{
+ id:"b6",nav:"Build the scorecard",title:"Build it yourself: create Bramwell's quality scorecard",type:"situations",
+ html:`<p class="lead">Using the current results, match each issue's trend to the interpretation that best fits it before the suggested scorecard is revealed.</p>`,
+ items: scorecardSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The Data Quality Scorecard converts the cleansing plan into evidence of movement. Resist turning these into a single averaged "quality percentage": an average can hide a small critical population behind thousands of clean records.</p></div></div>`
+},
+{
+ id:"b7",nav:"Required-by dates, and stalled cleansing",title:"Required-by dates matter more than generic due dates",type:"content",
+ html:`<p class="lead">Not every quality issue needs to be resolved today. It does need to be resolved before the migration activity that depends on it.</p>
+ <div class="visual-card">
+   <div class="visual-title">Meaningful required-by points</div>
+   <ul class="framework-checks">
+     <li><strong>CustomerGroup mapping values:</strong> before customer transformation logic is finalised and tested.</li>
+     <li><strong>Key-account delivery addresses:</strong> before the cycle intended to prove order fulfilment.</li>
+     <li><strong>Supplier classification decisions:</strong> before supplier mapping/build can be considered stable.</li>
+     <li><strong>Historical-record exclusion rule:</strong> before final scope counts and reconciliation baselines are locked.</li>
+     <li><strong>Critical cutover cleansing:</strong> before the production extract/freeze point.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>"Due Friday" is project administration. "Required before Cycle 2 customer transformation" explains the migration consequence.</p></div></div>
+ <p>A common migration problem is not discovering data-quality issues. It is getting them resolved. If cleansing is late, first make the problem easier to act on: provide the exact affected records rather than a vague description, group issues by business owner or country, explain the target or migration consequence, separate decisions from correction work, automate safe agreed corrections where possible, and reprofile frequently enough to show progress. If the issue still does not move, escalate through the project's agreed route with evidence of consequence.</p>
+ <div class="callout misconception"><div class="callout-label">Core boundary</div><p>A Core migration professional should know how to make stalled cleansing visible and actionable. Designing executive escalation structures and leading programme governance belongs later in the DML programme.</p></div>`
+},
+{
+ id:"b8",nav:"Judgement calls",title:"Judgement calls: is the data actually improving?",type:"content",
+ html:`<p class="lead">Five situations show why a shrinking number does not automatically mean genuine progress.</p>
+ <div class="quote">A cleansing issue falls from 4,000 records to 300, but all 300 belong to one legal entity going live first.</div>
+ <p>The global trend is good, but readiness for the first go-live population may still be poor. Segment the evidence by migration scope.</p>
+ <div class="quote">A team reports 100% completeness after populating every blank tax field with DEFAULT.</div>
+ <p>Completeness improved; validity may not have. A default is only acceptable if the business rule supports it.</p>
+ <div class="quote">Every Friday the business clears invalid payment terms. By Monday, 15 to 30 new exceptions appear.</div>
+ <p>The record backlog is being managed, but the creation process is not controlled. Investigate the source of recurrence.</p>
+ <div class="quote">Only four suppliers remain problematic, but together they account for 35% of next month's inbound purchasing value.</div>
+ <p>Low count, high business impact. Prioritisation must reflect consequence, not volume.</p>
+ <div class="quote">Twelve historical customers have incomplete legacy contact notes. The records must be retained, the notes are available in an archive and no operational process depends on them.</div>
+ <p>This may be a legitimate accepted exception if the responsible owner approves the residual limitation.</p>
+ <p>Do not confuse cleansing activity with cleansing progress. "The business is working on it" and "a workshop was held" sound positive but provide little evidence. Stronger reporting sounds like: "missing payment-term exceptions reduced from 760 to 214. Of the remaining 214, 173 are assigned to country owners, 18 require a mapping decision and 23 are newly created defects under investigation. The next customer migration cycle begins in 12 days."</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Report the state of the data, not the amount of cleansing activity.</div>
+ <p>After cleansing, do not validate only the records that were deliberately changed. New defects may have been created elsewhere, bulk updates may have affected unintended records, and reference lists may have changed. The safest evidence is usually to rerun the agreed profile against the full relevant population, then compare.</p>`
+},
+{
+ id:"b9",nav:"Quality is not binary",title:"Data quality is not binary, and thresholds need context",type:"content",
+ html:`<p class="lead">Migration teams sometimes talk as if data is either clean or dirty. Real readiness is more nuanced.</p>
+ <div class="visual-card">
+   <div class="visual-title">Six states an issue can actually be in</div>
+   <ul class="framework-checks">
+     <li><strong>Resolved:</strong> the affected population now meets the agreed rule.</li>
+     <li><strong>Controlled by transformation:</strong> the source remains different, but an approved migration rule produces the required target result.</li>
+     <li><strong>Accepted exception:</strong> the residual issue and impact are understood and explicitly accepted.</li>
+     <li><strong>Open but not yet blocking:</strong> action remains, but it does not prevent the current migration stage.</li>
+     <li><strong>Blocking:</strong> the issue prevents a required build, test, reconciliation or business process.</li>
+     <li><strong>Unknown:</strong> the impact or treatment is not yet sufficiently understood.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Readiness does not require theoretical perfection. It requires that important defects are resolved, controlled or consciously accepted at the point they matter.</div>
+ <p>A programme may define thresholds such as "99.5% complete" or "less than 1% invalid". These can be useful indicators, but they should not replace judgement.</p>
+ <div class="visual-card">
+   <div class="visual-title">The same percentage, two very different meanings</div>
+   <ul class="framework-checks">
+     <li><strong>10,000 marketing contacts, 99.5% with a valid optional phone number:</strong> the remaining 0.5% may have limited operational impact.</li>
+     <li><strong>200 strategic customers, 99.5% with a valid delivery address:</strong> one strategic customer still cannot receive goods. That single exception may matter greatly.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A percentage can tell you how common a problem is. It cannot tell you how important the affected record is.</p></div></div>`
+},
+{
+ id:"b10",nav:"AI and improvement",title:"AI can accelerate the improvement loop",type:"content",
+ html:`<p class="lead">AI can help when cleansing produces large exception lists or repeated status information.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful examples</div>
+   <ul class="framework-checks">
+     <li>Clustering similar exceptions for assignment</li>
+     <li>Summarising changes between profiling runs</li>
+     <li>Highlighting populations whose trend has stalled</li>
+     <li>Suggesting likely recurrence patterns for investigation</li>
+     <li>Drafting owner-specific cleansing summaries</li>
+   </ul>
+ </div>
+ <p>AI can also create false confidence if it assigns likely corrections without sufficient business context.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to reduce the effort of finding patterns and communicating progress. Do not let probability masquerade as approved business truth.</p></div></div>
+ <p>There is no universal percentage for "good enough to move forward". Before a migration stage proceeds, ask whether blocking issues are resolved, critical populations are usable for the process being tested, remaining issues are understood and owned, accepted exceptions are explicit, and important quality measures are stable or improving faster than new defects are being created.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page readiness question</div><p>Not "is the data perfect?" Ask: "is the data sufficiently controlled to achieve the purpose of the next migration stage?"</p></div></div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"When cleansing dates keep slipping",type:"reflection",
+ html:`<p>Imagine a project where the business repeatedly misses cleansing dates.</p>
+ <div class="quote">What should the migration team do before simply escalating?</div>
+ <p>A strong answer might include making the affected population precise, separating decisions from correction work, explaining migration consequences, helping automate agreed treatments, and providing measurable progress.</p>
+ <textarea id="reflection" placeholder="Before escalating, I would..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/precise|specific|exact|record/i, strength:"You considered making the affected population precise and specific, not a vague description.", gap:"Consider making the affected population precise: exact records, not a vague issue description." },
+   { test:/decision|correct|separat/i, strength:"You considered separating the decision itself from the correction work required.", gap:"Consider separating the business decision from the manual correction work that follows it." },
+   { test:/consequence|impact|explain/i, strength:"You considered explaining the migration consequence clearly.", gap:"Consider explaining the migration consequence in terms the business owner will act on." },
+   { test:/automat/i, strength:"You considered automating safe, agreed corrections to reduce the burden.", gap:"Consider whether any of the correction itself could be safely automated." },
+   { test:/measur|evidence|reprofile|progress/i, strength:"You considered showing measurable, reproducible progress rather than just activity.", gap:"Consider providing measurable, reprofiled evidence of progress before escalating." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before escalating, I would make sure the affected population is precise and specific, separate the outstanding decision from the mechanical correction work, explain the migration consequence in terms the business owner will recognise, automate any safe agreed corrections, and reprofile frequently enough to show real movement. Only once all of that is in place, and the date still slips, would escalation be the right next step.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely strong professional practice. You are making the problem easier to act on before reaching for escalation.":"You have made a start. Push further into what would make the request itself easier for a business owner to act on."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson and Module 2 summary",type:"content",
+ html:`<p class="lead">Bramwell now understands where its migration data lives, what is actually in it, which quality problems matter, and whether those problems are moving in the right direction.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Data quality improvement is a managed loop: profile, prioritise, assign, correct, reprofile, investigate recurrence and assess readiness.</li>
+   <li>The business owns the quality decision; migration owns the discipline of making the consequence visible.</li>
+   <li>A trend needs the same rule applied consistently, or the comparison is meaningless.</li>
+   <li>Required-by dates should explain the migration consequence, not just a generic deadline.</li>
+   <li>Data quality is not binary: an issue can be resolved, controlled, accepted, open, blocking or unknown.</li>
+   <li>A quality threshold needs context; the same percentage can mean very different things for different populations.</li>
+   <li>Cleansing activity is not the same as cleansing progress; report the state of the data, not the amount of effort.</li>
+ </ul>
+ <div class="visual-card">
+   <div class="visual-title">Across Module 2</div>
+   <ul class="framework-checks">
+     <li><strong>Lesson 1</strong> discovered the real data landscape beyond the architecture diagram.</li>
+     <li><strong>Lesson 2</strong> turned those discoveries into a controlled Data Inventory.</li>
+     <li><strong>Lesson 3</strong> used profiling to replace assumptions with evidence.</li>
+     <li><strong>Lesson 4</strong> converted quality findings into a cleansing plan with explicit treatments and ownership.</li>
+     <li><strong>Lesson 5</strong> used repeatable measurement to drive improvement and judge readiness.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Module principle</strong><br>You cannot improve data quality by declaring it important. Discover it, measure it, assign it, correct it, remeasure it, and keep the remaining risk visible.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A defect count falls from 760 to 214, but 23 new defects appeared in the same week. What does this tell you?",
+   options:[
+     {label:"Cleansing has succeeded and the issue can be closed", correct:false, feedback:"Not quite. A falling total can hide a source process still creating new defects."},
+     {label:"Existing records are improving, but the process creating new defects still needs investigation", correct:true, feedback:"Correct. Track both the stock of defects and the flow of new ones."},
+     {label:"The original count of 760 must have been wrong", correct:false, feedback:"Not quite. Both figures can be accurate; they answer different questions."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Week 0 counted PaymentTerms IS NULL. Week 3 counted terms not found in a reference table. Can the two counts be compared directly?",
+   options:[
+     {label:"Yes, since both measure missing payment terms", correct:false, feedback:"Not quite. The underlying definition changed, so the comparison is not reliable."},
+     {label:"No, because the population definition changed between the two measurements", correct:true, feedback:"Correct. A trend is only meaningful if the same rule is used each time."},
+     {label:"Yes, provided the later number is smaller", correct:false, feedback:"Not quite. A smaller number proves nothing if the rule behind it has changed."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Who should decide whether a customer's tax classification can remain blank?",
+   options:[
+     {label:"The migration team, since they found the issue", correct:false, feedback:"Not quite. Finding an issue does not give the migration team authority over its business meaning."},
+     {label:"The business or tax owner with authority over that decision", correct:true, feedback:"Correct. The business owns the quality decision; migration owns making the consequence visible."},
+     {label:"Whoever is available at the next status meeting", correct:false, feedback:"Not quite. The decision needs a named, accountable business owner."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A team reports 100% completeness after filling every blank tax field with DEFAULT. What is the concern?",
+   options:[
+     {label:"There is no concern; the field is now fully populated", correct:false, feedback:"Not quite. Completeness improved, but the values may carry no real meaning."},
+     {label:"Completeness improved, but validity may not have, unless the business rule genuinely supports the default", correct:true, feedback:"Correct. A populated field is not automatically a correct field."},
+     {label:"The concern is that DEFAULT values always cause loading errors", correct:false, feedback:"Not quite. The technical load may succeed; the business meaning is the real issue."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Four suppliers remain problematic, but they account for 35% of next month's purchasing value. How should this be prioritised?",
+   options:[
+     {label:"Low priority, since only four records are affected", correct:false, feedback:"Not quite. Volume alone does not determine priority."},
+     {label:"High priority, because the business impact is large despite the small record count", correct:true, feedback:"Correct. Prioritisation should reflect consequence, not just volume."},
+     {label:"It should wait until a larger batch of supplier issues can be handled together", correct:false, feedback:"Not quite. Waiting ignores the scale of the business impact already known."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Which best captures the readiness question at the end of a data quality effort?",
+   options:[
+     {label:"Is the data completely perfect?", correct:false, feedback:"Not quite. Perfection is rarely a realistic or necessary bar."},
+     {label:"Is the data sufficiently controlled to achieve the purpose of the next migration stage?", correct:true, feedback:"Correct. Readiness is judged against the next stage's actual requirements."},
+     {label:"Has every issue reached zero remaining records?", correct:false, feedback:"Not quite. Controlled and accepted exceptions can be perfectly acceptable outcomes."}
+   ]
+  }
+ ]
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Driving data quality improvement, and Core Module 2.</strong></p>
+ <p>Bramwell now understands where its migration data lives, what is actually in it, which quality problems matter, and whether those problems are moving in the right direction. Knowing the source data is not enough, though. The team must now decide how each piece of agreed business meaning will be represented in the target.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p><strong>Module 3: Data Mapping.</strong> Profiling and cleansing have established what the source data means and whether it is usable. Mapping will define how that agreed meaning moves into the target.</p>
+ <p>Before moving on, complete the Core Module 2 assessment to confirm what you have learned across all five lessons.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 2",
+  moduleTitle: "Data Profiling & Data Quality",
+  lessonLabel: "Lesson 5: Driving data quality improvement",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Profile. Correct. Reprofile.",
+  storageKey: "tp_core2_lesson5_v1",
+  lessonId: "core2-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

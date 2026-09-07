@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Profiling data and finding what is really there</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 2 — LESSON 3 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-2 and 4-5 and the story bible:
+   18,530 active customers; 760 missing payment terms; 94 blank tax
+   classification; 31 key accounts missing delivery address; 108
+   unrecognised CustomerGroup values; 96 records in duplicate
+   tax-registration findings; CustomerGroup distribution STANDARD
+   14,982 / KEY 1,936 / EXPORT 1,244 / INTERNAL 260 / STD 61 /
+   "STANDARD " 29 / 99 18; 42,600 open sales orders; CreditLimit zero
+   on 17,900 active customers; 20 records with 1899 creation dates;
+   6 customers on CustomerGroup GOV.
+============================================================== */
+
+const profilingLens = [
+  {
+   title:"1. Population",
+   short:"How much data is there?",
+   detail:`<p>Counts by object, entity, status, country, date or other relevant population.</p>
+   <p><strong>Example:</strong> the inventory says 18,530 active customers. A profiling query should make that definition reproducible: status = ACTIVE, not marked for deletion, in an in-scope legal entity, or some combination.</p>`
+  },
+  {
+   title:"2. Completeness",
+   short:"What is missing?",
+   detail:`<p>Nulls, blanks, missing mandatory business values, incomplete related data.</p>
+   <p><strong>Example:</strong> 94 active customers have blank tax classification. A blank is a fact; whether it is a defect is an interpretation that requires context.</p>`
+  },
+  {
+   title:"3. Uniqueness",
+   short:"What should be unique but is not?",
+   detail:`<p>Duplicate IDs, tax numbers, emails, account combinations or business keys.</p>
+   <p><strong>Example:</strong> duplicate tax-registration numbers appear across 96 active customer records. Profiling exposes duplicate candidates; business rules determine whether they are genuine duplicates.</p>`
+  },
+  {
+   title:"4. Validity",
+   short:"Which values do not conform to expected rules?",
+   detail:`<p>Invalid codes, formats, dates, ranges or reference values.</p>
+   <p><strong>Example:</strong> 108 active customers use CustomerGroup values outside the proposed target list. "Invalid" should mean "does not meet this stated rule", not "looks strange to me".</p>`
+  },
+  {
+   title:"5. Distribution",
+   short:"What patterns and concentrations exist?",
+   detail:`<p>Value frequencies, dominant defaults, rare values, country or entity differences.</p>
+   <p><strong>Example:</strong> a field can be 100% complete and still be unusable. Distribution reveals meaning that a null count cannot.</p>`
+  },
+  {
+   title:"6. Relationships",
+   short:"What is disconnected?",
+   detail:`<p>Orphan records, missing parents, invalid references, incomplete dependencies.</p>
+   <p><strong>Example:</strong> Bramwell has 42,600 open sales orders. A record can be individually valid and still be unusable because the data it depends on is missing.</p>`
+  }
+];
+
+// Section 10 — "Profile Bramwell customers". The learner matches each
+// business question to the profiling lens that would best answer it,
+// before the suggested test is revealed. Options are reordered per
+// item so the correct answer's position does not track the item number.
+const lensLabels = ["Population", "Completeness", "Uniqueness", "Validity", "Distribution", "Relationships"];
+const profileQuestions = [
+  {
+   q:"How many active customers are in each country?",
+   order:[0,4,2,5,1,3], a:0,
+   why:"This asks how much data exists, segmented by country. The suggested test is a count grouped by country using the agreed active-population rule, which is population profiling."
+  },
+  {
+   q:"How many active customers have no payment terms?",
+   order:[3,1,5,0,4,2], a:1,
+   why:"This is a straightforward missing-value question, so it belongs primarily to completeness, tested by counting null, blank and unrecognised values against the valid terms list."
+  },
+  {
+   q:"Are CustomerID values unique?",
+   order:[5,0,2,4,1,3], a:2,
+   why:"A supposed key is being tested for genuine uniqueness. That is a uniqueness check, done by grouping on CustomerID and identifying counts greater than one."
+  },
+  {
+   q:"Which CustomerGroup values are actually used?",
+   order:[1,4,3,0,5,2], a:4,
+   why:"This asks how values are actually used across the population, including unusual ones like 99 or STANDARD with a trailing space. That is distribution profiling: a frequency count, including blanks and exact raw values."
+  },
+  {
+   q:"Do all key accounts have at least one active delivery address?",
+   order:[2,5,0,3,1,4], a:5,
+   why:"This tests whether a required related record actually exists for each key account. That is a relationship check: comparing the key-account population against active address relationships."
+  },
+  {
+   q:"Do patterns differ between UK and Norway?",
+   order:[4,3,1,0,2,5], a:4,
+   why:"Running the same profile separately for two countries, rather than relying only on the global result, is a distribution/segmentation question."
+  }
+];
+const profileSituations = profileQuestions.map((p, idx) => ({
+  title:`Question ${idx+1}`,
+  question:p.q,
+  options: p.order.map(li => ({
+    label: lensLabels[li],
+    correct: li === p.a,
+    feedback: (li === p.a ? "Correct.<br>" : "Not quite. Consider what this question is really asking.<br>") + p.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The data is clean",title:"Opening scenario: The customer data is clean",type:"mcq",
+ html:`<p class="lead">Bramwell's Customer Services Manager is confident about the customer population.</p>
+ <div class="quote">"Customers should be straightforward. We cleaned the database two years ago. The team cannot save a customer without the mandatory fields, so the data is in good shape."<br><span class="small">Customer Services Manager</span></div>
+ <p>The inventory shows 18,530 active customers. Before detailed mapping begins, you run an initial profile and find:</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Active customers</strong>18,530</div>
+   <div class="status-card"><strong>No valid payment terms</strong>760</div>
+   <div class="status-card"><strong>Blank tax classification</strong>94</div>
+   <div class="status-card"><strong>Key accounts, no active delivery address</strong>31</div>
+   <div class="status-card"><strong>CustomerGroup not recognised in target list</strong>108</div>
+   <div class="status-card"><strong>Duplicate tax-registration occurrences</strong>47, across 96 records</div>
+ </div>
+ <h3>Your decision</h3>
+ <p>What is the strongest interpretation?</p>`,
+ options:[
+ "The manager was wrong. The customer data is poor and should not be migrated until every issue is fixed.",
+ "The data is broadly clean because more than 95% of records pass each individual check.",
+ "The profile has converted a general belief into measurable evidence. The findings now need to be understood by business impact, pattern and migration consequence before cleansing or mapping decisions are made.",
+ "The profiling results should be sent directly to the ETL developer so the transformation logic can correct the problems."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Profiling identifies facts and exceptions. It does not by itself tell you whether the entire dataset is poor or whether every exception must be corrected.",
+ "A small percentage can still affect key accounts, tax, payment or other essential business processes. Criticality is not determined by percentage alone.",
+ "Correct. Profiling produces evidence. The migration team must then understand what the evidence means, why the pattern exists and what action the migration requires.",
+ "Some issues may ultimately be transformed, but business meaning and ownership need to be established before technical logic becomes the answer."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to accept either "clean" or "poor" as the verdict.</p>
+ <p>Instead of arguing about a headline, they take each finding back to the people who can explain it.</p>
+ <div class="visual-card">
+   <div class="visual-title">Turning six numbers into six questions</div>
+   <ul class="framework-checks">
+     <li><strong>760 missing payment terms:</strong> are these genuinely missing, or coded differently by country?</li>
+     <li><strong>94 blank tax classifications:</strong> is tax not applicable to some customer types, or a genuine gap?</li>
+     <li><strong>31 missing delivery addresses:</strong> which of these are key accounts already trading this month?</li>
+     <li><strong>108 unrecognised CustomerGroup values:</strong> are these obvious spelling variants, or something Finance has never seen before?</li>
+     <li><strong>96 duplicate tax-number records:</strong> genuine duplicates, or several sites sharing one legal registration?</li>
+   </ul>
+ </div>
+ <p>Two years of "the data is clean" turns out to mean "nobody has profiled it against the target's requirements since the last cleanse". That is a very different, and much more useful, statement.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Profiling is not a report about the data. It is an investigation into whether the data behaves the way the migration assumes it behaves.</p></div></div>`
+},
+{
+ id:"b3",nav:"What profiling is",title:"What data profiling actually is",type:"content",
+ html:`<p class="lead">Data profiling is the systematic examination of source data to understand its structure, content, patterns, completeness, consistency and anomalies.</p>
+ <div class="visual-card">
+   <div class="visual-title">Questions profiling answers</div>
+   <ul class="framework-checks">
+     <li>How many records are actually present?</li>
+     <li>How often is each field populated?</li>
+     <li>Which values occur and how frequently?</li>
+     <li>Are supposed keys unique?</li>
+     <li>Do values follow the formats we expect?</li>
+     <li>Are there unexpected minimums, maximums or dates?</li>
+     <li>Do relationships point to valid parent records?</li>
+     <li>Do different companies, countries or time periods behave differently?</li>
+     <li>Which assumptions about the data are supported by evidence, and which are not?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Do not profile every field with the same intensity. Profile according to migration risk, target requirements and business importance.</div>
+ <p>A practical first profile can be organised around six questions: the Turner Page Profiling Lens. Explore each one before moving on.</p>`
+},
+{
+ id:"b4",nav:"The profiling lens",title:"The Turner Page Profiling Lens",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Six questions, applied deliberately rather than all at once, turn a vague impression into evidence.</p>`,
+ items: profilingLens,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>These six lenses are related but not interchangeable. A field can be 100% complete and still fail a distribution or validity test. A record can be individually valid and still be unusable if a relationship is missing.</div>`
+},
+{
+ id:"b5",nav:"Distribution reveals meaning",title:"Distribution: the profile that often teaches you the most",type:"content",
+ html:`<p class="lead">Suppose Bramwell's CustomerGroup field contains the following.</p>
+ <div class="visual-card">
+   <div class="visual-title">CustomerGroup, raw values</div>
+   <ul class="framework-checks">
+     <li><strong>STANDARD:</strong> 14,982</li>
+     <li><strong>KEY:</strong> 1,936</li>
+     <li><strong>EXPORT:</strong> 1,244</li>
+     <li><strong>INTERNAL:</strong> 260</li>
+     <li><strong>STD:</strong> 61</li>
+     <li><strong>STANDARD (with a trailing space):</strong> 29</li>
+     <li><strong>99:</strong> 18</li>
+   </ul>
+ </div>
+ <p>A simple completeness check would say the field is 100% populated. Distribution immediately raises better questions: are STD and STANDARD the same business meaning? Is STANDARD with a trailing space a technical variant? What does 99 mean? Are INTERNAL customers genuinely in migration scope? Do the 108 records outside the proposed target list correspond to these unusual values?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A field can be 100% complete and still be unusable. Distribution reveals meaning that null counts cannot.</p></div></div>
+ <p>Migration data rarely works in isolation either. Bramwell has 42,600 open sales orders. A useful profile asks not only whether the order rows are populated, but whether their dependencies exist: does every open order reference a customer in the candidate migration population? Does every line reference a product that will exist in the target? Do operational customers have a usable active delivery address where required?</p>
+ <div class="principle"><strong>Core principle</strong><br>A record can be individually valid and still be unusable because the data it depends on is missing.</div>
+ ${TPKit.fromField({
+   title:"The Meter Field That Was Always Full", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/core2-lesson3-fromfield-sam.mp3",
+   reflection:"Has a field that looked 100% complete ever hidden a real problem on your own project?"
+ })}`
+},
+{
+ id:"b6",nav:"Profile the customers",title:"Build it yourself: profile Bramwell customers",type:"situations",
+ html:`<p class="lead">You are preparing a first-pass customer profile. For each business question, decide which profiling lens would best answer it before the suggested test is revealed.</p>`,
+ items: profileSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is building a Data Profile: a set of reproducible checks, results and observations tied to a defined migration population. The output is evidence for decisions, not merely a spreadsheet of statistics.</p></div></div>`
+},
+{
+ id:"b7",nav:"Statistic to finding",title:"From statistic to finding, and prioritising by impact",type:"content",
+ html:`<p class="lead">A profiling statistic becomes useful when it is translated into a finding with context.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak output versus a stronger migration finding</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "760 missing payment terms." <strong>Stronger:</strong> "760 of 18,530 active customers have no valid payment term under the current reference list. Concentration and business impact require investigation before target mapping is finalised."</li>
+     <li><strong>Weak:</strong> "94 blank tax values." <strong>Stronger:</strong> "94 active customers have blank tax classification. Determine whether blanks are permitted by customer type/country and whether the target requires a value."</li>
+     <li><strong>Weak:</strong> "108 invalid groups." <strong>Stronger:</strong> "108 active customers use CustomerGroup values outside the proposed target list. Most are STD, STANDARD with a trailing space, and 99; a business mapping decision is required."</li>
+     <li><strong>Weak:</strong> "31 missing addresses." <strong>Stronger:</strong> "31 key accounts have no active delivery address under the current relationship rule. Potential order-fulfilment impact."</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page technique</div><p>For every important profile result, ask: what exactly did we test? What did we find? Where is it concentrated? Why might it matter? What needs to happen next?</p></div></div>
+ <p>Which is more important: 760 missing payment terms, or 31 key accounts without an active delivery address? You cannot answer from the counts alone. Consider whether the target requires the value, which business process depends on it, whether it blocks loading or merely creates a warning, whether it affects a high-value or regulated population, and what happens if it remains unresolved at go-live.</p>
+ <div class="principle"><strong>Core principle</strong><br>Data quality priority is a function of business and migration impact, not simply the number of bad records.</div>`
+},
+{
+ id:"b8",nav:"Judgement calls",title:"Judgement calls: what does the profile really tell you?",type:"content",
+ html:`<p class="lead">Four situations show why a profiling result still needs interpretation.</p>
+ <div class="quote">A field called CreditLimit is populated on every active customer. 17,900 records contain 0.</div>
+ <p>Completeness is excellent, but distribution raises a meaning question. Does zero mean no credit, unlimited credit, not maintained, or a genuine value?</p>
+ <div class="quote">Twenty customer records have creation dates in 1899.</div>
+ <p>Do not automatically overwrite them. Investigate whether 1899 is a system default, a conversion artefact, or a meaningful historical placeholder, then decide treatment.</p>
+ <div class="quote">Only six customers use CustomerGroup GOV.</div>
+ <p>Low frequency does not make it wrong. It may represent a small but important public-sector population. Confirm meaning and target treatment.</p>
+ <div class="quote">Only 0.5% of customers have invalid payment terms overall, but 38% of customers in one small legal entity are affected.</div>
+ <p>Global percentages hide concentration. Segmenting the profile changes the risk assessment and likely cleansing response.</p>
+ <p>A useful profile is not a one-off screenshot either. As cleansing progresses and source data changes, the team should be able to rerun important checks and compare results. For significant checks, retain the population definition, the query or method used, the date profiled, the result, any segmentation applied, and the interpretation.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>If a profile cannot be reproduced, it is difficult to use it as evidence of improvement.</p></div></div>`
+},
+{
+ id:"b9",nav:"AI and profiling",title:"AI can accelerate profiling analysis",type:"content",
+ html:`<p class="lead">AI can help analyse profiling outputs, especially where many fields or value distributions are involved.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful examples</div>
+   <ul class="framework-checks">
+     <li>Summarising unusual value distributions</li>
+     <li>Suggesting candidate standardisation groups for review</li>
+     <li>Generating draft SQL or Power Query profiling logic</li>
+     <li>Highlighting outliers across multiple entities</li>
+     <li>Turning raw profile results into a first draft of issue descriptions</li>
+   </ul>
+ </div>
+ <p>But AI-generated profiling logic must be checked. A plausible query can count the wrong population, join incorrectly, or apply an invalid business assumption.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>AI can help you ask and process profiling questions. The migration professional remains responsible for whether the test is correct and what the result means.</p></div></div>`
+},
+{
+ id:"b10",nav:"Reflection",title:"Blank, or fully populated?",type:"reflection",
+ html:`<p>Consider a single field.</p>
+ <div class="quote">Which profiling result would concern you more: a field that is 20% blank, or a field that is 100% populated?</div>
+ <p>The answer depends on the field, the population, the business rule and the values that are present. Strong profiling does not reward dramatic percentages. It asks whether the observed data supports the target process and the migration assumptions.</p>
+ <textarea id="reflection" placeholder="It depends on..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/context|depend|field|rule/i, strength:"You recognised that the answer depends on the specific field and business rule, not the percentage alone.", gap:"Consider that the answer depends on the field and the rule behind it, not the percentage in isolation." },
+   { test:/blank|missing|null/i, strength:"You considered what a blank value would actually mean for that field.", gap:"Consider what a blank would actually mean: not applicable, not yet captured, or a genuine gap." },
+   { test:/default|zero|placeholder|meaning/i, strength:"You considered that a fully populated field could still hide a meaningless default value.", gap:"Consider that 100% populated can still hide a default value that carries no real meaning." },
+   { test:/distribut|pattern|value/i, strength:"You considered looking at the distribution of values, not just whether the field is populated.", gap:"Consider looking at the distribution of actual values, not only whether the field is populated." },
+   { test:/process|target|use|operat/i, strength:"You tied your answer back to whether the business process or target actually needs the value.", gap:"Consider whether the target process genuinely needs the value at all." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Neither on its own. A 20% blank field could be entirely appropriate if the value only applies to some customers. A 100% populated field could still be meaningless if most of it is a default such as zero or a placeholder. I would look at the distribution of actual values and ask what the target process genuinely requires before judging either result.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely sound profiling judgement. You are resisting the pull of a single dramatic percentage.":"You have made a start. Push further into what a blank, or a default value, would actually mean for this specific field."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's customer data is no longer described as simply "clean" or "poor".</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Data profiling systematically examines source populations, completeness, uniqueness, validity, distributions and relationships.</li>
+   <li>Profiling turns beliefs about source data into measurable evidence.</li>
+   <li>A blank or duplicate is an observation first; whether it is a defect depends on business context.</li>
+   <li>Distribution analysis can reveal problems that simple completeness checks miss.</li>
+   <li>Relationships must be profiled because individually valid records can still be unusable when dependencies are missing.</li>
+   <li>Profile results should be translated into clear findings with population, impact and next action.</li>
+   <li>Data-quality priority depends on business and migration impact, not count alone.</li>
+   <li>Important profiling checks should be reproducible so progress can be measured.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not ask whether the data looks clean. Profile it until you can explain what is actually there, where the exceptions are and why they matter.</div>`
+},
+{
+ id:"b12",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A field is 100% populated. What does that tell you on its own?",
+   options:[
+     {label:"That the field is definitely correct and usable", correct:false, feedback:"Not quite. Completeness says nothing about whether the values are meaningful."},
+     {label:"Only that no value is missing; distribution may still reveal a problem", correct:true, feedback:"Correct. A field can be complete and still be unusable if the values themselves are wrong or meaningless."},
+     {label:"That every value is unique", correct:false, feedback:"Not quite. Completeness and uniqueness are two different profiling lenses."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Which lens would you use to check whether every open sales order references a valid customer?",
+   options:[
+     {label:"Completeness", correct:false, feedback:"Not quite. Completeness asks whether a value is missing, not whether a link is valid."},
+     {label:"Relationships", correct:true, feedback:"Correct. This tests whether a dependency between two data sets actually holds."},
+     {label:"Population", correct:false, feedback:"Not quite. Population asks how much data exists, not whether links are valid."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why is a global percentage sometimes misleading?",
+   options:[
+     {label:"Percentages are always misleading and should never be reported", correct:false, feedback:"Not quite. Percentages are useful; the issue is what they can hide."},
+     {label:"It can hide a much higher concentration of the problem in one segment, such as a legal entity", correct:true, feedback:"Correct. Segmenting the profile can change the risk assessment completely."},
+     {label:"It always understates the true number of defects", correct:false, feedback:"Not quite. The issue is concentration, not a fixed direction of error."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Twenty customer records have a creation date of 1899. What is the right first step?",
+   options:[
+     {label:"Overwrite them with today's date", correct:false, feedback:"Not quite. That would erase a fact before understanding what it means."},
+     {label:"Investigate whether 1899 is a system default, conversion artefact or genuine placeholder", correct:true, feedback:"Correct. Understand the cause before deciding on treatment."},
+     {label:"Ignore them, since twenty records out of 18,530 is not significant", correct:false, feedback:"Not quite. Low volume does not automatically mean low importance."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Why should a profiling check be reproducible?",
+   options:[
+     {label:"So it can be rerun later and compared, to prove whether data quality is actually improving", correct:true, feedback:"Correct. A profile that cannot be reproduced is difficult to use as evidence of progress."},
+     {label:"So the result always looks the same however it is run", correct:false, feedback:"Not quite. The result should reflect the real data, not stay artificially constant."},
+     {label:"Reproducibility does not matter once the first profile has been run", correct:false, feedback:"Not quite. Rerunning the same check is how progress gets measured."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"What determines whether a data-quality issue should be prioritised?",
+   options:[
+     {label:"Simply the number of affected records", correct:false, feedback:"Not quite. A small population can still carry very high business impact."},
+     {label:"Business and migration impact, not the record count alone", correct:true, feedback:"Correct. Impact, criticality and lead time matter more than volume by itself."},
+     {label:"Whichever stakeholder raises it most loudly", correct:false, feedback:"Not quite. Loudness is not evidence of impact."}
+   ]
+  }
+ ]
+},
+{
+ id:"b13",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Profiling data and finding what is really there.</strong></p>
+ <p>Bramwell's customer data is no longer described as simply clean or poor. The team now has evidence: specific populations, patterns and exceptions that can be investigated and acted upon.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Turning data problems into a cleansing plan:</strong> you will take profiling findings such as missing payment terms, inconsistent customer groups and duplicate candidates and decide what should be corrected, transformed, accepted or escalated.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 2",
+  moduleTitle: "Data Profiling & Data Quality",
+  lessonLabel: "Lesson 3: Profiling data and finding what is really there",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Do not ask whether the data looks clean",
+  storageKey: "tp_core2_lesson3_v1",
+  lessonId: "core2-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
