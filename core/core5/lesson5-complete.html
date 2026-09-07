@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turner Page | Lesson Complete</title>
+<style>
+:root{
+  --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
+  --mist:#f3f9f9; --paper:#fff; --line:#d8e9e9; --good:#0b7d5b;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);color:var(--ink);line-height:1.62}
+.topbar{background:#fff;border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1120px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:22px}
+.logo{height:46px;width:auto}.brand{flex:1}.brand strong{display:block}.brand span{font-size:12px;color:#61787d}
+.page{max-width:980px;margin:36px auto 80px;padding:0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(28px,5vw,54px);box-shadow:var(--shadow)}
+.complete-mark{width:66px;height:66px;margin-bottom:18px;display:grid;place-items:center;border-radius:50%;background:#eaf7f2;color:var(--good);font-size:34px;font-weight:900}
+.kicker{color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+h1{margin:8px 0 16px;font-size:clamp(36px,5vw,54px);line-height:1.08;letter-spacing:-.035em}
+h2{margin:30px 0 12px;font-size:25px}.lead{max-width:780px;color:#405b62;font-size:19px}
+.takeaways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0 8px}
+.takeaway{position:relative;padding:17px 18px 17px 47px;border:1px solid var(--line);border-radius:16px;background:#fbfefe}
+.takeaway::before{content:"✓";position:absolute;left:18px;top:15px;color:var(--good);font-weight:900}
+.reflection{margin-top:28px;padding:22px;border:1px solid var(--line);border-radius:20px;background:#f8fbfb}
+textarea{width:100%;min-height:150px;padding:16px;border:1px solid var(--line);border-radius:15px;resize:vertical;font:inherit;color:var(--ink);background:#fff}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:30px}
+button{border:0;border-radius:13px;padding:13px 20px;font-weight:850;cursor:pointer}
+.primary{background:#fff;color:var(--deep)}.secondary{background:#e7f5f5;color:var(--deep)}
+.promise{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);color:#647d82;text-align:center;font-size:13px}
+@media(max-width:760px){
+  .takeaways{grid-template-columns:1fr}
+  .actions{flex-direction:column-reverse}.actions button{width:100%}
+  .topbar-inner{padding:10px 14px}.logo{height:39px}.brand span{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="/index.html" aria-label="Return to home"><img class="logo" src="/assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="brand"><strong>Turner Page Academy</strong><span>Core Module 5: Validation &amp; Reconciliation</span></div>
+  </div>
+</header>
+
+<main class="page">
+  <section class="card">
+    <div class="complete-mark">✓</div>
+    <div class="kicker">Lesson 5 complete</div>
+    <h1>Well done, <span id="learnerName">Learner</span>.</h1>
+
+    <p class="lead">
+      You have completed <strong>Evidence, acceptance and sign-off</strong> and finished Core Module 5: Validation &amp; Reconciliation.
+      You are now ready to turn validation results into a transparent, authorised acceptance decision rather than a quiet green status.
+    </p>
+
+    <h2>What you have covered</h2>
+    <div class="takeaways">
+      <div class="takeaway">Evidence, acceptance and sign-off are different; a green dashboard is evidence, not automatically business acceptance.</div>
+      <div class="takeaway">Authority should match the specific decision; nobody's approval should be stretched beyond what they actually gave.</div>
+      <div class="takeaway">A residual exception needs to be quantified, owned and explicitly authorised, never hidden behind a percentage.</div>
+      <div class="takeaway">Sign-off is cycle-specific; approving one cycle never automatically approves the next.</div>
+    </div>
+
+    <div class="reflection">
+      <div class="kicker">Your reflection</div>
+      <h2>What is the single most valuable thing you learned?</h2>
+      <p>This is for you. Your answer is saved on this device.</p>
+      <textarea id="lessonReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+    </div>
+
+    <div class="actions" style="margin-top:30px">
+      <button class="primary" style="width:100%" onclick="location.href='/core5/assessment.html'">Continue to the Module 5 assessment</button>
+    </div>
+
+    <div class="promise">
+      <strong>The Turner Page Promise</strong><br>
+      Professional data migration training and certification.
+    </div>
+  </section>
+</main>
+
+<!-- Loaded only for the shared TPKit.recordProgress/getProgress helpers —
+     this page does NOT use TPKit.mount(); it's still its own separate
+     rendering system per tp-html-build-guide.md §10. -->
+<script src="/shared/turner-page-kit.js"></script>
+
+<script>
+const LESSON_ID = "core5-lesson5";
+
+const learner = JSON.parse(
+  localStorage.getItem("tpCurrentLearner") || localStorage.getItem("tpLearner") || '{"name":"Learner"}'
+);
+const fullName = learner.name && learner.name.trim() ? learner.name.trim() : "Learner";
+document.getElementById("learnerName").textContent = fullName.split(/\s+/)[0];
+
+const reflectionKey = `tp_${LESSON_ID}_completion_reflection`;
+const reflection = document.getElementById("lessonReflection");
+reflection.value = localStorage.getItem(reflectionKey) || "";
+reflection.addEventListener("input", () => localStorage.setItem(reflectionKey, reflection.value));
+
+if(window.TPKit && typeof TPKit.recordProgress === "function"){
+  TPKit.recordProgress("lesson", LESSON_ID, {});
+}
+</script>
+</body>
+</html>

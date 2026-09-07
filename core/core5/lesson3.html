@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Proving relationships and business usability</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 5 — LESSON 3 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Modules 1-4 and the story bible: open
+   sales order SO-78452, customer C10482, delivery address
+   C10482-DEL-02, product PRD-44781, site UK01, warehouse WH-BRI,
+   currency GBP; 42,600 open sales orders, 118,944 order lines.
+============================================================== */
+
+// Section 4 — "Orphans are only one kind of relationship defect". The
+// learner matches each real-world example to the defect type it
+// represents. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const defectLabels = ["Orphan", "Mislink", "Wrong reference", "Missing configuration relationship", "Duplicate relationship", "Incomplete hierarchy"];
+const defectItems = [
+  {
+   q:"An order references a customer that does not exist in target.",
+   order:[3,0,5,1,4,2], a:0,
+   why:"There is simply nothing at the other end of the reference. That is the defining feature of an orphan."
+  },
+  {
+   q:"A delivery address exists but belongs to the wrong customer.",
+   order:[4,1,2,0,3,5], a:1,
+   why:"The address record genuinely exists and technically resolves, but it is attached to the wrong business record. That makes it a mislink, not an orphan."
+  },
+  {
+   q:"SMITHJ resolves to the wrong target worker.",
+   order:[2,5,0,4,1,3], a:2,
+   why:"The reference resolves successfully, but to the wrong person entirely. A resolvable reference that points to the wrong record is a wrong reference, distinct from a mislink between two already-known records."
+  },
+  {
+   q:"A product exists but is not released/configured for the required site.",
+   order:[3,4,1,5,0,2], a:3,
+   why:"The master record is fine; what is missing is the configuration relationship the business process actually depends on."
+  },
+  {
+   q:"The same customer-address relationship is created twice.",
+   order:[0,2,4,3,5,1], a:4,
+   why:"Both records may individually be correct, but the relationship itself has been duplicated, which can confuse downstream processes."
+  },
+  {
+   q:"A parent account exists but its child relationship is missing.",
+   order:[5,3,1,0,2,4], a:5,
+   why:"The top of the structure is there, but the hierarchy beneath it is incomplete, which is its own distinct defect type."
+  }
+];
+const defectSituations = defectItems.map((d, idx) => ({
+  title:`Example ${idx+1}`,
+  question:d.q,
+  options: d.order.map(li => ({
+    label: defectLabels[li],
+    correct: li === d.a,
+    feedback: (li === d.a ? "Correct.<br>" : "Not quite. Look again at exactly what is wrong here, existence, identity, or configuration.<br>") + d.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Everything reconciles",title:"Opening scenario: Everything reconciles",type:"mcq",
+ html:`<p class="lead">Bramwell's open sales-order migration looks excellent. Orders: expected 42,600, target 42,600. Order lines: expected 118,944, target 118,944. Order value reconciled to the approved control total. Target import 100% accepted.</p>
+ <p>A warehouse user opens order SO-78452. The order exists, its value is correct and every line is present. But the order cannot be released because product PRD-44781 is not available for site UK01. Another group of orders has delivery addresses that exist as records but are attached to the wrong customer.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "The migration is validated because counts and values reconcile.",
+ "These are target configuration problems, so they sit completely outside migration validation.",
+ "The quantitative reconciliation is strong, but relationship and usability validation has failed. Investigate whether the migrated dependencies and links are correct before declaring the object successful.",
+ "Ask users to fix the affected relationships manually after go-live."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Correct rows can still be connected incorrectly. Counts and values do not prove referential integrity or business usability.",
+ "Configuration may be involved, but migration must validate its dependency assumptions. If migrated orders require a product/site relationship, the migration cannot ignore whether that relationship resolves.",
+ "Correct. Validation must prove that important migrated relationships work as intended, not simply that each table/object looks correct in isolation.",
+ "Manual post-go-live repair is not a substitute for migration evidence. Known systematic relationship defects should be resolved and retested before acceptance."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to let a perfect quantitative reconciliation stand in for proof that the data actually works.</p>
+ <p>They follow SO-78452's dependencies one at a time instead of stopping at "the order exists and its value is correct".</p>
+ <div class="visual-card">
+   <div class="visual-title">What following the chain reveals</div>
+   <ul class="framework-checks">
+     <li><strong>Order &rarr; Customer:</strong> resolves correctly to C10482.</li>
+     <li><strong>Order line &rarr; Product:</strong> resolves correctly to PRD-44781, which genuinely exists in the target.</li>
+     <li><strong>Product &rarr; Site:</strong> PRD-44781 has never actually been released for site UK01, so the order cannot be released at all.</li>
+     <li><strong>A separate population:</strong> delivery addresses that exist as valid records, but were linked to the wrong customer during load.</li>
+   </ul>
+ </div>
+ <p>Every number in the original reconciliation was true. None of it proved that the relationships underneath those numbers were correct.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Validate the links that make the data usable, not only the records that make the counts reconcile.</p></div></div>`
+},
+{
+ id:"b3",nav:"A network, not a pile",title:"Business data is a network, and referential integrity asks whether relationships resolve",type:"content",
+ html:`<p class="lead">A typical migrated transaction depends on several other objects.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell order dependency chain</div>
+   <ul class="framework-checks">
+     <li>SO-78452 &rarr; Customer C10482 &rarr; Delivery address C10482-DEL-02</li>
+     <li>SO-78452 line &rarr; Product PRD-44781 &rarr; Site UK01 &rarr; Warehouse WH-BRI</li>
+     <li>SO-78452 &rarr; Currency GBP &rarr; Payment terms 45E equivalent &rarr; Delivery terms STDROAD</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Validate the links that make the data usable, not only the records that make the counts reconcile.</div>
+ <p>At its simplest, relationship validation asks whether a reference points to a valid target record.</p>
+ <div class="visual-card">
+   <div class="visual-title">Relationships to validate</div>
+   <ul class="framework-checks">
+     <li><strong>Order &rarr; Customer:</strong> every in-scope order resolves to the intended migrated customer.</li>
+     <li><strong>Order line &rarr; Product:</strong> every line resolves to the intended product.</li>
+     <li><strong>Customer &rarr; Delivery address:</strong> every migrated delivery address belongs to the intended customer.</li>
+     <li><strong>Product &rarr; Site/Warehouse:</strong> required site/warehouse relationships exist.</li>
+     <li><strong>Customer &rarr; SalesOwner:</strong> the referenced target worker/user exists and is the intended person.</li>
+     <li><strong>Transaction &rarr; Reference data:</strong> currency, terms, tax and delivery codes resolve.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>A foreign key that technically resolves is not enough if it resolves to the wrong business record.</div>`
+},
+{
+ id:"b4",nav:"More than orphans",title:"Orphans are only one kind of relationship defect",type:"content",
+ html:`<p class="lead">A relationship can be technically populated and still be business-wrong. Explore each defect type before moving on to the exercise.</p>
+ <div class="visual-card">
+   <div class="visual-title">Relationship defect types</div>
+   <ul class="framework-checks">
+     <li><strong>Orphan:</strong> order references a customer that does not exist in target.</li>
+     <li><strong>Mislink:</strong> delivery address exists but belongs to the wrong customer.</li>
+     <li><strong>Wrong reference:</strong> SMITHJ resolves to the wrong target worker.</li>
+     <li><strong>Missing configuration relationship:</strong> product exists but is not released/configured for required site.</li>
+     <li><strong>Duplicate relationship:</strong> same customer-address relationship created twice.</li>
+     <li><strong>Incomplete hierarchy:</strong> parent account exists but child relationship is missing.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A relationship can be technically populated and still be business-wrong.</p></div></div>`
+},
+{
+ id:"b5",nav:"Name the defect",title:"Build it yourself: name the relationship defect",type:"situations",
+ html:`<p class="lead">For each example, identify which relationship defect type it represents before the reasoning is revealed.</p>`,
+ items: defectSituations,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>Naming the defect type matters because each one needs a different investigation: existence, identity, configuration, duplication or structure.</div>`
+},
+{
+ id:"b6",nav:"Validate SO-78452",title:"Validate the dependency chain, not just one hop",type:"content",
+ html:`<p class="lead">SO-78452 may resolve correctly to C10482, but the order can still fail if a deeper dependency is broken.</p>
+ <div class="visual-card">
+   <div class="visual-title">Following the chain, level by level</div>
+   <ul class="framework-checks">
+     <li><strong>Order &rarr; Customer:</strong> does SO-78452 reference C10482?</li>
+     <li><strong>Customer &rarr; Address:</strong> does C10482-DEL-02 belong to C10482 and remain usable?</li>
+     <li><strong>Order line &rarr; Product:</strong> does PRD-44781 resolve?</li>
+     <li><strong>Product &rarr; Site:</strong> is PRD-44781 valid/released for UK01?</li>
+     <li><strong>Site &rarr; Warehouse:</strong> is WH-BRI valid for the relevant site/context?</li>
+     <li><strong>Order &rarr; Terms/config:</strong> do payment/delivery terms resolve in the relevant company?</li>
+   </ul>
+ </div>
+ <p>For each dependency, ask: does the referenced record exist? Is it the correct business record? Is the relationship active/valid in the relevant target context? Was the relationship produced by the approved mapping? Can the downstream process actually use it?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>The learner is creating a Relationship Validation Chain: transaction &rarr; dependency &rarr; expected relationship &rarr; target result &rarr; pass/fail &rarr; evidence.</p></div></div>
+ <p>Do not rely only on opening a few orders manually. Where technically possible, run full-population controls such as a count of orders with missing customers, a count of order lines with missing products, a count of addresses linked to an unexpected customer, a count of customer SalesOwner references with no target match, a count of orders using invalid company-specific terms, and a count of products missing required site/warehouse relationships.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Use systematic checks to find relationship defects at scale, then use targeted functional tests to prove the business consequence.</div>`
+},
+{
+ id:"b7",nav:"Existence is not enough",title:"Zero orphans does not prove correct relationships",type:"content",
+ html:`<p class="lead">Suppose all 42,600 orders have a valid CustomerID in target. That sounds excellent. But 73 orders were linked to the wrong customer because a cross-reference used an old legacy identifier. Every relationship resolves. None is correct.</p>
+ <div class="principle"><strong>Core principle</strong><br>Validate identity as well as existence. "It points somewhere" is not the same as "it points to the right place".</div>
+ ${TPKit.fromField({
+   title:"Every Link Resolved, Somewhere Wrong", name:"Darren", role:"Data Migration Lead", project:"Distribution ERP",
+   src:"/assets/audio/core5-lesson3-fromfield-darren.mp3",
+   reflection:"Have you seen every relationship in a migration technically resolve, while a whole population still pointed at the wrong record?"
+ })}`
+},
+{
+ id:"b8",nav:"Does it actually work?",title:"Functional validation asks whether the data can be used",type:"content",
+ html:`<p class="lead">A functional migration check uses migrated data in a targeted business action, such as opening a migrated customer and creating a new sales order, releasing a migrated open sales order, receiving against a migrated purchase order, settling or processing a migrated open invoice, using a migrated product at the expected site/warehouse, or navigating from a customer to its migrated delivery addresses.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Signature point</div><p>Validation proves that the data is correct. Functional testing proves that the data works.</p></div></div>
+ <p>Migration validation and broader UAT overlap, but are not identical.</p>
+ <div class="visual-card">
+   <div class="visual-title">Migration validation versus broader UAT</div>
+   <ul class="framework-checks">
+     <li><strong>Migration validation</strong> focuses on migrated data and migration rules; proves populations, values, relationships and known migration outcomes; often uses automated reconciliations and targeted functional smoke tests; owned collaboratively by migration, functional and business participants.</li>
+     <li><strong>Broader UAT</strong> tests wider end-to-end business processes and solution behaviour; proves users can perform required business scenarios in the solution; often uses formal business scenarios, roles, workflows and integrations; usually led through the project test/UAT structure with business ownership.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do enough functional checking to prove migrated data is usable, without pretending the migration workstream owns all solution UAT.</div>`
+},
+{
+ id:"b9",nav:"Risk-based checks",title:"Design functional checks around migration risk, and use deliberate test records",type:"content",
+ html:`<p class="lead">Choose checks that exercise the migrated relationships and transformations most likely to fail.</p>
+ <div class="visual-card">
+   <div class="visual-title">Migration risk to useful functional check</div>
+   <ul class="framework-checks">
+     <li><strong>Customer delivery addresses:</strong> create/release an order using a migrated delivery address.</li>
+     <li><strong>Product/site relationship:</strong> use a migrated product at each relevant site population.</li>
+     <li><strong>Payment terms mapping:</strong> create or inspect a transaction using the migrated customer terms.</li>
+     <li><strong>Open order dependencies:</strong> progress selected migrated orders through the next expected business step.</li>
+     <li><strong>SalesOwner cross-reference:</strong> confirm migrated ownership appears against the intended target person.</li>
+     <li><strong>Multi-company data:</strong> run equivalent checks in each materially different legal entity.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Functional validation should challenge the migration's risky relationships, not become a generic tour of the application.</p></div></div>
+ <p>Select records that cover meaningful migration conditions: a normal high-volume case, each major legal entity, a record with transformed reference values, a record with multiple addresses/relationships, a previously failed record, an unusual but approved case, and a transaction with several dependencies.</p>
+ <div class="principle"><strong>Core principle</strong><br>Choose test records because of what they prove, not because they are easy to find.</div>`
+},
+{
+ id:"b10",nav:"Symptom, then cause",title:"A functional failure still needs root-cause analysis, and evidence should be preserved",type:"content",
+ html:`<p class="lead">If SO-78452 cannot be released, possible causes include a product migration defect, missing product/site configuration, an incorrect scope decision, a wrong warehouse relationship, a target functional configuration defect, an order mapping/transformation defect, or a non-migration application defect. Do not automatically classify every failed business process as a migration defect.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Functional failure identifies a symptom. Investigation determines whether the migration caused it.</div>
+ <p>Useful evidence might record cycle/environment, object/business key, relationship or scenario tested, expected result, actual result, pass/fail, defect or investigation reference, and tester/owner and date where required.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A screenshot can support evidence, but the evidence needs to say what was being proved and what the expected result was.</p></div></div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: does the data really work?",type:"content",
+ html:`<p class="lead">Five situations show why passing structural checks is never the full story.</p>
+ <div class="quote">Every order references an existing target customer.</div>
+ <p>Good first control, but also validate that orders reference the intended customers.</p>
+ <div class="quote">The order references C10482 correctly, but C10482-DEL-02 was attached to another customer.</div>
+ <p>Relationship validation fails even though both records exist.</p>
+ <div class="quote">PRD-44781 exists in target, but is not released for UK01.</div>
+ <p>The master record exists but the dependency required by the business process is incomplete.</p>
+ <div class="quote">A migrated order fails because a workflow configuration is broken for all orders, migrated and newly created.</div>
+ <p>The symptom appears during migration testing, but root cause may be solution configuration rather than migration.</p>
+ <div class="quote">Ten selected orders progress correctly.</div>
+ <p>Useful functional evidence, but it does not replace systematic relationship checks across the population.</p>`
+},
+{
+ id:"b12",nav:"AI and relationship patterns",title:"AI can help find broken relationship patterns",type:"content",
+ html:`<p class="lead">AI can assist with drafting relationship-validation queries, analysing clusters of orphan/mislinked records, suggesting dependency checks from a data model, summarising failed functional tests, identifying common attributes among relationship defects, and generating candidate test scenarios from mapping dependencies.</p>
+ <p>The actual target relationships and business process rules must still be verified by the project team.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to expand coverage and spot patterns. Do not let it infer business relationships that have not been confirmed.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"Which object would worry you most?",type:"reflection",
+ html:`<p>Think about a typical ERP project.</p>
+ <div class="quote">What migrated object could have perfect counts and values but still cause the greatest disruption if its relationships were wrong?</div>
+ <p>Think about orders, products, customers, addresses, financial dimensions, sites, warehouses and reference data. The answer depends on the business process and migration scope.</p>
+ <textarea id="reflection" placeholder="The object that would worry me most is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/order|product|customer|address/i, strength:"You named a specific migrated object, not just relationships in general.", gap:"Consider naming a specific object, such as orders, products, customers or addresses." },
+   { test:/relationship|depend|link/i, strength:"You tied your answer to a specific relationship or dependency that could break.", gap:"Consider which specific relationship or dependency, if wrong, would actually cause disruption." },
+   { test:/disrupt|business|process|operat/i, strength:"You connected the risk to real business disruption, not just a technical defect.", gap:"Consider what business disruption would actually follow if this relationship were wrong." },
+   { test:/count|value|reconcil/i, strength:"You recognised that counts and values could look perfect while this risk remained hidden.", gap:"Consider why counts and values could look perfect while this specific risk stayed hidden." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Open sales orders worry me most. Counts, line counts and value can all reconcile perfectly while product-site relationships, delivery addresses or salesperson references are quietly wrong, and the business only discovers it when someone tries to actually fulfil an order.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely strong risk-based thinking. You are connecting a specific relationship to real business disruption.":"You have made a start. Push further into naming the specific relationship that would cause the disruption, not just the object."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now prove that migrated data is complete, accurate, connected and usable.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Business data depends on relationships, not isolated records.</li>
+   <li>Referential integrity requires references to resolve to the intended business record.</li>
+   <li>Orphans, mislinks, wrong references and incomplete dependencies are different defect types.</li>
+   <li>Validate relationship populations systematically where possible.</li>
+   <li>Zero orphan records does not prove correct identity.</li>
+   <li>Follow dependency chains far enough to prove the business process can use the data.</li>
+   <li>Targeted functional checks complement structural validation.</li>
+   <li>Migration validation and UAT overlap but have different scopes.</li>
+   <li>Choose functional checks and test records based on migration risk.</li>
+   <li>A failed functional scenario is a symptom that still requires root-cause analysis.</li>
+   <li>Retain evidence that states what relationship or business outcome was being proved.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Migrated data is not proven simply because every record exists and every total balances. The relationships must be correct, and the business must be able to use them.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"Orders, order lines and order value all reconcile perfectly, but a warehouse user cannot release an order. What does this show?",
+   options:[
+     {label:"That the migration is fully validated, since the counts and value are correct", correct:false, feedback:"Not quite. Counts and values do not prove referential integrity or business usability."},
+     {label:"That quantitative reconciliation and relationship/usability validation are two different things", correct:true, feedback:"Correct. Validation must prove that important migrated relationships work, not simply that each object looks correct in isolation."},
+     {label:"That the target system itself must be faulty", correct:false, feedback:"Not quite. The cause could equally be a migration or configuration issue."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A delivery address exists and technically resolves, but it is attached to the wrong customer. What kind of defect is this?",
+   options:[
+     {label:"An orphan", correct:false, feedback:"Not quite. An orphan means the reference points to nothing at all; here it points somewhere, just to the wrong place."},
+     {label:"A mislink", correct:true, feedback:"Correct. The record exists and resolves, but to the wrong business record."},
+     {label:"An incomplete hierarchy", correct:false, feedback:"Not quite. This is about identity, not a missing structural level."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"All 42,600 orders have a valid CustomerID in target, but 73 point to the wrong customer due to an old legacy identifier. What does this show?",
+   options:[
+     {label:"That zero orphans proves the relationships are correct", correct:false, feedback:"Not quite. Every relationship resolving does not mean every relationship is correct."},
+     {label:"That validating existence is not the same as validating identity", correct:true, feedback:"Correct. 'It points somewhere' is not the same as 'it points to the right place'."},
+     {label:"That the customer object itself is broken", correct:false, feedback:"Not quite. The customer records may be entirely correct; the cross-reference used to link them is the problem."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"What is the key distinction between migration validation and broader UAT?",
+   options:[
+     {label:"Migration validation proves migrated data is correct; UAT proves the wider solution works end to end", correct:true, feedback:"Correct. Validation proves that the data is correct. Functional testing proves that the data works."},
+     {label:"They are the same activity performed by different people", correct:false, feedback:"Not quite. They overlap but have genuinely different scopes."},
+     {label:"UAT is only needed if migration validation fails", correct:false, feedback:"Not quite. UAT has its own independent purpose regardless of migration validation results."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"An order cannot be released during migration testing, and the cause turns out to be a workflow configuration broken for all orders, migrated and new. What does this tell you?",
+   options:[
+     {label:"This is automatically a migration defect and should be logged as such", correct:false, feedback:"Not quite. The symptom appeared during migration testing, but the root cause may sit outside migration entirely."},
+     {label:"A functional failure is a symptom; the root cause must still be investigated before assigning blame", correct:true, feedback:"Correct. Do not automatically classify every failed business process as a migration defect."},
+     {label:"The order should simply be excluded from migration scope", correct:false, feedback:"Not quite. Excluding the order does not address the underlying configuration issue."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why should functional test records be chosen deliberately rather than picked because they are easy to find?",
+   options:[
+     {label:"Because easy-to-find records are usually more expensive to test", correct:false, feedback:"Not quite. Cost is not the reason given here."},
+     {label:"Because the point is to prove specific migration conditions, not just to run some test", correct:true, feedback:"Correct. Choose test records because of what they prove, not because they are easy to find."},
+     {label:"Because only randomly selected records are considered valid evidence", correct:false, feedback:"Not quite. Deliberate, risk-based selection is exactly what the lesson recommends instead of random selection."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Proving relationships and business usability.</strong></p>
+ <p>Bramwell can now prove that migrated data is complete, accurate, connected and usable.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Investigating, correcting and retesting data:</strong> you will take failed validation results and turn them into controlled fixes without creating one-off patches or losing evidence of what changed.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 5",
+  moduleTitle: "Validation & Reconciliation",
+  lessonLabel: "Lesson 3: Proving relationships and business usability",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "The relationships must be correct, and the business must be able to use them",
+  storageKey: "tp_core5_lesson3_v1",
+  lessonId: "core5-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Proving completeness and accuracy</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 5 — LESSON 1 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Modules 1-4 and the story bible: cycle
+   population 18,612 raw active customers (a later cycle, distinct
+   from the earlier 18,530 baseline); customer C10482, Harrison Trade
+   Supplies Ltd.
+============================================================== */
+
+// Section 8 — "Build it yourself: the Validation Matrix". The learner
+// matches each validation question to the pass condition that
+// actually proves it. Options are reordered per item so the correct
+// answer's position does not track the item number.
+const passConditionLabels = [
+  "Every in-scope record accounted for",
+  "No unexplained differences",
+  "Approved values match",
+  "No unexpected duplicates",
+  "Expected rule outcomes",
+  "No unexplained overrides"
+];
+const matrixItems = [
+  {
+   q:"Did the full population reconcile?",
+   order:[0,3,5,1,2,4], a:0,
+   why:"This question is answered by raw, exception, exclusion and target counts together; the pass condition is that every in-scope record is accounted for somewhere."
+  },
+  {
+   q:"Did each legal entity reconcile?",
+   order:[1,4,0,2,5,3], a:1,
+   why:"Segment counts by company only prove something if there are no unexplained differences once you look below the grand total."
+  },
+  {
+   q:"Are key target values correct?",
+   order:[2,5,1,4,0,3], a:2,
+   why:"This compares the expected transformed output with the target result; the pass condition is that the approved values actually match."
+  },
+  {
+   q:"Are business keys unique?",
+   order:[3,0,4,2,1,5], a:3,
+   why:"Distinct-key and duplicate checks exist specifically to prove there are no unexpected duplicates."
+  },
+  {
+   q:"Did known high-risk rules work, such as CustomerGroup, Terms, Country and SalesOwner?",
+   order:[4,2,3,0,5,1], a:4,
+   why:"High-risk rules need targeted checks against the approved rule; the pass condition is that each one produced its expected outcome."
+  },
+  {
+   q:"Are unexpected target defaults present?",
+   order:[5,1,2,3,4,0], a:5,
+   why:"Comparing target value distributions against what was submitted is how you prove the target has not silently overridden anything."
+  }
+];
+const matrixSituations = matrixItems.map((m, idx) => ({
+  title:`Validation question ${idx+1}`,
+  question:m.q,
+  options: m.order.map(li => ({
+    label: passConditionLabels[li],
+    correct: li === m.a,
+    feedback: (li === m.a ? "Correct.<br>" : "Not quite. Think about what evidence would genuinely answer this specific question.<br>") + m.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The counts match",title:"Opening scenario: The counts match",type:"mcq",
+ html:`<p class="lead">Bramwell's latest customer migration reports load-ready customers 18,573, target customers created/updated 18,573, difference 0. The migration team marks customer validation as complete.</p>
+ <p>A business tester then finds that 42 UK customers have been loaded into the Belgian legal entity. The overall customer count still matches exactly.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "The migration is complete because the total count reconciles.",
+ "The count proves completeness but not accuracy, so only field-level validation is now required.",
+ "The total count is useful evidence, but it does not yet prove the correct population reached the correct target context. Validate both completeness and accuracy, including meaningful population segments.",
+ "Ignore the 42 records until UAT because migration validation is primarily about counts."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Forty-two customers can move from one company to another while the grand total remains unchanged.",
+ "A total count alone does not prove that each intended sub-population is complete.",
+ "Correct. Validation needs to prove both population and values at the level where migration errors can actually occur.",
+ "UAT adds functional evidence, but migration validation should first prove the data it claims to have migrated."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to let a matching grand total stand in for genuine completeness.</p>
+ <p>Someone finally breaks the 18,573 down by legal entity instead of stopping at the total.</p>
+ <div class="visual-card">
+   <div class="visual-title">What segmenting the count reveals</div>
+   <ul class="framework-checks">
+     <li><strong>UK:</strong> expected 8,214, target 8,172, a difference of minus 42.</li>
+     <li><strong>Belgium:</strong> expected 3,106, target 3,148, a difference of plus 42.</li>
+     <li><strong>Norway and Germany:</strong> both exactly as expected, no difference.</li>
+   </ul>
+ </div>
+ <p>The grand total of 18,573 was true the entire time. It just happened to be true in a way that hid 42 customers sitting in completely the wrong legal entity.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Completeness asks whether the right population is there. Accuracy asks whether that population contains the right values.</p></div></div>`
+},
+{
+ id:"b3",nav:"Two different questions",title:"Completeness and accuracy answer different questions",type:"content",
+ html:`<p class="lead">A migration can be complete but inaccurate. It can also contain accurate individual records while still being incomplete.</p>
+ <div class="visual-card">
+   <div class="visual-title">Two validation dimensions</div>
+   <ul class="framework-checks">
+     <li><strong>Completeness:</strong> did all intended data arrive, with nothing missing or unexpectedly added?</li>
+     <li><strong>Accuracy:</strong> are the migrated values correct according to the approved source, mapping and business rules?</li>
+   </ul>
+ </div>
+ <p>Validation is only meaningful if the expected population is defined. For Bramwell customers, that may mean the agreed active-customer population for the cycle, the legal entities included, approved exclusions, known pre-load exceptions, records added or changed since the previous cycle, and the mapping/build baseline used.</p>
+ <p>The expected result should come from controlled migration evidence, not from whatever happens to be in the target after load.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>You cannot prove completeness without first defining what complete means for this migration cycle.</p></div></div>`
+},
+{
+ id:"b4",nav:"Reconcile and segment",title:"Reconcile the full population, and segment where errors can hide",type:"content",
+ html:`<p class="lead">A useful first control is the source-to-target population equation.</p>
+ <div class="visual-card">
+   <div class="visual-title">Population equation</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">RAW IN-SCOPE POPULATION = LOADED/ACCEPTED + CONTROLLED EXCEPTIONS + APPROVED EXCLUSIONS</p>
+ </div>
+ <div class="visual-card">
+   <div class="visual-title">An illustrative Bramwell cycle</div>
+   <ul class="framework-checks">
+     <li><strong>Raw in-scope active customers:</strong> 18,612</li>
+     <li><strong>Approved pre-load exceptions:</strong> 34</li>
+     <li><strong>Approved exclusions:</strong> 5</li>
+     <li><strong>Submitted to target:</strong> 18,573</li>
+     <li><strong>Target accepted:</strong> 18,573</li>
+     <li><strong>Target rejected:</strong> 0</li>
+     <li><strong>Accounted for:</strong> 18,612</li>
+   </ul>
+ </div>
+ <p>The arithmetic reconciles. That is good evidence, but it is only the beginning. A single total can conceal offsetting errors, so compare meaningful segments instead, such as the legal-entity breakdown that exposed Bramwell's 42-record misclassification.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Reconcile at the level at which records can be lost, duplicated or misclassified, not only at the grand total.</div>`
+},
+{
+ id:"b5",nav:"Choosing dimensions",title:"Choose useful completeness dimensions, and know the expected accuracy answer",type:"content",
+ html:`<p class="lead">Useful segmentation depends on the object and migration risk.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible completeness dimensions</div>
+   <ul class="framework-checks">
+     <li><strong>Customers:</strong> legal entity, country, customer group, active/inactive scope.</li>
+     <li><strong>Products:</strong> company/site, product type, status, category.</li>
+     <li><strong>Open sales orders:</strong> company, order status, customer, date range.</li>
+     <li><strong>Open AR/AP:</strong> company, currency, ageing bucket, document type.</li>
+     <li><strong>Employees:</strong> legal entity, status, department/location.</li>
+   </ul>
+ </div>
+ <p>Too little segmentation hides defects. Too much produces noise. Choose dimensions that reflect scope, dependencies and known risks.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Good validation is risk-based. The purpose is not to produce the largest possible spreadsheet of counts.</p></div></div>
+ <p>To validate a target value, the team needs to know what it should be.</p>
+ <div class="visual-card">
+   <div class="visual-title">Harrison Trade Supplies Ltd, expected transformed result</div>
+   <ul class="framework-checks">
+     <li><strong>CustomerNumber:</strong> C10482, direct, expected C10482</li>
+     <li><strong>Country:</strong> UK, UK &rarr; GB, expected GB</li>
+     <li><strong>CustomerGroup:</strong> STD, STD &rarr; STANDARD, expected STANDARD</li>
+     <li><strong>SalesOwner:</strong> SMITHJ, approved worker cross-reference, expected resolved target SalesOwner</li>
+     <li><strong>PaymentTerms:</strong> 45E, approved payment-term cross-reference, expected approved target equivalent</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>When transformation is intentional, source and target may differ. Accuracy means the target matches the approved expected result, not the raw source.</div>`
+},
+{
+ id:"b6",nav:"Build the matrix",title:"Build it yourself: the Validation Matrix",type:"situations",
+ html:`<p class="lead">For each validation question about the Bramwell customer migration, identify the evidence that would actually prove the answer.</p>`,
+ items: matrixSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Validation Matrix: validation question &rarr; population/field &rarr; expected result &rarr; evidence &rarr; pass/fail &rarr; investigation reference.</p></div></div>`
+},
+{
+ id:"b7",nav:"Systematic and sampled",title:"Validate critical fields systematically, and remember that sampling still matters",type:"content",
+ html:`<p class="lead">Not every field has equal migration risk.</p>
+ <div class="visual-card">
+   <div class="visual-title">High-value candidates for systematic validation</div>
+   <ul class="framework-checks">
+     <li>Business keys</li>
+     <li>Company/legal entity</li>
+     <li>Status</li>
+     <li>Financial values</li>
+     <li>Reference codes</li>
+     <li>Relationship keys</li>
+     <li>Fields driving downstream business behaviour</li>
+     <li>Fields with complex transformations</li>
+     <li>Fields with known source-quality problems</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Use full-population validation where the rule is important and machine-testable. Use sampling to add judgement, not to replace controls you could prove systematically.</div>
+ <p>Manual spot checks can reveal problems that automated rules did not anticipate. A useful sample might deliberately include a normal record, high-value or high-risk records, records from each major population, records that exercised transformations, records close to boundaries, previously defective records, and unusual but valid cases.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good sample is designed to challenge the migration, not merely to find records that look normal.</p></div></div>`
+},
+{
+ id:"b8",nav:"Distributions and target behaviour",title:"Validate distributions, not only individual records, and check what the target actually stored",type:"content",
+ html:`<p class="lead">A transformation defect can affect thousands of records while every sampled record happens to look plausible. Compare distributions before and after migration where appropriate.</p>
+ <div class="visual-card">
+   <div class="visual-title">CustomerGroup, expected versus target</div>
+   <ul class="framework-checks">
+     <li><strong>STANDARD:</strong> 15,021 expected, 15,021 target</li>
+     <li><strong>KEY:</strong> 1,984 expected, 1,984 target</li>
+     <li><strong>INTERNATIONAL:</strong> 1,298 expected, 1,298 target</li>
+     <li><strong>INTERNAL:</strong> 270 expected, 270 target</li>
+   </ul>
+ </div>
+ <p>If target STANDARD suddenly contained 16,319 customers and INTERNATIONAL contained zero, the totals could still match while the transformation was clearly wrong.</p>
+ <div class="principle"><strong>Core principle</strong><br>Distribution checks are powerful because they expose systematic errors that individual spot checks can miss.</div>
+ <p>Module 4 showed that the target may apply its own logic. Validation should therefore check the final stored result where it matters: a target default overwrote submitted payment term, an identifier was generated differently than expected, status was normalised by target configuration, a submitted value was accepted but a relationship did not resolve, or a field was silently ignored by the import mechanism.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Validate what the target actually stored, not only what the migration submitted.</div>`
+},
+{
+ id:"b9",nav:"Investigate first",title:"Investigate differences before explaining them away, and keep validation reproducible",type:"content",
+ html:`<p class="lead">Suppose 94 customers have a different status in target than in the expected transformed dataset. Possible explanations include an approved target default, a new mapping rule, an incorrect transformation, target configuration behaviour, a wrong validation query, records changed after extraction, or an actual migration defect. Do not immediately label the difference acceptable.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A variance is a question first. It becomes an accepted difference only after the cause and authority are understood.</p></div></div>
+ <p>A validation result should be repeatable across cycles. Retain enough information to know which cycle/run was validated, which source/staged population was expected, which target environment/company was checked, which query/rule produced the result, when the check ran, what pass condition applied, and what differences were found.</p>
+ <div class="principle"><strong>Core principle</strong><br>"I checked it and it looked fine" is not reusable migration evidence.</div>
+ ${TPKit.fromField({
+   title:"The Total That Told Only Half the Story", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/core5-lesson1-fromfield-priya.mp3",
+   reflection:"Have you seen a perfectly matching total quietly hide a population that had moved to entirely the wrong place?"
+ })}`
+},
+{
+ id:"b10",nav:"Judgement calls",title:"Judgement calls: what has actually been proved?",type:"content",
+ html:`<p class="lead">Five situations show how much a headline result can still be hiding.</p>
+ <div class="quote">100,000 products exist in source scope and 100,000 exist in target.</div>
+ <p>Only a high-level count has been proved. Check segments, uniqueness and expected values before claiming completeness/accuracy.</p>
+ <div class="quote">Twenty randomly selected customers match perfectly.</div>
+ <p>Useful evidence, but insufficient to prove full-population controls that can be automated.</p>
+ <div class="quote">Source says UK and target says GB.</div>
+ <p>Potentially correct if GB is the approved transformed result. Raw equality is not the test.</p>
+ <div class="quote">Overall order count matches, but Germany is -250 and Belgium +250.</div>
+ <p>The grand total hides a population defect. Segment reconciliation fails.</p>
+ <div class="quote">Submitted CustomerStatus is ACTIVE, but target stores INACTIVE for 300 records.</div>
+ <p>Investigate target behaviour and business rule. Target acceptance did not prove accuracy.</p>`
+},
+{
+ id:"b11",nav:"AI and validation coverage",title:"AI can help expand validation coverage",type:"content",
+ html:`<p class="lead">AI can assist with drafting validation queries from mapping rules, suggesting useful population segments, comparing expected and target distributions, summarising variance patterns, generating test cases for complex transformations, and highlighting fields with weak validation coverage.</p>
+ <p>Generated validation logic must still be checked against the actual data model and approved migration rules.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to broaden and accelerate validation. Do not let it decide that an unexplained difference is acceptable.</p></div></div>`
+},
+{
+ id:"b12",nav:"Reflection",title:"What could still be hiding?",type:"reflection",
+ html:`<p>Imagine every source and target total matched perfectly.</p>
+ <div class="quote">What migration defects could still be hiding?</div>
+ <p>Think wrong company, wrong classification, duplicates balanced by omissions, incorrect transformed values and target defaults. Matching totals are evidence, not a verdict.</p>
+ <textarea id="reflection" placeholder="Even with matching totals, I would still worry about..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/wrong (company|entity|classification)|misclassif/i, strength:"You considered records that could be correctly counted but wrongly classified or placed.", gap:"Consider records that could be correctly counted but placed in the wrong company or classification." },
+   { test:/duplicat|omission|offset/i, strength:"You considered duplicates and omissions offsetting each other.", gap:"Consider duplicates in one place balanced by omissions in another." },
+   { test:/transform|value|incorrect/i, strength:"You considered incorrectly transformed values hiding behind a correct count.", gap:"Consider values that transformed incorrectly even though the record count is right." },
+   { test:/default|target|override/i, strength:"You considered the target silently applying its own default or logic.", gap:"Consider the target silently overriding a submitted value with its own default." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Even with every total matching, I would still worry about records sitting in the wrong company or classification, duplicates in one segment offset by omissions in another, individually wrong transformed values hiding inside a correct overall count, and the target silently applying its own default to submitted values. Matching totals are evidence, not a verdict.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely healthy scepticism. You are treating a matching total as a starting point, not an answer.":"You have made a start. Push further into the specific ways a correct-looking total can still hide a real defect."}</div>`
+},
+{
+ id:"b13",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now prove more than a green import status or a matching grand total.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Completeness and accuracy prove different things.</li>
+   <li>Define the expected population before validating it.</li>
+   <li>Reconcile raw scope, exceptions, exclusions, submitted and accepted populations.</li>
+   <li>Segment counts where errors can hide.</li>
+   <li>Accuracy compares target results with the approved expected transformation, not always raw source.</li>
+   <li>Prioritise systematic validation for critical and machine-testable rules.</li>
+   <li>Use designed sampling to challenge the migration and add judgement.</li>
+   <li>Distribution checks can expose systematic transformation errors.</li>
+   <li>Validate final target values where target logic may alter submitted data.</li>
+   <li>Treat unexplained variances as questions requiring investigation.</li>
+   <li>Validation evidence should be cycle-specific and reproducible.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not ask only, "Did the counts match?" Prove that the right population arrived in the right place with the values the migration was supposed to produce.</div>`
+},
+{
+ id:"b14",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"18,573 load-ready customers exactly matches 18,573 target customers. What has this actually proved?",
+   options:[
+     {label:"That the migration is fully validated and complete", correct:false, feedback:"Not quite. A matching total can hide records that moved to entirely the wrong place."},
+     {label:"Only that the grand total reconciles; segments still need checking", correct:true, feedback:"Correct. A single total can conceal offsetting errors between segments."},
+     {label:"That every individual field value is correct", correct:false, feedback:"Not quite. A record count says nothing about the accuracy of the values inside it."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Source Country = UK and target CountryCode = GB. Is this a validation failure?",
+   options:[
+     {label:"Yes, since the values do not match", correct:false, feedback:"Not quite. Raw equality is not the test when transformation is intentional."},
+     {label:"Not necessarily, if GB is the approved expected transformed result for UK", correct:true, feedback:"Correct. Accuracy means the target matches the approved expected result, not the raw source."},
+     {label:"Only supervisors can decide this, never migration validation", correct:false, feedback:"Not quite. This is exactly the kind of comparison migration validation should perform."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why should high-risk, machine-testable rules generally use full-population validation rather than only sampling?",
+   options:[
+     {label:"Because sampling is never useful for any purpose", correct:false, feedback:"Not quite. Sampling still adds real value, particularly for judgement."},
+     {label:"Because full-population checks can prove the rule for every record where it is important and testable", correct:true, feedback:"Correct. Use full-population validation where the rule is important and machine-testable; use sampling to add judgement."},
+     {label:"Because sampling takes longer than full-population checks", correct:false, feedback:"Not quite. Speed is not the reason given for this distinction."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Target STANDARD suddenly contains 16,319 customers instead of the expected 15,021, while the overall customer count still matches. What kind of check exposes this?",
+   options:[
+     {label:"A single grand total count", correct:false, feedback:"Not quite. The grand total is exactly what stays unchanged here."},
+     {label:"A distribution check comparing expected and target values for each CustomerGroup", correct:true, feedback:"Correct. Distribution checks expose systematic errors that individual spot checks can miss."},
+     {label:"A random sample of twenty customers", correct:false, feedback:"Not quite. A small sample could easily miss this kind of systematic shift."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"94 customers show a different status in target than expected. What is the correct first response?",
+   options:[
+     {label:"Label it an accepted difference immediately to keep the report tidy", correct:false, feedback:"Not quite. A variance is a question first, not an automatic acceptance."},
+     {label:"Investigate the cause before deciding whether the difference is acceptable", correct:true, feedback:"Correct. It becomes an accepted difference only after the cause and authority are understood."},
+     {label:"Assume it is always a target default and move on", correct:false, feedback:"Not quite. A target default is only one of several possible causes, and it still needs confirming."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why is 'I checked it and it looked fine' considered weak validation evidence?",
+   options:[
+     {label:"Because it is not reusable or reproducible across cycles", correct:true, feedback:"Correct. Validation evidence should record the cycle, population, query, date and result so it can be checked again."},
+     {label:"Because informal checks are always factually wrong", correct:false, feedback:"Not quite. The check itself might be correct; the problem is that nobody else could reproduce or verify it."},
+     {label:"It is not weak; this is an acceptable way to report validation", correct:false, feedback:"Not quite. This is exactly the kind of unreproducible evidence the lesson warns against."}
+   ]
+  }
+ ]
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Proving completeness and accuracy.</strong></p>
+ <p>Bramwell's customer migration can now be checked well beyond a single matching total.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Reconciliation and explaining variances:</strong> you will go deeper into financial and quantitative reconciliation, control totals and the discipline of explaining every meaningful difference.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 5",
+  moduleTitle: "Validation & Reconciliation",
+  lessonLabel: "Lesson 1: Proving completeness and accuracy",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Matching totals are evidence, not a verdict",
+  storageKey: "tp_core5_lesson1_v1",
+  lessonId: "core5-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

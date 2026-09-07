@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turner Page | Core Module 5 Assessment</title>
+<style>
+:root{
+  --ink:#102f36; --deep:#005f6c; --teal:#0b7f8e; --aqua:#7dd8d8;
+  --mist:#f3f9f9; --paper:#fff; --line:#d8e9e9; --good:#0b7d5b; --warn:#a05a08;
+  --shadow:0 18px 50px rgba(9,68,78,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fcfc 0,#eef7f7 100%);color:var(--ink);line-height:1.6}
+.topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.topbar-inner{max-width:1120px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:22px}
+.logo{height:44px;width:auto}.brand{flex:1}.brand strong{display:block}.brand span{font-size:12px;color:#61787d}
+.progress-shell{height:4px;background:#e2f1f1}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--deep),var(--aqua));transition:width .3s ease}
+.page{max-width:840px;margin:36px auto 80px;padding:0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(24px,5vw,48px);box-shadow:var(--shadow)}
+.kicker{color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.17em;text-transform:uppercase}
+h1{margin:8px 0 12px;font-size:clamp(28px,4vw,38px);line-height:1.12;letter-spacing:-.02em}
+h2{margin:0 0 18px;font-size:22px;line-height:1.35}
+.lead{max-width:680px;color:#405b62;font-size:17px}
+.qstep{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:800;margin-bottom:10px}
+.options{display:grid;gap:11px;margin:18px 0}
+.option{display:flex;align-items:flex-start;gap:12px;width:100%;border:1px solid var(--line);background:white;border-radius:16px;padding:15px;text-align:left;color:var(--ink);cursor:pointer;font:inherit;transition:.15s}
+.option:hover{border-color:var(--teal)}
+.option.selected{border:2px solid var(--teal);background:#edfafa}
+.badge{min-width:28px;height:28px;border-radius:50%;background:#e3f3f3;color:var(--deep);display:grid;place-items:center;font-weight:900;font-size:13px;flex-shrink:0}
+.matching-row{border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;background:#fbfefe}
+.matching-row p{margin:0 0 10px;font-weight:600}
+select{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);font:inherit;background:#fff;color:var(--ink)}
+.order-list{list-style:none;padding:0;margin:18px 0;display:grid;gap:10px}
+.order-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px 16px;background:#fbfefe}
+.order-item .pos{min-width:26px;height:26px;border-radius:50%;background:var(--deep);color:#fff;display:grid;place-items:center;font-weight:900;font-size:12px;flex-shrink:0}
+.order-item .txt{flex:1}
+.order-item .arrows{display:flex;gap:6px}
+.order-item button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-weight:900;color:var(--deep)}
+.order-item button:disabled{opacity:.3;cursor:not-allowed}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:30px}
+button.nav-btn{border:0;border-radius:13px;padding:13px 22px;font-weight:850;cursor:pointer;font-size:15px}
+.primary{background:var(--deep);color:#fff}
+.primary:disabled{background:#b9d4d4;cursor:not-allowed}
+.secondary{background:#e7f5f5;color:var(--deep)}
+.secondary:disabled{opacity:.4;cursor:not-allowed}
+.result-banner{border-radius:20px;padding:26px;margin:0 0 26px;text-align:center}
+.result-banner.pass{background:linear-gradient(135deg,#0b7d5b,#0ea87a);color:#fff}
+.result-banner.fail{background:linear-gradient(135deg,#a05a08,#c98420);color:#fff}
+.result-banner .score{font-size:44px;font-weight:900;margin:6px 0}
+.review-item{border:1px solid var(--line);border-radius:18px;padding:18px 20px;margin-bottom:14px;background:#fbfefe}
+.review-item h3{margin:0 0 8px;font-size:16px}
+.review-item .tag{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:4px 10px;margin-bottom:10px}
+.tag.correct{background:#e3f6ee;color:var(--good)}
+.tag.incorrect{background:#fdecec;color:#a3372f}
+.mentor-tip{background:linear-gradient(135deg,#005f6c,#0b7f8e);color:#fff;border-radius:16px;padding:16px 18px;margin-top:10px;font-size:14.5px}
+.mentor-tip strong{color:#a9eeee}
+.promise{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);color:#647d82;text-align:center;font-size:13px}
+.hidden{display:none}
+@media(max-width:640px){
+  .actions{flex-direction:column-reverse}.actions button{width:100%}
+  .topbar-inner{padding:10px 14px}.logo{height:36px}.brand span{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="/index.html" aria-label="Return to home"><img class="logo" src="/assets/turner-page-logo.png" alt="Turner Page"></a>
+    <div class="brand"><strong>Turner Page Academy</strong><span>Core Module 5: Validation &amp; Reconciliation</span></div>
+  </div>
+  <div class="progress-shell"><div id="topProgress" class="progress-bar"></div></div>
+</header>
+
+<main class="page">
+  <section class="card" id="quizCard">
+    <div class="kicker">Module assessment</div>
+    <h1>Core Module 5 Certification Assessment</h1>
+    <p class="lead">Ten questions covering all five lessons: completeness and accuracy, reconciliation, relationships and usability, investigation and correction, and evidence and sign-off. You need 8 out of 10 to pass. Answer each question to unlock the next.</p>
+
+    <div id="quizArea"></div>
+
+    <div class="actions">
+      <button id="backBtn" class="nav-btn secondary" type="button">Back</button>
+      <button id="nextBtn" class="nav-btn primary" type="button">Next</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="resultCard">
+    <div id="resultBanner"></div>
+    <h2>Review your answers</h2>
+    <div id="reviewArea"></div>
+    <div class="actions">
+      <button id="retryBtn" class="nav-btn secondary" type="button">Retry the assessment</button>
+      <button id="finishBtn" class="nav-btn primary" type="button">Return to course home</button>
+    </div>
+  </section>
+
+  <div class="promise">
+    <strong>The Turner Page Promise</strong><br>
+    Professional data migration training and certification.
+  </div>
+</main>
+
+<!-- Loaded only for the shared TPKit.recordProgress/getProgress helpers.
+     This page does not use TPKit.mount() or any lesson block type; it
+     is its own self-contained quiz engine per tp-html-build-guide.md
+     §10, rescoped to module level per §12.1: this file's only job is
+     to record a pass/fail + score for Core Module 5, nothing more.
+     Certificate issuance is a separate, not-yet-built tier page. -->
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+const MODULE_ID = "core5";
+const PASS_MARK = 8; // out of 10 — hardcoded, matches current site-wide convention
+
+/* ==============================================================
+   QUESTIONS. Four types, matching the established assessment
+   engine: single, multi, matching, ordering. Scoring is all-or-
+   nothing per question, per the established convention.
+============================================================== */
+const questions = [
+{
+  type:"single",
+  prompt:"A customer migration reports a perfectly matching total, but 42 UK customers were loaded into the Belgian legal entity. What does this show?",
+  options:[
+    {label:"The migration is complete, since the grand total reconciles", correct:false},
+    {label:"A single total can conceal offsetting errors; segments must be checked too", correct:true},
+    {label:"Only field-level validation is now required", correct:false},
+    {label:"This should be ignored until UAT, since migration validation is primarily about counts", correct:false}
+  ],
+  mentorTip:"Completeness asks whether the right population is there. Reconcile at the level where records can actually be lost, duplicated or misclassified."
+},
+{
+  type:"single",
+  prompt:"Source Country = UK and approved target CountryCode = GB. Is this an accuracy failure?",
+  options:[
+    {label:"Yes, since the raw source and target values do not match", correct:false},
+    {label:"No, provided GB is the approved expected transformed result for UK", correct:true},
+    {label:"Only a business owner can decide this, never migration validation", correct:false},
+    {label:"Yes, because target values should always equal raw source values", correct:false}
+  ],
+  mentorTip:"When transformation is intentional, source and target may differ. Accuracy means the target matches the approved expected result, not raw source."
+},
+{
+  type:"multi",
+  prompt:"Select every status a reconciliation result should be able to distinguish.",
+  options:[
+    {label:"Matched", correct:true},
+    {label:"Explained variance", correct:true},
+    {label:"Accepted variance", correct:true},
+    {label:"Defect", correct:true},
+    {label:"Open investigation", correct:true}
+  ],
+  mentorTip:"'Explained' and 'accepted' are not the same thing. Understanding a difference does not automatically authorise it."
+},
+{
+  type:"single",
+  prompt:"Two invoices differ by plus £10,000 and minus £10,000, giving a net variance of £0. What does this actually show?",
+  options:[
+    {label:"That both invoices are correct, since they cancel out", correct:false},
+    {label:"That a zero net variance can still contain serious offsetting errors", correct:true},
+    {label:"That the reconciliation control itself must be faulty", correct:false},
+    {label:"That rounding explains the difference", correct:false}
+  ],
+  mentorTip:"Use multiple controls, including absolute and document-level checks, because one measure can hide defects visible in another."
+},
+{
+  type:"matching",
+  prompt:"Match each example to the relationship defect type it represents.",
+  roles:["Orphan","Mislink","Wrong reference","Missing configuration relationship"],
+  situations:[
+    {q:"An order references a customer that does not exist in target.", correctRole:0},
+    {q:"A delivery address exists but belongs to the wrong customer.", correctRole:1},
+    {q:"SMITHJ resolves to the wrong target worker.", correctRole:2},
+    {q:"A product exists but is not released/configured for the required site.", correctRole:3}
+  ],
+  mentorTip:"An orphan points nowhere; a mislink points to the wrong known record; a wrong reference resolves but to the wrong entity; a missing configuration relationship is a dependency gap, not a broken link."
+},
+{
+  type:"single",
+  prompt:"All 42,600 orders resolve to a valid customer ID in target, but 73 point to the wrong customer due to an old legacy identifier. What does this prove?",
+  options:[
+    {label:"That zero orphan records proves the relationships are correct", correct:false},
+    {label:"That validating existence is not the same as validating identity", correct:true},
+    {label:"That the customer object itself is broken", correct:false},
+    {label:"That the migration should be rejected outright", correct:false}
+  ],
+  mentorTip:"'It points somewhere' is not the same as 'it points to the right place'. Validate identity as well as existence."
+},
+{
+  type:"single",
+  prompt:"Seven delivery addresses are missing in the target. A developer offers to create them manually in the target so testing can continue. What is the correct response?",
+  options:[
+    {label:"Do it, since validation is about getting the target data correct however it happens", correct:false},
+    {label:"Investigate the root cause, correct the appropriate migration point, rerun the affected population and retest", correct:true},
+    {label:"Do it for now and remember to fix the migration properly later", correct:false},
+    {label:"Reload every object in the migration from the beginning", correct:false}
+  ],
+  mentorTip:"Fix the migration, not just the migrated record. A manual target patch is not reproducible and the defect will recur next cycle."
+},
+{
+  type:"multi",
+  prompt:"Select every genuine root-cause category a validation failure could trace back to.",
+  options:[
+    {label:"Source data quality", correct:true},
+    {label:"Mapping/business rule", correct:true},
+    {label:"Reference/cross-reference", correct:true},
+    {label:"Target configuration", correct:true},
+    {label:"Validation logic is always correct and never the cause", correct:false}
+  ],
+  mentorTip:"Correction belongs where the cause lives, and that includes the validation query itself: it can be wrong even when the migration is right."
+},
+{
+  type:"ordering",
+  prompt:"Put the stages of the investigation chain into the correct order.",
+  items:["Target result","Source","Transformed stage","Validation","Raw stage","Target submission"],
+  correctOrder:[1,4,2,5,0,3],
+  mentorTip:"Source, raw stage, transformed stage, target submission, target result, validation. Find the first point where actual behaviour diverges from the approved expected behaviour."
+},
+{
+  type:"single",
+  prompt:"A dashboard shows every automated control passing, with 18 open exceptions pending a business decision. What is the correct action?",
+  options:[
+    {label:"Mark the object signed off, since the major controls all passed", correct:false},
+    {label:"Report validation as complete subject to the open exceptions, and obtain acceptance from the authorised owner once the treatment is understood", correct:true},
+    {label:"Refuse to report any status until every record is perfect", correct:false},
+    {label:"Mark it signed off with a note listing the 18 exceptions", correct:false}
+  ],
+  mentorTip:"Evidence informs acceptance. It does not replace the person authorised to give it. A note does not convert an unresolved exception into approval."
+}
+];
+
+/* ==============================================================
+   ENGINE
+============================================================== */
+let current = 0;
+let answers = new Array(questions.length).fill(null);
+let orderState = {}; // per-question working order for "ordering" type
+
+const quizArea = document.getElementById("quizArea");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+const topProgress = document.getElementById("topProgress");
+
+function isAnswered(i){
+  const a = answers[i];
+  const q = questions[i];
+  if(q.type === "single") return a !== null && a !== undefined;
+  if(q.type === "multi") return Array.isArray(a) && a.length > 0;
+  if(q.type === "matching") return Array.isArray(a) && a.length === q.situations.length && a.every(v => v !== null && v !== undefined);
+  if(q.type === "ordering") return true; // an order always exists once rendered
+  return false;
+}
+
+function renderSingle(q, i){
+  const wrap = document.createElement("div"); wrap.className = "options";
+  q.options.forEach((opt, j) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "option" + (answers[i] === j ? " selected" : "");
+    btn.innerHTML = `<span class="badge">${String.fromCharCode(65+j)}</span><span>${opt.label}</span>`;
+    btn.onclick = () => { answers[i] = j; render(); };
+    wrap.appendChild(btn);
+  });
+  quizArea.appendChild(wrap);
+}
+
+function renderMulti(q, i){
+  if(!Array.isArray(answers[i])) answers[i] = [];
+  const wrap = document.createElement("div"); wrap.className = "options";
+  q.options.forEach((opt, j) => {
+    const chosen = answers[i].includes(j);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "option" + (chosen ? " selected" : "");
+    btn.innerHTML = `<span class="badge">${chosen ? "\u2713" : "+"}</span><span>${opt.label}</span>`;
+    btn.onclick = () => {
+      const s = new Set(answers[i]);
+      s.has(j) ? s.delete(j) : s.add(j);
+      answers[i] = [...s];
+      render();
+    };
+    wrap.appendChild(btn);
+  });
+  quizArea.appendChild(wrap);
+  quizArea.insertAdjacentHTML("beforeend", `<p class="qstep">Select every option that applies</p>`);
+}
+
+function renderMatching(q, i){
+  if(!Array.isArray(answers[i])) answers[i] = new Array(q.situations.length).fill(null);
+  q.situations.forEach((s, j) => {
+    const row = document.createElement("div"); row.className = "matching-row";
+    const p = document.createElement("p"); p.textContent = s.q;
+    row.appendChild(p);
+    const sel = document.createElement("select");
+    sel.insertAdjacentHTML("beforeend", `<option value="" disabled ${answers[i][j]===null?"selected":""}>Choose the matching defect type...</option>`);
+    q.roles.forEach((role, k) => {
+      sel.insertAdjacentHTML("beforeend", `<option value="${k}" ${answers[i][j]===k?"selected":""}>${role}</option>`);
+    });
+    sel.onchange = (e) => { answers[i][j] = parseInt(e.target.value, 10); render(); };
+    row.appendChild(sel);
+    quizArea.appendChild(row);
+  });
+}
+
+function renderOrdering(q, i){
+  if(!orderState[i]) orderState[i] = q.items.map((_, idx) => idx); // initial scrambled order = item order as given
+  const order = orderState[i];
+  const list = document.createElement("ul"); list.className = "order-list";
+  order.forEach((itemIdx, pos) => {
+    const li = document.createElement("li"); li.className = "order-item";
+    li.innerHTML = `<span class="pos">${pos+1}</span><span class="txt">${q.items[itemIdx]}</span>
+      <span class="arrows">
+        <button type="button" data-dir="up" ${pos===0?"disabled":""}>&uarr;</button>
+        <button type="button" data-dir="down" ${pos===order.length-1?"disabled":""}>&darr;</button>
+      </span>`;
+    li.querySelector('[data-dir="up"]').onclick = () => { if(pos>0){ [order[pos-1],order[pos]]=[order[pos],order[pos-1]]; answers[i]=[...order]; render(); } };
+    li.querySelector('[data-dir="down"]').onclick = () => { if(pos<order.length-1){ [order[pos+1],order[pos]]=[order[pos],order[pos+1]]; answers[i]=[...order]; render(); } };
+    list.appendChild(li);
+  });
+  answers[i] = [...order];
+  quizArea.appendChild(list);
+  quizArea.insertAdjacentHTML("beforeend", `<p class="qstep">Use the arrows to put the steps in order, earliest first</p>`);
+}
+
+function render(){
+  const q = questions[current];
+  quizArea.innerHTML = "";
+  quizArea.insertAdjacentHTML("beforeend", `<div class="qstep">Question ${current+1} of ${questions.length}</div><h2>${q.prompt}</h2>`);
+  if(q.type === "single") renderSingle(q, current);
+  else if(q.type === "multi") renderMulti(q, current);
+  else if(q.type === "matching") renderMatching(q, current);
+  else if(q.type === "ordering") renderOrdering(q, current);
+
+  backBtn.disabled = current === 0;
+  const isLast = current === questions.length - 1;
+  nextBtn.textContent = isLast ? "Submit assessment" : "Next";
+  nextBtn.disabled = !isAnswered(current);
+
+  topProgress.style.width = Math.round(((current) / questions.length) * 100) + "%";
+}
+
+backBtn.onclick = () => { if(current > 0){ current--; render(); window.scrollTo({top:0, behavior:"smooth"}); } };
+nextBtn.onclick = () => {
+  if(!isAnswered(current)) return;
+  const isLast = current === questions.length - 1;
+  if(!isLast){
+    current++; render(); window.scrollTo({top:0, behavior:"smooth"});
+  } else {
+    submit();
+  }
+};
+
+function isCorrect(q, a){
+  if(q.type === "single") return a === q.options.findIndex(o => o.correct);
+  if(q.type === "multi"){
+    const correctSet = q.options.map((o,idx)=>o.correct?idx:null).filter(v=>v!==null).sort().join(",");
+    const givenSet = [...a].sort((x,y)=>x-y).join(",");
+    return correctSet === givenSet;
+  }
+  if(q.type === "matching") return q.situations.every((s, j) => a[j] === s.correctRole);
+  if(q.type === "ordering") return JSON.stringify(a) === JSON.stringify(q.correctOrder);
+  return false;
+}
+
+function correctAnswerText(q){
+  if(q.type === "single") return q.options.find(o=>o.correct).label;
+  if(q.type === "multi") return q.options.filter(o=>o.correct).map(o=>o.label).join("; ");
+  if(q.type === "matching") return q.situations.map(s => `"${s.q}" &rarr; ${q.roles[s.correctRole]}`).join("<br>");
+  if(q.type === "ordering") return q.correctOrder.map(idx => q.items[idx]).join(" &rarr; ");
+  return "";
+}
+
+function givenAnswerText(q, a){
+  if(q.type === "single") return a===null||a===undefined ? "No answer" : q.options[a].label;
+  if(q.type === "multi") return a.map(idx => q.options[idx].label).join("; ") || "No answer";
+  if(q.type === "matching") return q.situations.map((s,j) => `"${s.q}" &rarr; ${a[j]===null||a[j]===undefined?"not answered":q.roles[a[j]]}`).join("<br>");
+  if(q.type === "ordering") return a.map(idx => q.items[idx]).join(" &rarr; ");
+  return "";
+}
+
+function submit(){
+  let score = 0;
+  const results = questions.map((q, i) => {
+    const correct = isCorrect(q, answers[i]);
+    if(correct) score++;
+    return { q, correct, given: answers[i] };
+  });
+  const passed = score >= PASS_MARK;
+
+  document.getElementById("quizCard").classList.add("hidden");
+  const resultCard = document.getElementById("resultCard");
+  resultCard.classList.remove("hidden");
+  topProgress.style.width = "100%";
+
+  const banner = document.getElementById("resultBanner");
+  banner.innerHTML = `<div class="result-banner ${passed?"pass":"fail"}">
+    <div class="kicker" style="color:#fff">${passed?"Assessment passed":"Not yet a pass"}</div>
+    <div class="score">${score}/10</div>
+    <p>${passed
+      ? "You have passed the Core Module 5 assessment. This result counts towards the Foundations, DMC and DML certificates."
+      : `You need ${PASS_MARK} out of 10 to pass. Review the questions below, then retry when you are ready.`}</p>
+  </div>`;
+
+  const reviewArea = document.getElementById("reviewArea");
+  reviewArea.innerHTML = "";
+  results.forEach((r, i) => {
+    const div = document.createElement("div"); div.className = "review-item";
+    div.innerHTML = `<span class="tag ${r.correct?"correct":"incorrect"}">${r.correct?"Correct":"Incorrect"}</span>
+      <h3>Question ${i+1}: ${r.q.prompt}</h3>
+      <p><strong>Your answer:</strong> ${givenAnswerText(r.q, r.given)}</p>
+      ${r.correct ? "" : `<p><strong>Correct answer:</strong> ${correctAnswerText(r.q)}</p>`}
+      <div class="mentor-tip"><strong>Mentor tip</strong><br>${r.q.mentorTip}</div>`;
+    reviewArea.appendChild(div);
+  });
+
+  if(window.TPKit && typeof TPKit.recordProgress === "function"){
+    TPKit.recordProgress("moduleAssessment", MODULE_ID, { score, passed });
+  }
+
+  document.getElementById("retryBtn").onclick = () => {
+    current = 0;
+    answers = new Array(questions.length).fill(null);
+    orderState = {};
+    document.getElementById("resultCard").classList.add("hidden");
+    document.getElementById("quizCard").classList.remove("hidden");
+    render();
+    window.scrollTo({top:0, behavior:"smooth"});
+  };
+  document.getElementById("finishBtn").onclick = () => { window.location.href = "/index.html"; };
+}
+
+render();
+</script>
+</body>
+</html>

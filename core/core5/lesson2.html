@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Reconciliation and explaining variances</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 5 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lesson 1 and the story bible: UK open
+   receivables 12,480 invoices, £8,742,615.38, variance -£51,410.47,
+   isolated to EUR-denominated invoices (842 invoices, €611,942.80).
+============================================================== */
+
+// Section 5 — "Follow the variance". A genuinely sequential guided
+// investigation, each step narrowing the cause found in the step
+// before it, so this uses guidedSteps rather than a graded quiz.
+const varianceSteps = [
+  { title:"Step 1: reconcile the EUR document count", html:`<p>Source and target both show 842 EUR invoices. The variance is 0. Whatever is causing the £51,410.47 difference, it is not a missing or duplicated invoice.</p>` },
+  { title:"Step 2: reconcile the original EUR amount", html:`<p>Source and target both show &euro;611,942.80 in original currency, a variance of &euro;0.00. The underlying invoice amounts, in the currency they were actually issued in, are correct.</p>` },
+  { title:"Step 3: inspect the derived GBP-equivalent value", html:`<p>The source reconciliation used the approved cycle exchange-rate treatment, but the target report is converting the same EUR balances using its current reporting rate. The underlying invoices and original currency amounts may therefore be correct even though the GBP-equivalent reports differ.</p>` }
+];
+
+// Section 14 — "Classify the reconciliation status". The learner
+// matches each scenario to the correct status before the reasoning is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const statusLabels = ["Matched", "Explained variance", "Accepted variance", "Defect", "Open investigation"];
+const statusItems = [
+  {
+   q:"Source and target both show 12,480 invoices and £8,742,615.38 open value, using the approved basis.",
+   order:[1,3,0,4,2], a:0,
+   why:"Both the count and the value agree exactly under the approved basis. This is a straightforward match, nothing further to explain."
+  },
+  {
+   q:"The EUR reporting difference is understood as a reporting-basis difference, but nobody with the right authority has confirmed it is acceptable yet.",
+   order:[4,0,2,3,1], a:1,
+   why:"The cause is genuinely understood, which rules out 'open investigation', but nobody has actually authorised it yet, which rules out 'accepted'. That makes it an explained variance."
+  },
+  {
+   q:"The same EUR reporting difference has now been reviewed and formally accepted as within the agreed tolerance by the appropriate finance authority.",
+   order:[0,4,1,3,2], a:2,
+   why:"Once the explained difference is formally accepted under agreed authority and tolerance, it graduates from merely explained to accepted."
+  },
+  {
+   q:"An invoice line is found to have been genuinely omitted during transformation.",
+   order:[2,1,4,0,3], a:3,
+   why:"A genuinely missing invoice line is not a reporting quirk or a tolerance question. It is a real migration defect requiring correction."
+  },
+  {
+   q:"A £940 difference appears in a different currency segment and nobody yet knows why.",
+   order:[3,2,0,1,4], a:4,
+   why:"With no established cause yet, this cannot honestly be called explained, accepted or a confirmed defect. It is still an open investigation."
+  }
+];
+const statusSituations = statusItems.map((s, idx) => ({
+  title:`Scenario ${idx+1}`,
+  question:s.q,
+  options: s.order.map(li => ({
+    label: statusLabels[li],
+    correct: li === s.a,
+    feedback: (li === s.a ? "Correct.<br>" : "Not quite. Ask what is actually known, and by whom, at this specific point.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The invoices reconcile",title:"Opening scenario: The invoices reconcile",type:"mcq",
+ html:`<p class="lead">Bramwell is validating open customer receivables for the UK legal entity. Source open invoices 12,480, target open invoices 12,480, record difference 0. The team marks the object as reconciled.</p>
+ <p>Finance then compares the monetary totals: source open receivables value £8,742,615.38, target £8,691,204.91, a variance of minus £51,410.47.</p>
+ <p>The record count is perfect. The financial position is not.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Accept the migration because all 12,480 invoices are present.",
+ "Accept it if a sample of individual invoice values looks correct.",
+ "Do not accept the reconciliation until the £51,410.47 variance is explained and either corrected or formally understood as an approved difference.",
+ "Adjust the target total by £51,410.47 so the reconciliation balances."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The same number of invoices can contain duplicated, omitted, rounded or incorrectly transformed values.",
+ "Sampling may help investigation, but it does not explain the control-total variance.",
+ "Correct. A reconciliation difference is not a nuisance to eliminate. It is evidence to investigate.",
+ "Changing a target or control total simply to make the numbers match destroys the purpose of reconciliation."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to let a perfect invoice count paper over a real financial variance.</p>
+ <p>Rather than arguing about whether £51,410.47 is "material enough" to chase, they simply start tracing it.</p>
+ <div class="visual-card">
+   <div class="visual-title">What tracing the variance by currency reveals</div>
+   <ul class="framework-checks">
+     <li><strong>GBP invoices:</strong> £7,936,180.22 source, £7,936,180.22 target, no variance.</li>
+     <li><strong>EUR equivalent:</strong> £521,774.63 source, £470,364.16 target, minus £51,410.47.</li>
+     <li><strong>USD equivalent:</strong> £284,660.53 source, £284,660.53 target, no variance.</li>
+   </ul>
+ </div>
+ <p>The entire £51,410.47 difference now sits inside one currency segment instead of being spread invisibly across the whole receivables population. That is a completely different, much smaller investigation than "something is wrong with £8.7 million of invoices".</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Break a variance down using dimensions that can isolate the rule, population or process responsible.</p></div></div>`
+},
+{
+ id:"b3",nav:"Explaining, not equalising",title:"Reconciliation compares controlled expectations with actual results",type:"content",
+ html:`<p class="lead">A reconciliation asks whether the migration result can be accounted for using measures that matter to the object.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Reconciliation is not making two numbers equal. It is explaining why they are equal, or why they legitimately differ.</div>
+ <p>Useful measures can include record counts, quantities, balances, monetary totals, tax amounts, line counts or other business control totals.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible controls by object</div>
+   <ul class="framework-checks">
+     <li><strong>Customers:</strong> record count, counts by company/status/group, distinct business keys.</li>
+     <li><strong>Products:</strong> record count, counts by company/site/status, inventory-related quantities where in scope.</li>
+     <li><strong>Open sales orders:</strong> order count, line count, quantity, net value, tax/value totals where appropriate.</li>
+     <li><strong>Open AR/AP:</strong> document count, open balance, currency totals, ageing/category totals.</li>
+     <li><strong>Fixed assets:</strong> asset count, acquisition cost, accumulated depreciation, net book value where migrated.</li>
+     <li><strong>Inventory:</strong> item/site/warehouse population, quantity, value where applicable.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Use controls that would change if the migration made a material mistake.</div>`
+},
+{
+ id:"b4",nav:"More than one level",title:"Reconcile at more than one level",type:"content",
+ html:`<p class="lead">The UK receivables total is £51,410.47 low. Break it down.</p>
+ <div class="visual-card">
+   <div class="visual-title">By currency</div>
+   <ul class="framework-checks">
+     <li><strong>GBP:</strong> £7,936,180.22 source, £7,936,180.22 target, £0.00 variance</li>
+     <li><strong>EUR equivalent:</strong> £521,774.63 source, £470,364.16 target, minus £51,410.47</li>
+     <li><strong>USD equivalent:</strong> £284,660.53 source, £284,660.53 target, £0.00 variance</li>
+   </ul>
+ </div>
+ <p>The variance is now isolated to EUR-denominated invoices rather than the entire receivables population.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Break a variance down using dimensions that can isolate the rule, population or process responsible.</p></div></div>`
+},
+{
+ id:"b5",nav:"Follow the variance",title:"Build it yourself: follow the variance",type:"guidedSteps",
+ html:`<p class="lead">Investigate the £51,410.47 EUR-equivalent difference, one step at a time, rather than jumping straight to a conclusion.</p>`,
+ steps: varianceSteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout misconception"><div class="callout-label">Important</div><p>This does not automatically make the £51,410.47 acceptable. Finance and the migration team must establish which basis is appropriate for the migration control and document the conclusion.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>The learner has created a Variance Trail: control difference &rarr; segment &rarr; affected population &rarr; rule/reporting basis &rarr; evidence &rarr; conclusion.</p></div></div>`
+},
+{
+ id:"b6",nav:"Not every difference is a defect",title:"Not every difference is a defect, and expected differences should be explicit",type:"content",
+ html:`<p class="lead">A variance can come from several different sources.</p>
+ <div class="visual-card">
+   <div class="visual-title">Variance types</div>
+   <ul class="framework-checks">
+     <li><strong>Migration defect:</strong> an invoice line was omitted or an amount transformed incorrectly.</li>
+     <li><strong>Approved scope difference:</strong> closed invoices are deliberately excluded from target migration.</li>
+     <li><strong>Timing difference:</strong> source changed after the controlled extract.</li>
+     <li><strong>Target behaviour:</strong> target calculates a derived value using its configured logic.</li>
+     <li><strong>Reporting-basis difference:</strong> source and target reports use different exchange-rate or date logic.</li>
+     <li><strong>Validation defect:</strong> the reconciliation query itself is wrong.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Explain the variance before deciding whether it is acceptable.</div>
+ <p>Some reconciliations are not supposed to equal the raw source total. Suppose Bramwell has 13,020 open AR documents in the legacy system, but out-of-scope legal entity accounts for -310, approved legacy-only document types for -145, and controlled migration exceptions for -85, leaving an expected target population of 12,480. A target count of 12,480 can reconcile perfectly even though it differs from the raw source by 540 records.</p>
+ <div class="principle"><strong>Core principle</strong><br>Reconcile to the approved migration scope, not automatically to the unfiltered source.</div>`
+},
+{
+ id:"b7",nav:"Bridges make it visible",title:"Use bridge reconciliations",type:"content",
+ html:`<p class="lead">A bridge explains movement from one control total to another.</p>
+ <div class="visual-card">
+   <div class="visual-title">Population bridge</div>
+   <ul class="framework-checks">
+     <li>Raw source: 13,020</li>
+     <li>&minus; Out-of-scope: 310</li>
+     <li>&minus; Approved document-type exclusions: 145</li>
+     <li>&minus; Controlled exceptions: 85</li>
+     <li>= Expected target: 12,480</li>
+   </ul>
+ </div>
+ <p>The same approach can be used for value totals if exclusions and exceptions carry monetary values.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good reconciliation bridge makes every adjustment visible rather than hiding it inside a final number.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Variance Nobody Chased", name:"Isabel", role:"Data Migration Lead", project:"Retail ERP",
+   src:"/assets/audio/core5-lesson2-fromfield-isabel.mp3",
+   reflection:"Have you seen a small, unexplained financial variance get waved through simply because the record count looked perfect?"
+ })}`
+},
+{
+ id:"b8",nav:"Multiple controls, no netting",title:"Counts and values should support each other, and avoid netting away errors",type:"content",
+ html:`<p class="lead">Imagine invoice count 12,480 matches, invoice line count is 31,904 expected against 31,887 target, a difference of minus 17, while open amount matches exactly at £8,742,615.38. The matching monetary total does not cancel the missing 17 lines. Perhaps they are zero-value lines, but that must be proved.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Use multiple controls because one matching measure can conceal a defect visible in another.</div>
+ <p>Suppose two invoices are wrong: INV-10482 is plus £10,000 and INV-11872 is minus £10,000, giving a net variance of £0. The total balance reconciles perfectly, but both invoices are wrong. This is why reconciliation may need checks for absolute differences, document-level differences, minimum/maximum values, counts of differing records, and distribution by material segment.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A zero net variance can contain serious offsetting errors.</p></div></div>`
+},
+{
+ id:"b9",nav:"Rounding and tolerance",title:"Precision and rounding need agreed treatment, and tolerances are controls, not excuses",type:"content",
+ html:`<p class="lead">Financial migrations often encounter differences caused by precision or rounding. For example, 40,000 line-level amounts rounded from four decimal places to two may create a small aggregate variance. The team should establish where rounding occurs, the approved precision, whether source or target calculates totals, the acceptable treatment of residual differences, and whether the variance is systematic or random.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Calling every small difference "rounding" without proving that rounding actually explains it.</p></div>
+ <p>Some projects define reconciliation tolerances, for example a financial control that permits a very small documented rounding difference. A tolerance should have a clear measure, an agreed threshold, a business reason, an owner/authority, consistent application, and visibility of the actual variance.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A tolerance does not mean "close enough". It defines an agreed boundary within which a known type of difference can be accepted.</div>`
+},
+{
+ id:"b10",nav:"Classify the status",title:"Build it yourself: classify the reconciliation status",type:"situations",
+ html:`<p class="lead">A reconciliation result should distinguish matched, explained variance, accepted variance, defect and open investigation. For each scenario, decide the correct status before the reasoning is revealed.</p>`,
+ items: statusSituations,
+ takeawayHtml:`<div class="principle"><strong>Turner Page principle</strong><br>"Explained" and "accepted" are not the same thing. Understanding a difference does not automatically authorise it.</div>`
+},
+{
+ id:"b11",nav:"Trust the query too",title:"Reconciliation queries must be validated too",type:"content",
+ html:`<p class="lead">A sophisticated reconciliation can still be wrong if the query joins records twice, filters the wrong status, uses a different date basis, converts currency differently, includes out-of-scope companies, or compares gross values with net values.</p>
+ <p>When a surprising variance appears, investigate the migration and the validation logic.</p>
+ <div class="principle"><strong>Core principle</strong><br>Validation code is part of the control environment. Treat it with the same care as migration code.</div>`
+},
+{
+ id:"b12",nav:"Judgement calls",title:"Judgement calls: what would you conclude?",type:"content",
+ html:`<p class="lead">Five situations show why the same numbers can lead to very different conclusions.</p>
+ <div class="quote">12,480 invoices exist in both systems but target value is £51,410.47 lower.</div>
+ <p>Reconciliation fails until the value variance is explained. Matching counts are not enough.</p>
+ <div class="quote">Source has 13,020 documents and target has 12,480. The 540 difference exactly matches approved exclusions and exceptions.</div>
+ <p>Potentially reconciled. Retain the bridge evidence and verify the treatment.</p>
+ <div class="quote">Two invoices differ by plus £10,000 and minus £10,000.</div>
+ <p>The aggregate control hides two defects. Document-level/absolute variance checks expose them.</p>
+ <div class="quote">A £25m balance differs by £2.17 and someone labels it rounding.</div>
+ <p>Do not accept the label. Demonstrate the rounding mechanism and apply the agreed tolerance/authority.</p>
+ <div class="quote">Original-currency balances match, but converted reporting values differ.</div>
+ <p>Investigate the reporting basis. The difference may be legitimate target behaviour rather than migrated-balance error.</p>`
+},
+{
+ id:"b13",nav:"AI and variance investigation",title:"AI can accelerate variance investigation",type:"content",
+ html:`<p class="lead">AI can assist with grouping variances by common attributes, identifying segments that explain most of a difference, drafting reconciliation queries, comparing source and target control logic, summarising open versus explained variances, and suggesting candidate causes from error patterns.</p>
+ <p>It should not invent an explanation merely because a pattern looks plausible.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to find where to look. Require evidence before declaring why a variance exists.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"What additional control would you want?",type:"reflection",
+ html:`<p>Think of a migration where every headline total matched.</p>
+ <div class="quote">What additional control would give you confidence that offsetting errors were not hiding underneath?</div>
+ <p>Consider segment totals, line counts, document-level differences, absolute variances and high-risk populations.</p>
+ <textarea id="reflection" placeholder="I would want to add..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/segment|currency|company|entity/i, strength:"You considered segmenting the total by a meaningful dimension.", gap:"Consider segmenting the total by currency, company or another meaningful dimension." },
+   { test:/line count|document.level|document-level/i, strength:"You considered a line-level or document-level control alongside the headline total.", gap:"Consider a line-level or document-level count, not just the overall total." },
+   { test:/absolute|net|offset/i, strength:"You considered an absolute-variance check that would not let errors cancel each other out.", gap:"Consider an absolute-variance check, since a net-zero variance can still hide offsetting errors." },
+   { test:/high.risk|material|critical/i, strength:"You considered focusing extra scrutiny on high-risk or material populations.", gap:"Consider giving extra scrutiny specifically to high-risk or highly material populations." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would want segment totals by currency or company, a line-level or document-level count alongside the headline value, and an absolute-variance check that would catch two records cancelling each other out. I would also give extra scrutiny to the highest-risk or most material populations rather than treating every segment equally.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely strong reconciliation instinct. You are actively hunting for what a matching total could be hiding.":"You have made a start. Push further into the specific additional control that would actually catch an offsetting error."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now reconcile populations and business control totals without forcing false agreement.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Reconciliation uses measures that matter to the migrated object.</li>
+   <li>Matching record counts do not prove matching values.</li>
+   <li>Break variances down until the affected population or rule becomes visible.</li>
+   <li>Not every variance is a migration defect, but every meaningful variance needs an explanation.</li>
+   <li>Reconcile to approved scope, using visible bridges for exclusions and exceptions.</li>
+   <li>Use multiple controls because one measure can hide defects visible in another.</li>
+   <li>Rounding and tolerances require defined, evidenced treatment.</li>
+   <li>Zero net variance can hide offsetting errors.</li>
+   <li>Validate reconciliation logic as carefully as migration logic.</li>
+   <li>Separate matched, explained, accepted, defective and still-open results.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A strong reconciliation does not merely balance. It makes every meaningful difference visible and explainable.</div>`
+},
+{
+ id:"b16",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"12,480 invoices match perfectly between source and target, but the open value is £51,410.47 lower. What does this show?",
+   options:[
+     {label:"That the migration is complete, since the record count matches", correct:false, feedback:"Not quite. Matching record counts do not prove matching values."},
+     {label:"That a record count alone does not prove the financial position reconciles", correct:true, feedback:"Correct. A reconciliation difference is evidence to investigate, not a nuisance to explain away."},
+     {label:"That the target total should simply be adjusted to match the source", correct:false, feedback:"Not quite. Changing a total to force agreement destroys the purpose of reconciliation."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Breaking the receivables variance down by currency isolates it entirely to EUR invoices. Why is this useful?",
+   options:[
+     {label:"It proves the variance is now acceptable", correct:false, feedback:"Not quite. Isolating the variance is not the same as explaining or accepting it."},
+     {label:"It narrows the investigation from the whole population to one specific segment and its rule", correct:true, feedback:"Correct. Break a variance down using dimensions that can isolate the rule, population or process responsible."},
+     {label:"It proves the target system is broken", correct:false, feedback:"Not quite. Isolating a variance does not by itself identify the cause."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A target count of 12,480 differs from a raw source count of 13,020 by exactly 540, matching approved exclusions and exceptions. What does this represent?",
+   options:[
+     {label:"A migration defect that needs correcting", correct:false, feedback:"Not quite. A difference that exactly matches an approved bridge is not automatically a defect."},
+     {label:"Reconciliation to the approved migration scope, not the unfiltered source", correct:true, feedback:"Correct. Reconcile to the approved migration scope, not automatically to the unfiltered source."},
+     {label:"Proof that the source system was wrong", correct:false, feedback:"Not quite. The source count and the expected target count can both be correct under different scope definitions."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Two invoices differ by plus £10,000 and minus £10,000, giving a net variance of £0. What does this show?",
+   options:[
+     {label:"That both invoices are correct, since they cancel out", correct:false, feedback:"Not quite. Both invoices are actually wrong; the net total simply hides that fact."},
+     {label:"That a zero net variance can still contain serious offsetting errors", correct:true, feedback:"Correct. This is exactly why absolute-variance and document-level checks matter."},
+     {label:"That the reconciliation control is faulty and should be removed", correct:false, feedback:"Not quite. The control worked; a stronger check (absolute variance) is what is needed here."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"An explained variance has been understood, but nobody with the right authority has confirmed it is acceptable yet. What is its status?",
+   options:[
+     {label:"Accepted variance", correct:false, feedback:"Not quite. Acceptance requires formal authorisation, which has not happened yet."},
+     {label:"Explained variance", correct:true, feedback:"Correct. Understanding a difference is not the same as authorising it."},
+     {label:"Matched", correct:false, feedback:"Not quite. A matched result would show no variance at all."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"A £25m balance differs by £2.17, and someone labels it rounding without checking. What should happen?",
+   options:[
+     {label:"Accept the label, since £2.17 is clearly immaterial", correct:false, feedback:"Not quite. Materiality does not remove the need to prove the explanation."},
+     {label:"Demonstrate the actual rounding mechanism and apply the agreed tolerance and authority", correct:true, feedback:"Correct. Calling every small difference 'rounding' without proving it is exactly the trap to avoid."},
+     {label:"Ignore it entirely, since it is too small to matter", correct:false, feedback:"Not quite. Even a small variance needs a demonstrated cause, not just a label."}
+   ]
+  }
+ ]
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Reconciliation and explaining variances.</strong></p>
+ <p>Bramwell can now reconcile populations and business control totals without forcing false agreement.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Proving relationships and business usability:</strong> you will move beyond individual records and totals to prove that migrated data connects correctly and can support the business processes it was migrated for.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 5",
+  moduleTitle: "Validation & Reconciliation",
+  lessonLabel: "Lesson 2: Reconciliation and explaining variances",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Explain every meaningful difference",
+  storageKey: "tp_core5_lesson2_v1",
+  lessonId: "core5-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

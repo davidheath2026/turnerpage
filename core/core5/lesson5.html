@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Evidence, acceptance and sign-off</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 5 — LESSON 5 DATA (final lesson of the module). All
+   chrome, styling and engine behaviour come from shared/
+   turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-4 and the story bible: 18,612
+   raw customers; the earlier 42-record legal-entity misclassification
+   defect, now corrected; 18 active German customers with unresolved
+   legacy CustomerGroup value 99 (six are strategic accounts); target
+   design STANDARD, KEY, INTERNATIONAL, INTERNAL. This value 99 remains
+   deliberately unresolved; no target treatment is invented.
+============================================================== */
+
+// Section 15 — "Would you sign off?" The learner matches each
+// situation to the correct acceptance response before the reasoning
+// is revealed. Options are reordered per item so the correct
+// answer's position does not track the item number.
+const responseLabels = [
+  "Do not sign off unconditionally; present the evidence and obtain the required business decision",
+  "This can be a controlled accepted variance if the evidence and authority are appropriate",
+  "Technical ownership does not automatically confer business/financial acceptance authority",
+  "Potential supporting evidence, but confirm the person, scope, criteria and whether this is the required approval",
+  "Rehearsal evidence supports confidence, but production requires its own appropriate validation and acceptance"
+];
+const signOffItems = [
+  {
+   q:"Everything passes except 18 active customers with an unresolved legacy classification that has no approved target treatment.",
+   order:[1,3,4,0,2], a:0,
+   why:"Strong evidence elsewhere does not remove an unresolved acceptance decision. The 18 records may be small in number but material in business impact."
+  },
+  {
+   q:"Finance has reviewed a documented £1.14 rounding calculation, confirms it is within the agreed tolerance, and formally accepts it.",
+   order:[2,4,0,1,3], a:1,
+   why:"With a clear measure, an agreed threshold, and formal acceptance by the right authority, this is exactly what a controlled accepted variance looks like."
+  },
+  {
+   q:"The migration lead says the open AR balance is acceptable without finance review.",
+   order:[3,0,1,4,2], a:2,
+   why:"Owning the technical delivery of a reconciliation does not give someone the authority to accept its financial materiality on Finance's behalf."
+  },
+  {
+   q:"A business user replies to a screenshot with 'looks fine to me'.",
+   order:[0,2,3,1,4], a:3,
+   why:"This might genuinely support the evidence pack, but first confirm who this person is, what scope they were looking at, and whether an informal reply meets the project's actual approval requirement."
+  },
+  {
+   q:"The rehearsal cycle was signed off, but production uses a later source snapshot and an updated build.",
+   order:[4,1,2,0,3], a:4,
+   why:"A different cycle, with different inputs and rules, is a different thing to accept. Rehearsal confidence does not substitute for validating and accepting the actual cycle in front of you."
+  }
+];
+const signOffSituations = signOffItems.map((s, idx) => ({
+  title:`Situation ${idx+1}`,
+  question:s.q,
+  options: s.order.map(li => ({
+    label: responseLabels[li],
+    correct: li === s.a,
+    feedback: (li === s.a ? "Correct.<br>" : "Not quite. Ask exactly who is being asked to accept what, and on what basis.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Can we sign off customers?",title:"Opening scenario: Can we sign off customers?",type:"mcq",
+ html:`<p class="lead">Bramwell is approaching the end of a migration cycle. The customer object has the following status: population reconciliation pass, counts by legal entity pass, key-field validation pass, CustomerGroup distribution pass, customer-address relationships pass, functional customer/order smoke tests pass, open customer exceptions 18 records, exception treatment business review scheduled tomorrow.</p>
+ <p>The project manager asks the migration consultant to mark Customers as "Signed Off" today because the steering update is this afternoon.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Mark it signed off because all major automated controls passed.",
+ "Mark it signed off and add a note saying 18 exceptions remain.",
+ "Report the object as validation complete subject to 18 open business exceptions, and obtain acceptance from the authorised owner only when the exception treatment is understood and accepted.",
+ "Refuse to report any status until every migrated customer is perfect."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Strong evidence does not remove unresolved acceptance decisions. The 18 records may be small in number but material in business impact.",
+ "A note does not convert an unresolved exception into approval. Sign-off must reflect the actual acceptance position.",
+ "Correct. Present the evidence and open exceptions accurately, then let the authorised owner make the acceptance decision.",
+ "Acceptance does not always require zero exceptions. A migration may be accepted with known, understood and authorised residual exceptions. The standard is controlled acceptance, not imaginary perfection."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the consultant takes option C and refuses to let today's steering deadline turn an open exception into a quiet approval.</p>
+ <p>The steering update goes ahead this afternoon, just with a more honest version of the status.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the accurate report actually says</div>
+   <ul class="framework-checks">
+     <li><strong>Validation:</strong> complete. Every automated control, from population reconciliation to functional smoke tests, has passed.</li>
+     <li><strong>Open exception:</strong> 18 active customers carrying an unresolved legacy classification, with a business review scheduled for tomorrow.</li>
+     <li><strong>Sign-off:</strong> not yet given, pending that business decision.</li>
+   </ul>
+ </div>
+ <p>Steering sees exactly where things stand: strong evidence, one specific open decision, and a named date it will be resolved. Nobody has to discover later that "signed off" quietly meant "18 unresolved records included."</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Evidence informs acceptance. It does not replace the person authorised to give it.</p></div></div>`
+},
+{
+ id:"b3",nav:"Three different things",title:"Evidence, acceptance and sign-off are different",type:"content",
+ html:`<p class="lead">These three terms are often used loosely, but they mean genuinely different things.</p>
+ <div class="visual-card">
+   <div class="visual-title">Three terms</div>
+   <ul class="framework-checks">
+     <li><strong>Evidence:</strong> the facts and results showing what was migrated and how it performed against agreed controls.</li>
+     <li><strong>Acceptance:</strong> the decision that the migration result is suitable to proceed under the agreed criteria, including any authorised residual exceptions.</li>
+     <li><strong>Sign-off:</strong> the recorded confirmation that the authorised person or group has made that acceptance decision.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A green dashboard is evidence. It is not automatically business acceptance.</p></div></div>`
+},
+{
+ id:"b4",nav:"Building the evidence",title:"What should a validation evidence pack answer?",type:"content",
+ html:`<p class="lead">A useful evidence pack should allow another competent person to understand what population was in scope, which cycle, environment and build/mapping baseline was tested, what controls were performed, what the expected results were, what actually happened, which defects were corrected and retested, which exceptions remain open, who owns the remaining decisions, and whether the data is recommended for acceptance.</p>
+ <div class="principle"><strong>Core principle</strong><br>Evidence should make the acceptance decision easier to challenge, not harder to understand.</div>
+ <p>For Bramwell Customers, the evidence can be assembled from work completed throughout Module 5.</p>
+ <div class="visual-card">
+   <div class="visual-title">Evidence area to example evidence</div>
+   <ul class="framework-checks">
+     <li><strong>Completeness:</strong> raw scope, exclusions, exceptions, submitted and accepted counts.</li>
+     <li><strong>Segment reconciliation:</strong> counts by legal entity and other material populations.</li>
+     <li><strong>Accuracy:</strong> expected transformed values compared with target results.</li>
+     <li><strong>Distribution:</strong> CustomerGroup and other high-risk value distributions.</li>
+     <li><strong>Relationships:</strong> customer-address, SalesOwner and reference relationships.</li>
+     <li><strong>Business usability:</strong> targeted customer/order functional checks.</li>
+     <li><strong>Defects/retesting:</strong> failure, root cause, correction and successful retest trail.</li>
+     <li><strong>Residual exceptions:</strong> open population, impact, owner and proposed treatment.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Sign-off should be the conclusion of the evidence trail, not a separate administrative exercise.</div>`
+},
+{
+ id:"b5",nav:"The Acceptance Pack",title:"Build it yourself: the Bramwell Customer Acceptance Pack",type:"mcq",
+ html:`<p class="lead">You are given the following summary for the current cycle.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>In-scope population</strong>PASS: 18,612 raw customers fully accounted for</div>
+   <div class="status-card"><strong>Target population</strong>PASS: submitted/accepted reconciles to expected</div>
+   <div class="status-card"><strong>Legal entity distribution</strong>PASS: reconciles after correction of the earlier 42-record misclassification</div>
+   <div class="status-card"><strong>Critical field accuracy</strong>PASS: CustomerNumber, Country, CustomerGroup, status validated</div>
+   <div class="status-card"><strong>Relationships</strong>PASS: retested after address-rule correction</div>
+   <div class="status-card"><strong>Functional checks</strong>PASS: migrated customers usable in targeted order scenarios</div>
+   <div class="status-card"><strong>Open exceptions</strong>OPEN: 18 active customers, unresolved legacy CustomerGroup value 99</div>
+   <div class="status-card"><strong>Business decision</strong>REQUIRED: final treatment for value 99 not yet approved</div>
+ </div>
+ <h3>Your recommendation</h3>`,
+ options:[
+ "Accept without qualification.",
+ "Accept with authorised residual exception.",
+ "Do not yet accept.",
+ "Reject the entire migration cycle."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "This would mean accepting unconditionally while the treatment of 18 CustomerGroup 99 records remains genuinely unresolved.",
+ "This becomes the right answer only once the business decision is actually made and the exception is explicitly authorised, which has not happened yet.",
+ "Correct. Present the strong validation evidence, quantify the residual population and obtain the required business decision. Depending on that decision and impact, the object may then be accepted after correction/retest or accepted with an explicitly authorised exception.",
+ "Rejecting the entire cycle ignores a large amount of genuinely strong, passing evidence over one specific, well-understood open decision."
+ ]
+},
+{
+ id:"b6",nav:"Evidence quality",title:"The quality of evidence matters",type:"content",
+ html:`<p class="lead">Not all evidence is equally useful.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak versus stronger evidence</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "Counts look good." <strong>Stronger:</strong> cycle-specific source, exception, submission and target reconciliation.</li>
+     <li><strong>Weak:</strong> "We checked some customers." <strong>Stronger:</strong> a defined sample plus full-population controls for critical rules.</li>
+     <li><strong>Weak:</strong> "Finance is happy." <strong>Stronger:</strong> named reconciliation controls, results and authorised finance acceptance.</li>
+     <li><strong>Weak:</strong> "The defect was fixed." <strong>Stronger:</strong> defect &rarr; root cause &rarr; approved correction &rarr; rerun &rarr; retest evidence.</li>
+     <li><strong>Weak:</strong> a screenshot with no context. <strong>Stronger:</strong> evidence showing object, cycle, expected result, actual result and conclusion.</li>
+     <li><strong>Weak:</strong> an email saying "OK". <strong>Stronger:</strong> recorded acceptance linked to the evidence and decision scope.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Evidence is strongest when someone who did not perform the migration can understand what was tested and what the result means.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Sign-Off We Weren't Ready to Give", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/core5-lesson5-fromfield-marcus.mp3",
+   reflection:"Have you felt the pull to sign something off early simply because a steering update was that same afternoon?"
+ })}`
+},
+{
+ id:"b7",nav:"Right authority, right scope",title:"Who should accept what, and sign-off should match the scope of the decision",type:"content",
+ html:`<p class="lead">Different migration outcomes may require different authority.</p>
+ <div class="visual-card">
+   <div class="visual-title">Decision to likely authority</div>
+   <ul class="framework-checks">
+     <li><strong>Is the build technically complete?</strong> Migration/technical delivery owner.</li>
+     <li><strong>Does this mapping reflect intended business meaning?</strong> Relevant business/data authority.</li>
+     <li><strong>Is a financial reconciliation acceptable?</strong> Appropriate finance/business owner.</li>
+     <li><strong>Can a known data-quality exception be accepted?</strong> Authorised business/data owner under project governance.</li>
+     <li><strong>Can the project proceed with residual migration risk?</strong> Appropriate project/governance authority, depending on materiality.</li>
+     <li><strong>Is the migration evidence sufficient to recommend acceptance?</strong> The migration team can provide the professional recommendation, supported by evidence.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>The migration team moves and proves the data. The business owns what that data should mean and what residual business risk it can accept.</div>
+ <p>A person may be authorised to accept one thing but not another: a customer-data owner may approve customer classification treatment, finance may approve open-balance reconciliation, a functional lead may confirm process usability, the migration lead may confirm technical execution evidence, and project governance may decide whether residual cross-workstream risk is acceptable.</p>
+ <div class="principle"><strong>Core principle</strong><br>Never turn one person's approval into a broader sign-off than they actually gave.</div>`
+},
+{
+ id:"b8",nav:"No camouflage",title:"Residual exceptions need a decision, not camouflage, and acceptance with exceptions can be legitimate",type:"content",
+ html:`<p class="lead">A residual exception should be visible enough that the approver can understand its significance.</p>
+ <div class="visual-card">
+   <div class="visual-title">Residual exception record</div>
+   <ul class="framework-checks">
+     <li><strong>Population:</strong> 18 active German customers</li>
+     <li><strong>Source CustomerGroup:</strong> 99</li>
+     <li><strong>Current status:</strong> no approved target treatment</li>
+     <li><strong>Business context:</strong> legacy procedure describes 99 as "special export accounts"; six are strategic</li>
+     <li><strong>Target design:</strong> STANDARD, KEY, INTERNATIONAL, INTERNAL</li>
+     <li><strong>Impact:</strong> customer classification unresolved</li>
+     <li><strong>Owner:</strong> authorised customer-data/business authority</li>
+     <li><strong>Decision:</strong> pending</li>
+   </ul>
+ </div>
+ <p>Do not bury this behind "99.9% passed".</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Percentages can hide material exceptions. Describe the population and business impact.</p></div></div>
+ <p>Projects sometimes proceed with known residual issues. For that to be controlled, the exception should be understood, quantified, assessed for impact, owned, supported by a treatment/workaround where required, accepted by the appropriate authority, and recorded so it does not disappear after the decision.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Known risk can be governed. Hidden or misunderstood risk cannot.</div>`
+},
+{
+ id:"b9",nav:"Pressure and criteria",title:"Do not let schedule pressure rewrite the evidence, and know sign-off criteria before the end",type:"content",
+ html:`<p class="lead">Common pressure statements include "It is only 18 records," "We need green status for steering," "We will fix it after sign-off," "The business probably will not notice," and "Everything else passed."</p>
+ <p>The professional response is not to dramatise the issue. It is to report it accurately, explain the impact and route the decision to the correct authority.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Status should describe reality, not the colour the project wants to see.</div>
+ <p>Teams should not invent acceptance criteria after seeing the results. Before formal acceptance, establish what matters for the object, such as population reconciliation requirements, critical-field validation expectations, financial/control-total requirements, relationship integrity thresholds, functional validation scenarios, treatment of defects and residual exceptions, and required approvers/evidence.</p>
+ <div class="principle"><strong>Core principle</strong><br>Define what "acceptable" means before you know whether you have achieved it.</div>`
+},
+{
+ id:"b10",nav:"Specific to the cycle",title:"Sign-off is cycle-specific, and keep the decision traceable",type:"content",
+ html:`<p class="lead">Approval of Cycle 2 does not automatically approve Cycle 3 or production. Later cycles may contain new source records, different source quality, mapping changes, new target configuration, a different build version, new exceptions, and different cutover conditions.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Carry forward proven controls and decisions where appropriate, but validate the actual cycle you are accepting.</p></div></div>
+ <p>A useful acceptance record links cycle/baseline, validation evidence, open exceptions, recommendation, decision authority, decision/date, and conditions/actions. The format may be a project tool, approval workflow, document, meeting record or other controlled mechanism. The important point is traceability.</p>`
+},
+{
+ id:"b11",nav:"Would you sign off?",title:"Build it yourself: would you sign off?",type:"situations",
+ html:`<p class="lead">For each situation, decide the correct acceptance response before the reasoning is revealed.</p>`,
+ items: signOffSituations,
+ takeawayHtml:`<div class="principle"><strong>Key principle</strong><br>Acceptance decisions are never automatic. Match the response to who is being asked, on what basis, and for exactly what scope.</div>`
+},
+{
+ id:"b12",nav:"AI and acceptance",title:"AI can help assemble evidence, not make the acceptance decision",type:"content",
+ html:`<p class="lead">AI can assist with summarising validation results, grouping open defects and exceptions, drafting an evidence-pack narrative, checking whether required controls have evidence attached, comparing acceptance criteria with actual results, and highlighting inconsistent status descriptions.</p>
+ <p>It should not decide that a business exception is acceptable or fabricate approval.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to organise the evidence. Keep acceptance authority human and explicit.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"What would you need to see?",type:"reflection",
+ html:`<p>Imagine you were the person being asked to sign off a migrated object.</p>
+ <div class="quote">What would you need to see before putting your name against it?</div>
+ <p>Think beyond a dashboard. Could you understand the scope, controls, failures, corrections, residual risk and exactly what you were being asked to accept?</p>
+ <textarea id="reflection" placeholder="Before signing my name to it, I would need to see..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/scope|population|cycle/i, strength:"You considered needing to understand the exact scope and cycle being accepted.", gap:"Consider needing to see exactly what scope and cycle you would actually be accepting." },
+   { test:/exception|residual|open/i, strength:"You considered needing visibility of residual or open exceptions.", gap:"Consider needing to see any residual or open exceptions, not just a passing headline." },
+   { test:/defect|correct|retest/i, strength:"You considered needing to see what was found, corrected and retested.", gap:"Consider needing to see what defects were found, how they were corrected, and how they were retested." },
+   { test:/authority|approv|decision/i, strength:"You considered needing clarity on exactly what decision you were being asked to make.", gap:"Consider needing absolute clarity on exactly what you are being asked to approve, and at what scope." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before signing my name to it, I would need to see the exact population and cycle being accepted, what was tested and what passed, any residual or open exceptions stated plainly rather than buried in a percentage, the trail from any defect through to its correction and retest, and complete clarity on exactly what decision I am being asked to make and at what scope.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely rigorous acceptance thinking. You are refusing to sign against a summary you could not defend yourself.":"You have made a start. Push further into exactly what you personally would need to see to defend that signature later."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson and Module 5 summary",type:"content",
+ html:`<p class="lead">Bramwell now has a defensible validation process from first control to final acceptance.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Evidence, acceptance and sign-off are different things, and sign-off should be the conclusion of the evidence trail.</li>
+   <li>A useful evidence pack lets another competent person understand scope, controls, results, defects, exceptions and recommendation.</li>
+   <li>Not all evidence is equally strong; vague reassurance is weaker than named, reproducible controls.</li>
+   <li>Authority should match the specific decision; nobody's approval should be stretched beyond what they actually gave.</li>
+   <li>Residual exceptions need to be quantified, owned and explicitly authorised, never hidden behind a percentage.</li>
+   <li>Schedule pressure should change how quickly a decision is escalated, never what the evidence actually says.</li>
+   <li>Sign-off is cycle-specific; approving one cycle does not approve the next.</li>
+ </ul>
+ <div class="visual-card">
+   <div class="visual-title">Across Module 5</div>
+   <ul class="framework-checks">
+     <li><strong>Lesson 1</strong> proved the intended population and expected values.</li>
+     <li><strong>Lesson 2</strong> used counts and business control totals to explain differences.</li>
+     <li><strong>Lesson 3</strong> proved that migrated data connects correctly and can be used.</li>
+     <li><strong>Lesson 4</strong> turned failed validation into controlled correction and regression evidence.</li>
+     <li><strong>Lesson 5</strong> turned validation results into a transparent, authorised acceptance decision.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Module principle</strong><br>Validation is not a final spot check. It is the evidence chain that proves what was migrated, what is correct, what remains unresolved and why the result can or cannot be accepted.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"What is the key difference between evidence and acceptance?",
+   options:[
+     {label:"They are the same thing described in different words", correct:false, feedback:"Not quite. A green dashboard is evidence; it is not automatically business acceptance."},
+     {label:"Evidence shows what happened; acceptance is the decision that the result is suitable to proceed", correct:true, feedback:"Correct. Evidence informs acceptance. It does not replace the person authorised to give it."},
+     {label:"Acceptance always comes before evidence is gathered", correct:false, feedback:"Not quite. Evidence should exist first, to inform the acceptance decision."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Everything passes except 18 records with an unresolved business classification. What is the correct recommendation?",
+   options:[
+     {label:"Accept without qualification, since almost everything passed", correct:false, feedback:"Not quite. Strong evidence elsewhere does not remove an unresolved acceptance decision."},
+     {label:"Do not yet accept; present the evidence and obtain the required business decision first", correct:true, feedback:"Correct. The 18 records may be small in number but material in business impact."},
+     {label:"Reject the entire migration cycle", correct:false, feedback:"Not quite. Rejecting everything ignores a large amount of genuinely strong, passing evidence."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why is 'Counts look good' considered weak evidence compared with a cycle-specific reconciliation?",
+   options:[
+     {label:"Because it is too short to read easily", correct:false, feedback:"Not quite. Length is not the issue."},
+     {label:"Because it cannot be checked, reproduced or tied to a specific cycle and control", correct:true, feedback:"Correct. Evidence is strongest when someone who did not perform the migration can understand what was tested and what the result means."},
+     {label:"Because counts should never be part of migration evidence", correct:false, feedback:"Not quite. Counts are useful; the issue is the vague way this one is expressed."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A migration lead says the open AR balance is acceptable without finance review. What is the concern?",
+   options:[
+     {label:"The migration lead has no valid opinion on the matter at all", correct:false, feedback:"Not quite. The concern is authority, not whether their view has any value."},
+     {label:"Technical delivery ownership does not automatically confer financial acceptance authority", correct:true, feedback:"Correct. Never turn one person's approval into a broader sign-off than they actually gave."},
+     {label:"AR balances never require any business acceptance at all", correct:false, feedback:"Not quite. Financial reconciliations specifically need the appropriate finance/business owner."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Why should a residual exception be described by its population and business impact rather than as '99.9% passed'?",
+   options:[
+     {label:"Because percentages are always mathematically incorrect", correct:false, feedback:"Not quite. The percentage may be accurate; the problem is what it hides."},
+     {label:"Because a percentage can hide a small but materially important exception", correct:true, feedback:"Correct. Percentages can hide material exceptions. Describe the population and business impact."},
+     {label:"Because residual exceptions should never be reported at all", correct:false, feedback:"Not quite. They should be reported clearly, not omitted."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"A rehearsal cycle was signed off, but production uses a later source snapshot and an updated build. Does the rehearsal sign-off cover production?",
+   options:[
+     {label:"Yes, since the same object was already tested once", correct:false, feedback:"Not quite. Different inputs and rules make this a different cycle to accept."},
+     {label:"No; sign-off is cycle-specific, and production needs its own appropriate validation and acceptance", correct:true, feedback:"Correct. Carry forward proven controls where appropriate, but validate the actual cycle you are accepting."},
+     {label:"Only if the project is running behind schedule", correct:false, feedback:"Not quite. Schedule pressure is never a valid reason to skip a cycle's own acceptance."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Evidence, acceptance and sign-off, and Core Module 5.</strong></p>
+ <p>Bramwell now has a defensible validation process from first control to final acceptance.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p><strong>Module 6: Data Migration Cycles &amp; Cutover.</strong> The focus now moves from proving one migration result to planning and executing repeated migration cycles, learning from each one and preparing for production cutover.</p>
+ <p>Before moving on, complete the Core Module 5 assessment to confirm what you have learned across all five lessons.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 5",
+  moduleTitle: "Validation & Reconciliation",
+  lessonLabel: "Lesson 5: Evidence, acceptance and sign-off",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Status should describe reality, not the colour the project wants to see",
+  storageKey: "tp_core5_lesson5_v1",
+  lessonId: "core5-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

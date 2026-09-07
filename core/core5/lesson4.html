@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Investigating, correcting and retesting data</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 5 — LESSON 4 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Modules 1-4 and the story bible: customer
+   C10482, Harrison Trade Supplies Ltd, delivery address C10482-DEL-02,
+   customer C11872 payment term CASHX.
+============================================================== */
+
+// Section 4 — "Classify the root cause". The learner matches each
+// example to its root-cause category before the reasoning is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const causeLabels = [
+  "Source data quality",
+  "Scope/population",
+  "Mapping/business rule",
+  "Reference/cross-reference",
+  "Transformation/build",
+  "Load/dependency",
+  "Target configuration",
+  "Validation logic"
+];
+const causeItems = [
+  {
+   q:"A delivery address is genuinely missing or invalid in the source system.",
+   order:[3,0,6,1,7,2,4,5], a:0,
+   why:"The problem exists before migration ever touches the record. The source itself does not have a usable value."
+  },
+  {
+   q:"An address population was unintentionally excluded from the extract.",
+   order:[5,2,1,7,0,4,3,6], a:1,
+   why:"Nothing is wrong with the addresses themselves. The extract simply never captured the right population."
+  },
+  {
+   q:"An address-type rule incorrectly excludes DELIVERY addresses.",
+   order:[6,4,2,0,5,1,7,3], a:2,
+   why:"The approved rule itself was written or interpreted incorrectly, filtering out addresses it should have kept."
+  },
+  {
+   q:"A legacy address type has no approved target treatment.",
+   order:[0,7,3,6,2,5,1,4], a:3,
+   why:"This is a gap in the approved reference or cross-reference, not a fault in the source data or the mapping logic itself."
+  },
+  {
+   q:"The correct rule was implemented incorrectly in the build.",
+   order:[7,1,5,4,0,6,3,2], a:4,
+   why:"The mapping decision itself was right; the code that is supposed to carry it out does not actually match it."
+  },
+  {
+   q:"An address loaded before its parent customer, or with the wrong key.",
+   order:[2,6,0,5,3,7,4,1], a:5,
+   why:"This is a sequencing or dependency problem in how and when the record was loaded, not a problem with the value itself."
+  },
+  {
+   q:"A required address purpose/configuration is unavailable in the target.",
+   order:[4,3,7,2,1,0,6,5], a:6,
+   why:"The migrated data may be entirely correct; what is missing is a target-side configuration prerequisite."
+  },
+  {
+   q:"The correct target address exists, but the validation query used to check for it is wrong.",
+   order:[1,5,4,0,6,3,2,7], a:7,
+   why:"The migration itself may have worked perfectly. The control checking it is what is actually broken."
+  }
+];
+const causeSituations = causeItems.map((c, idx) => ({
+  title:`Example ${idx+1}`,
+  question:c.q,
+  options: c.order.map(li => ({
+    label: causeLabels[li],
+    correct: li === c.a,
+    feedback: (li === c.a ? "Correct.<br>" : "Not quite. Ask where in the migration chain this problem actually originates.<br>") + c.why
+  }))
+}));
+
+// Section 6 — "Investigate C10482-DEL-02". A genuinely sequential
+// diagnostic walkthrough, each stage building on the evidence found in
+// the one before it, so this uses guidedSteps rather than a graded
+// quiz type.
+const investigationSteps = [
+  { title:"Check the source", html:`<p>C10482-DEL-02 exists and is active in the source. The record itself is fine, and the problem does not start here.</p>` },
+  { title:"Check the raw stage", html:`<p>The record exists with customer key C10482. Extraction captured it correctly, so the problem is not at the extract boundary either.</p>` },
+  { title:"Check the transformed stage", html:`<p>The record is absent. Somewhere between raw staging and transformation output, this address disappeared. This narrows the defect to transformation logic or an upstream rule applied during transformation.</p>` },
+  { title:"Check the exception dataset", html:`<p>No exception was recorded. The address was not flagged as a problem; it was simply not produced at all, which rules out a controlled, visible exclusion.</p>` },
+  { title:"Check target submission and the target itself", html:`<p>The record was never submitted, and the address is absent from the target. Everything downstream of transformation is consistent with the record vanishing at that single point.</p>` },
+  { title:"Find the actual root cause", html:`<p>Further review finds a filter intended to exclude legacy BILLING_ONLY addresses. The implementation accidentally excludes all addresses whose source AddressPurpose is not exactly DELIVERY_PRIMARY. C10482-DEL-02 is DELIVERY_SECONDARY, which is valid and should migrate.</p>` }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Fix the seven customers",title:"Opening scenario: Fix the seven customers",type:"mcq",
+ html:`<p class="lead">Bramwell validation finds seven key accounts whose delivery addresses are missing in the target.</p>
+ <p>A developer offers a quick solution: manually create the seven addresses in the target test environment so UAT can continue. The addresses will then appear correct and the seven validation failures will disappear.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Do it. Validation is about getting the target data correct, regardless of how the correction is made.",
+ "Do it for this cycle, then remember to fix the migration later.",
+ "Investigate why the addresses were missing, correct the appropriate source/mapping/build/configuration point, rerun the affected population and retest.",
+ "Reload every Bramwell object from the beginning."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A correct-looking target can hide a broken migration process. The next cycle will reproduce the defect, and the manual fix may not be traceable.",
+ "This creates two versions of truth. UAT would be testing a target state that the migration process itself cannot reproduce.",
+ "Correct. Fix the cause at the right point, rerun the complete affected population and prove the correction through retesting.",
+ "A full reload may be unnecessary. Recovery should match the defect and affected population; restarting everything can waste time and introduce unrelated change."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and resists the very tempting manual fix.</p>
+ <p>Someone actually traces one of the seven missing addresses back through the pipeline instead of just recreating it in the target.</p>
+ <div class="visual-card">
+   <div class="visual-title">What tracing C10482-DEL-02 reveals</div>
+   <ul class="framework-checks">
+     <li><strong>Source and raw stage:</strong> the address exists, active, correctly keyed. Nothing wrong here.</li>
+     <li><strong>Transformed stage:</strong> the record has simply disappeared, with no exception recorded anywhere.</li>
+     <li><strong>Root cause:</strong> a filter meant to exclude legacy BILLING_ONLY addresses was implemented too broadly, silently dropping every address that was not exactly DELIVERY_PRIMARY.</li>
+     <li><strong>Wider population:</strong> this same defective filter has been quietly dropping every DELIVERY_SECONDARY address, not just these seven.</li>
+   </ul>
+ </div>
+ <p>Manually recreating seven addresses in the target would have fixed nothing. The filter would still be silently discarding every other DELIVERY_SECONDARY address in the population, cycle after cycle.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Fix the migration, not just the migrated record.</p></div></div>`
+},
+{
+ id:"b3",nav:"Symptom, then cause",title:"Start with the symptom, then find the cause, and trace the record through the chain",type:"content",
+ html:`<p class="lead">"Seven addresses are missing" describes the observed failure. It does not explain why.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible causes</div>
+   <ul class="framework-checks">
+     <li>The source extract excluded the address rows</li>
+     <li>The source relationship was misunderstood</li>
+     <li>The mapping rule filtered an address type incorrectly</li>
+     <li>The transformation lost the customer-address key</li>
+     <li>The address load ran before the customer dependency was ready</li>
+     <li>The target rejected the records</li>
+     <li>The target configuration made the address unusable</li>
+     <li>The validation query itself failed to find valid records</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A validation failure is evidence of a problem. Root-cause analysis identifies where that problem actually entered the migration chain.</p></div></div>
+ <p>For one failed address, follow the evidence backwards and forwards.</p>
+ <div class="visual-card">
+   <div class="visual-title">Investigation chain</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">SOURCE &rarr; RAW STAGE &rarr; TRANSFORMED STAGE &rarr; LOAD-READY &rarr; TARGET SUBMISSION &rarr; TARGET RESULT &rarr; VALIDATION</p>
+ </div>
+ <p>At each point ask: was the record present? Was the business key/relationship correct? What rule was applied? Was it classified as an exception? Was it submitted? Was it accepted? What did the target finally store?</p>
+ <div class="principle"><strong>Core principle</strong><br>Find the first point where actual behaviour diverges from the approved expected behaviour.</div>`
+},
+{
+ id:"b4",nav:"Classify the cause",title:"Build it yourself: classify the root cause",type:"situations",
+ html:`<p class="lead">For each example, identify which root-cause category it belongs to before the reasoning is revealed.</p>`,
+ items: causeSituations,
+ takeawayHtml:`<div class="principle"><strong>Turner Page principle</strong><br>Correction belongs where the cause lives. Naming the right category is what points you towards the right fix.</div>`
+},
+{
+ id:"b5",nav:"The right correction point",title:"Choose the correct correction point",type:"content",
+ html:`<p class="lead">The easiest place to edit a value is not necessarily the right place to correct it.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cause to appropriate treatment</div>
+   <ul class="framework-checks">
+     <li><strong>Wrong source value and business owns correction:</strong> correct source where practical, then re-extract/reprocess.</li>
+     <li><strong>Approved enrichment required:</strong> apply controlled enrichment with ownership/evidence.</li>
+     <li><strong>Mapping decision wrong or incomplete:</strong> update mapping through control, then update build and tests.</li>
+     <li><strong>Build defect:</strong> correct transformation/load logic and version it.</li>
+     <li><strong>Reference/configuration missing:</strong> correct the approved reference or target prerequisite.</li>
+     <li><strong>Validation query wrong:</strong> correct validation logic and rerun the control.</li>
+     <li><strong>One record looks wrong in target:</strong> investigate first. Do not default to manual target editing.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The easiest place to edit a value is not necessarily the right place to correct it.</p></div></div>`
+},
+{
+ id:"b6",nav:"Investigate C10482-DEL-02",title:"Build it yourself: investigate C10482-DEL-02",type:"guidedSteps",
+ html:`<p class="lead">Bramwell validation reports that delivery address C10482-DEL-02 is missing for Harrison Trade Supplies Ltd, customer C10482. Walk through the investigation one stage at a time.</p>`,
+ steps: investigationSteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Expected reasoning</div><p>Do not insert C10482-DEL-02 manually. Correct the transformation rule to match the approved address treatment, identify every address affected by the defective filter, reprocess that complete population, then rerun address relationship and functional validation.</p></div></div>`
+},
+{
+ id:"b7",nav:"The full population, no patches",title:"Find the full affected population, and avoid the one-record patch trap",type:"content",
+ html:`<p class="lead">A defect found on one record may affect many records. For the address filter, do not rerun only C10482-DEL-02.</p>
+ <div class="visual-card">
+   <div class="visual-title">Ask</div>
+   <ul class="framework-checks">
+     <li>Which source values trigger the defective condition?</li>
+     <li>Which objects/companies use the same rule?</li>
+     <li>When was the defect introduced?</li>
+     <li>Which cycles/runs used that build version?</li>
+     <li>Could records have been wrongly included as well as excluded?</li>
+     <li>Do dependent transactions also need retesting?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Correct the population affected by the cause, not only the records that happened to reveal it.</div>
+ <p>Suppose validation instead finds customer C11872 with invalid payment term CASHX. A weak response would change C11872 to NET30 directly in staging so it loads. This is dangerous because NET30 may not be the approved business treatment, other CASHX customers may exist, the patch is not reproducible next cycle, the mapping remains unresolved, and validation may pass only because the evidence was altered.</p>
+ <div class="principle"><strong>Core principle</strong><br>A failed lookup should lead to a controlled business decision or correction, not an invented value that makes the error disappear.</div>
+ ${TPKit.fromField({
+   title:"The Patch That Outlived the Project", name:"Zoe", role:"Data Migration Lead", project:"Manufacturing ERP",
+   src:"/assets/audio/core5-lesson4-fromfield-zoe.mp3",
+   reflection:"Have you seen a quick manual patch to a target record quietly outlive the project it was meant to help finish on time?"
+ })}`
+},
+{
+ id:"b8",nav:"Retesting's two jobs",title:"Retesting has two jobs, and the regression scope should follow the change",type:"content",
+ html:`<p class="lead">After a correction, prove two separate things.</p>
+ <div class="visual-card">
+   <div class="visual-title">Two retest objectives</div>
+   <ul class="framework-checks">
+     <li><strong>Defect confirmation:</strong> did the specific failed case now produce the expected result?</li>
+     <li><strong>Regression confidence:</strong> did the correction damage anything that previously worked?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Retest the fix, then retest the risk created by the fix.</div>
+ <p>If the address filter changes, useful regression checks include all valid delivery-address types now included, BILLING_ONLY exclusions still excluded as approved, customer-address relationships remaining correct, address counts by type/company reconciling, no duplicate addresses introduced, and orders using migrated delivery addresses still working.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The wider the rule, the wider the retest.</p></div></div>`
+},
+{
+ id:"b9",nav:"Controlled retests, kept evidence",title:"Retest from controlled inputs, and do not erase failed evidence",type:"content",
+ html:`<p class="lead">A meaningful retest should state what changed and what did not.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example retest baseline</div>
+   <ul class="framework-checks">
+     <li><strong>Cycle:</strong> CYCLE02</li>
+     <li><strong>Object:</strong> Customer addresses</li>
+     <li><strong>Source snapshot:</strong> unchanged</li>
+     <li><strong>Mapping baseline:</strong> updated address-purpose rule</li>
+     <li><strong>Build version:</strong> updated</li>
+     <li><strong>Target reset/reload basis:</strong> controlled</li>
+     <li><strong>Validation controls:</strong> rerun</li>
+   </ul>
+ </div>
+ <p>If source data, mapping, build and target configuration all change at once, it becomes harder to prove what corrected the defect or caused a new one.</p>
+ <div class="principle"><strong>Core principle</strong><br>Change deliberately and retain enough baseline information to explain the new result.</div>
+ <p>When a defect is corrected, retain the original failure evidence.</p>
+ <div class="visual-card">
+   <div class="visual-title">Defect evidence chain</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">Failed validation &rarr; investigation &rarr; root cause &rarr; approved correction &rarr; implementation/version &rarr; rerun &rarr; retest result &rarr; closure</p>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The failed result is part of the evidence. It shows what changed and why the new result can be trusted.</p></div></div>`
+},
+{
+ id:"b10",nav:"New defects, full reloads",title:"Correction can expose a second defect, and know when a full reload is justified",type:"content",
+ html:`<p class="lead">After fixing the address filter, all seven previously missing key-account addresses appear. But the wider affected-population check finds 19 additional secondary delivery addresses linked to the wrong customer. This is not evidence that the correction failed. It may mean the stronger validation has exposed another issue. Treat the new result as a fresh investigation rather than forcing closure of the original defect.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Retesting is allowed to find new problems. That is one of its purposes.</div>
+ <p>Partial reprocessing is useful only when the team can identify the complete affected population and safely reload it. A wider reload may be appropriate when the affected population cannot be isolated reliably, the correction changes a foundational rule used by most records, target state cannot be safely disentangled, dependent objects require a clean baseline, or the project needs a full-cycle rehearsal anyway. The decision should follow migration control and technical reality, not convenience.</p>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: where would you fix it?",type:"content",
+ html:`<p class="lead">Five situations show why the correction point genuinely varies with the cause.</p>
+ <div class="quote">All source UK values became US because a cross-reference was implemented incorrectly.</div>
+ <p>Correct the build/reference implementation, identify the complete affected population, reprocess and rerun relevant validation.</p>
+ <div class="quote">One customer has a postcode that the business confirms is incorrect in the legacy source.</div>
+ <p>Prefer an authorised source correction where practical, or controlled enrichment if that is the approved project treatment.</p>
+ <div class="quote">The approved payment-term mapping is correct, but the target company lacks the configured term.</div>
+ <p>Correct the target prerequisite/configuration through the appropriate owner, then reload/retest affected records.</p>
+ <div class="quote">Migration output is correct, but reconciliation overstates order value because the query joins each line twice.</div>
+ <p>Correct and retest the validation control. Do not alter migrated data.</p>
+ <div class="quote">A tester manually repairs a target address before the team investigates.</div>
+ <p>Record the intervention, determine the underlying cause, restore a controlled baseline where needed and prove the migration can reproduce the correct result.</p>`
+},
+{
+ id:"b12",nav:"AI and investigation",title:"AI can help investigate, but not authorise the fix",type:"content",
+ html:`<p class="lead">AI can assist with comparing failed and successful records, finding common source values among defects, tracing mapping and transformation logic, suggesting candidate root causes, drafting affected-population queries, generating regression test cases, and summarising defect evidence.</p>
+ <p>The team must verify the cause and use the project's approval process for mapping, source, configuration or scope changes.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to accelerate the investigation. Do not let a plausible suggestion become an unapproved migration correction.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"What evidence would you lose?",type:"reflection",
+ html:`<p>Think of the quickest migration fix you could make directly in a target system.</p>
+ <div class="quote">What evidence would you lose, and what would happen in the next cycle?</div>
+ <p>The more tempting the one-off fix, the more important it is to ask whether the migration process itself can reproduce the corrected result.</p>
+ <textarea id="reflection" placeholder="If I made that quick fix, I would lose..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/reproduc|next cycle|repeat/i, strength:"You considered whether the migration process itself could reproduce the fix next cycle.", gap:"Consider whether the migration process itself could reproduce this fix in the next cycle." },
+   { test:/evidence|trace|trail/i, strength:"You considered what evidence or trail would be lost by fixing it directly.", gap:"Consider what evidence or trail would disappear if the fix only happened in the target." },
+   { test:/reason|cause|why/i, strength:"You considered whether the underlying cause would still be understood afterwards.", gap:"Consider whether the underlying cause would actually be understood, or just hidden." },
+   { test:/other|population|affected/i, strength:"You considered whether other affected records would still be sitting there, unfixed.", gap:"Consider whether other records affected by the same cause would remain broken." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">If I edited the target record directly, I would lose the ability to prove what actually caused the problem, and the migration process would simply reproduce the same defect next cycle. Any other records affected by the same underlying cause would stay broken and invisible, because the evidence trail would say everything passed.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely disciplined thinking. You are weighing the immediate convenience against what it costs the next cycle.":"You have made a start. Push further into exactly what evidence disappears, and what happens the very next time this process runs."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now move from validation failure to controlled correction without losing repeatability or evidence.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>A validation failure is a symptom until the root cause is established.</li>
+   <li>Trace failed data through source, staging, transformation, load and target evidence.</li>
+   <li>Find the first point where actual behaviour diverges from approved expected behaviour.</li>
+   <li>Correct the problem where the cause lives.</li>
+   <li>Avoid direct target/staging patches that the migration cannot reproduce.</li>
+   <li>Identify the complete population affected by the defective rule or process.</li>
+   <li>Retesting must prove both the fix and regression risk.</li>
+   <li>Let the blast radius of the change determine the retest scope.</li>
+   <li>Use controlled baselines so the new result can be explained.</li>
+   <li>Preserve failed evidence and the correction trail.</li>
+   <li>A retest may legitimately expose additional defects.</li>
+   <li>Use partial reprocessing only when the affected population and target state can be controlled safely.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Do not make a failed record look right. Find why it was wrong, correct the migration at the right point, and prove the correction across the full affected population.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"Seven delivery addresses are missing in the target. A developer offers to create them manually so UAT can continue. What is the risk?",
+   options:[
+     {label:"There is no real risk, since the target data will look correct", correct:false, feedback:"Not quite. A correct-looking target can hide a broken migration process that will reproduce the defect next cycle."},
+     {label:"The next cycle will reproduce the defect, and the manual fix may not be reproducible or traceable", correct:true, feedback:"Correct. Fix the migration, not just the migrated record."},
+     {label:"UAT would run more slowly with real addresses in place", correct:false, feedback:"Not quite. Speed is not the concern here."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Tracing a missing address shows it exists in source and raw stage, but disappears at the transformed stage with no exception recorded. What does this tell you?",
+   options:[
+     {label:"The defect must be in the source data itself", correct:false, feedback:"Not quite. Source and raw stage both confirmed the record was fine."},
+     {label:"The first point of divergence is in transformation logic or an upstream rule applied during transformation", correct:true, feedback:"Correct. Find the first point where actual behaviour diverges from the approved expected behaviour."},
+     {label:"The target rejected the record", correct:false, feedback:"Not quite. The record never even reached target submission."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A filter meant to exclude legacy BILLING_ONLY addresses is found to be excluding every address that is not exactly DELIVERY_PRIMARY. What should happen next?",
+   options:[
+     {label:"Manually insert the seven known missing addresses into the target", correct:false, feedback:"Not quite. This treats the symptom, not the cause, and leaves every other affected address broken."},
+     {label:"Correct the transformation rule, identify every address affected by the defective filter, reprocess that population, then retest", correct:true, feedback:"Correct. Correct the population affected by the cause, not only the records that happened to reveal it."},
+     {label:"Leave the filter as it is, since only seven records were found to be affected", correct:false, feedback:"Not quite. Seven is only the number that happened to be discovered, not necessarily the full affected population."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"After a correction, what are the two things retesting needs to prove?",
+   options:[
+     {label:"That the fix works, and that the fix did not damage anything that previously worked", correct:true, feedback:"Correct. Retest the fix, then retest the risk created by the fix."},
+     {label:"That the developer who made the fix understood the requirement", correct:false, feedback:"Not quite. Retesting proves outcomes, not understanding."},
+     {label:"That the migration finished faster than the previous cycle", correct:false, feedback:"Not quite. Timing is a separate concern from defect confirmation and regression."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"After fixing the address filter, 19 additional secondary delivery addresses are found linked to the wrong customer. What does this mean?",
+   options:[
+     {label:"The original correction failed and should be reverted", correct:false, feedback:"Not quite. This is a separate issue the stronger validation has now exposed."},
+     {label:"This may be a new issue exposed by stronger validation, and deserves its own fresh investigation", correct:true, feedback:"Correct. Retesting is allowed to find new problems. That is one of its purposes."},
+     {label:"Retesting should stop, since it is producing unexpected results", correct:false, feedback:"Not quite. Finding a new defect is a legitimate and useful outcome of retesting, not a reason to stop."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why should a retest change source data, mapping, build and target configuration deliberately rather than all at once?",
+   options:[
+     {label:"Because changing everything at once is always technically impossible", correct:false, feedback:"Not quite. It may be technically possible; the problem is what it does to your evidence."},
+     {label:"Because changing everything at once makes it much harder to prove what actually corrected the defect or caused a new one", correct:true, feedback:"Correct. Change deliberately and retain enough baseline information to explain the new result."},
+     {label:"There is no real reason; simultaneous changes are equally easy to interpret", correct:false, feedback:"Not quite. Simultaneous changes make cause and effect much harder to separate."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Investigating, correcting and retesting data.</strong></p>
+ <p>Bramwell can now move from validation failure to controlled correction without losing repeatability or evidence.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Evidence, acceptance and sign-off:</strong> you will bring the Module 5 controls together and decide what evidence is strong enough for the business and project to accept migrated data.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 5",
+  moduleTitle: "Validation & Reconciliation",
+  lessonLabel: "Lesson 4: Investigating, correcting and retesting data",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Fix the migration, not just the migrated record",
+  storageKey: "tp_core5_lesson4_v1",
+  lessonId: "core5-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
