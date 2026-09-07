@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Data controls, security and compliance</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 7 — LESSON 4 DATA — content only. No bespoke
+   one-off visual is needed, so there is no lesson-scoped <style>.
+============================================================== */
+
+const fourQuestions=[
+  { title:"Do we need this data?", short:"Minimisation and scope.", detail:"<p>Data minimisation does not mean stripping migration extracts until they cannot support the migration. It means avoiding unnecessary fields, populations and copies.</p><p><strong>Bramwell example:</strong> for the blank tax-classification review, the business may need customer number, customer name, legal entity, country, current tax classification and relevant evidence. It does not automatically need unrelated contact, payment or address fields for all 18,530 customers.</p>" },
+  { title:"Who needs access?", short:"Least privilege and accountability.", detail:"<p>Access should reflect role and need. A migration developer needs staging or build data to implement and troubleshoot. A business validator needs the relevant records or fields to validate business meaning or usability. A project manager usually needs status, counts, risks and evidence summaries, not automatically raw record-level data.</p><p><strong>Core principle:</strong> project involvement does not automatically justify unrestricted data access.</p>" },
+  { title:"Where may it be stored or moved?", short:"Approved environments and transfer methods.", detail:"<p>Not every environment or transfer method is appropriate for business data, even when it is technically convenient.</p><p>Before using production-derived data in test or development, understand the organisation's rules for environment classification, masking or anonymisation where required, who may access the environment, and any geographic or hosting restrictions.</p>" },
+  { title:"How long do we need it?", short:"Retention and secure disposal.", detail:"<p>Some migration evidence needs to be retained for audit, reconciliation, support or contractual reasons. Other temporary data should be removed when no longer needed.</p><p>The actual retention period is determined by organisational, contractual, legal and regulatory requirements. The migration team should not invent it.</p>" }
+];
+
+const knowledgeCheck=[
+  {
+    title:"Check 1",
+    question:"A business reviewer only needs 94 records and a handful of fields, but asks for the full 18,530-customer extract for convenience. What is the right response?",
+    options:[
+      {label:"Send the full extract, since the reviewer is an authorised employee.", correct:false, feedback:"Being authorised for the project does not justify distributing the entire migration population when only a small subset is needed."},
+      {label:"Provide only the data needed for the review, through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"Correct. Migration access should be sufficient for the task, not convenient for every possible task."},
+      {label:"Send the full extract in a password-protected file to make it more secure.", correct:false, feedback:"Password protection does not fix the underlying problem of sharing far more data than the task requires."},
+      {label:"Refuse to share any data at all.", correct:false, feedback:"Refusing entirely blocks a legitimate review; the answer is to minimise what is shared, not to withhold it."}
+    ]
+  },
+  {
+    title:"Check 2",
+    question:"Why do exception reports and small working files still need careful handling?",
+    options:[
+      {label:"They do not; only the full production extract needs strong controls.", correct:false, feedback:"Small files do not create small security obligations. Exception reports still contain business data."},
+      {label:"Because they still contain business data and may reveal commercially sensitive information, even though they are smaller than the full extract.", correct:true, feedback:"Correct. Small files do not create small security obligations."},
+      {label:"Only if they are shared outside the organisation.", correct:false, feedback:"The obligation exists regardless of whether the file leaves the organisation."},
+      {label:"Only if they contain financial figures.", correct:false, feedback:"Sensitivity is not limited to financial figures; customer and personal information carry the same concern."}
+    ]
+  },
+  {
+    title:"Check 3",
+    question:"At 02:00 a production load fails, and a developer asks for the production database password in a group chat to investigate quickly. What is the right response?",
+    options:[
+      {label:"Share the password in the chat, since the urgency is genuine.", correct:false, feedback:"Time pressure may justify rapid authorised access. It does not justify uncontrolled access."},
+      {label:"Use the approved access route, even under time pressure.", correct:true, feedback:"Correct. The urgency is real. The approved access route still applies."},
+      {label:"Wait until the next working day to resolve access properly.", correct:false, feedback:"This ignores the genuine urgency; the answer is the approved emergency access route, not an indefinite delay."},
+      {label:"Have someone else who already has access do the investigation without recording it.", correct:false, feedback:"Unrecorded access defeats traceability, even if it avoids sharing a password directly."}
+    ]
+  },
+  {
+    title:"Check 4",
+    question:"What is the main risk with \"final_v2_reallyfinal\" style convenience copies of migration data?",
+    options:[
+      {label:"They take up too much disk space.", correct:false, feedback:"Storage space is not the primary concern here."},
+      {label:"They have no controlled identity, making it hard to know what they are, who produced them, or whether they are still needed.", correct:true, feedback:"Correct. A file you cannot identify confidently is difficult to govern confidently. Convenience is not a data-control strategy."},
+      {label:"They are always more accurate than the original file.", correct:false, feedback:"Accuracy is not the issue; traceability and control are."},
+      {label:"They only matter if they are shared externally.", correct:false, feedback:"The traceability problem exists as soon as an uncontrolled copy is created, regardless of where it ends up."}
+    ]
+  },
+  {
+    title:"Check 5",
+    question:"How should the retention period for migration evidence normally be decided?",
+    options:[
+      {label:"The migration team should decide a sensible default period itself.", correct:false, feedback:"The migration team should not invent the retention period."},
+      {label:"By organisational, contractual, legal and regulatory requirements, not invented by the migration team.", correct:true, feedback:"Correct. The actual retention period is determined by organisational, contractual, legal and regulatory requirements. The migration team should not invent it."},
+      {label:"Everything should be kept indefinitely, just in case.", correct:false, feedback:"Keeping everything indefinitely ignores legitimate disposal obligations and increases risk."},
+      {label:"Everything should be deleted as soon as the cycle completes.", correct:false, feedback:"Some evidence, such as approved decisions or sign-off records, needs to be retained under policy."}
+    ]
+  },
+  {
+    title:"Check 6",
+    question:"When using AI tools on migration work, what still applies?",
+    options:[
+      {label:"Normal data-handling rules no longer apply, since AI tools are secure by default.", correct:false, feedback:"AI does not create an exemption from data-security, privacy or confidentiality controls."},
+      {label:"The same data-handling rules still apply: minimise data supplied, use only approved tools, and verify generated outputs.", correct:true, feedback:"Correct. AI does not create an exemption from data-security, privacy or confidentiality controls."},
+      {label:"Client data can be pasted into any AI tool as long as the task is migration-related.", correct:false, feedback:"Client data should never go into unapproved public AI services, regardless of the task."},
+      {label:"AI-generated outputs can be trusted without verification, since AI does not make mistakes.", correct:false, feedback:"Generated outputs still need to be verified before being applied."}
+    ]
+  }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The challenge",title:"Send me the full file",type:"mcq",
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Migration deliberately creates additional copies of business data. Extract files, staging tables, exception reports, reconciliation outputs and test environments can all contain information that the organisation is required to protect. Good migration control therefore includes not only whether the data is correct, but also who can see it, where it is stored, how it moves and what happens to temporary copies when they are no longer needed.</p>
+ </div>
+ <p class="lead">Bramwell is investigating 94 active customers with blank tax classification. A business reviewer working from home asks the migration analyst to email the full customer extract so they can filter it themselves.</p>
+ <p>The extract contains all 18,530 active customers and includes names, addresses, contact details, payment terms, tax information and internal classifications. The reviewer only needs the 94 affected records and a small number of fields to make the decision.</p>
+ <h3>Your decision</h3>`,
+ options:[
+   {label:"Send the full extract because the reviewer is an authorised employee.", correct:false, feedback:"The reviewer may legitimately need customer data, but that does not justify distributing the entire migration population."},
+   {label:"Send the full extract in a password-protected ZIP and send the password separately.", correct:false, feedback:"Password protection addresses transit security, but not the underlying problem: far more data is being shared than the task requires."},
+   {label:"Provide only the data needed for the review through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"The reviewer may legitimately need customer data, but that does not justify distributing the entire migration population. Use the minimum necessary data, approved storage or transfer method and appropriate access."},
+   {label:"Refuse to share any customer data outside the migration team.", correct:false, feedback:"Refusing entirely blocks a legitimate business review; the answer is to minimise and control what is shared, not withhold it."}
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Providing only the 94 affected records through an approved controlled location does not slow the review down. It removes 18,436 customers' worth of unnecessary exposure from a decision that never needed them.</p>
+ <p>The analyst exports just the relevant fields, for just the affected population, into the location the reviewer already has approved access to, rather than the reviewer's personal inbox or home device.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Migration access should be sufficient for the task, not convenient for every possible task.</div>
+ <h3>Why migration increases data exposure</h3>
+ <p>A source system may have mature security controls. Migration can create new copies outside those normal boundaries:</p>
+ <ul class="framework-checks">
+   <li>Database extracts</li>
+   <li>CSV or Excel files</li>
+   <li>Staging databases</li>
+   <li>Developer workspaces</li>
+   <li>Test environments</li>
+   <li>Error files</li>
+   <li>Exception reports</li>
+   <li>Reconciliation outputs</li>
+   <li>Backup or recovery copies</li>
+   <li>Temporary transfer locations</li>
+ </ul>
+ <div class="principle"><strong>Core principle</strong><br>Every additional copy creates another place where access, protection and retention must be controlled.</div>`
+},
+{
+ id:"b3",nav:"Four questions",title:"Start with four practical questions",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Security becomes practical when it is designed into the migration flow rather than added as a warning at the end. Explore each question below.</p>`,
+ items: fourQuestions,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Security becomes practical when it is designed into the migration flow rather than added as a warning at the end.</p></div></div>`
+},
+{
+ id:"b4",nav:"Least privilege",title:"Least privilege in migration",type:"content",
+ html:`<div class="visual-card">
+   <div class="visual-title">Access should reflect role and need</div>
+   <ul class="framework-checks">
+     <li><strong>Migration developer:</strong> migration staging or build data needed to implement and troubleshoot.</li>
+     <li><strong>Business validator:</strong> relevant records or fields needed to validate business meaning or usability.</li>
+     <li><strong>Finance validator:</strong> financial populations and reconciliation evidence required for its controls.</li>
+     <li><strong>Project manager:</strong> status, counts, risks and evidence summaries, not automatically raw record-level data.</li>
+     <li><strong>External or support resource:</strong> only specifically authorised data or environment access required for the assigned task.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Project involvement does not automatically justify unrestricted data access.</div>`
+},
+{
+ id:"b5",nav:"Build it yourself",title:"Build it yourself: Control the Bramwell data journey",type:"reflection",
+ html:`<p class="lead">Consider this simplified customer migration flow.</p>
+ <div class="visual-card">
+   <div class="visual-title">The Bramwell data journey</div>
+   <p>Production ERP &rarr; extract location &rarr; raw staging &rarr; transformed staging &rarr; load-ready file or API &rarr; target test/production &rarr; validation evidence</p>
+ </div>
+ <p>For each stage, define: what data is required, who needs access, approved storage or location, how data moves to the next stage, what audit or traceability is required, and when the copy can be deleted or archived under policy.</p>
+ <div class="visual-card">
+   <div class="visual-title">A primary control question per stage</div>
+   <ul class="framework-checks">
+     <li><strong>Extract:</strong> is the population or field set necessary? Example control: extract only approved migration scope and required attributes.</li>
+     <li><strong>Raw staging:</strong> who can access source-state data? Example control: restricted migration access, with cycle identity retained.</li>
+     <li><strong>Transformed staging:</strong> can changes be traced? Example control: controlled build plus cycle or batch metadata.</li>
+     <li><strong>Load-ready:</strong> how is it transferred? Example control: approved protected transfer or API, no uncontrolled desktop copies.</li>
+     <li><strong>Target:</strong> is environment access appropriate? Example control: role-based access appropriate to test or production.</li>
+     <li><strong>Validation evidence:</strong> does evidence expose more data than needed? Example control: use counts or summaries, or targeted records where sufficient.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Data Control Map: data stage, purpose, data required, access, storage or transfer, traceability, retention or disposal.</p></div></div>
+ <p>Pick one stage of the Bramwell data journey above. Describe a realistic way that stage's control could quietly fail in practice, and what you would put in place to prevent it.</p>
+ <textarea id="reflection" placeholder="At the stage I have chosen, the control could fail if..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/stage|extract|staging|load|target|validation/i, strength:"You named a specific stage of the data journey.", gap:"Name the specific stage of the data journey you are describing." },
+   { test:/access|permission|who can|role/i, strength:"You considered who could access data at that stage.", gap:"Consider who might gain access at that stage and whether that is appropriate." },
+   { test:/copy|copies|extract|desktop|email|convenien/i, strength:"You considered how an uncontrolled copy could appear at that stage.", gap:"Consider how an uncontrolled copy could quietly appear at that stage." },
+   { test:/prevent|control|approve|restrict|traceab/i, strength:"You proposed a concrete control to prevent the failure.", gap:"Propose a concrete control that would prevent the failure you described." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">At the load-ready stage, control could quietly fail if a developer copies the load-ready file to a personal desktop to troubleshoot a transfer issue overnight. The prevention is an approved protected transfer route that is quicker to use correctly than to work around, plus traceability metadata that makes an uncontrolled copy visibly out of place.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a realistic, specific failure mode with a genuinely useful control attached.":"You have a reasonable scenario. Make the failure mode and the control both more concrete and specific to the stage you chose."}</div>`
+},
+{
+ id:"b6",nav:"Production data and traceability",title:"Production data in non-production, and treating small files seriously",type:"content",
+ html:`<p class="lead">Migration testing often needs realistic data. That does not automatically mean unrestricted production data can be copied into every development or test environment.</p>
+ <p>Before using production-derived data, understand the organisation's rules for: environment classification, masking or anonymisation where required, who may access the environment, geographic or hosting restrictions where applicable, sensitive data categories, and retention and refresh procedures.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Realistic test data is useful. Uncontrolled production data in test is a security problem, not a testing strategy.</p></div></div>
+ <h3>Exception files are still business data</h3>
+ <p>Exception reports can be especially risky because they deliberately concentrate unusual or problematic records.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Example</div><p>A file containing 214 customers with missing payment terms is smaller than the full customer extract, but it still contains business data and may reveal commercially sensitive customer information. It requires the same thoughtful handling as other migration artefacts.</p></div></div>
+ <div class="principle"><strong>Core principle</strong><br>Small files do not create small security obligations.</div>
+ <h3>Traceability and security support each other</h3>
+ <p>Good migration traceability should show where data came from, which cycle it belongs to, what transformation or build produced it and what happened to it. This also helps answer security questions: which extract created this file, who produced it, which environment was it intended for, is it still required, and is this the approved version or an uncontrolled copy?</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A file you cannot identify confidently is difficult to govern confidently.</div>`
+},
+{
+ id:"b7",nav:"Under pressure",title:"Convenience copies, credentials and cutover pressure",type:"content",
+ html:`<p class="lead">Common migration habits that create risk include emailing raw extracts, copying files to personal cloud storage, keeping local desktop copies after the cycle, using personal USB storage, sending data through unapproved chat or file-transfer tools, creating "final_v2_reallyfinal" copies with no controlled identity, and leaving extracts in broadly accessible project folders.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Convenience is not a data-control strategy.</p></div></div>
+ <h3>Credentials are not migration data</h3>
+ <p>Migration processes may require service accounts, API keys, database credentials or secrets. These should not be stored inside migration datasets, spreadsheets, scripts or shared documentation simply because the team needs convenient access: use approved secret or credential management, restrict service-account permissions, avoid hard-coded credentials, do not place passwords in runbooks or email, and remove temporary access when no longer required.</p>
+ <div class="principle"><strong>Core principle</strong><br>Control the credentials that move the data as carefully as the data itself.</div>
+ <h3>Security controls must survive cutover pressure</h3>
+ <p>Cutover creates urgency. That is when teams are most tempted to bypass controls.</p>
+ <div class="callout misconception"><div class="callout-label">The temptation</div><p>At 02:00, a production load fails. A developer asks for the production database password in the group chat so they can investigate quickly. The urgency is real. The approved access route still applies.</p></div>
+ ${TPKit.fromField({
+   title:"The Password in the Group Chat", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/GroupChatPassword-Owen.mp3",
+   reflection:"Have you ever felt real pressure to bypass an access control during a live cutover? What made you hold the line, or what happened when you did not?"
+ })}
+ <div class="principle"><strong>Turner Page insight</strong><br>Time pressure may justify rapid authorised access. It does not justify uncontrolled access.</div>`
+},
+{
+ id:"b8",nav:"Retention and compliance",title:"Retention, sensitive data and compliance",type:"content",
+ html:`<p class="lead">Some migration evidence needs to be retained for audit, reconciliation, support or contractual reasons. Other temporary data should be removed when no longer needed.</p>
+ <div class="visual-card">
+   <div class="visual-title">Retained under policy, or temporary</div>
+   <ul class="framework-checks">
+     <li><strong>Potentially retained under policy:</strong> approved mapping or decision evidence. <strong>Potentially temporary:</strong> working extracts.</li>
+     <li><strong>Potentially retained under policy:</strong> final reconciliation or sign-off evidence. <strong>Potentially temporary:</strong> temporary transformation files.</li>
+     <li><strong>Potentially retained under policy:</strong> production migration run evidence. <strong>Potentially temporary:</strong> ad hoc investigation copies.</li>
+     <li><strong>Potentially retained under policy:</strong> required audit trail. <strong>Potentially temporary:</strong> duplicate local copies.</li>
+   </ul>
+ </div>
+ <p>The actual retention period is determined by organisational, contractual, legal and regulatory requirements. The migration team should not invent it.</p>
+ <div class="principle"><strong>Core principle</strong><br>Keep what must be kept. Remove what no longer has a legitimate migration purpose, in line with the applicable policy.</div>
+ <h3>Sensitive data needs stronger awareness</h3>
+ <p>Different projects may contain personal, financial, employee, health, commercially sensitive or other protected information. The migration professional does not need to become the organisation's legal adviser, but must recognise when specialist controls apply.</p>
+ <p>Examples that should trigger questions include: employee personal information, bank or account details, identity documents, health or benefits data, customer contact information, tax identifiers, confidential pricing or contracts, and credentials, secrets or security configuration.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>If you are unsure whether data needs special treatment, escalate to the organisation's security, privacy, legal or compliance authority before improvising.</div>
+ <h3>Compliance is not a generic checklist</h3>
+ <p>The exact obligations depend on the organisation, countries, contracts, systems and data involved. Typical areas may include privacy or data-protection requirements, records retention, financial controls, industry regulation, contractual data-handling obligations, cross-border or hosting restrictions, audit requirements, and security policies and access standards.</p>
+ <div class="principle"><strong>Core principle</strong><br>Know which rules apply to your migration. Do not assume a generic "best practice" automatically satisfies them.</div>`
+},
+{
+ id:"b9",nav:"Situations",title:"Situations: Safe, unsafe or needs authority?",type:"situations",
+ html:`<p class="lead">For each situation, decide how it should be handled before you see the discussion.</p>`,
+ items:[
+   {
+     title:"Situation 1",
+     question:"A validator needs to decide 94 tax-classification exceptions and asks for all customer fields for the full 18,530-customer population.",
+     options:[
+       {label:"Send the full population and full fields, since the validator is on the project.", correct:false, feedback:"Being on the project does not justify access far beyond what the specific task requires."},
+       {label:"Provide only necessary evidence through an approved controlled method.", correct:true, feedback:"Correct. Provide only necessary evidence through an approved controlled method. Full-file convenience is not justified."},
+       {label:"Ask the validator to request access to the production system directly instead.", correct:false, feedback:"This widens access rather than minimising it, and does not solve the underlying problem."},
+       {label:"Refuse the request entirely.", correct:false, feedback:"The validator has a legitimate need; the right response is to minimise what is shared, not refuse it."}
+     ]
+   },
+   {
+     title:"Situation 2",
+     question:"Six months after go-live, several raw extracts remain on a consultant's laptop \"just in case\".",
+     options:[
+       {label:"Leave them, since they might be useful for a future project.", correct:false, feedback:"Retention should follow policy and legitimate purpose. Uncontrolled personal or local retention is not acceptable simply because it might be useful later."},
+       {label:"Deal with them according to the agreed retention and disposal policy, not personal convenience.", correct:true, feedback:"Correct. Retention should follow policy and legitimate purpose. Uncontrolled personal or local retention is not acceptable simply because it might be useful later."},
+       {label:"Assume it is fine since the project has already gone live.", correct:false, feedback:"Go-live does not automatically resolve the retention question; the applicable policy still governs what should happen to these copies."},
+       {label:"Move them to the consultant's personal cloud storage for safekeeping.", correct:false, feedback:"This moves the risk rather than resolving it, and adds an uncontrolled storage location."}
+     ]
+   },
+   {
+     title:"Situation 3",
+     question:"A production incident requires an engineer who does not currently have access.",
+     options:[
+       {label:"Have someone with access share their login so the engineer can get in quickly.", correct:false, feedback:"Sharing another user's credentials defeats traceability and is not the authorised route, even under genuine pressure."},
+       {label:"Use the authorised emergency or access process and record the access appropriately.", correct:true, feedback:"Correct. Use the authorised emergency or access process and record the access appropriately. Do not share another user's credentials."},
+       {label:"Grant broad, permanent access so this does not happen again.", correct:false, feedback:"Permanent broad access goes beyond what the immediate incident requires and creates ongoing exposure."},
+       {label:"Wait until normal working hours to resolve access.", correct:false, feedback:"This ignores the genuine incident; the authorised emergency access route exists for exactly this situation."}
+     ]
+   }
+ ],
+ takeawayHtml:`<div class="principle"><strong>The pattern across all three</strong><br>Provide the minimum necessary data through an approved route, follow policy rather than convenience for retention, and use the authorised process even when the need is urgent and genuine.</div>`
+},
+{
+ id:"b10",nav:"AI and data",title:"AI and migration data",type:"content",
+ html:`<p class="lead">AI can be useful for mapping suggestions, SQL generation, error analysis, cleansing patterns and summaries. The same data-handling rules still apply.</p>
+ <ul class="framework-checks">
+   <li>Do not paste client data into unapproved public AI services.</li>
+   <li>Use only organisation-approved tools and configurations.</li>
+   <li>Minimise the data supplied to the task.</li>
+   <li>Remove unnecessary identifiers where appropriate.</li>
+   <li>Verify generated outputs before applying them.</li>
+   <li>Retain traceability for decisions and transformations.</li>
+ </ul>
+ <div class="principle"><strong>AI principle</strong><br>AI does not create an exemption from data-security, privacy or confidentiality controls.</div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"Reflection",type:"reflection",
+ html:`<p class="lead">Which migration artefact is most likely to escape normal security thinking: the large production extract, or the small exception spreadsheet someone emails to get a quick decision?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Mentor coaching prompt</div><p>The obvious high-volume datasets often receive strong controls. Risk frequently appears in the convenient copies created around them.</p></div></div>
+ <textarea id="reflection" placeholder="I think the artefact most likely to escape normal security thinking is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/small|exception|spreadsheet|convenien|quick/i, strength:"You considered how a small, convenient file can escape scrutiny.", gap:"Consider how a small, convenient file can escape normal security scrutiny." },
+   { test:/large|production extract|obvious|volume/i, strength:"You considered why large, obvious datasets tend to receive strong controls.", gap:"Consider why the large, obvious dataset tends to attract strong controls by default." },
+   { test:/email|personal|desktop|copy|share/i, strength:"You gave a concrete example of how the risky copy gets created.", gap:"Give a concrete example of how the risky copy actually gets created." },
+   { test:/business data|sensitive|confidential/i, strength:"You recognised that the small file still contains real business data.", gap:"Recognise explicitly that the small file still contains real business data." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The small exception spreadsheet is the more likely risk. The large production extract usually gets treated as sensitive by default and handled through approved routes. A small file emailed to get a quick decision often escapes that thinking entirely, even though it still contains real business data.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a clear-eyed answer that names exactly where real risk tends to hide.":"You have a reasonable starting position. Strengthen it with a concrete example of how the convenient copy actually gets created."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Migration creates additional copies and therefore additional data-control responsibilities.</li>
+   <li>Ask whether data is needed, who needs it, where it may be stored or moved, and how long it is required.</li>
+   <li>Use minimum necessary data and least-privilege access.</li>
+   <li>Control production-derived data in non-production environments.</li>
+   <li>Treat exception reports and reconciliation artefacts as business data.</li>
+   <li>Maintain traceability across extracts, staging, load-ready outputs and evidence.</li>
+   <li>Avoid uncontrolled local, email and personal-cloud copies.</li>
+   <li>Apply organisational retention and disposal rules.</li>
+   <li>Recognise sensitive data and involve security, privacy, legal or compliance specialists where needed.</li>
+   <li>Keep credentials out of migration datasets and uncontrolled documentation.</li>
+   <li>Do not abandon access controls under cutover pressure.</li>
+   <li>Apply the same data-handling discipline when using AI.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A well-controlled migration protects not only the correctness of the data, but the data itself throughout every extract, copy, transformation, transfer, validation and retained piece of evidence.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it does not affect certification.</p>`,
+ items: knowledgeCheck,
+ takeawayHtml:`<div class="feedback good"><strong>That is the knowledge check done.</strong> Carry on to finish the lesson.</div>`
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Data controls, security and compliance.</strong></p>
+ <p>Bramwell can now control the data itself as carefully as the rules and processes that move it.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Escalation, evidence and professional accountability</strong></p>
+ <p>You will bring the Core Programme together: recognising when to raise concerns, presenting evidence clearly, refusing to hide uncertainty and taking professional responsibility for the quality of your own migration work.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before the next time someone asks you for "just the full file" and ask what they actually need.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 7",
+  moduleTitle: "Governance & Stakeholder Management",
+  lessonLabel: "Lesson 4: Data controls, security and compliance",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Controlling the data itself, not just what it says",
+  storageKey: "tp_core7_lesson4_v1",
+  lessonId: "core7-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

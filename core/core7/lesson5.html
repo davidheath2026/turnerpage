@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Escalation, evidence and professional accountability</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 7 — LESSON 5 DATA — content only. This is the
+   capstone lesson of the Core Programme. No bespoke one-off
+   visual is needed, so there is no lesson-scoped <style>.
+============================================================== */
+
+const escalationTriggers=[
+  { title:"Authority", short:"Two authorised people disagree.", detail:"<p><strong>Bramwell example:</strong> two business owners give conflicting mapping instructions.</p>" },
+  { title:"Material impact", short:"A finding could affect something that matters.", detail:"<p><strong>Bramwell example:</strong> a reconciliation variance may affect financial opening balances.</p>" },
+  { title:"Time", short:"A required decision will miss its control point.", detail:"<p><strong>Bramwell example:</strong> a required decision will miss the cycle or cutover control point.</p>" },
+  { title:"Control failure", short:"You cannot establish what actually happened.", detail:"<p><strong>Bramwell example:</strong> target commit state cannot be established after a failed load.</p>" },
+  { title:"Evidence conflict", short:"Two sources disagree.", detail:"<p><strong>Bramwell example:</strong> two validation methods produce materially different answers.</p>" },
+  { title:"Security or compliance", short:"A request appears outside approved controls.", detail:"<p><strong>Bramwell example:</strong> a data handling request appears outside approved controls.</p>" },
+  { title:"Integrity", short:"Someone asks you to misrepresent the evidence.", detail:"<p><strong>Bramwell example:</strong> someone asks for a status that does not reflect the evidence.</p>" }
+];
+
+const knowledgeCheck=[
+  {
+    title:"Check 1",
+    question:"18 CustomerGroup 99 records remain unresolved. A senior colleague asks you to report customer migration as green because the population is small. What should you report?",
+    options:[
+      {label:"Green, because 18 records are immaterial compared with the full population.", correct:false, feedback:"Materiality is about consequence, not decimal places, and the underlying decision is still genuinely open."},
+      {label:"Red, because any unresolved record means the migration has failed.", correct:false, feedback:"This overstates the position and does not reflect that the validated population is otherwise strong."},
+      {label:"The factual position: the validated population is strong, 18 records remain unresolved pending authorised treatment, and how that affects the relevant readiness criterion.", correct:true, feedback:"Correct. Do not make the evidence fit the status. Make the status fit the evidence."},
+      {label:"Remove the 18 records from the report, since they are already known about.", correct:false, feedback:"Removing a known open item from the report hides it rather than reporting it accurately."}
+    ]
+  },
+  {
+    title:"Check 2",
+    question:"When is escalation appropriate?",
+    options:[
+      {label:"Whenever you personally dislike a decision that has been made.", correct:false, feedback:"Escalate when the consequence exceeds your authority, not when you simply dislike the situation."},
+      {label:"When the migration cannot safely resolve something within its existing authority, evidence or control boundaries.", correct:true, feedback:"Correct. Escalation is appropriate when the migration cannot safely resolve something within its existing authority, evidence or control boundaries."},
+      {label:"Only once a deadline has already been missed.", correct:false, feedback:"Escalating earlier, before the deadline is missed, gives the decision the best chance of being made in time."},
+      {label:"Never, since escalation implies personal failure.", correct:false, feedback:"Escalation is a normal, professional part of migration work when the trigger genuinely applies."}
+    ]
+  },
+  {
+    title:"Check 3",
+    question:"What makes evidence reproducible?",
+    options:[
+      {label:"A screenshot showing the final result.", correct:false, feedback:"A screenshot with no context may prove something appeared on a screen. It may not prove what population, rule or cycle was validated."},
+      {label:"The cycle or environment, source or baseline, query or control logic, expected and actual results, and any exceptions being identified.", correct:true, feedback:"Correct. Strong evidence allows another competent person to understand how the result was produced."},
+      {label:"A verbal confirmation from the person who ran the check.", correct:false, feedback:"Verbal confirmation alone does not let someone else independently verify the result."},
+      {label:"A high validation percentage.", correct:false, feedback:"A percentage alone does not show how the result was produced or what it actually covers."}
+    ]
+  },
+  {
+    title:"Check 4",
+    question:"You discover that a transformation you personally implemented used the wrong mapping baseline in the previous cycle. What is the professional response?",
+    options:[
+      {label:"Quietly fix it going forward without mentioning the previous cycle.", correct:false, feedback:"This leaves affected downstream evidence and decisions unreviewed."},
+      {label:"Stop relying on the affected result, identify the affected population, inform the appropriate owner, correct it, reprocess or retest, and record the defect and correction.", correct:true, feedback:"Correct. Credibility is not never making mistakes. It is how reliably you expose, correct and learn from them."},
+      {label:"Wait to see if anyone notices before raising it.", correct:false, feedback:"Waiting risks decisions continuing to rely on evidence that is now known to be wrong."},
+      {label:"Only mention it if directly asked.", correct:false, feedback:"Professional accountability means proactively surfacing the defect, not waiting to be asked."}
+    ]
+  },
+  {
+    title:"Check 5",
+    question:"Which of these would a migration professional typically own directly, rather than only providing evidence or a recommendation for?",
+    options:[
+      {label:"Business meaning of an ambiguous value.", correct:false, feedback:"Business meaning is typically something the migration team provides evidence and recommendations for, not owns directly."},
+      {label:"Accurate reporting of migration results.", correct:true, feedback:"Correct. Accurate reporting of migration results is something a migration professional can usually own directly."},
+      {label:"Residual business risk acceptance.", correct:false, feedback:"Accepting residual business risk usually belongs to an authorised business or project authority."},
+      {label:"Go or No-Go executive decisions.", correct:false, feedback:"Go/No-Go and executive project decisions usually belong to programme governance, informed by migration evidence."}
+    ]
+  },
+  {
+    title:"Check 6",
+    question:"A reconciliation previously reported as passing is later found to have duplicated source lines. What should happen?",
+    options:[
+      {label:"Leave the original passing result in place, since it was correct at the time.", correct:false, feedback:"Continuing to rely on a result now known to be flawed risks decisions built on incorrect evidence."},
+      {label:"Withdraw reliance on the old result, correct the validation, rerun it, and reassess any conclusion that depended on it.", correct:true, feedback:"Correct. Professional consistency means following the evidence consistently, not defending yesterday's conclusion."},
+      {label:"Quietly adjust the new numbers to match the old report.", correct:false, feedback:"This would misrepresent the evidence rather than correct the error."},
+      {label:"Ignore it, since the original report has already been shared.", correct:false, feedback:"Having already shared the result does not remove the obligation to correct it once the defect is found."}
+    ]
+  }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The challenge",title:"Can we call it green?",type:"mcq",
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>This final Core lesson brings the programme together. Data migration professionals are trusted with business data, technical processes and evidence that may determine whether a new system can go live. Professional accountability means being able to explain what you did, what the evidence shows, what remains uncertain and when the decision belongs to someone else.</p>
+ </div>
+ <p class="lead">Bramwell is preparing the final migration readiness update. Most customer controls pass, but the 18 CustomerGroup 99 records still do not have an approved target treatment.</p>
+ <p>The population is tiny compared with the full customer migration. A senior project colleague says:</p>
+ <div class="quote">"Put customer migration green. We know about the 18 records and we will sort them later. There is no point alarming everyone."</div>
+ <p>The migration analyst knows the records are controlled exceptions, but also knows the required business decision is still open.</p>
+ <h3>Your decision</h3>`,
+ options:[
+   {label:"Report green because 18 records are immaterial compared with the full population.", correct:false, feedback:"Materiality comes from consequence, not decimal places, and this treats a genuinely open decision as though it were resolved."},
+   {label:"Report red because any unresolved record means the migration has failed.", correct:false, feedback:"This overstates the position and buries a strong validated population under a single open item."},
+   {label:"Report the factual position: the validated population is strong, 18 identified records remain unresolved pending authorised treatment, and explain whether that affects the relevant readiness criterion.", correct:true, feedback:"Professional reporting does not exaggerate or conceal. It states the evidence, residual uncertainty, impact and decision required. The appropriate authority can then decide what that means for readiness."},
+   {label:"Remove the 18 records from the report because they are already known.", correct:false, feedback:"Removing a known open item from the report hides it rather than accurately reflecting the current position."}
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Reporting the factual position does not make the 18 records disappear, and it does not create alarm either. It gives the appropriate authority exactly what they need to decide whether this affects the readiness criterion, and it keeps the decision genuinely open rather than quietly closed by a colour.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not make the evidence fit the status. Make the status fit the evidence.</div>
+ <h3>Professional accountability in migration</h3>
+ <p>Professional accountability does not mean personally owning every migration outcome. It means taking responsibility for the quality and integrity of the work within your role.</p>
+ <ul class="framework-checks">
+   <li>Use the approved scope and baseline.</li>
+   <li>Implement authorised rules rather than invented ones.</li>
+   <li>Protect migration data appropriately.</li>
+   <li>Preserve traceability.</li>
+   <li>Validate the result rather than assuming success.</li>
+   <li>Report defects and uncertainty accurately.</li>
+   <li>Escalate decisions beyond your authority.</li>
+   <li>Correct mistakes when evidence shows they exist.</li>
+ </ul>
+ <div class="principle"><strong>Core principle</strong><br>Own your work. Do not silently take ownership of decisions that belong elsewhere.</div>`
+},
+{
+ id:"b3",nav:"When to escalate",title:"When should you escalate?",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Escalation is appropriate when the migration cannot safely resolve something within its existing authority, evidence or control boundaries. Explore each trigger below.</p>`,
+ items: escalationTriggers,
+ takeawayHtml:`<div class="principle"><strong>Turner Page principle</strong><br>Escalate when the consequence exceeds your authority, not when you simply dislike the situation.</div>`
+},
+{
+ id:"b4",nav:"A decision service",title:"Escalation is a decision service",type:"content",
+ html:`<p class="lead">Weak escalation transfers confusion upwards. Strong escalation prepares the decision.</p>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>CustomerGroup 99 is still unresolved and nobody is helping. Please escalate.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Decision-ready</div><p>Decision required: treatment of 18 active German customers with legacy CustomerGroup 99. Current state: no approved target mapping; records remain controlled exceptions. Evidence: legacy procedure describes 99 as special export accounts; six records are also strategic. Impact: customer mapping baseline cannot close for these records. Options require authorised business or mapping judgement. Required by: production baseline freeze.</p></div></div>
+ <div class="principle"><strong>Turner Page insight</strong><br>A good escalation states the evidence, impact, options or uncertainty, authority required and time available.</div>
+ <h3>Evidence has a chain</h3>
+ <p>A migration conclusion should be traceable backwards.</p>
+ <div class="visual-card">
+   <div class="visual-title">The evidence chain</div>
+   <ul class="framework-checks">
+     <li>Source or approved scope</li>
+     <li>Mapping or business rule</li>
+     <li>Build or reference baseline</li>
+     <li>Migration output</li>
+     <li>Validation or reconciliation</li>
+     <li>Defect or correction evidence</li>
+     <li>Acceptance or residual exception</li>
+   </ul>
+ </div>
+ <p>If a conclusion cannot be connected to the evidence that produced it, confidence becomes difficult to defend.</p>
+ <div class="principle"><strong>Core principle</strong><br>Traceability turns "we believe it is right" into "here is why we know what happened".</div>`
+},
+{
+ id:"b5",nav:"Build it yourself",title:"Build it yourself: The evidence brief",type:"reflection",
+ html:`<p class="lead">You are asked to prepare a concise evidence brief for Bramwell customer migration. Use only what the evidence supports.</p>
+ <div class="visual-card">
+   <div class="visual-title">Evidence position by area</div>
+   <ul class="framework-checks">
+     <li><strong>Population:</strong> the later-cycle raw in-scope population of 18,612 is fully accounted for through accepted records, approved exclusions and controlled exceptions.</li>
+     <li><strong>Legal entity:</strong> the earlier 42-record UK/Belgium misclassification was identified and corrected; subsequent legal-entity validation passes.</li>
+     <li><strong>Relationships:</strong> seven key-account delivery addresses were traced to a transformation-filter defect; the rule was corrected, the affected population reprocessed, and relationship validation passes.</li>
+     <li><strong>CustomerGroup:</strong> 18 active German records with legacy value 99 remain unresolved pending authorised treatment.</li>
+     <li><strong>Functional usability:</strong> required customer or order smoke tests pass after corrections.</li>
+     <li><strong>Acceptance:</strong> unconditional acceptance should not be claimed while the 18-record treatment remains an open required decision.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Evidence Brief: claim, supporting evidence, residual uncertainty, impact, decision or action required.</p></div></div>
+ <p><strong>Learner task:</strong> write a five-line status that distinguishes what is proved, what was corrected, what remains open, what decision is required, and what the evidence supports as the current position.</p>
+ <textarea id="reflection" placeholder="1. Proved:...&#10;2. Corrected:...&#10;3. Remains open:...&#10;4. Decision required:...&#10;5. Current position:..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/proved|passes|validated|confirmed/i, strength:"You stated what has actually been proved.", gap:"State clearly what the evidence has actually proved." },
+   { test:/correct|fixed|reprocess|misclassif/i, strength:"You identified what was corrected along the way.", gap:"Identify what was found wrong and corrected, such as the legal-entity misclassification or the address defect." },
+   { test:/99|open|unresolved|remain|pending/i, strength:"You kept the CustomerGroup 99 position genuinely open rather than resolving it yourself.", gap:"State clearly that the CustomerGroup 99 treatment remains open, without inventing a resolution." },
+   { test:/decision|treatment|authority|approve/i, strength:"You named the decision still required.", gap:"Name the specific decision still required and who it belongs to." },
+   { test:/accept|position|status|current/i, strength:"You gave an honest overall position rather than a single colour or verdict.", gap:"State the current position honestly, without collapsing it into a single colour or a simple pass/fail." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Proved: the 18,612 in-scope customer population is fully accounted for, and legal-entity and key-account relationship validation both pass after correction. Corrected: a 42-record legal-entity misclassification and a delivery-address transformation defect were both found, fixed and retested. Remains open: 18 active German customers with legacy CustomerGroup 99 have no approved target treatment. Decision required: the authorised business or mapping owner must approve a treatment before the mapping baseline can close for these records. Current position: strong and reconciled everywhere except this one open, tracked decision, so unconditional acceptance should not yet be claimed.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuinely professional evidence brief. It proves what it claims and leaves nothing quietly unresolved.":"You have solid material here. Make sure each of the five lines is distinct and that CustomerGroup 99 stays visibly open rather than resolved by implication."}</div>`
+},
+{
+ id:"b6",nav:"Precision, not overconfidence",title:"Say exactly what the evidence proves",type:"selectAll",
+ html:`<p class="lead">Strong evidence allows another competent person to understand how the result was produced: the cycle or environment identified, the source or baseline identified, the query or control logic known, the expected result stated, the actual result retained, exceptions visible, and date, time or run identity available where relevant.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>A screenshot with no context may be proof that something appeared on a screen. It may not be proof of what population, rule or cycle was validated.</p></div></div>
+ <p>Below are four statements that sound confident but say less than they seem to. Select each one to see the more precise, professional version.</p>`,
+ options:[
+ "\u201cThe data is correct.\u201d",
+ "\u201cThe load failed halfway.\u201d",
+ "\u201cIt is just rounding.\u201d",
+ "\u201cThere are no duplicates.\u201d"
+ ],
+ coaching:[
+ "<strong>More precise:</strong><br>All defined critical customer controls pass; 18 CustomerGroup records remain unresolved pending treatment. This says exactly what has been checked, and names what has not been resolved, instead of implying everything is fine.",
+ "<strong>More precise:</strong><br>The process stopped after 137,842 records had been processed; target commit state is currently unknown. \u201cHalfway\u201d is not a technical fact. Naming the exact point and the unknown commit state is.",
+ "<strong>More precise:</strong><br>A \u00a31.14 variance has been reviewed by Finance and formally accepted within the agreed tolerance. This turns a dismissive phrase into a traceable, authorised acceptance.",
+ "<strong>More precise:</strong><br>The defined duplicate check returned zero matches for the tested key or rule in this cycle. This says exactly what was tested, rather than claiming an absolute that cannot really be proved."
+ ],
+ hint:"Select all four statements to see the more precise version of each.",
+ closingHtml:`<div class="principle"><strong>Core principle</strong><br>Say exactly what the evidence proves, and no more.</div>
+ <h3>Do not hide bad news in percentages</h3>
+ <p>A migration can be 99.9% successful and still contain a material failure: one missing key customer, one incorrect opening balance, one broken legal-entity classification rule, one unresolved dependency that blocks order release, or one security exposure involving sensitive data.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Materiality comes from consequence, not decimal places.</p></div></div>
+ <p>Equally, reporting 100% loader success while post-load relationship validation has not yet run is its own kind of imprecision: it reports load acceptance, not migration validation completion, and the two should not be conflated.</p>
+ <h3>Do not manufacture bad news either</h3>
+ <p>Professional accountability is not pessimism. A controlled, understood and authorised exception does not need to be described as catastrophic. A minor technical defect with no output impact should not be escalated as a programme crisis.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Report proportionately: neither hide risk nor inflate it.</div>`
+},
+{
+ id:"b7",nav:"When you are wrong",title:"What if you made the mistake?",type:"content",
+ html:`<p class="lead">Suppose you discover that a transformation you implemented used the wrong mapping baseline in the previous cycle.</p>
+ <p>The professional response is to:</p>
+ <ul class="framework-checks">
+   <li>Stop relying on the affected result.</li>
+   <li>Identify the affected population and evidence.</li>
+   <li>Inform the appropriate migration or technical owner.</li>
+   <li>Correct the controlled implementation.</li>
+   <li>Reprocess or retest as required.</li>
+   <li>Record the defect and correction.</li>
+   <li>Assess whether any downstream evidence or decisions must be revisited.</li>
+ </ul>
+ ${TPKit.fromField({
+   title:"The Baseline I Got Wrong", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/BaselineIGotWrong-Nadia.mp3",
+   reflection:"Have you ever had to surface your own mistake on a live migration? What made that easier or harder to do well?"
+ })}
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Credibility is not never making mistakes. It is how reliably you expose, correct and learn from them.</p></div></div>`
+},
+{
+ id:"b8",nav:"Pressure and boundaries",title:"Pressure, authority and constructive challenge",type:"content",
+ html:`<p class="lead">Common pressure points include a cycle deadline, a steering update, a promised go-live date, a senior stakeholder who wants green status, a developer who wants to skip a control, or a business owner who wants an unresolved record loaded anyway.</p>
+ <p>The project may legitimately decide to accept risk or change criteria. That decision should be explicit. The migration professional should not alter the underlying evidence to make the decision easier.</p>
+ <div class="principle"><strong>Core principle</strong><br>People can accept risk. They cannot retrospectively change what the migration evidence showed.</div>
+ <h3>Know the boundary of your authority</h3>
+ <div class="visual-card">
+   <div class="visual-title">What you can own, and what you usually provide evidence for</div>
+   <ul class="framework-checks">
+     <li><strong>You can often own:</strong> accuracy of your analysis. <strong>You usually provide evidence or a recommendation for:</strong> business meaning.</li>
+     <li><strong>You can often own:</strong> correct implementation of approved rules. <strong>You usually provide evidence or a recommendation for:</strong> scope acceptance.</li>
+     <li><strong>You can often own:</strong> quality of technical evidence. <strong>You usually provide evidence or a recommendation for:</strong> financial or business acceptance.</li>
+     <li><strong>You can often own:</strong> accurate reporting of migration results. <strong>You usually provide evidence or a recommendation for:</strong> residual business risk.</li>
+     <li><strong>You can often own:</strong> following agreed data controls. <strong>You usually provide evidence or a recommendation for:</strong> Go/No-Go or executive project decisions.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Professional confidence includes knowing when the answer is not yours to authorise.</div>
+ <h3>Challenge constructively</h3>
+ <div class="callout misconception"><div class="callout-label">Unhelpful challenge</div><p>That is a terrible idea and it will break the migration.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Constructive challenge</div><p>If we map 99 to INTERNATIONAL without business approval, we will be introducing a business classification rule that is not supported by the approved mapping. The 18 records can remain controlled exceptions while the authorised decision is obtained.</p></div></div>
+ <div class="principle"><strong>Turner Page insight</strong><br>Challenge the consequence with evidence, not the person with emotion.</div>
+ <h3>When evidence changes, change your conclusion</h3>
+ <p>Earlier conclusions are not sacred. New evidence may show that a population was incomplete, a validation query was wrong, a source value changed, a target default altered stored data, a defect affected more records than first believed, or a previously accepted assumption no longer holds.</p>
+ <div class="principle"><strong>Core principle</strong><br>Professional consistency means following the evidence consistently, not defending yesterday's conclusion.</div>`
+},
+{
+ id:"b9",nav:"Situations",title:"Situations: What would you report?",type:"situations",
+ html:`<p class="lead">For each situation, decide what you would actually report before you see the discussion.</p>`,
+ items:[
+   {
+     title:"Situation 1",
+     question:"A product load stops and the target commit state is unknown.",
+     options:[
+       {label:"Estimate the accepted count based on how far the load appeared to get.", correct:false, feedback:"Estimating counts before commit state is confirmed risks reporting a number that cannot actually be defended."},
+       {label:"State exactly that the commit state is currently unknown, and do not estimate accepted counts or restart until it is established.", correct:true, feedback:"Correct. State exactly that. Do not estimate accepted counts or restart until state is established."},
+       {label:"Report the load as failed and move on.", correct:false, feedback:"This is imprecise; \u201cfailed\u201d does not capture that the actual commit state still needs to be established before anything else."},
+       {label:"Restart the load immediately to see what happens.", correct:false, feedback:"Restarting before commit state is known risks compounding the uncertainty rather than resolving it."}
+     ]
+   },
+   {
+     title:"Situation 2",
+     question:"A senior manager asks you to remove an unresolved issue from the status report because it is politically inconvenient.",
+     options:[
+       {label:"Remove it, since a senior manager has asked.", correct:false, feedback:"Seniority does not change what the evidence shows; removing a known issue misrepresents the position."},
+       {label:"Keep the evidence factual and route any decision about accepted risk or status through the appropriate authority.", correct:true, feedback:"Correct. Keep the evidence factual and route any decision about accepted risk/status through the appropriate authority."},
+       {label:"Leave it in, but quietly relabel it as resolved.", correct:false, feedback:"Relabelling a known open issue as resolved is a different way of misrepresenting the same evidence."},
+       {label:"Escalate the request itself as a serious integrity violation before discussing it at all.", correct:false, feedback:"A calm, factual response addressing the request directly is usually the right first step, rather than immediately escalating the request itself."}
+     ]
+   },
+   {
+     title:"Situation 3",
+     question:"A reconciliation previously reported as passing is found to have duplicated source lines.",
+     options:[
+       {label:"Leave the original result as reported, since changing it now would look bad.", correct:false, feedback:"Continuing to rely on a result now known to be flawed is worse than correcting it, however it looks."},
+       {label:"Withdraw reliance on the old result, correct the validation, rerun it, and reassess any conclusion that depended on it.", correct:true, feedback:"Correct. Withdraw reliance on the old result, correct the validation, rerun it and reassess any conclusion that depended on it."},
+       {label:"Quietly adjust the new figures so they match the old report.", correct:false, feedback:"This would misrepresent the evidence rather than correct the underlying defect."},
+       {label:"Say nothing unless someone else notices the discrepancy first.", correct:false, feedback:"Waiting to be found out is not consistent with proactively correcting a known defect."}
+     ]
+   }
+ ],
+ takeawayHtml:`<div class="principle"><strong>The pattern across all three</strong><br>State exactly what is known, correct what needs correcting, and route the decision about what that means to the right authority. Never let pressure, uncertainty or an old result quietly reshape what actually happened.</div>`
+},
+{
+ id:"b10",nav:"AI and accountability",title:"AI and professional accountability",type:"content",
+ html:`<p class="lead">AI can help draft evidence summaries, compare cycle results, identify inconsistent claims, trace defects through logs and mappings, draft escalation briefs, and suggest validation queries or test cases.</p>
+ <p>But the professional using AI remains accountable for checking the source evidence, protecting client data, validating generated logic and ensuring that an AI-produced explanation has not invented certainty.</p>
+ <div class="principle"><strong>AI principle</strong><br>AI can help produce the work. It cannot take professional accountability for whether the work is true.</div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"Reflection",type:"reflection",
+ html:`<p class="lead">What would you do if the evidence you produced could delay go-live, but you were not yet certain whether the problem was a migration defect or a validation defect?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Mentor coaching prompt</div><p>Do not hide the finding and do not overstate it. State what is known, what is uncertain, the potential consequence, what investigation is under way and when a decision may be required.</p></div></div>
+ <textarea id="reflection" placeholder="If I were not yet certain whether the problem was a migration or validation defect, I would..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/known|what.*know|state.*know/i, strength:"You included stating what is actually known.", gap:"Include stating clearly what is currently known." },
+   { test:/uncertain|not sure|not.*certain|unknown/i, strength:"You included stating what is genuinely uncertain.", gap:"Include stating clearly what is genuinely uncertain, such as whether it is a migration or validation defect." },
+   { test:/consequence|impact|delay|go.?live/i, strength:"You included the potential consequence for go-live.", gap:"Include the potential consequence, such as the effect on go-live." },
+   { test:/investigat|check|confirm|verify/i, strength:"You included what investigation would follow.", gap:"Include what investigation is under way or planned to resolve the uncertainty." },
+   { test:/hide|overstate|exaggerat|conceal/i, strength:"You explicitly ruled out hiding or overstating the finding.", gap:"Be explicit that you would neither hide the finding nor overstate it." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would report what is known, that the result looks wrong, name what is uncertain, whether it is a migration or validation defect, state the potential consequence for go-live if it turns out to be real, say what investigation is under way, and give an honest estimate of when that uncertainty will be resolved. I would not delay raising it until I was completely certain, and I would not present it as more serious than the evidence currently supports.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the balance the Turner Page standard asks for: honest about uncertainty, without either hiding or inflating it.":"You have the right instinct. Make sure your answer explicitly covers what is known, what is uncertain, the consequence and the investigation under way."}</div>`
+},
+{
+ id:"b12",nav:"The Core Programme",title:"The Core Programme in one migration",type:"content",
+ html:`<p class="lead">Bramwell has taken you from the first question, "Did the data load?", through profiling, mapping, build, validation, migration cycles, cutover and governance.</p>
+ <div class="visual-card">
+   <div class="visual-title">Seven modules, one professional question each</div>
+   <ul class="framework-checks">
+     <li><strong>1. Data Migration Foundations:</strong> what are we moving, why, from where to where and through what lifecycle?</li>
+     <li><strong>2. Data Profiling &amp; Data Quality:</strong> what is really in the source, and what must be corrected or controlled?</li>
+     <li><strong>3. Data Mapping:</strong> what should each source value become, and who approved that meaning?</li>
+     <li><strong>4. Staging, ETL &amp; Migration Build:</strong> can we move it repeatably, visibly and recoverably?</li>
+     <li><strong>5. Validation &amp; Reconciliation:</strong> can we prove the right data arrived, is correct, connected and usable?</li>
+     <li><strong>6. Data Migration Cycles &amp; Cutover:</strong> can we rehearse, improve and execute the migration under production conditions?</li>
+     <li><strong>7. Governance &amp; Stakeholder Management:</strong> are the right people making the right decisions, with the data controlled and the evidence reported honestly?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page Core standard</strong><br>A professional migration is explainable from source scope to target acceptance. The data, decisions, transformations, exceptions, evidence and ownership should form one traceable chain.</div>`
+},
+{
+ id:"b13",nav:"Final challenge",title:"Final Core challenge",type:"selectAll",
+ html:`<p class="lead">You are handed a migration status that says:</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Customers</strong>GREEN, 99.8% successfully migrated</div>
+   <div class="status-card"><strong>Products</strong>GREEN, load complete</div>
+   <div class="status-card"><strong>Open orders</strong>AMBER, validation in progress</div>
+   <div class="status-card"><strong>Overall migration</strong>GREEN</div>
+ </div>
+ <p>Before accepting it, select every question below you would ask.</p>`,
+ options:[
+ "What was the agreed in-scope population?",
+ "What explains the missing 0.2%?",
+ "Does \u201csuccessfully migrated\u201d mean loaded, validated or accepted?",
+ "Were legal entities and critical fields reconciled?",
+ "Were customer/address and product/site relationships validated?",
+ "What evidence supports Product GREEN beyond load completion?",
+ "What remains in open-order validation and could it affect the overall status?",
+ "Who has authority to accept the residual exceptions or risks?"
+ ],
+ coaching:[
+ "<strong>Yes, ask this.</strong><br>Without the agreed in-scope population, 99.8% is a number with no denominator you can actually trust.",
+ "<strong>Yes, ask this.</strong><br>0.2% of 18,612 customers is over 30 records. As this Core Programme has shown, a small missing population can include the customers that matter most.",
+ "<strong>Yes, ask this.</strong><br>\u201cSuccessfully migrated\u201d could mean the load succeeded, or that it was validated, or that it was formally accepted. Those are three different claims.",
+ "<strong>Yes, ask this.</strong><br>A perfectly matching overall count can still hide a population that landed in the wrong legal entity, as Bramwell's own 42-record defect showed.",
+ "<strong>Yes, ask this.</strong><br>Every link resolving is not the same as every link being correct. Relationship validation is where that gets proved.",
+ "<strong>Yes, ask this.</strong><br>\u201cLoad complete\u201d is a technical fact. It says nothing about whether the loaded data is correct or usable.",
+ "<strong>Yes, ask this.</strong><br>Open orders is still AMBER. An overall GREEN should not be reported while a status it depends on is still in progress, without explaining why.",
+ "<strong>Yes, ask this.</strong><br>Somebody has to actually own accepting whatever residual exceptions remain. If nobody can name who, the GREEN is not yet fully supported."
+ ],
+ hint:"All eight are worth asking before accepting this status. Select each one to see why.",
+ closingHtml:`<div class="principle"><strong>Final principle</strong><br>Never let a colour replace the evidence behind it.</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Professional accountability means owning the integrity of the migration work within your role.</li>
+   <li>Escalate when consequence exceeds your authority or control boundary.</li>
+   <li>Prepare escalations as decision-ready evidence, not complaints.</li>
+   <li>Maintain an evidence chain from source and rules through output and acceptance.</li>
+   <li>Make evidence reproducible and cycle-specific.</li>
+   <li>State uncertainty precisely.</li>
+   <li>Do not hide material issues in percentages or inflate minor ones into crises.</li>
+   <li>Expose and correct your own mistakes.</li>
+   <li>Delivery pressure does not change what the evidence shows.</li>
+   <li>Know which decisions you can own and which require business, finance, security or project authority.</li>
+   <li>Challenge proposed shortcuts using evidence and consequence.</li>
+   <li>Change conclusions when new evidence requires it.</li>
+   <li>Remain accountable for AI-assisted work.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>The mark of a professional migration consultant is not that every load succeeds first time. It is that the migration can be explained honestly: what was supposed to happen, what actually happened, what the evidence proves, what remains uncertain and who owns the next decision.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check across this lesson. No score, no pressure, and it does not affect certification.</p>`,
+ items: knowledgeCheck,
+ takeawayHtml:`<div class="feedback good"><strong>That is the knowledge check done.</strong> Carry on to finish the Core Programme.</div>`
+},
+{
+ id:"b16",nav:"Core Programme complete",title:"Core Programme complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Escalation, evidence and professional accountability, and the entire Turner Page Core Programme.</strong></p>
+ <p>Bramwell has taken you from the first question, "Did the data load?", through profiling, mapping, build, validation, migration cycles, cutover and governance. You now have the common professional foundation needed to move into deeper specialist development as a Data Migration Consultant or Data Migration Lead.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page closing thought</div><p>Move the data. Prove the result. Make the decisions visible. Leave an evidence trail another professional can trust.</p></div></div>
+ <h3>What is the single most valuable thing you learned across the Core Programme?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned across the Core Programme was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>What is next</h3>
+ <p><strong>Specialist development as a Data Migration Consultant or Data Migration Lead.</strong></p>
+ <p>The Core Programme has given you the shared foundation. DMC specialisation goes deeper into technical implementation and tooling; DML specialisation goes deeper into workstream leadership, governance, executive communication, readiness and cutover orchestration.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it whenever a migration status crosses your desk, and ask what evidence actually sits behind the colour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 7",
+  moduleTitle: "Governance & Stakeholder Management",
+  lessonLabel: "Lesson 5: Escalation, evidence and professional accountability",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Closing the Core Programme with professional accountability",
+  storageKey: "tp_core7_lesson5_v1",
+  lessonId: "core7-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

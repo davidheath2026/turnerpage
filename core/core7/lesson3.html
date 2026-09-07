@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Managing scope, issues, risks and decisions</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 7 — LESSON 3 DATA — content only. No bespoke
+   one-off visual is needed, so there is no lesson-scoped <style>.
+============================================================== */
+
+const controls=[
+  { title:"Scope", short:"What the migration is committed to deliver.", detail:"<p><strong>Bramwell example:</strong> whether Credit Review Date is included in customer migration.</p><p>Scope questions are answered by confirming or changing what the migration has committed to deliver, not by quietly building the change and seeing if anyone objects.</p>" },
+  { title:"Issue", short:"A problem that exists now and needs action.", detail:"<p><strong>Bramwell example:</strong> seven key-account delivery addresses are missing from transformed output.</p><p>An issue is happening today. It needs a described population, evidence, impact, owner and a path to closure.</p>" },
+  { title:"Risk", short:"An uncertain future event or condition that could affect migration.", detail:"<p><strong>Bramwell example:</strong> product or site preparation may again delay the next cycle.</p><p>A risk has not happened yet. It needs a likelihood, an impact, an owner and a response, not just a worry written down.</p>" },
+  { title:"Decision", short:"A choice requiring an authorised answer.", detail:"<p><strong>Bramwell example:</strong> how legacy CustomerGroup 99 should be treated in the target.</p><p>A decision needs the right authority, not the most convenient guess, and its consequence needs to reach the controlled baseline once made.</p>" }
+];
+
+const knowledgeCheck=[
+  {
+    title:"Check 1",
+    question:"Sales asks for one extra field to be added to the customer migration, two weeks before the next cycle. What is the strongest response?",
+    options:[
+      {label:"Agree immediately, since it is only one column.", correct:false, feedback:"Impact is not determined by the number of fields. A new field can introduce profiling, mapping, transformation, target configuration, testing and business-acceptance work."},
+      {label:"Reject it outright, because scope can never change after approval.", correct:false, feedback:"Scope can legitimately change; the problem is changing it without understanding and recording the impact."},
+      {label:"Treat it as a potential scope decision and assess meaning, population, build, validation, timing and ownership before changing the controlled baseline.", correct:true, feedback:"Correct. Control the consequence, not the size of the request."},
+      {label:"Add it technically now and seek approval later if anyone objects.", correct:false, feedback:"This bypasses the assessment entirely and risks an unapproved change reaching the controlled baseline."}
+    ]
+  },
+  {
+    title:"Check 2",
+    question:"What is the key difference between an issue and a risk?",
+    options:[
+      {label:"An issue is more serious than a risk.", correct:false, feedback:"Seriousness is not what distinguishes them; timing is."},
+      {label:"An issue is a problem that exists now; a risk is uncertainty about what could happen next.", correct:true, feedback:"Correct. Issues tell you what is wrong now. Risks tell you what could happen next. One can create the other."},
+      {label:"A risk is always caused by an issue.", correct:false, feedback:"A risk can exist independently of any current issue, although one can create the other."},
+      {label:"They are two words for the same thing.", correct:false, feedback:"They need different responses, so it matters that they are treated as distinct."}
+    ]
+  },
+  {
+    title:"Check 3",
+    question:"What does it mean for a decision to be \"complete\"?",
+    options:[
+      {label:"It has been approved by the right authority.", correct:false, feedback:"Approval is necessary but not sufficient on its own."},
+      {label:"It appears in meeting minutes.", correct:false, feedback:"Appearing in minutes does not make a decision controlled or implemented."},
+      {label:"Its consequence is implemented and traceable, for example in the mapping workbook, transformation logic or validation rules.", correct:true, feedback:"Correct. A decision is complete only when its consequence is implemented and traceable."},
+      {label:"Everyone in the meeting agreed with it.", correct:false, feedback:"Agreement in the room does not by itself update the controlled migration baseline."}
+    ]
+  },
+  {
+    title:"Check 4",
+    question:"How should migration issues be prioritised?",
+    options:[
+      {label:"Strictly by the number of records affected.", correct:false, feedback:"Volume alone is not materiality. A small number of records can be critical if they affect key customers, statutory data or financial balances."},
+      {label:"By business and migration consequence, not simply by record count.", correct:true, feedback:"Correct. Prioritise by business and migration consequence, not simply by record count."},
+      {label:"In the order they were reported.", correct:false, feedback:"Reporting order says nothing about actual consequence."},
+      {label:"By whichever team shouts loudest.", correct:false, feedback:"This rewards volume of complaint rather than genuine consequence."}
+    ]
+  },
+  {
+    title:"Check 5",
+    question:"A spelling correction in a non-functional note appears alongside a request to add a new transaction population. Should they receive the same level of control?",
+    options:[
+      {label:"Yes, all changes should go through identical formal control.", correct:false, feedback:"Control should be proportionate. Treating every change identically turns control into ceremony rather than protection."},
+      {label:"No. Control should be proportionate to whether the change affects business meaning, population, target output, build, retest, timing or acceptance.", correct:true, feedback:"Correct. Use enough control to make consequence visible. Do not turn control into ceremony."},
+      {label:"No, neither needs any control at all.", correct:false, feedback:"The transaction population change clearly needs assessment; treating both as needing no control ignores real consequence."},
+      {label:"It depends only on which one was requested first.", correct:false, feedback:"Order of request has no bearing on the actual consequence of each change."}
+    ]
+  },
+  {
+    title:"Check 6",
+    question:"When should a migration professional escalate a scope, issue, risk or decision?",
+    options:[
+      {label:"Whenever they personally disagree with a stakeholder's view.", correct:false, feedback:"Personal disagreement alone is not the trigger; consequence beyond your authority is."},
+      {label:"When the consequence needs authority they do not have.", correct:true, feedback:"Correct. Escalate when the consequence needs authority you do not have."},
+      {label:"Only at the very end of the migration, during cutover.", correct:false, feedback:"Escalation is needed whenever the trigger applies, not only at a fixed point in the lifecycle."},
+      {label:"Never, since escalation implies the migration team has failed.", correct:false, feedback:"Escalation is a normal, professional response when consequence exceeds your authority, not a sign of failure."}
+    ]
+  }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The challenge",title:"It is only one extra field",type:"mcq",
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Migration work changes constantly. New source values appear, business users ask for additional history, mappings change, target configuration moves and defects expose new dependencies. The professional response is not to prevent all change. It is to make change, problems, uncertainty and decisions visible enough to control their consequences.</p>
+ </div>
+ <p class="lead">Bramwell customer scope and mapping are approved. Two weeks before the next migration cycle, Sales asks for a legacy "Credit Review Date" to be added to the target customer migration.</p>
+ <p>The request sounds small. The source field exists and the target has somewhere it could potentially go.</p>
+ <p>But nobody has yet confirmed:</p>
+ <ul class="framework-checks">
+   <li>Whether the field is required for all four legal entities.</li>
+   <li>Whether the source values are reliable.</li>
+   <li>What the target field means.</li>
+   <li>Whether transformation is required.</li>
+   <li>Whether historical blanks are acceptable.</li>
+   <li>Whether the field needs business validation.</li>
+   <li>Whether adding it changes the approved cycle baseline.</li>
+ </ul>
+ <div class="quote">"It is just one column. I can add it to the mapping and tell the developer."</div>
+ <p class="small">The migration analyst</p>
+ <h3>Your decision</h3>`,
+ options:[
+   {label:"Agree. Small field additions do not need scope control.", correct:false, feedback:"The effort may ultimately be small, but impact is not determined by the number of fields. A new field can introduce profiling, mapping, transformation, target configuration, testing and business-acceptance work."},
+   {label:"Reject the request because scope can never change after approval.", correct:false, feedback:"Scope can legitimately change. Refusing to even assess it is not the same as controlling it."},
+   {label:"Treat it as a potential scope or change decision. Assess meaning, population, build, validation, timing and ownership before changing the controlled baseline.", correct:true, feedback:"The effort may ultimately be small, but impact is not determined by the number of fields. A new field can introduce profiling, mapping, transformation, target configuration, testing and business-acceptance work."},
+   {label:"Add it technically now and obtain approval later if anyone objects.", correct:false, feedback:"This lets an unassessed change reach the controlled baseline before anyone has confirmed it is safe."}
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Treating Credit Review Date as a potential scope decision does not mean refusing it. It means finding out what it would actually cost before it quietly becomes part of the build.</p>
+ <p>The analyst opens a short assessment rather than a mapping-workbook edit: which legal entities need it, how reliable the source values are, what the target field is meant to represent, and whether historical blanks are acceptable. Nothing changes in the controlled baseline until that assessment and an approval exist.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Control the consequence, not the size of the request.</div>`
+},
+{
+ id:"b3",nav:"Four things",title:"Four things that should not be confused",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Migration control depends on naming things correctly, because each one needs a different response. Explore each below.</p>`,
+ items: controls,
+ takeawayHtml:`<div class="principle"><strong>Core principle</strong><br>Name the thing correctly because each one needs a different response.</div>`
+},
+{
+ id:"b4",nav:"Scope and blast radius",title:"Scope is more than a list of objects",type:"content",
+ html:`<p class="lead">Migration scope can include several dimensions, not just which objects are in or out.</p>
+ <ul class="framework-checks">
+   <li>Objects or entities.</li>
+   <li>Legal entities or business units.</li>
+   <li>Record populations.</li>
+   <li>History period.</li>
+   <li>Fields or attributes.</li>
+   <li>Attachments or documents.</li>
+   <li>Open versus historical transactions.</li>
+   <li>Data-quality treatment.</li>
+   <li>Migration cycles or environments.</li>
+   <li>Validation and reconciliation obligations.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A scope change can alter data, build, testing, timing and ownership even when the request looks technically small.</p></div></div>
+ <h3>Test the blast radius of a change</h3>
+ <p>For the proposed Credit Review Date, ask:</p>
+ <div class="visual-card">
+   <div class="visual-title">Blast radius of Credit Review Date</div>
+   <ul class="framework-checks">
+     <li><strong>Source:</strong> where is the field populated and how complete or valid is it?</li>
+     <li><strong>Meaning:</strong> does source meaning match target meaning?</li>
+     <li><strong>Mapping:</strong> direct, transformed, derived, defaulted or excluded?</li>
+     <li><strong>Build:</strong> what extraction, staging, transformation or load changes are needed?</li>
+     <li><strong>Target:</strong> is configuration or validation required?</li>
+     <li><strong>Validation:</strong> how will correctness be proved?</li>
+     <li><strong>Population:</strong> which customers or legal entities are affected?</li>
+     <li><strong>Cycle:</strong> can it be safely included in the next controlled baseline?</li>
+     <li><strong>Business:</strong> who approves meaning and acceptance?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>A change is understood when you can describe its blast radius.</div>
+ <p>Not every request that touches scope is unreasonable. Bringing over all 240,000 customer attachments, or migrating 22 years of sales invoices instead of the approved history period, are both legitimate questions to raise. Neither is automatically wrong; both need exactly this kind of assessment, given the volume, storage, extraction, validation and business need involved, before anyone commits to it.</p>`
+},
+{
+ id:"b5",nav:"Build it yourself",title:"Build it yourself: Bramwell migration control view",type:"reflection",
+ html:`<p class="lead">Bramwell currently has five open items that all need to be named correctly and controlled.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell Migration Control View</div>
+   <ul class="framework-checks">
+     <li><strong>Credit Review Date request</strong> (potential scope change): could add profiling, mapping, build and validation work. Owned by the business/data owner plus a migration impact assessment. Next control point: decision before the Cycle 4 baseline freeze.</li>
+     <li><strong>18 CustomerGroup 99 records</strong> (issue plus decision): records remain exceptions. Owned by the mapping authority, who needs to decide the treatment. Next control point: before the mapping baseline freeze.</li>
+     <li><strong>Product/site preparation</strong> (risk): could delay the product or open-order critical path. Owned by the functional owner, who needs to prove a readiness checkpoint. Next control point: before the production product step.</li>
+     <li><strong>Seven missing delivery addresses</strong> (issue under correction): key-account relationship validation is affected. Owned by the migration team, who needs to reprocess and retest. Next control point: relationship validation.</li>
+     <li><strong>Open-order recovery</strong> (controlled risk and evidence): critical if the production load fails. Owned by the migration team, who needs to follow the tested recovery procedure. Next control point: production cutover.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Control View: item, type, affected population or area, impact, owner or action, due or control point, evidence or status.</p></div></div>
+ <p>Pick one of the five items above. Explain why it is classified the way it is (scope, issue, risk or decision, or a combination), and what would go wrong if it were classified as something else.</p>
+ <textarea id="reflection" placeholder="I have chosen... and it is classified as... because..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/scope|issue|risk|decision/i, strength:"You named the correct control category for the item you chose.", gap:"Name which category the item belongs to: scope, issue, risk or decision." },
+   { test:/because|since|as it/i, strength:"You explained your reasoning rather than just stating the category.", gap:"Explain why the item fits that category rather than just naming it." },
+   { test:/wrong|mistake|miss|wouldn't|would not|fail/i, strength:"You considered what would go wrong with a different classification.", gap:"Say what would go wrong if the item were classified differently." },
+   { test:/owner|authority|approve|decide/i, strength:"You connected the classification to who should own or decide it.", gap:"Connect the classification to who should own the response." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The 18 CustomerGroup 99 records are both an issue and a decision: they are a current problem because the records remain exceptions today, and a decision because the target treatment needs authorised approval. If they were classified only as a risk, it would suggest the problem has not happened yet, when in fact it is already affecting the mapping baseline right now.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is precise classification with clear reasoning behind it.":"You have the right category. Strengthen the answer by explaining what specifically would go wrong with a different label."}</div>`
+},
+{
+ id:"b6",nav:"Issues and risks",title:"Recording issues and telling risk from fact",type:"content",
+ html:`<p class="lead">An issue needs more than a title.</p>
+ <div class="callout misconception"><div class="callout-label">Weak issue</div><p>Customer addresses wrong.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Useful issue</div><p>Seven key-account delivery addresses are absent from transformed output. Source and raw stage contain the records. Root cause identified in the transformation filter: valid DELIVERY_SECONDARY addresses were excluded. Impact: key-account delivery relationship validation fails. Correction: approved rule fixed; full affected population to be reprocessed and retested.</p></div></div>
+ <p>A useful migration issue normally states: what is wrong, affected population, evidence or current state, business or migration impact, owner or action, status or next decision, and retest or closure evidence where relevant.</p>
+ <div class="principle"><strong>Core principle</strong><br>Record enough context that someone else can understand why the issue matters and what moves it forward.</div>
+ <h3>Risk is uncertainty, not a defect that already happened</h3>
+ <div class="visual-card">
+   <div class="visual-title">Telling fact from risk</div>
+   <ul class="framework-checks">
+     <li><strong>"Product/site readiness delayed Cycle 3 by 34 minutes":</strong> issue or event evidence from Cycle 3.</li>
+     <li><strong>"Product/site readiness may delay the production sequence again if the new checkpoint is not effective":</strong> risk.</li>
+     <li><strong>"CustomerGroup 99 has no approved treatment":</strong> current issue and decision required.</li>
+     <li><strong>"The decision may miss the mapping baseline freeze and leave 18 records unresolved":</strong> risk arising from the open decision.</li>
+     <li><strong>"Open-order recovery procedure succeeded in the last rehearsal":</strong> evidence, not a risk by itself.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Issues tell you what is wrong now. Risks tell you what could happen next. One can create the other.</p></div></div>`
+},
+{
+ id:"b7",nav:"Proportionate control",title:"Proportionate control, not bureaucracy",type:"content",
+ html:`<p class="lead">A decision is not controlled merely because it appears in meeting minutes.</p>
+ <p>Once authorised, it may need to update: scope, the mapping workbook, reference or cross-reference data, transformation logic, test cases, validation rules, cycle or runbook scope, exception treatment, and acceptance evidence.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A decision is complete only when its consequence is implemented and traceable.</div>
+ <h3>Beware the silent scope change</h3>
+ <p>Common examples include:</p>
+ <ul class="framework-checks">
+   <li>"Can we bring over one more field?"</li>
+   <li>"Can we include the last five years instead of two?"</li>
+   <li>"These attachments should probably come too."</li>
+   <li>"Can we migrate closed orders for reporting?"</li>
+   <li>"Could we cleanse these records during migration rather than in source?"</li>
+   <li>"Can we add another legal entity to the next cycle?"</li>
+ </ul>
+ <p>None of these is automatically wrong. The problem is allowing the commitment to change without understanding and recording the impact.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Scope creep often arrives disguised as a reasonable small request.</p></div></div>
+ <h3>Not every change needs bureaucracy</h3>
+ <p>Control should be proportionate. A spelling correction in a non-functional note does not need the same treatment as adding a new transaction population. The migration team should understand whether it changes approved business meaning, whether it changes population or target output, whether it requires build or retest, whether it affects timing or dependencies, and whether it requires new acceptance.</p>
+ <div class="principle"><strong>Core principle</strong><br>Use enough control to make consequence visible. Do not turn control into ceremony.</div>
+ ${TPKit.fromField({
+   title:"The Rule Nobody Approved", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/RuleNobodyApproved-Farah.mp3",
+   reflection:"Have you seen proportionate control tip too far in either direction, either ceremony over nothing, or a real change slipping through unassessed? What did that teach you?"
+ })}`
+},
+{
+ id:"b8",nav:"Prioritise and escalate",title:"Prioritising, responding to risk and knowing when to escalate",type:"content",
+ html:`<div class="visual-card">
+   <div class="visual-title">Consequence, not volume, sets priority</div>
+   <ul class="framework-checks">
+     <li><strong>Higher consequence:</strong> a wrong financial balance. <strong>Lower consequence:</strong> cosmetic description formatting.</li>
+     <li><strong>Higher consequence:</strong> a missing key-account delivery relationship. <strong>Lower consequence:</strong> a non-critical report label.</li>
+     <li><strong>Higher consequence:</strong> an unknown target commit state. <strong>Lower consequence:</strong> minor log wording.</li>
+     <li><strong>Higher consequence:</strong> an incorrect legal-entity classification. <strong>Lower consequence:</strong> a low-impact documentation typo, such as a developer's own fix to a typo in an error message.</li>
+     <li><strong>Higher consequence:</strong> an unapproved mapping affecting a large population, such as an unresolved new source code with no approved treatment. <strong>Lower consequence:</strong> a known low-volume exception with an accepted treatment.</li>
+   </ul>
+ </div>
+ <p>Volume alone is not materiality. A small number of records can be critical if they affect key customers, statutory data, financial balances or essential operations. Equally, a product-load timing variance that has not yet been explained is a risk worth watching even before it becomes a confirmed problem.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Prioritise by business and migration consequence, not simply by record count.</div>
+ <h3>A risk needs a response</h3>
+ <p>Typical responses include: reduce likelihood through prevention, reduce impact through recovery or contingency, increase evidence through rehearsal or validation, assign a clear owner and trigger, accept the residual risk through the appropriate authority, and avoid the risk by changing scope or approach where justified.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Example</div><p>Risk: product or site preparation could delay open orders. Response: readiness checkpoint before product execution, named owner, backup operator, evidence required before proceeding. Trigger: prerequisite incomplete at agreed cutover time.</p></div></div>
+ <div class="principle"><strong>Turner Page insight</strong><br>A risk without a response is only a worry written down.</div>
+ <h3>Know when to escalate</h3>
+ <p>Escalation may be needed when: scope impact exceeds your authority; a decision misses the point at which build or cycle work depends on it; an issue threatens a success criterion or cutover; a risk exceeds agreed tolerance; owners disagree and the migration team cannot resolve authority; or a change would invalidate previously approved evidence.</p>
+ <div class="principle"><strong>Core principle</strong><br>Escalate when the consequence needs authority you do not have.</div>`
+},
+{
+ id:"b9",nav:"Situations",title:"Situations: Scope, issue, risk or decision?",type:"situations",
+ html:`<p class="lead">For each situation, decide how it should be classified and controlled before you see the discussion.</p>`,
+ items:[
+   {
+     title:"Situation 1",
+     question:"The business asks whether all 240,000 customer attachments should now move to the new system.",
+     options:[
+       {label:"Treat it as a minor technical task and add it to the current build.", correct:false, feedback:"Attachments at this volume carry major storage, extraction, validation and compliance implications; this is not a minor technical task."},
+       {label:"Treat it as a potential scope decision with major volume, storage, extraction, validation and compliance implications, and assess it before committing.", correct:true, feedback:"Correct. This is a potential scope decision with major volume, storage, extraction, validation and compliance implications. Assess before committing."},
+       {label:"Refuse it outright since it was not in the original scope.", correct:false, feedback:"Refusing without assessment closes off a legitimate business question rather than controlling it properly."},
+       {label:"Treat it purely as a risk with no decision required.", correct:false, feedback:"This is a genuine scope question requiring an authorised decision, not just something to monitor."}
+     ]
+   },
+   {
+     title:"Situation 2",
+     question:"Product load duration has varied significantly across two rehearsals.",
+     options:[
+       {label:"Ignore it since both rehearsals technically completed.", correct:false, feedback:"Completion does not remove the uncertainty the variance creates for cutover timing."},
+       {label:"Treat it as evidence that creates a timing risk for cutover until the cause or range is understood.", correct:true, feedback:"Correct. Evidence creates a timing risk for cutover until cause or range is understood."},
+       {label:"Treat it as a confirmed defect requiring an emergency fix tonight.", correct:false, feedback:"An unexplained variance is a risk to investigate, not yet a confirmed defect needing emergency action."},
+       {label:"Assume the second rehearsal's time is the accurate one and move on.", correct:false, feedback:"Picking one number without understanding the cause leaves the underlying uncertainty unresolved."}
+     ]
+   },
+   {
+     title:"Situation 3",
+     question:"A country cross-reference encounters a new, unrecognised source code (ZZZ) and no approved treatment exists.",
+     options:[
+       {label:"Map it to the closest-looking existing code so the load can continue.", correct:false, feedback:"Inventing a target value to keep the load moving is exactly the pattern this lesson warns against."},
+       {label:"Treat it as a current issue requiring a mapping or data decision, which may also create cycle risk if unresolved.", correct:true, feedback:"Correct. This is a current issue requiring a mapping or data decision. It may also create cycle risk if unresolved."},
+       {label:"Exclude every record with that code without raising it.", correct:false, feedback:"Silently excluding records is itself an unauthorised decision about scope or treatment."},
+       {label:"Wait until cutover to deal with it.", correct:false, feedback:"Leaving a known unresolved mapping decision until cutover increases risk rather than managing it."}
+     ]
+   }
+ ],
+ takeawayHtml:`<div class="principle"><strong>The pattern across all three</strong><br>Name what you are actually looking at, scope, issue, risk or decision, before deciding how to respond. The right response follows from the right name.</div>`
+},
+{
+ id:"b10",nav:"AI and control",title:"AI can help maintain migration control",type:"content",
+ html:`<ul class="framework-checks">
+   <li>Classify open items as scope, issues, risks or decisions.</li>
+   <li>Summarise affected populations and impacts.</li>
+   <li>Identify decisions not reflected in mapping or build.</li>
+   <li>Compare change requests with approved scope.</li>
+   <li>Cluster recurring issues.</li>
+   <li>Draft concise escalation summaries.</li>
+ </ul>
+ <div class="principle"><strong>AI principle</strong><br>Use AI to improve visibility and traceability. Human owners still determine materiality, authority and the appropriate response.</div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"Reflection",type:"reflection",
+ html:`<p class="lead">Which is more dangerous in migration: a large change everyone recognises as a change, or a small request that slips directly into the build without impact assessment?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Mentor coaching prompt</div><p>Think about visibility. Large changes attract control. Small changes can alter meaning or validation while bypassing it.</p></div></div>
+ <textarea id="reflection" placeholder="I think the more dangerous one is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/visib|attract|notice|obvious/i, strength:"You considered visibility as the key factor.", gap:"Consider how visible each type of change is to the people who should be controlling it." },
+   { test:/small|slip|bypass|unnotic|quiet/i, strength:"You considered how a small change can bypass control.", gap:"Consider how a small request can slip past impact assessment altogether." },
+   { test:/large|big|obvious change|major/i, strength:"You considered why large changes tend to get controlled.", gap:"Consider why a large, obvious change tends to attract control automatically." },
+   { test:/meaning|validation|baseline|consequence/i, strength:"You connected the danger to a real consequence, such as meaning or validation.", gap:"Connect your answer to a concrete consequence, such as changed meaning or bypassed validation." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">A small request that slips into the build unassessed is often more dangerous, precisely because nobody treats it as a change. A large change attracts scrutiny by its own size. A small one can alter meaning or bypass validation while looking too minor to control.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is sharp thinking about how visibility, not size, drives real migration risk.":"You have a reasonable starting position. Strengthen it by explaining specifically why visibility, not size, is what actually determines the danger."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Scope defines what the migration is committed to deliver.</li>
+   <li>An issue is a problem that exists now.</li>
+   <li>A risk is uncertainty about what could happen next.</li>
+   <li>A decision is an authorised choice that must flow into the migration baseline.</li>
+   <li>Migration scope includes populations, history, fields, legal entities, documents and validation obligations, not only object names.</li>
+   <li>Assess the blast radius of proposed changes.</li>
+   <li>Record issues with population, evidence, impact, owner and closure path.</li>
+   <li>Track decisions through mapping, build and validation.</li>
+   <li>Watch for silent scope changes disguised as small requests.</li>
+   <li>Use proportionate control rather than bureaucracy.</li>
+   <li>Prioritise by consequence, not simply by volume.</li>
+   <li>Give risks a response, owner and trigger.</li>
+   <li>Escalate when consequence requires authority you do not have.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Migration control means keeping commitments, problems, uncertainties and decisions visible enough that changes do not quietly alter the data, the build or the evidence you are relying on.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it does not affect certification.</p>`,
+ items: knowledgeCheck,
+ takeawayHtml:`<div class="feedback good"><strong>That is the knowledge check done.</strong> Carry on to finish the lesson.</div>`
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Managing scope, issues, risks and decisions.</strong></p>
+ <p>Bramwell can now keep scope changes, issues, risks and decisions visible without confusing them or burying them in technical work.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Data controls, security and compliance</strong></p>
+ <p>You will look at the responsibilities that apply to the data itself: access, handling, sensitive information, evidence, retention and controlled movement across the migration lifecycle.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a small request lands on your desk and ask what its blast radius really is.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 7",
+  moduleTitle: "Governance & Stakeholder Management",
+  lessonLabel: "Lesson 3: Managing scope, issues, risks and decisions",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Keeping change and uncertainty visible without turning into bureaucracy",
+  storageKey: "tp_core7_lesson3_v1",
+  lessonId: "core7-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

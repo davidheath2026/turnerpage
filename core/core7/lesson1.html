@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Ownership, accountability and decision-making</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 7 — LESSON 1 DATA — content only. All chrome,
+   styling and engine behaviour come from shared/turner-page-kit.css
+   and shared/turner-page-kit.js. No bespoke one-off visual is
+   needed for this lesson, so there is no lesson-scoped <style>
+   block — everything here uses existing kit classes.
+============================================================== */
+
+const authorities=[
+  {
+    title:"Data Definition Authority",
+    short:"What does this data mean?",
+    detail:`<p>This authority answers what a piece of data actually represents in business terms.</p>
+    <p><strong>Bramwell example:</strong> what does legacy CustomerGroup 99 actually represent? An old procedure describes it as "special export accounts", but nobody has confirmed that this is still accurate or complete.</p>
+    <p>The migration team can profile the values and describe the evidence. It cannot decide what the business intends the value to mean.</p>`
+  },
+  {
+    title:"Mapping Authority",
+    short:"How should that meaning be represented in the target?",
+    detail:`<p>Once meaning is agreed, this authority approves how it should be represented in the target system.</p>
+    <p><strong>Bramwell example:</strong> once the meaning of CustomerGroup 99 is confirmed, should the approved treatment be KEY, INTERNATIONAL, another rule entirely, or a recorded exception? That is a Mapping Authority decision, not a migration build decision.</p>
+    <p>The migration team implements the approved rule. It does not choose between plausible target values on its own.</p>`
+  },
+  {
+    title:"Quality Acceptance Authority",
+    short:"Is the resulting data quality acceptable for migration and use?",
+    detail:`<p>This authority decides whether a known residual data issue can be accepted rather than resolved.</p>
+    <p><strong>Bramwell example:</strong> can the 18 CustomerGroup 99 records be accepted as a known, controlled exception if a final mapping decision is not reached before the next baseline? That acceptance belongs to an authorised business or project authority, not to whoever is under the most delivery pressure.</p>
+    <p>The migration team supplies the impact evidence. It does not accept the risk on the business's behalf.</p>`
+  }
+];
+
+const knowledgeCheck=[
+  {
+    title:"Check 1",
+    question:"Which authority approves how an agreed meaning is represented in the target system?",
+    options:[
+      {label:"Data Definition Authority", correct:false, feedback:"Close, but Data Definition Authority answers what the data means, not how that meaning is represented in the target."},
+      {label:"Mapping Authority", correct:true, feedback:"Correct. Mapping Authority approves how an agreed meaning becomes a target value or rule."},
+      {label:"Quality Acceptance Authority", correct:false, feedback:"Quality Acceptance Authority decides whether residual quality or risk is acceptable, not how meaning maps to the target."},
+      {label:"The migration technical team", correct:false, feedback:"The technical team implements an approved rule. It does not choose the rule itself."}
+    ]
+  },
+  {
+    title:"Check 2",
+    question:"A developer proposes a technically efficient transformation that would change business meaning. What should happen?",
+    options:[
+      {label:"Implement it immediately, since it is a technical improvement", correct:false, feedback:"If it changes business meaning, technical efficiency alone does not authorise it."},
+      {label:"Route it for business or data authority approval before building it", correct:true, feedback:"Correct. Technical expertise can shape the options, but it does not replace business authority over meaning."},
+      {label:"Ignore it, since transformations never affect business meaning", correct:false, feedback:"Some transformations do cross the boundary into business meaning. This is exactly why the boundary needs checking, not assuming."},
+      {label:"Ask Quality Acceptance Authority to decide", correct:false, feedback:"Quality Acceptance Authority accepts residual risk. Approving a change to meaning belongs elsewhere."}
+    ]
+  },
+  {
+    title:"Check 3",
+    question:"Two authorised stakeholders give conflicting instructions for the same mapping. What should the migration team do?",
+    options:[
+      {label:"Follow whichever instruction arrived first", correct:false, feedback:"Order of arrival is not a decision-ownership rule."},
+      {label:"Follow the more senior stakeholder's instruction", correct:false, feedback:"Seniority alone does not resolve a genuine authority conflict; it can also disguise it."},
+      {label:"Escalate the conflict through the correct governance route and keep the mapping unresolved until it is settled", correct:true, feedback:"Correct. When authorities conflict, escalate the decision. Do not turn disagreement into hidden transformation logic."},
+      {label:"Implement both instructions in different environments", correct:false, feedback:"This hides the conflict rather than resolving it, and leaves the target inconsistent."}
+    ]
+  },
+  {
+    title:"Check 4",
+    question:"Someone under deadline pressure tells you to \"just use your best judgement\" on an unresolved business classification. What is the right response?",
+    options:[
+      {label:"Agree, since the deadline matters more than the process", correct:false, feedback:"Urgency can shorten the decision window. It does not change who owns the business decision."},
+      {label:"Explain the options and consequences clearly, without deciding the business meaning yourself", correct:true, feedback:"Correct. A migration professional can recommend options and explain consequences without silently accepting authority the role does not have."},
+      {label:"Refuse to discuss the issue any further", correct:false, feedback:"Withholding evidence does not help. The migration team should still provide the evidence and options."},
+      {label:"Quietly choose whichever value looks safest and move on", correct:false, feedback:"This is exactly the pattern that turns a technical team into an accidental business decision-maker."}
+    ]
+  },
+  {
+    title:"Check 5",
+    question:"What makes a decision record genuinely useful later in a migration?",
+    options:[
+      {label:"Just the final answer that was chosen", correct:false, feedback:"The answer alone does not explain why the migration behaves as it does."},
+      {label:"The final decision, together with the evidence, the decision owner, and its status", correct:true, feedback:"Correct. A useful decision record retains enough context to explain why the migration behaves as it does, and lets mapping, build and validation trace back to it."},
+      {label:"A timestamp is enough on its own", correct:false, feedback:"A timestamp records when something happened, not what was decided or why."},
+      {label:"Nothing extra is needed once the mapping rule is built", correct:false, feedback:"A mapping rule without its originating decision is hard to trace or challenge later."}
+    ]
+  },
+  {
+    title:"Check 6",
+    question:"At which point in the migration lifecycle does \"who can accept residual data risk\" typically apply?",
+    options:[
+      {label:"Scope", correct:false, feedback:"Scope is about which populations migrate, not about accepting residual risk in the data itself."},
+      {label:"Build", correct:false, feedback:"Build is about implementing approved rules, not accepting risk."},
+      {label:"Acceptance", correct:true, feedback:"Correct. Acceptance is specifically where the question of who can accept residual data risk applies."},
+      {label:"Cutover only", correct:false, feedback:"Acceptance questions can surface at cutover too, but the lifecycle stage where this question is centred is Acceptance."}
+    ]
+  }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The challenge",title:"Just pick one",type:"mcq",
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Data migration contains hundreds of decisions. Some are technical. Many are not.</p>
+ <p>A migration team can extract, transform, load and validate data, but it cannot legitimately decide what the business means by every value, which records should be in scope, or what residual business risk is acceptable.</p>
+ </div>
+ <p class="lead">Bramwell still has 18 active German customers with legacy CustomerGroup value 99.</p>
+ <p>The target design allows STANDARD, KEY, INTERNATIONAL and INTERNAL. The evidence shows:</p>
+ <ul class="framework-checks">
+   <li>All 18 customers belong to the German legal entity.</li>
+   <li>An old procedure describes 99 as "special export accounts".</li>
+   <li>Six of the 18 customers are also classified as strategic.</li>
+   <li>No approved target treatment for 99 exists.</li>
+ </ul>
+ <div class="quote">"They are obviously INTERNATIONAL. I can map 99 to INTERNATIONAL and clear the exception today."</div>
+ <p class="small">The migration developer</p>
+ <h3>Your decision</h3>`,
+ options:[
+   {label:"Agree. The developer has enough evidence to make the most sensible mapping.", correct:false, feedback:"Agreeing turns a plausible technical read into an unauthorised business decision. Even a well-reasoned guess is not the same as sign-off from the business or data owner."},
+   {label:"Map all six strategic customers to KEY and the remaining twelve to INTERNATIONAL.", correct:false, feedback:"This goes even further from the mark. Splitting the population and inventing a strategic-customer rule is itself a business classification decision, and nobody has approved it."},
+   {label:"Keep the records as controlled exceptions and obtain the mapping decision from the authorised business or data owner.", correct:true, feedback:"This is the strongest response. The migration team can present the evidence and the choice between STANDARD, KEY, INTERNATIONAL and INTERNAL, but the final meaning of legacy value 99 belongs to the authorised business or data owner, not the migration team."},
+   {label:"Exclude all 18 from migration, because unresolved data should never be loaded.", correct:false, feedback:"Excluding the 18 customers avoids an unauthorised guess, but it creates a different problem: active customers silently disappearing from the target without an approved decision to leave them out. That is still not a decision the migration team should make alone."}
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Choosing to keep the records as controlled exceptions does not resolve CustomerGroup 99. It protects the boundary between migration evidence and business decision while the real answer is still pending.</p>
+ <p>The 18 customers stay flagged as controlled exceptions in the customer load. The migration team drafts a decision request setting out the evidence, and routes it to the authorised customer-data owner. Nothing about the target mapping changes until that decision arrives.</p>
+ <p>A person can be responsible for performing migration work without having authority to make every decision that affects it.</p>
+ <div class="visual-card">
+   <div class="visual-title">Responsibility is not the same as authority</div>
+   <ul class="framework-checks">
+     <li><strong>Profile CustomerGroup values:</strong> the migration or data analyst can perform this work, but the migration team can only report the evidence. The business or data authority decides the intended meaning.</li>
+     <li><strong>Implement the 99 to target treatment:</strong> a developer or consultant can build it, but the authorised mapping or data authority must approve the rule first.</li>
+     <li><strong>Run the customer load:</strong> the migration technical team controls execution, but only within approved scope and rules.</li>
+     <li><strong>Accept unresolved customer classification risk:</strong> the migration team provides the impact evidence, but only an authorised business or project authority can accept the risk.</li>
+     <li><strong>Correct a technical coding defect:</strong> the developer or technical owner can own the implementation correction, as long as the business meaning is unchanged.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Doing the work does not automatically give you authority to decide what the work should mean.</div>`
+},
+{
+ id:"b3",nav:"Three authorities",title:"Three authorities every migration needs",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">The names may differ by project, but three forms of authority recur throughout migration work.</p>
+ <p>Explore each one before continuing.</p>`,
+ items: authorities,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>One person may hold more than one authority, but the decision itself should still be clear.</p></div></div>`
+},
+{
+ id:"b4",nav:"Technical or business?",title:"Technical decisions and business decisions",type:"content",
+ html:`<div class="visual-card">
+   <div class="visual-title">Where the boundary usually sits</div>
+   <ul class="framework-checks">
+     <li><strong>Mostly technical:</strong> how to structure a staging table. <strong>Requires business or data authority:</strong> whether inactive customers are in scope.</li>
+     <li><strong>Mostly technical:</strong> how to log rejected records. <strong>Requires business or data authority:</strong> what an ambiguous legacy status means.</li>
+     <li><strong>Mostly technical:</strong> how to restart a failed load safely. <strong>Requires business or data authority:</strong> which target classification is correct.</li>
+     <li><strong>Mostly technical:</strong> how to implement an approved lookup. <strong>Requires business or data authority:</strong> whether a source-data defect should be corrected, enriched or accepted.</li>
+     <li><strong>Mostly technical:</strong> how to optimise a transformation. <strong>Requires business or data authority:</strong> whether a material residual data risk is acceptable.</li>
+   </ul>
+ </div>
+ <p>Some decisions cross the boundary. A developer may propose a technically efficient transformation, but if it changes business meaning, it still requires the appropriate business or data decision.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Technical expertise can shape the options. It does not replace business authority over meaning.</p></div></div>
+ <h3>Why unclear ownership creates migration defects</h3>
+ <ul class="framework-checks">
+   <li>Developers invent defaults because nobody answers mapping questions.</li>
+   <li>Analysts cleanse source data without knowing who can approve the correction.</li>
+   <li>Business users assume the migration team owns data quality.</li>
+   <li>Issues remain open because everyone is consulted but nobody is accountable.</li>
+   <li>Two stakeholders give contradictory answers, and both get implemented in different places.</li>
+   <li>Sign-off arrives from someone who understands the data but does not have authority to accept the risk.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>Most migration data problems are technical problems.</strong></p><p>Many "data problems" are actually decision-ownership problems in disguise.</p></div>`
+},
+{
+ id:"b5",nav:"Build it yourself",title:"Build it yourself: Who decides at Bramwell?",type:"reflection",
+ html:`<p class="lead">For each situation, Bramwell needs to know who provides evidence, who decides, and who implements.</p>
+ <div class="visual-card">
+   <div class="visual-title">Decision Ownership Matrix: Bramwell examples</div>
+   <ul class="framework-checks">
+     <li><strong>CustomerGroup 99 meaning unclear:</strong> evidence from migration profiling plus business context; decision owned by Data Definition or Mapping Authority; implemented by migration build after approval.</li>
+     <li><strong>45E payment term needs a target equivalent:</strong> evidence from migration mapping plus Finance input; decision owned by authorised Finance or data mapping owner; implemented by migration or reference build.</li>
+     <li><strong>SalesOwner SMITHJ has no active target worker match:</strong> evidence from migration exceptions plus business ownership information; decision owned by the relevant business or data owner; implemented via cross-reference or an approved exception treatment.</li>
+     <li><strong>Customer load fails due to a coding defect:</strong> evidence from technical logs; decision owned by the technical delivery owner; implemented by the developer.</li>
+     <li><strong>18 known exceptions proposed for acceptance:</strong> evidence from migration validation and impact analysis; decision owned by Quality Acceptance Authority; implemented as a recorded acceptance and treatment.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Learner task</div><p>For each row, ask: who knows the facts? Who has authority to decide? Who performs the resulting action? Do not collapse all three into one role simply because it is convenient.</p></div></div>
+ <p>Look again at the CustomerGroup 99 row. In your own words, explain why the evidence provider, the decision authority and the implementer should stay as three separate roles here, even though one person could plausibly do all three. What would be lost if Bramwell collapsed them into one?</p>
+ <textarea id="reflection" placeholder="For CustomerGroup 99, the three roles should stay separate because..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/evidence|profil|fact/i, strength:"You recognised the role of the evidence provider distinctly from the other two roles.", gap:"Name who provides the evidence, separately from who decides." },
+   { test:/authority|owner|decide|decision/i, strength:"You identified who actually holds decision authority.", gap:"Be explicit about who holds the decision authority itself." },
+   { test:/implement|build|develop|technical/i, strength:"You recognised implementation as a distinct role from deciding.", gap:"Explain who implements the approved outcome, and that this is a separate role again." },
+   { test:/collaps|merge|convenien|shortcut/i, strength:"You addressed the risk of collapsing the roles into one for convenience.", gap:"Say what tempts people to collapse the three roles into one." },
+   { test:/unauthoris|risk|mistake|wrong|accidental/i, strength:"You explained what could go wrong if the roles were collapsed.", gap:"Explain the consequence of collapsing the roles, such as an unauthorised business decision being made by mistake." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The migration profiler has the facts but not the authority to decide what CustomerGroup 99 should mean. The Data Definition or Mapping Authority has the authority but is not the one running the profiling. The developer can implement whichever treatment is approved, but implementing a plausible answer without approval turns technical convenience into an unauthorised business decision. Keeping the three roles separate is what stops that from happening quietly.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a clear, well-reasoned answer. You are thinking about decision ownership the way an experienced migration consultant would.":"You have the right instinct. Strengthen the answer by naming all three roles explicitly and being specific about what goes wrong if they collapse into one."}</div>`
+},
+{
+ id:"b6",nav:"Decision requests",title:"A useful decision request",type:"content",
+ html:`<p class="lead">"The business owns it" is often too vague to act on, and a vague question gets a vague answer.</p>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>Can someone confirm what we should do with CustomerGroup 99?</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger</div><p>Decision required: target treatment for 18 active German customers with legacy CustomerGroup 99. Evidence: old procedure describes 99 as special export; six customers are strategic; target values are STANDARD, KEY, INTERNATIONAL, INTERNAL. Current impact: records remain migration exceptions. Required from: authorised customer-data owner. Decision needed before the next customer baseline is approved.</p></div></div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Make the decision easy to understand: what is being decided, what evidence exists, what happens if it remains unresolved, and who has authority.</div>
+ <h3>Ownership should be specific enough to act</h3>
+ <div class="visual-card">
+   <div class="visual-title">Vague ownership versus actionable ownership</div>
+   <ul class="framework-checks">
+     <li><strong>Vague:</strong> "Finance". <strong>Actionable:</strong> a named authorised owner for payment-term meaning and acceptance.</li>
+     <li><strong>Vague:</strong> "Sales". <strong>Actionable:</strong> a named customer-data owner for customer classification.</li>
+     <li><strong>Vague:</strong> "IT". <strong>Actionable:</strong> a named target configuration owner.</li>
+     <li><strong>Vague:</strong> "Migration team". <strong>Actionable:</strong> a named migration consultant or developer for implementation.</li>
+     <li><strong>Vague:</strong> "Project". <strong>Actionable:</strong> a named authority for accepted residual migration risk.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Ownership is useful only when the migration team knows where a real decision goes.</div>`
+},
+{
+ id:"b7",nav:"When authorities disagree",title:"What if two authorised stakeholders disagree?",type:"content",
+ html:`<p class="lead">Suppose the German Sales Director says CustomerGroup 99 should become INTERNATIONAL, while the Group Customer Data Owner says the six strategic customers should become KEY.</p>
+ <p>Both are authorised stakeholders. Both have a defensible view. The migration team should not choose the stakeholder it prefers, and there is no clean technical answer that makes this go away.</p>
+ <ul class="framework-checks">
+   <li>State the conflicting decisions clearly.</li>
+   <li>Show the affected population and impact.</li>
+   <li>Identify which governance or authority route resolves the conflict.</li>
+   <li>Keep the mapping unresolved until the authorised decision is made.</li>
+   <li>Record the final decision and update the controlled mapping.</li>
+ </ul>
+ <div class="principle"><strong>Turner Page principle</strong><br>When authorities conflict, escalate the decision. Do not turn disagreement into hidden transformation logic.</div>
+ ${TPKit.fromField({
+   title:"Two Answers, One Field", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/TwoAnswers-Priya.mp3",
+   reflection:"Have you ever received two conflicting instructions from people who both genuinely had the authority to give one? What did you do?"
+ })}
+ <h3>Do not let urgency transfer ownership</h3>
+ <p>Common pressure statements include:</p>
+ <ul class="framework-checks">
+   <li>"Just use your best judgement."</li>
+   <li>"You know the data better than we do."</li>
+   <li>"We need the load tonight."</li>
+   <li>"Pick whichever value is closest."</li>
+   <li>"We can change it after go-live."</li>
+ </ul>
+ <p>A migration professional can recommend options and explain consequences. That does not mean silently accepting authority the role does not have.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Urgency can shorten the decision window. It does not change who owns the business decision.</p></div></div>`
+},
+{
+ id:"b8",nav:"Recording ownership",title:"Accountability, records and the migration lifecycle",type:"content",
+ html:`<p class="lead">Clear accountability exists so decisions happen and can be traced, not so the project can identify someone to blame later.</p>
+ <p>Good accountability helps answer:</p>
+ <ul class="framework-checks">
+   <li>Who owns this definition?</li>
+   <li>Who can approve this mapping?</li>
+   <li>Who accepts this exception?</li>
+   <li>Who must respond before the next cycle?</li>
+   <li>Who implements the approved outcome?</li>
+ </ul>
+ <div class="principle"><strong>Core principle</strong><br>Good governance removes ambiguity before it becomes a defect.</div>
+ <h3>Record the decision, not only the answer</h3>
+ <p>A useful decision record retains enough context to explain why the migration behaves as it does.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Decision</strong>Treatment of legacy CustomerGroup 99</div>
+   <div class="status-card"><strong>Affected population</strong>18 active German customers</div>
+   <div class="status-card"><strong>Evidence</strong>Legacy procedure plus strategic classification evidence</div>
+   <div class="status-card"><strong>Decision owner</strong>Authorised customer-data or mapping authority</div>
+   <div class="status-card"><strong>Status</strong>Open, pending in this lesson</div>
+   <div class="status-card"><strong>Implementation impact</strong>Customer mapping and reference logic cannot be finalised until approved</div>
+ </div>
+ <p>When the decision is eventually made, the mapping, implementation and validation evidence should trace back to it. A previously unseen source code discovered mid-cycle follows the same logic: route it as an exception and obtain the required meaning or mapping decision, rather than inventing a target value to keep the load moving.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A migration rule should be traceable to an authorised decision when business judgement created that rule.</div>
+ <h3>Ownership across the migration lifecycle</h3>
+ <div class="visual-card">
+   <div class="visual-title">A typical ownership question at each stage</div>
+   <ul class="framework-checks">
+     <li><strong>Scope:</strong> who decides which populations migrate? A business user's preference alone does not automatically change approved migration scope.</li>
+     <li><strong>Profiling and data quality:</strong> who owns correction or acceptance of source-data issues?</li>
+     <li><strong>Mapping:</strong> who approves meaning and target treatment?</li>
+     <li><strong>Build:</strong> who owns technical implementation of approved rules?</li>
+     <li><strong>Validation:</strong> who confirms evidence and business usability?</li>
+     <li><strong>Acceptance:</strong> who can accept residual data risk?</li>
+     <li><strong>Cutover:</strong> who can authorise decisions when production conditions deviate?</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Ownership is not a governance meeting held at the end. It is embedded in decisions throughout the migration lifecycle.</p></div></div>`
+},
+{
+ id:"b9",nav:"Situations",title:"Situations: Who owns this decision?",type:"situations",
+ html:`<p class="lead">For each situation, decide how the decision should be owned before you see the discussion.</p>`,
+ items:[
+   {
+     title:"Situation 1",
+     question:"91 active customers still have a blank tax classification. The analyst asks whether blank can be defaulted.",
+     options:[
+       {label:"The migration team decides and applies a sensible default.", correct:false, feedback:"Choosing a default value is a business classification decision, even when the migration team can see an obviously convenient answer."},
+       {label:"This is primarily a technical implementation decision.", correct:false, feedback:"Defaulting a business classification is not a technical implementation choice; it changes what the data is understood to mean."},
+       {label:"The migration team presents the population and options; the appropriate tax or business data authority approves any default or acceptance.", correct:true, feedback:"Correct. The migration team should present the population and options. The appropriate tax or business data authority must approve any business default or acceptance treatment."},
+       {label:"Escalate immediately without proposing anything.", correct:false, feedback:"The migration team can still add value by presenting the population and the realistic options, rather than escalating with nothing prepared."}
+     ]
+   },
+   {
+     title:"Situation 2",
+     question:"A technically equivalent implementation can reduce transformation runtime by 20 minutes without changing approved outputs.",
+     options:[
+       {label:"This is primarily a technical implementation decision, subject to normal technical control and regression evidence.", correct:true, feedback:"Correct. Since the approved outputs are unchanged, this sits with the technical team, subject to normal control and regression evidence."},
+       {label:"This needs sign-off from the Group Customer Data Owner.", correct:false, feedback:"Business meaning is unchanged here, so this does not need business or data authority sign-off."},
+       {label:"This should be treated as an unresolved business decision.", correct:false, feedback:"Nothing about business meaning is in question here; it is a technical optimisation with equivalent outputs."},
+       {label:"This should be escalated as a stakeholder conflict.", correct:false, feedback:"There is no conflict between authorities here, just a technical improvement to evaluate normally."}
+     ]
+   },
+   {
+     title:"Situation 3",
+     question:"Finance reviews a reconciliation variance, explains its cause, and formally accepts it within Finance's own authority.",
+     options:[
+       {label:"Migration should overrule the acceptance if the numbers still look wrong to the migration team.", correct:false, feedback:"Second-guessing an authorised Finance acceptance just because the numbers differ undermines the whole point of having a Quality Acceptance Authority."},
+       {label:"Migration should record the evidence and the acceptance, and should not overrule an authorised Finance acceptance.", correct:true, feedback:"Correct. Migration records the evidence and acceptance. It should not overrule an authorised Finance acceptance merely because the numbers differ."},
+       {label:"Migration should treat this as an open exception until a different authority reviews it again.", correct:false, feedback:"Finance already had the authority and used it. Reopening the decision without cause is not the right response."},
+       {label:"Migration should ask the Programme Manager to make the final call instead.", correct:false, feedback:"The variance was already within Finance's own authority; there is no need to route it to a different owner."}
+     ]
+   }
+ ],
+ takeawayHtml:`<div class="principle"><strong>The pattern across all three</strong><br>Present evidence, respect genuine authority wherever it sits, and reserve escalation for a real conflict rather than a disagreement with an already-authorised decision.</div>`
+},
+{
+ id:"b10",nav:"AI and decisions",title:"AI can help frame decisions, not own them",type:"content",
+ html:`<p class="lead">Used well, AI can support this way of working without blurring who actually owns a decision.</p>
+ <ul class="framework-checks">
+   <li>Summarise evidence around an unresolved value.</li>
+   <li>Identify affected populations.</li>
+   <li>Draft decision requests.</li>
+   <li>Compare conflicting stakeholder statements.</li>
+   <li>Trace where an approved rule is implemented.</li>
+   <li>Highlight decisions with no named owner.</li>
+ </ul>
+ <div class="principle"><strong>AI principle</strong><br>AI can organise evidence and options. It cannot become the Data Definition, Mapping or Quality Acceptance Authority.</div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"Reflection",type:"reflection",
+ html:`<p class="lead">Think of a migration decision where the technical answer seems obvious.</p>
+ <p>What would tell you that it is actually a business decision in disguise?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Mentor coaching prompt</div><p>Ask whether the choice changes business meaning, scope, ownership, classification, financial interpretation or accepted risk. If it does, technical plausibility alone is not enough.</p></div></div>
+ <textarea id="reflection" placeholder="A technical answer that seems obvious might actually be a business decision in disguise if..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/meaning/i, strength:"You considered whether the choice changes business meaning.", gap:"Consider whether the choice changes what the data is understood to mean." },
+   { test:/scope/i, strength:"You considered whether the choice changes scope.", gap:"Consider whether the choice changes what is in or out of scope." },
+   { test:/ownership|owner/i, strength:"You considered whether the choice changes ownership.", gap:"Consider whether the choice shifts ownership onto the migration team without approval." },
+   { test:/classificat/i, strength:"You considered whether the choice changes classification.", gap:"Consider whether the choice changes a business classification." },
+   { test:/financ|payment|money|value/i, strength:"You considered financial interpretation.", gap:"Consider whether the choice changes financial interpretation." },
+   { test:/risk|accept/i, strength:"You considered accepted risk.", gap:"Consider whether the choice changes what residual risk is being accepted, and by whom." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">A technical answer that looks obvious is worth a second look whenever it would also change business meaning, scope, ownership, classification, financial interpretation or accepted risk. If none of those shift, it probably is a technical decision. If any of them do, it needs the right authority, however plausible the technical answer looks.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is strong, precise thinking. You are checking decisions against the boundary rather than trusting how obvious they feel.":"You have the right idea. Strengthen the answer by naming more of the specific things a technical-looking choice can quietly change."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Migration responsibility and decision authority are not the same thing.</li>
+   <li>The migration team can provide evidence, options and recommendations without owning every business decision.</li>
+   <li>Data Definition Authority determines meaning.</li>
+   <li>Mapping Authority approves how meaning is represented in the target.</li>
+   <li>Quality Acceptance Authority decides whether resulting data quality or residual risk is acceptable.</li>
+   <li>Technical teams own technical implementation within approved business rules.</li>
+   <li>Vague ownership causes defaults, delays, contradictory rules and hidden risk.</li>
+   <li>Decision requests should state the issue, evidence, affected population, impact and required authority.</li>
+   <li>When authorised stakeholders conflict, escalate the decision rather than choosing silently.</li>
+   <li>Urgency does not transfer business ownership to the migration team.</li>
+   <li>Record decisions so mapping, implementation and validation remain traceable.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Know the difference between providing the answer and owning the decision. Good migration governance makes sure business meaning is decided by the right authority and implemented by the migration team without ambiguity.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it does not affect certification. It just helps you notice what has already stuck.</p>`,
+ items: knowledgeCheck,
+ takeawayHtml:`<div class="feedback good"><strong>That is the knowledge check done.</strong> Carry on to finish the lesson.</div>`
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Ownership, accountability and decision-making.</strong></p>
+ <p>Bramwell now has a clear basis for deciding who owns migration meaning, mapping, technical implementation and acceptance.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Working effectively with migration stakeholders</strong></p>
+ <p>You will focus on how to get decisions, evidence and actions from the different people the migration depends on, without turning stakeholder management into endless meetings.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration governance discussion and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 7",
+  moduleTitle: "Governance & Stakeholder Management",
+  lessonLabel: "Lesson 1: Ownership, accountability and decision-making",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Deciding who decides",
+  storageKey: "tp_core7_lesson1_v1",
+  lessonId: "core7-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

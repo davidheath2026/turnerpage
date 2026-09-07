@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Working effectively with migration stakeholders</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 7 — LESSON 2 DATA — content only. No bespoke
+   one-off visual is needed, so there is no lesson-scoped <style>.
+============================================================== */
+
+const stakeholders=[
+  { title:"Source-system experts", short:"Meaning, history, extraction knowledge, unusual values.", detail:"<p>They know why the data looks the way it does, including quirks that never made it into any documentation.</p>" },
+  { title:"Business or data owners", short:"Definitions, scope, cleansing, mapping and acceptance decisions.", detail:"<p>They hold the authority the migration team cannot hold: what a value means, and whether a treatment is acceptable.</p>" },
+  { title:"Finance", short:"Financial rules, balances, reconciliations and acceptance.", detail:"<p>Finance owns commercial and accounting meaning, including the acceptance of financial variances within its own authority.</p>" },
+  { title:"Functional or target team", short:"Target design, configuration, dependencies and business process context.", detail:"<p>They know what the target system can and cannot represent, and what configuration a new field or rule actually needs.</p>" },
+  { title:"Technical or integration team", short:"Interfaces, environments, access and technical dependencies.", detail:"<p>They control the technical landscape the migration has to run inside, including access and connectivity.</p>" },
+  { title:"Test or UAT team", short:"Coordinated validation and defect evidence.", detail:"<p>They provide structured evidence that the migrated data actually behaves correctly for real business scenarios.</p>" },
+  { title:"Project or cutover team", short:"Milestones, dependencies, readiness and execution coordination.", detail:"<p>They hold the timeline the migration has to fit inside, and coordinate readiness across every workstream.</p>" },
+  { title:"Operational users", short:"Practical evidence that migrated data supports real work.", detail:"<p>They are the final test: whether the data actually lets someone do their job on Monday morning.</p>" }
+];
+
+const knowledgeCheck=[
+  {
+    title:"Check 1",
+    question:"What is the main problem with the opening scenario's 237-row spreadsheet meeting?",
+    options:[
+      {label:"Too many people were invited.", correct:false, feedback:"Attendance was not really the core problem; the meeting produced activity without ownership or movement."},
+      {label:"It created activity but no decision, owner or movement.", correct:true, feedback:"Correct. Stakeholder management is not maximising attendance. It is getting the right information, decision or action from the right person at the right time."},
+      {label:"The spreadsheet had too many columns.", correct:false, feedback:"The format was not the central issue; the lack of clear ownership and required actions was."},
+      {label:"It should have been sent by email instead.", correct:false, feedback:"Changing the channel does not fix the underlying problem of no clear decision or owner."}
+    ]
+  },
+  {
+    title:"Check 2",
+    question:"A business owner replies to a mapping question with \"Looks fine to me\" but is not the agreed mapping authority. What should happen?",
+    options:[
+      {label:"Treat it as approved, since a business person has now agreed.", correct:false, feedback:"Seniority or general business agreement is not the same as the agreed authority for that decision."},
+      {label:"Route the decision through the agreed owner instead.", correct:true, feedback:"Correct. Do not treat seniority or a passing comment as automatic authority. Route the decision through the agreed owner."},
+      {label:"Implement it immediately to keep the cycle moving.", correct:false, feedback:"Implementing an answer from the wrong authority risks building an unapproved rule."},
+      {label:"Ignore the reply entirely.", correct:false, feedback:"The reply is useful input, but it still needs to reach the correct decision owner."}
+    ]
+  },
+  {
+    title:"Check 3",
+    question:"What turns a migration meeting into genuine control, rather than just discussion?",
+    options:[
+      {label:"Booking it as a recurring calendar event.", correct:false, feedback:"A recurring meeting is not evidence that an issue is being managed."},
+      {label:"A decision is made, an owner accepts an action, or a blocker is removed.", correct:true, feedback:"Correct. A migration meeting is useful when it changes the state of the work: a decision, an accepted action, a removed blocker, evidence reviewed, a deadline agreed, or an escalation triggered."},
+      {label:"Inviting every possible stakeholder so nobody feels excluded.", correct:false, feedback:"Wide invitation lists do not by themselves produce movement."},
+      {label:"Keeping the meeting to under thirty minutes.", correct:false, feedback:"Meeting length says nothing about whether it produced a decision, action or evidence."}
+    ]
+  },
+  {
+    title:"Check 4",
+    question:"Finance wants payment terms cleansed before migration; Sales wants the cycle to proceed because the affected customers are low volume. What should the migration team do?",
+    options:[
+      {label:"Side with whichever team asked first.", correct:false, feedback:"Order of request is not a decision-ownership rule."},
+      {label:"Quantify the population and impact, explain the available treatments, and route the decision through the agreed authority.", correct:true, feedback:"Correct. The migration team should make the trade-off visible enough for the right person to decide, not silently choose speed or quality itself."},
+      {label:"Silently proceed, since Sales represents the customer relationship.", correct:false, feedback:"Choosing a side without routing it through the agreed authority is exactly the pattern to avoid."},
+      {label:"Silently delay, since Finance's concern sounds more serious.", correct:false, feedback:"Choosing the other side without routing it through the agreed authority has the same problem in reverse."}
+    ]
+  },
+  {
+    title:"Check 5",
+    question:"When should a migration team escalate a stakeholder delay?",
+    options:[
+      {label:"As soon as any response is late, regardless of impact.", correct:false, feedback:"Not every late response needs escalation. Escalate because of consequence, not frustration."},
+      {label:"When the delay threatens an agreed migration outcome, such as a mapping baseline or cutover readiness.", correct:true, feedback:"Correct. Escalate when delay threatens an agreed migration outcome, not merely because it is irritating."},
+      {label:"Only after the third reminder, regardless of what is at stake.", correct:false, feedback:"A fixed reminder count is not the right trigger; consequence is."},
+      {label:"Never, since escalation always damages the relationship.", correct:false, feedback:"Constructive escalation is a normal, professional part of migration work when the consequence justifies it."}
+    ]
+  },
+  {
+    title:"Check 6",
+    question:"What makes an escalation constructive rather than just a complaint?",
+    options:[
+      {label:"Making clear how frustrated the migration team is.", correct:false, feedback:"Frustration does not help the next authority make a decision."},
+      {label:"Stating the evidence, impact, options and the decision required.", correct:true, feedback:"Correct. Good escalation gives the next authority enough information to make a decision."},
+      {label:"Copying in as many senior people as possible.", correct:false, feedback:"Wide distribution alone does not make an escalation useful or decision-ready."},
+      {label:"Waiting until the deadline has already passed before raising it.", correct:false, feedback:"Escalating earlier, with the evidence and impact clear, gives the decision the best chance of being made in time."}
+    ]
+  }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The challenge",title:"Everyone was invited",type:"mcq",
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Data migration is highly dependent work. The migration team may build the pipeline, but it needs source knowledge, business definitions, mapping decisions, cleansing actions, target configuration, validation, financial reconciliation and acceptance from people across the project and business.</p>
+ </div>
+ <p class="lead">Bramwell has 760 active customers with missing payment terms. After cleansing work, 214 remain unresolved and 23 new exceptions have appeared.</p>
+ <p>The migration analyst sends a meeting invitation to Finance, Sales, Customer Service, IT and the project team with the title "Customer Data Issues". The attachment contains 237 rows. The meeting lasts an hour.</p>
+ <p>The result:</p>
+ <ul class="framework-checks">
+   <li>Finance says some records are not theirs.</li>
+   <li>Sales asks what decision is required.</li>
+   <li>Customer Service says it needs the customer names, not just IDs.</li>
+   <li>IT discusses whether the field is mandatory in the target.</li>
+   <li>Nobody agrees who will resolve the remaining population.</li>
+   <li>The analyst schedules another meeting for next week.</li>
+ </ul>
+ <h3>Your decision</h3>`,
+ options:[
+   {label:"Invite more senior people to the next meeting.", correct:false, feedback:"More seniority in the room does not fix an undefined ask. The same confusion is likely to repeat, just with more expensive attendees."},
+   {label:"Send the same spreadsheet earlier so everyone has more time to read it.", correct:false, feedback:"More reading time does not tell each stakeholder what decision or action is actually required of them."},
+   {label:"Break the issue into clear stakeholder actions: identify which population needs business correction, which needs a mapping or configuration decision, who owns each decision, and what evidence each recipient needs to act.", correct:true, feedback:"Stakeholder management is not maximising attendance. It is getting the right information, decision or action from the right person at the right time."},
+   {label:"Ask the migration team to choose reasonable defaults so stakeholder meetings are no longer required.", correct:false, feedback:"Choosing defaults for business classification and financial treatment is exactly the kind of decision the migration team should not make on its own."}
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Breaking the 237 rows into clear stakeholder actions does not resolve every record immediately. It replaces one confused meeting with several precise, ownable requests.</p>
+ <p>The migration team separates the population by the kind of action needed: which records need a business correction, which need a mapping or configuration decision, and which are genuinely someone else's data quality problem. Each slice gets a named recipient and a specific ask.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not communicate migration activity. Communicate what the stakeholder needs to know, decide or do.</div>
+ <h3>Map the migration ecosystem</h3>
+ <p>A migration can depend on many stakeholder groups. The exact titles vary, but the needs are recognisable. Explore each one below.</p>`,
+ items: stakeholders,
+ takeawayHtml:`<div class="principle"><strong>Core principle</strong><br>Know what you need from each stakeholder before you ask for their time.</div>`
+},
+{
+ id:"b3",nav:"Seeing it differently",title:"Stakeholders see the same issue differently",type:"content",
+ html:`<p class="lead">Consider a customer with missing payment terms. The same fact looks like a different question depending on who receives it.</p>
+ <div class="visual-card">
+   <div class="visual-title">One issue, several questions</div>
+   <ul class="framework-checks">
+     <li><strong>Migration analyst:</strong> which records are affected and what source values exist?</li>
+     <li><strong>Finance:</strong> what commercial or payment treatment is correct?</li>
+     <li><strong>Sales:</strong> which customers are important, and who owns the relationship?</li>
+     <li><strong>Target functional consultant:</strong> which payment-term values are valid or configured?</li>
+     <li><strong>Project manager:</strong> will this threaten the next cycle or cutover?</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Good stakeholder communication translates one migration issue into the consequence that matters to the recipient.</p></div></div>
+ <h3>Ask for a decision, not a discussion</h3>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>Please review the attached payment-term exceptions and provide your thoughts.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger</div><p>Decision or action required: 214 active customers still have no valid payment-term treatment for the next migration cycle. Finance owns the business treatment. Attached file separates customers with identifiable historical terms from those requiring a new decision. Please confirm correction or treatment for the first 50 priority customers by Thursday 12:00. Unresolved records will remain controlled migration exceptions.</p></div></div>
+ <p>A strong request usually makes clear: what is required, why it matters, which population is affected, what evidence is provided, who owns the action or decision, when it is needed, and what happens if it remains unresolved.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Make it easier to decide than to postpone.</div>
+ <h3>Use the right level of detail</h3>
+ <div class="visual-card">
+   <div class="visual-title">One migration, several audiences</div>
+   <ul class="framework-checks">
+     <li><strong>Developer:</strong> record key, rule, error, log evidence, affected population.</li>
+     <li><strong>Business or data owner:</strong> business context, affected records, options, consequence.</li>
+     <li><strong>Finance owner:</strong> population, financial impact, reconciliation evidence, treatment required.</li>
+     <li><strong>Project manager:</strong> status, material risk, owner, due date, impact on cycle or cutover.</li>
+     <li><strong>Operational validator:</strong> specific records or scenarios and expected behaviour.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Do not make every stakeholder consume the migration at the level the migration team works at.</div>`
+},
+{
+ id:"b4",nav:"Build it yourself",title:"Build it yourself: Stakeholder action plan",type:"reflection",
+ html:`<p class="lead">Bramwell has four open items before the next cycle. For each, someone needs a stakeholder, a required action, evidence, a deadline and a clear consequence if it is late.</p>
+ <div class="visual-card">
+   <div class="visual-title">Four open Bramwell issues</div>
+   <ul class="framework-checks">
+     <li><strong>214 customers missing valid payment terms:</strong> Finance or data owner confirms treatment or correction, using a prioritised customer list plus source evidence. If late, records remain exceptions and cycle completeness is affected.</li>
+     <li><strong>18 CustomerGroup 99 records:</strong> customer data or mapping authority approves treatment, using the 18-record population plus business context and options. If late, the mapping baseline cannot close for those records.</li>
+     <li><strong>7 key-account delivery addresses still missing:</strong> migration team plus business validator confirm the corrected population, using before-and-after relationship evidence. If late, key-account usability is not proved.</li>
+     <li><strong>Product/site prerequisite delayed Cycle 3:</strong> functional or product owner completes a readiness checkpoint, using a dependency checklist and the prior delay evidence. If late, product and order sequence and timing are at risk.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Stakeholder Action Plan: issue, required action or decision, owner, evidence, due date, consequence, status.</p></div></div>
+ <p>Pick one of the four issues above. Write it out as a genuine stakeholder request: who it goes to, exactly what you are asking them to do, what evidence you are giving them, and what happens if it slips.</p>
+ <textarea id="reflection" placeholder="For the issue I have chosen, the request should say..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/owner|finance|business|validator|functional/i, strength:"You named a specific owner for the request.", gap:"Name a specific stakeholder or role as the owner of the request." },
+   { test:/evidence|list|population|checklist/i, strength:"You included the evidence you would give the stakeholder.", gap:"State what evidence you would give the stakeholder to help them decide." },
+   { test:/deadline|by |date|thursday|before/i, strength:"You gave the request a clear deadline.", gap:"Give the request a specific deadline, not just an open-ended ask." },
+   { test:/consequence|remain|exception|risk|delay|affected/i, strength:"You explained what happens if the request is not met in time.", gap:"State the consequence if the stakeholder does not respond in time." },
+   { test:/decision|action|confirm|approve|treatment/i, strength:"You were specific about the decision or action being requested.", gap:"Be specific about exactly what decision or action you are asking for." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Decision required: treatment for the 18 active German customers with legacy CustomerGroup 99. Owner: authorised customer-data or mapping authority. Evidence: the 18-record population, the legacy procedure describing 99 as special export, and the six strategic customers within it. Needed before the mapping baseline freeze for the next cycle. If unresolved by then, these records remain open exceptions and the mapping baseline cannot close for them.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuinely usable stakeholder request. It gives the recipient everything they need to act.":"You have the right shape. Make sure the owner, evidence, deadline and consequence are all explicit rather than implied."}</div>`
+},
+{
+ id:"b5",nav:"Movement, not meetings",title:"Meetings should produce movement",type:"content",
+ html:`<p class="lead">A migration meeting is useful when it changes the state of the work.</p>
+ <ul class="framework-checks">
+   <li>A decision is made.</li>
+   <li>An owner accepts an action.</li>
+   <li>A blocker is removed.</li>
+   <li>Evidence is reviewed and accepted or rejected.</li>
+   <li>A deadline is agreed.</li>
+   <li>An escalation route is triggered.</li>
+ </ul>
+ <p>If the same issue is discussed repeatedly without any of these outcomes, the meeting itself is not control.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A recurring meeting is not evidence that an issue is being managed.</p></div></div>
+ <h3>Prepare stakeholders before you need them</h3>
+ <p>Do not introduce important stakeholders only when a deadline is already threatened.</p>
+ <ul class="framework-checks">
+   <li>Explain their migration responsibility early.</li>
+   <li>Show the type of decisions they will be asked to make.</li>
+   <li>Agree useful evidence formats.</li>
+   <li>Confirm expected response times.</li>
+   <li>Schedule validation capacity around known cycle dates.</li>
+   <li>Identify deputies or backups for critical roles where appropriate.</li>
+ </ul>
+ <p>Even when a named validator is pulled into an unrelated incident partway through a cycle, this preparation is what makes an agreed backup route possible, rather than quietly marking validation complete without them.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Stakeholder readiness is part of migration readiness.</div>`
+},
+{
+ id:"b6",nav:"Competing priorities",title:"Managing competing priorities and unusable answers",type:"content",
+ html:`<p class="lead">Business stakeholders usually have day jobs. Migration work competes with operational responsibilities.</p>
+ <p>Good practice includes:</p>
+ <ul class="framework-checks">
+   <li>Prioritise the records or decisions that genuinely matter first.</li>
+   <li>Batch related decisions rather than sending constant small requests.</li>
+   <li>Give reasonable notice where possible.</li>
+   <li>State milestone impact clearly.</li>
+   <li>Avoid manufacturing urgency through poor migration planning.</li>
+   <li>Escalate when a critical dependency is genuinely not being met.</li>
+ </ul>
+ <div class="principle"><strong>Core principle</strong><br>Respect stakeholder capacity, but do not hide the migration consequence of missed decisions.</div>
+ <p>A business owner who genuinely cannot review 300 exceptions overnight is not being difficult. Prioritise by business or migration risk, give context, agree a realistic decision approach, and be honest about the impact of records staying unresolved.</p>
+ <h3>When a stakeholder gives an answer you cannot use</h3>
+ <p>Examples:</p>
+ <ul class="framework-checks">
+   <li>"Use whatever is closest."</li>
+   <li>"I think those customers are probably export."</li>
+   <li>"Finance does not care as long as it loads."</li>
+   <li>"Ask Sales, this is their data."</li>
+   <li>"We can decide after go-live."</li>
+ </ul>
+ <p>Do not translate ambiguity into an approved migration rule. Clarify the decision, authority and consequence.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A response is not a decision until it is clear enough and authoritative enough to implement.</div>`
+},
+{
+ id:"b7",nav:"Conflicting needs",title:"Conflicting stakeholder needs",type:"content",
+ html:`<p class="lead">Migration often sits between valid but competing needs.</p>
+ <div class="visual-card">
+   <div class="visual-title">Finance wants cleansing, Sales wants speed</div>
+   <p>Finance wants payment terms cleansed before migration. Sales wants the cycle to proceed because the affected customers are low volume.</p>
+   <p>The migration team should quantify the population and impact, explain the available treatments, and route the decision through the agreed authority. It should not silently choose speed or quality.</p>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Your job is often to make the trade-off visible enough for the right person to decide.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Population That Was Never Actually Small", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/NeverSmall-Sam.mp3",
+   reflection:"Have you seen two stakeholders with genuinely valid but opposite priorities on the same population? How was it resolved?"
+ })}
+ <p>Source and target teams disagreeing about who caused a problem is a related pattern. Rather than hosting the argument, bring evidence to the boundary: the affected records, the expected rule, the actual target requirement and who owns each part. Frame the decision instead of refereeing the blame.</p>`
+},
+{
+ id:"b8",nav:"Tracking and escalating",title:"Tracking dependencies and escalating well",type:"content",
+ html:`<p class="lead">If a migration cannot proceed without a business decision, that decision is part of the migration plan, not an informal favour.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell stakeholder dependencies</div>
+   <ul class="framework-checks">
+     <li><strong>Payment-term treatments:</strong> owned by the Finance data owner, needed before the Cycle 4 baseline. Currently open. 214 records may remain exceptions if it slips.</li>
+     <li><strong>CustomerGroup 99 decision:</strong> owned by the customer data authority, needed before the mapping baseline freeze. Currently open. 18 records remain unresolved.</li>
+     <li><strong>Product or site readiness:</strong> owned by the functional owner, needed before product load. Currently planned. Open orders depend on products.</li>
+     <li><strong>Business validation capacity:</strong> owned by named validators, needed during the cycle validation window. Currently confirmed. Required for cycle completion.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Track decisions and stakeholder actions with the same seriousness as technical tasks.</div>
+ <h3>Know when delay becomes a risk</h3>
+ <p>Not every late response needs escalation. Escalate when delay threatens an agreed migration outcome:</p>
+ <ul class="framework-checks">
+   <li>Mapping baseline cannot close.</li>
+   <li>Cleansing cannot complete.</li>
+   <li>Build cannot be finalised.</li>
+   <li>Cycle scope must be reduced.</li>
+   <li>Validation window is threatened.</li>
+   <li>Cutover readiness is affected.</li>
+   <li>The same decision has missed repeated agreed dates.</li>
+ </ul>
+ <div class="principle"><strong>Turner Page principle</strong><br>Escalate because of consequence, not frustration.</div>
+ <h3>Escalate constructively</h3>
+ <div class="callout misconception"><div class="callout-label">Poor escalation</div><p>Finance still has not responded despite several reminders. This is blocking us.</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Constructive escalation</div><p>214 active customers still require payment-term treatment. Finance ownership was agreed and the decision date has passed. Without treatment by Thursday 12:00, these records will remain exceptions in Cycle 4 and the customer success criterion will need to reflect that population. Decision required: confirm treatment, accept controlled exceptions, or revise cycle scope.</p></div></div>
+ <div class="principle"><strong>Turner Page insight</strong><br>Good escalation gives the next authority enough information to make a decision.</div>`
+},
+{
+ id:"b9",nav:"Situations",title:"Situations: What would you do?",type:"situations",
+ html:`<p class="lead">For each situation, decide how to respond before you see the discussion.</p>`,
+ items:[
+   {
+     title:"Situation 1",
+     question:"A business owner says they cannot review 300 exceptions by tomorrow.",
+     options:[
+       {label:"Insist the deadline stands regardless.", correct:false, feedback:"A fixed insistence ignores real stakeholder capacity and does not make the review happen any faster."},
+       {label:"Prioritise by business or migration risk, provide context, and agree a realistic decision approach while exposing the impact of unresolved records.", correct:true, feedback:"Correct. Prioritise by business or migration risk, provide context, agree a realistic decision approach and expose the impact of unresolved records."},
+       {label:"Quietly reduce the population to 50 records without telling anyone.", correct:false, feedback:"Silently shrinking the population hides the real position rather than managing it."},
+       {label:"Cancel the review entirely since it is too large.", correct:false, feedback:"Cancelling loses the decision entirely rather than making it realistic and achievable."}
+     ]
+   },
+   {
+     title:"Situation 2",
+     question:"A director replies \"Looks fine to me\" to a mapping issue but is not the agreed mapping authority.",
+     options:[
+       {label:"Treat it as approved, since a director outranks most people involved.", correct:false, feedback:"Do not treat seniority as automatic authority."},
+       {label:"Route the decision through the agreed owner instead.", correct:true, feedback:"Correct. Do not treat seniority as automatic authority. Route the decision through the agreed owner."},
+       {label:"Ask a second director to confirm instead.", correct:false, feedback:"Collecting more senior opinions does not substitute for the agreed decision authority."},
+       {label:"Implement it and mention it to the mapping authority afterwards.", correct:false, feedback:"Implementing before the agreed authority has actually decided risks building an unapproved rule."}
+     ]
+   },
+   {
+     title:"Situation 3",
+     question:"An issue is low impact and does not affect the next milestone, and there has been no response after three reminders.",
+     options:[
+       {label:"Escalate immediately, since three reminders is the trigger.", correct:false, feedback:"A fixed reminder count is not the right escalation trigger; consequence is."},
+       {label:"Continue tracking without unnecessary escalation, since escalation should be proportionate to consequence.", correct:true, feedback:"Correct. Continue tracking without unnecessary escalation. Escalation should be proportionate to consequence."},
+       {label:"Close the item as resolved since nobody has objected.", correct:false, feedback:"Silence is not the same as resolution; the item should stay tracked, just without escalation."},
+       {label:"Reassign it to a different stakeholder without agreement.", correct:false, feedback:"Reassigning ownership without agreement does not resolve the item and creates a new ownership question."}
+     ]
+   }
+ ],
+ takeawayHtml:`<div class="principle"><strong>The pattern across all three</strong><br>Match your response to actual consequence: make genuine capacity constraints workable, respect real authority wherever it sits, and keep escalation proportionate rather than automatic.</div>`
+},
+{
+ id:"b10",nav:"AI and communication",title:"AI can improve stakeholder communication",type:"content",
+ html:`<ul class="framework-checks">
+   <li>Turn technical findings into audience-specific summaries.</li>
+   <li>Draft concise decision requests.</li>
+   <li>Group exceptions by likely owner.</li>
+   <li>Summarise meeting decisions and actions.</li>
+   <li>Identify overdue stakeholder dependencies.</li>
+   <li>Compare conflicting statements and expose the unresolved decision.</li>
+ </ul>
+ <div class="principle"><strong>AI principle</strong><br>Use AI to make communication clearer and faster. Verify the facts, authority and business consequence before sending or implementing anything.</div>`
+},
+{
+ id:"b11",nav:"Reflection",title:"Reflection",type:"reflection",
+ html:`<p class="lead">Think of a project issue that was discussed repeatedly without moving.</p>
+ <p>What was missing: a clear decision, the right owner, usable evidence, a deadline, or a visible consequence?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Mentor coaching prompt</div><p>Stakeholder problems often become easier when you define the exact movement required from the current state to the next one.</p></div></div>
+ <textarea id="reflection" placeholder="The issue that kept being discussed without moving was missing..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/decision/i, strength:"You identified whether a clear decision was actually missing.", gap:"Say whether a clear, specific decision was ever defined." },
+   { test:/owner|ownership|who owns|responsib/i, strength:"You identified whether the right owner was missing.", gap:"Say whether the right owner was ever named." },
+   { test:/evidence|data|information/i, strength:"You identified whether usable evidence was missing.", gap:"Say whether usable evidence was actually provided." },
+   { test:/deadline|date|by when|time/i, strength:"You identified whether a deadline was missing.", gap:"Say whether a real deadline was ever set." },
+   { test:/consequence|impact|risk|cost/i, strength:"You identified whether the consequence was made visible.", gap:"Say whether the consequence of not deciding was made visible to anyone." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The issue kept being discussed because nobody had turned it into a decision with a named owner, a deadline and a stated consequence. Once those four things were made explicit, the same facts that had circulated for weeks were resolved within days.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a precise, useful diagnosis. You are looking at exactly the elements that turn discussion into movement.":"You have the right instinct. Try naming which of decision, owner, evidence, deadline or consequence was specifically missing, rather than describing the issue in general terms."}</div>`
+},
+{
+ id:"b12",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Migration depends on stakeholders across source, business, finance, target, technical, test and operations.</li>
+   <li>Know what you need from a stakeholder before asking for their time.</li>
+   <li>Translate migration issues into the consequence that matters to the recipient.</li>
+   <li>Ask for specific decisions or actions rather than general review.</li>
+   <li>Give each audience the level of detail it needs.</li>
+   <li>Use meetings to create decisions, actions or evidence, not simply discussion.</li>
+   <li>Prepare critical stakeholders before the migration needs them.</li>
+   <li>Respect competing priorities while making milestone consequences visible.</li>
+   <li>Do not convert vague responses into approved rules.</li>
+   <li>Track stakeholder decisions as migration dependencies.</li>
+   <li>Escalate when delay threatens an agreed outcome, not merely because it is irritating.</li>
+   <li>Constructive escalation states the evidence, impact, options and decision required.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Effective stakeholder management is not about keeping everyone informed. It is about getting the right evidence, action and decision from the right people early enough for the migration to keep moving under control.</div>`
+},
+{
+ id:"b13",nav:"Knowledge check",title:"Test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it does not affect certification.</p>`,
+ items: knowledgeCheck,
+ takeawayHtml:`<div class="feedback good"><strong>That is the knowledge check done.</strong> Carry on to finish the lesson.</div>`
+},
+{
+ id:"b14",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Working effectively with migration stakeholders.</strong></p>
+ <p>Bramwell can now turn stakeholder involvement into concrete migration decisions and actions rather than repeated discussion.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Managing scope, issues, risks and decisions</strong></p>
+ <p>You will learn how to keep changes, problems, uncertainties and decisions visible without turning the Core migration role into full project governance.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next stakeholder conversation and ask how it should change your approach.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 7",
+  moduleTitle: "Governance & Stakeholder Management",
+  lessonLabel: "Lesson 2: Working effectively with migration stakeholders",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Getting decisions, evidence and action from the people migration depends on",
+  storageKey: "tp_core7_lesson2_v1",
+  lessonId: "core7-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
