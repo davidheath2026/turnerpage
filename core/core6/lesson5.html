@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Executing cutover and stabilising afterwards</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 6 — LESSON 5 DATA (final lesson of the module). All
+   chrome, styling and engine behaviour come from shared/
+   turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-4 and the story bible: 42,600
+   open sales orders; 18 CustomerGroup 99 records as a controlled
+   exception with an agreed cutover treatment and owner, no specific
+   target mapping invented. Cutover times and the failure scenario are
+   illustrative training details.
+============================================================== */
+
+// Section 6 — "The open-order failure". A genuinely sequential
+// recovery walkthrough, each step depending on the one before it, so
+// this uses guidedSteps rather than a graded quiz type.
+const recoverySteps = [
+  { title:"Stop automatic restart or dependent activity", html:`<p>At 02:21, 26 minutes after starting, the open-sales-order load stops when the target connection is interrupted. The first move is not to guess and rerun. It is to stop anything that might restart automatically or depend on this step, so nothing compounds an already uncertain situation.</p>` },
+  { title:"Establish the actual target state", html:`<p>Using the agreed control/recovery procedure, the team queries the target directly rather than trusting the job log. This is the moment that turns "we don't know" into an actual answer.</p>` },
+  { title:"Determine which population, if any, was committed", html:`<p>Of the 42,600 orders in the load-ready population, the target confirms a specific number of orders were genuinely committed before the interruption. Everything else is still outstanding.</p>` },
+  { title:"Apply the tested recovery route for the confirmed state", html:`<p>The runbook says not to rerun when commit state is unknown, but commit state is no longer unknown; it has just been confirmed. The team applies the recovery route that matches this specific, now-known state.</p>` },
+  { title:"Reconcile the recovered/reprocessed population", html:`<p>Committed orders, reprocessed orders and any remaining exceptions are reconciled back to the original 42,600, so nothing is left unaccounted for.</p>` },
+  { title:"Rerun the required order validation", html:`<p>The recovered population still needs the same validation any other cycle output would need: population, relationships and critical values all checked before anyone treats it as trustworthy.</p>` },
+  { title:"Update the cutover timing forecast and communicate the impact", html:`<p>Only now, with real evidence in hand, does the team update the forecast and tell the rest of the cutover team what actually happened and what it means for the remaining window.</p>` }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Thirty-five minutes behind",title:"Opening scenario: Thirty-five minutes behind",type:"mcq",
+ html:`<p class="lead">Bramwell production migration starts on Friday evening. Customers complete successfully. The product/site step then finishes 35 minutes later than the runbook planned.</p>
+ <p>The next step is the open-sales-order migration. The data is ready, dependencies have passed and the current forecast still fits inside the overall cutover window, but contingency has reduced.</p>
+ <div class="quote">"Let's skip the planned product reconciliation to recover 20 minutes. The load accepted everything."<br><span class="small">Developer</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Skip it. Recovering schedule is now the priority.",
+ "Continue with the reconciliation as planned, record the delay and reassess the critical path using actual progress.",
+ "Stop the whole cutover because any delay means the rehearsal timings were wrong.",
+ "Start open orders in parallel with the product reconciliation even if the dependency control has not passed."
+ ],
+ _correctIndex:1,
+ feedback:[
+ "Accepting everything is not the same as the migrated data being correct and connected. Removing a control to save time trades known evidence for an assumption.",
+ "Correct. A delay is evidence to manage. Do not remove a critical control merely to make the schedule look healthier.",
+ "A single delay within tolerance does not invalidate the entire event. Escalation should match the actual severity.",
+ "Starting a dependent step before its control has passed risks building on an unconfirmed result."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option B and runs the product reconciliation exactly as planned, despite the temptation to claim back 20 minutes.</p>
+ <p>The reconciliation takes its usual time. It also does its job.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the reconciliation actually finds</div>
+   <ul class="framework-checks">
+     <li><strong>Product population:</strong> reconciles exactly as expected.</li>
+     <li><strong>Site/warehouse relationships:</strong> one product-site relationship failed to resolve during the delayed load, invisible from the loader's "accepted everything" status.</li>
+     <li><strong>Consequence if skipped:</strong> open orders referencing that product at that site would have proceeded on a false assumption, only surfacing as a business failure later, with far less time to fix it.</li>
+   </ul>
+ </div>
+ <p>The 20 minutes the team would have "recovered" would have cost far more than 20 minutes to unwind once a live order failed downstream. Contingency stayed reduced, but the control did exactly what it was there for.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>When cutover deviates from plan, protect control before appearance.</p></div></div>`
+},
+{
+ id:"b3",nav:"Manage reality",title:"Execute the runbook, but manage reality, and use control points before dependent work",type:"content",
+ html:`<p class="lead">The runbook is the baseline for execution. It is not a prediction that nothing will change. During cutover, record actual start and finish times, actual counts and control results, exceptions and failures, retries/reprocessing, changes from the planned sequence, decisions and who made them, hand-offs and confirmations, and forecast impact on downstream steps.</p>
+ <div class="principle"><strong>Core principle</strong><br>The plan tells you what should happen. The execution record tells you what is happening. Cutover control depends on knowing the difference.</div>
+ <p>A completed job is not automatically a completed migration step.</p>
+ <div class="visual-card">
+   <div class="visual-title">Step completed versus control before continuation</div>
+   <ul class="framework-checks">
+     <li><strong>Customer load:</strong> population, critical exceptions and required relationships accounted for.</li>
+     <li><strong>Product/site load:</strong> product population and site/warehouse dependencies validated.</li>
+     <li><strong>Open-order load:</strong> counts, values and critical relationships reconcile.</li>
+     <li><strong>Critical data migration:</strong> required functional/business validation complete.</li>
+     <li><strong>Production migration:</strong> required evidence available for the relevant release/acceptance decision.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A control point exists to prevent a bad upstream result becoming a larger downstream problem.</p></div></div>`
+},
+{
+ id:"b4",nav:"Live position, right response",title:"Keep a live cutover position, and distinguish exception, incident and decision point",type:"content",
+ html:`<p class="lead">Times are illustrative, but the discipline is real: keep the team working from a shared factual position rather than memory or optimism.</p>
+ <div class="visual-card">
+   <div class="visual-title">Illustrative live cutover position</div>
+   <ul class="framework-checks">
+     <li><strong>Customers:</strong> planned complete 21:15, actual 21:11, 4 minutes gained.</li>
+     <li><strong>Products/site:</strong> planned complete 00:05, actual 00:40, 35 minutes delayed.</li>
+     <li><strong>Product control point:</strong> planned complete 00:30, in progress, forecast +35 minutes.</li>
+     <li><strong>Open orders:</strong> planned start 00:30, not started, awaiting dependency control.</li>
+     <li><strong>Critical validation:</strong> planned start 03:15, forecast 03:50, contingency reduced.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Update the forecast when reality changes. Do not keep reporting against a schedule that has already ceased to be true.</div>
+ <p>Not every deviation is the same kind of thing.</p>
+ <div class="visual-card">
+   <div class="visual-title">Type to example and response</div>
+   <ul class="framework-checks">
+     <li><strong>Controlled exception:</strong> 18 known CustomerGroup records follow the approved cutover treatment. Account for them as planned and continue if criteria are met.</li>
+     <li><strong>Migration incident:</strong> product load takes 35 minutes longer than expected. Record, investigate enough to assess impact, update forecast.</li>
+     <li><strong>Material failure:</strong> open-order load stops with unknown target commit state. Pause dependent work and use the tested recovery/escalation route.</li>
+     <li><strong>Decision point:</strong> remaining contingency falls below the agreed threshold. Escalate to the authorised cutover decision route.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Not every problem is a crisis, but every material deviation needs the right response.</div>`
+},
+{
+ id:"b5",nav:"The open-order failure",title:"Build it yourself: the open-order failure",type:"guidedSteps",
+ html:`<p class="lead">At 01:55, Bramwell starts the open-sales-order load. At 02:21 the process stops after 26 minutes. 42,600 orders were in the load-ready population, the final committed target count is not yet known, the connection to the target was interrupted, and the runbook says not to rerun when commit state is unknown. Walk through the correct recovery sequence, one step at a time.</p>`,
+ steps: recoverySteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Do not recover from the state you hope the system is in. Recover from the state the evidence proves it is in.</p></div></div>`
+},
+{
+ id:"b6",nav:"Do not improvise",title:"Do not improvise away repeatability, and know when to escalate",type:"content",
+ html:`<p class="lead">Time pressure creates tempting shortcuts: edit failed records directly in production, change a cross-reference without recording it, rerun a job from an arbitrary point, skip validation because a loader reports success, use a different file because it looks newer, or ask one expert to fix the problem outside the runbook.</p>
+ <p>Sometimes an emergency change is genuinely necessary. If so, it still needs control: what changed, why, who authorised it, which population is affected and what must be retested.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Urgency changes the speed of the decision. It does not remove the need to understand the consequence.</p></div></div>
+ <p>Escalation is appropriate when the issue exceeds the authority or safe operating boundary of the person executing the step: critical-path timing threatens the available window, required validation cannot be completed, target state cannot be established, material financial reconciliation fails, a production mapping treatment is disputed, a major dependent object cannot proceed, recovery would require an untested approach, or business release criteria may not be met.</p>
+ <div class="principle"><strong>Core principle</strong><br>Escalate the decision, not just the problem. State what happened, impact, options, evidence and time available.</div>
+ ${TPKit.fromField({
+   title:"The Twenty Minutes We Didn't Skip", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/core6-lesson5-fromfield-elena.mp3",
+   reflection:"Have you felt the pull to skip a planned control during a live cutover, purely to claim back a few minutes of schedule?"
+ })}`
+},
+{
+ id:"b7",nav:"Communication and validation",title:"Communication should be factual and useful, and production validation is part of cutover",type:"content",
+ html:`<p class="lead">Compare two updates during the same incident.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak versus useful update</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "Open orders failed. Team investigating."</li>
+     <li><strong>Useful:</strong> "02:21: Open-order load stopped after target connection interruption. Commit state is being established under recovery procedure REC-ORD-02. Dependent validation is paused. Current cutover forecast is unchanged pending state confirmation; next update 02:40."</li>
+   </ul>
+ </div>
+ <p>A useful update tells the recipient what happened, current state, impact, action and next decision/update point.</p>
+ <p>After the migration runs, prove the production result against the agreed release controls: population reconciliation, material financial/control totals, critical field/rule validation, key relationships and dependencies, required functional smoke tests, known exception accounting, and critical defect status.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>The migration is not complete when the last load finishes. It is complete when the required production evidence shows what the load produced.</div>`
+},
+{
+ id:"b8",nav:"Accept what actually happened",title:"Acceptance must reflect the actual production result",type:"content",
+ html:`<p class="lead">Rehearsal sign-off provides confidence, but the release decision must consider production evidence. If production differs materially from rehearsal, state the difference explicitly: new exception values, changed mapping/build/configuration, different runtime, new defect, unplanned manual intervention, or changed validation result.</p>
+ <div class="principle"><strong>Core principle</strong><br>Accept the production migration you actually executed, not the rehearsal you remember.</div>`
+},
+{
+ id:"b9",nav:"Stabilisation and its causes",title:"What stabilisation means, and whether an issue is really a migration issue",type:"content",
+ html:`<p class="lead">After business release, migration work does not instantly disappear. A short stabilisation or hypercare period may be needed to confirm that migrated data continues to behave correctly in live operation.</p>
+ <div class="visual-card">
+   <div class="visual-title">Migration-focused stabilisation can include</div>
+   <ul class="framework-checks">
+     <li>Monitoring known migrated-data exceptions</li>
+     <li>Investigating live issues that may be migration-related</li>
+     <li>Reconciling critical populations after initial business processing</li>
+     <li>Confirming key migrated relationships continue to work</li>
+     <li>Completing agreed lower-priority validation</li>
+     <li>Tracking residual data corrections</li>
+     <li>Supporting clear handover to operational owners</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Stabilisation is not an excuse to postpone critical cutover validation. It is the controlled follow-through after the required release evidence has passed.</p></div></div>
+ <p>Not every post-go-live problem is caused by migration.</p>
+ <div class="visual-card">
+   <div class="visual-title">Symptom to possible causes</div>
+   <ul class="framework-checks">
+     <li><strong>Order cannot release:</strong> migrated customer/product relationship, target configuration, workflow, permissions or integration.</li>
+     <li><strong>Customer balance looks wrong:</strong> migration, report logic, post-go-live transaction, FX/reporting basis.</li>
+     <li><strong>Address missing:</strong> migration defect, user change after go-live, application behaviour.</li>
+     <li><strong>Product unavailable:</strong> migration relationship, target setup, inventory/process issue.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Treat migration as a hypothesis to test, not the automatic cause of every live defect.</div>`
+},
+{
+ id:"b10",nav:"Preserve evidence, close issues",title:"Preserve the production baseline, and manage residual migration issues to closure",type:"content",
+ html:`<p class="lead">When investigating a live issue, know what the migration originally produced before operational changes obscure the evidence: production source/extract identity, mapping/reference/build baseline, load and exception results, validation outputs, accepted residual exceptions, manual/emergency changes made during cutover, and the production sign-off record.</p>
+ <div class="principle"><strong>Core principle</strong><br>If the live system changes after go-live, production migration evidence is what lets you distinguish migration output from later operational activity.</div>
+ <p>A residual issue should not remain indefinitely labelled "hypercare". Track affected population, business impact, owner, treatment, priority, temporary workaround if any, validation after correction, and target closure date or transfer to normal support.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Stabilisation should reduce the migration issue list and transfer ownership deliberately, not create a permanent parallel support process.</p></div></div>`
+},
+{
+ id:"b11",nav:"When stabilisation ends",title:"Know when migration stabilisation can end",type:"content",
+ html:`<p class="lead">Useful exit indicators include critical production reconciliations remaining stable, no unresolved high-impact migration defects, residual issues having owners and accepted treatment, normal business processing not exposing new systemic migration failures, migration-specific monitoring no longer producing material findings, required documentation/evidence handed over, and remaining items being manageable through normal operational support.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Hypercare ends when migration-specific risk has reduced enough for remaining issues to be managed through normal ownership.</div>`
+},
+{
+ id:"b12",nav:"Judgement calls",title:"Judgement calls: what do you do now?",type:"content",
+ html:`<p class="lead">Five situations show that the right cutover response depends on real evidence, not instinct.</p>
+ <div class="quote">All controls pass and the updated forecast remains within the window despite a 35-minute delay.</div>
+ <p>Continue under the runbook, preserve controls and monitor reduced contingency.</p>
+ <div class="quote">A loader says 100% success, but the post-load reconciliation has not yet run.</div>
+ <p>Do not treat loader success as migration completion. Perform the required control point.</p>
+ <div class="quote">A user reports an incorrect address on the Monday morning after go-live.</div>
+ <p>Compare production migration evidence with current target state and source/rule evidence before assigning cause.</p>
+ <div class="quote">Open AR differs materially from the agreed production control total and no explanation is available.</div>
+ <p>Escalate under the cutover decision route. Do not release merely because other objects passed.</p>
+ <div class="quote">Five low-impact residual issues remain after a week, all with owners, workarounds and planned treatment, and no systemic migration pattern remains.</div>
+ <p>Potentially transition them to normal support and close migration stabilisation if exit criteria are met.</p>`
+},
+{
+ id:"b13",nav:"AI and stabilisation",title:"AI can support cutover and stabilisation",type:"content",
+ html:`<p class="lead">AI can assist with summarising runbook progress from execution records, comparing actual versus planned timings, clustering load/reconciliation errors, drafting factual status updates, comparing production validation with rehearsal results, helping triage post-go-live issues against migration evidence, and identifying recurring residual issues.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to accelerate awareness and investigation. Do not let it authorise a cutover deviation, acceptance decision or unverified production correction.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Twenty minutes, or knowing sooner?",type:"reflection",
+ html:`<p>During a cutover delay, a control could be skipped to recover time.</p>
+ <div class="quote">Which is more valuable: recovering 20 minutes by skipping a control, or knowing 20 minutes earlier that the migration result is wrong?</div>
+ <p>Think about why the control exists and what downstream cost an undetected migration defect could create.</p>
+ <textarea id="reflection" placeholder="I think the more valuable one is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/downstream|later|cost/i, strength:"You considered the downstream cost of an undetected defect appearing later.", gap:"Consider how much more expensive an undetected defect becomes the later it is found." },
+   { test:/control|evidence|check/i, strength:"You connected your answer to what the control actually exists to prove.", gap:"Consider what the control actually exists to prove, not just the time it takes." },
+   { test:/business|live|production/i, strength:"You considered the real business consequence of a live defect versus a delayed schedule.", gap:"Consider the real business consequence of a live defect, compared with a delayed schedule." },
+   { test:/twenty|20|minute/i, strength:"You weighed the specific 20-minute saving against what it actually risks.", gap:"Consider explicitly weighing the 20 minutes saved against what skipping the control actually risks." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Knowing 20 minutes earlier that the result is wrong is far more valuable. A control exists precisely to catch a problem while it is still cheap and contained. Skipping it to save 20 minutes of schedule can cost far more than 20 minutes once a live business process fails because of something the control would have caught.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely disciplined cutover thinking. You are weighing real consequence, not just the clock.":"You have made a start. Push further into what the control specifically exists to catch, and what it costs to miss it."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Lesson and Module 6 summary",type:"content",
+ html:`<p class="lead">Bramwell has moved from repeated migration rehearsal through production execution and into controlled stabilisation.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>The runbook is the baseline for execution, not a prediction that nothing will change.</li>
+   <li>Use control points before dependent work proceeds, and update the live position when reality changes.</li>
+   <li>Distinguish controlled exceptions, migration incidents, material failures and decision points.</li>
+   <li>Recover from the state the evidence proves, not the state you hope the system is in.</li>
+   <li>Do not improvise away repeatability; escalate decisions, not just problems.</li>
+   <li>Communication should be factual: what happened, current state, impact, action and next update.</li>
+   <li>Production validation is part of cutover, not an optional postscript.</li>
+   <li>Accept the production migration you actually executed, not the rehearsal you remember.</li>
+   <li>Stabilisation confirms migrated data behaves correctly in live operation, without becoming a permanent parallel process.</li>
+   <li>Treat migration as a hypothesis to test for post-go-live issues, not the automatic cause.</li>
+   <li>Preserve the production baseline to distinguish migration output from later operational activity.</li>
+   <li>Manage residual issues to closure and know when stabilisation can end.</li>
+ </ul>
+ <div class="visual-card">
+   <div class="visual-title">Across Module 6</div>
+   <ul class="framework-checks">
+     <li><strong>Lesson 1</strong> used repeated cycles to reduce uncertainty.</li>
+     <li><strong>Lesson 2</strong> turned cycle objectives into controlled execution.</li>
+     <li><strong>Lesson 3</strong> converted evidence into measurable improvement.</li>
+     <li><strong>Lesson 4</strong> built evidence-based production readiness and a credible runbook.</li>
+     <li><strong>Lesson 5</strong> controlled the live migration, proved the result and transitioned safely into operations.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Module principle</strong><br>Cutover should be the most rehearsed migration cycle, not the first time the project discovers how the migration really works.</div>`
+},
+{
+ id:"b16",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A step runs 35 minutes late during production cutover, and someone suggests skipping the planned reconciliation to save 20 minutes. What should happen?",
+   options:[
+     {label:"Skip it, since recovering the schedule is now the priority", correct:false, feedback:"Not quite. Removing a control to save time trades known evidence for an assumption."},
+     {label:"Continue with the reconciliation as planned, record the delay and reassess the critical path using actual progress", correct:true, feedback:"Correct. When cutover deviates from plan, protect control before appearance."},
+     {label:"Stop the entire cutover immediately", correct:false, feedback:"Not quite. A single delay within tolerance does not automatically require stopping the whole event."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A loader reports 100% success for open orders, but post-load reconciliation has not yet run. Is migration for this step complete?",
+   options:[
+     {label:"Yes, since the loader accepted every record", correct:false, feedback:"Not quite. Loader acceptance is not the same as the required control point being satisfied."},
+     {label:"No, a completed job is not automatically a completed migration step; the required control point still needs to run", correct:true, feedback:"Correct. A control point exists to prevent a bad upstream result becoming a larger downstream problem."},
+     {label:"Only a business user can decide whether this step is complete", correct:false, feedback:"Not quite. This is a migration control question, not a business decision."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"An open-order load stops with an unknown target commit state. What is the correct first step?",
+   options:[
+     {label:"Rerun the job immediately from the beginning", correct:false, feedback:"Not quite. Rerunning before the commit state is known risks duplicating or corrupting data."},
+     {label:"Stop automatic restart or dependent activity, then establish the actual target state using the agreed procedure", correct:true, feedback:"Correct. Do not recover from the state you hope the system is in; recover from the state the evidence proves it is in."},
+     {label:"Ask one expert to quietly fix it outside the runbook", correct:false, feedback:"Not quite. This is exactly the kind of improvisation that removes repeatability and evidence."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Which of these is a genuinely useful cutover status update?",
+   options:[
+     {label:"'Open orders failed. Team investigating.'", correct:false, feedback:"Not quite. This gives no state, impact, action or next update time."},
+     {label:"'02:21: Open-order load stopped after target connection interruption. Commit state is being established under recovery procedure REC-ORD-02. Next update 02:40.'", correct:true, feedback:"Correct. A useful update states what happened, current state, impact, action and the next decision/update point."},
+     {label:"Any update sent within five minutes of the incident", correct:false, feedback:"Not quite. Speed alone does not make an update useful; content does."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A user reports an incorrect address the Monday morning after go-live. What is the correct first step?",
+   options:[
+     {label:"Assume it is a migration defect, since migration is the most recent major change", correct:false, feedback:"Not quite. Treat migration as a hypothesis to test, not the automatic cause of every live defect."},
+     {label:"Compare production migration evidence with current target state and source/rule evidence before assigning cause", correct:true, feedback:"Correct. The cause could be migration, a user change after go-live, or application behaviour."},
+     {label:"Ignore it, since address issues are rarely serious", correct:false, feedback:"Not quite. Any live defect deserves proper investigation before it is dismissed."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Five low-impact residual issues remain a week after go-live, all with owners, workarounds and planned treatment, with no systemic pattern. What does this suggest?",
+   options:[
+     {label:"Stabilisation should continue indefinitely until every issue is fully closed", correct:false, feedback:"Not quite. Stabilisation should transfer ownership deliberately, not become a permanent parallel process."},
+     {label:"These issues may be ready to transition to normal support if the exit criteria are met", correct:true, feedback:"Correct. Hypercare ends when migration-specific risk has reduced enough for remaining issues to be managed through normal ownership."},
+     {label:"The migration must have failed, since issues still exist", correct:false, feedback:"Not quite. Owned, controlled, low-impact residual issues are a normal and acceptable outcome."}
+   ]
+  }
+ ]
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Executing cutover and stabilising afterwards, and Core Module 6.</strong></p>
+ <p>Bramwell has moved from repeated migration rehearsal through production execution and into controlled stabilisation.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p><strong>Module 7: Governance &amp; Stakeholder Management</strong> completes the Core Programme by focusing on ownership, accountability, stakeholder working, scope and risk control, data controls, escalation and professional accountability.</p>
+ <p>Before moving on, complete the Core Module 6 assessment to confirm what you have learned across all five lessons.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 6",
+  moduleTitle: "Data Migration Cycles & Cutover",
+  lessonLabel: "Lesson 5: Executing cutover and stabilising afterwards",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Protect control before appearance",
+  storageKey: "tp_core6_lesson5_v1",
+  lessonId: "core6-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

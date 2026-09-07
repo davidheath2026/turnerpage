@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Why migration happens in cycles</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 6 — LESSON 1 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Modules 1-5 and the story bible: Cycle 1
+   customer transform 42 min/load 58 min; Cycle 2 customer transform
+   31 min/load 49 min; established SO-78452 dependency chain.
+============================================================== */
+
+// Section 6 — "Define Bramwell Cycle 3". The learner matches each
+// cycle objective to the success criterion that actually proves it.
+// Options are reordered per item so the correct answer's position
+// does not track the item number.
+const criterionLabels = [
+  "All agreed objects complete with populations fully accounted for",
+  "No unexplained dependency failures; required relationships validate",
+  "Selected migrated orders progress through agreed functional checks",
+  "Start/end duration recorded for each major migration and validation step",
+  "At least one planned recovery/reprocessing scenario executed and evidenced",
+  "Validation results and material exceptions available to owners within the agreed window"
+];
+const objectiveItems = [
+  {
+   q:"Execute the agreed customer, product and open-sales-order scope together.",
+   order:[3,0,5,1,4,2], a:0,
+   why:"Executing integrated scope is only proved by every agreed object completing with its population fully accounted for, not merely by the jobs finishing."
+  },
+  {
+   q:"Prove object dependencies and sequencing.",
+   order:[4,1,2,5,0,3], a:1,
+   why:"This objective is specifically about relationships and order, so its proof is that no dependency failure goes unexplained and required relationships actually validate."
+  },
+  {
+   q:"Validate end-to-end order relationships.",
+   order:[0,4,2,3,1,5], a:2,
+   why:"Proving usability, not just structure, means selected migrated orders must actually progress through the agreed functional checks."
+  },
+  {
+   q:"Capture reliable execution timings.",
+   order:[5,2,3,0,1,4], a:3,
+   why:"Timing evidence is only reliable if start and end duration is actually recorded for each major step, not estimated afterwards."
+  },
+  {
+   q:"Test defect handling and controlled reruns.",
+   order:[1,3,4,2,5,0], a:4,
+   why:"This objective is about proving recovery works, which means at least one planned recovery or reprocessing scenario must actually be executed and evidenced."
+  },
+  {
+   q:"Complete validation and business review within the planned cycle window.",
+   order:[2,5,0,4,3,1], a:5,
+   why:"This objective is about timely completion, so its proof is that validation results and material exceptions are actually available to owners within the agreed window."
+  }
+];
+const objectiveSituations = objectiveItems.map((o, idx) => ({
+  title:`Objective ${idx+1}`,
+  question:o.q,
+  options: o.order.map(li => ({
+    label: criterionLabels[li],
+    correct: li === o.a,
+    feedback: (li === o.a ? "Correct.<br>" : "Not quite. Ask what would actually have to be true to prove this specific objective.<br>") + o.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"We already proved it works",title:"Opening scenario: We already proved it works",type:"mcq",
+ html:`<p class="lead">Bramwell has completed a successful customer migration in the test environment. The in-scope customer population reconciles, critical field validation passes, customer-address relationships pass, targeted functional checks pass, and known defects have been corrected and retested.</p>
+ <div class="quote">"Why do we need another migration cycle? We have already proved that customers migrate successfully. Let's save three weeks and move on to cutover."<br><span class="small">Senior project manager</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Agree. Once an object has passed validation, repeating it adds little value.",
+ "Run another cycle only if the technical team has changed the code.",
+ "Challenge the assumption. One successful migration proves that one set of data, rules, dependencies and conditions worked. Later cycles must prove the process remains reliable as scope, data, integrations, timings and cutover conditions become more realistic.",
+ "Run as many cycles as possible. More cycles automatically mean lower migration risk."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A successful result is valuable, but it proves a limited set of conditions. Production will use later data, broader dependencies and different operational conditions.",
+ "Code change is only one reason to repeat. Source data, mapping, configuration, scope, volumes, business readiness and execution conditions can all change.",
+ "Correct. Migration cycles progressively test the migration under conditions that increasingly resemble the real event.",
+ "Quantity is not the objective. A cycle without a clear purpose can consume time without reducing meaningful risk."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and insists on defining what the next cycle would actually need to prove.</p>
+ <p>Rather than debating in the abstract, they list what has genuinely never been tested yet.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the successful cycle never actually proved</div>
+   <ul class="framework-checks">
+     <li><strong>Integration:</strong> customers were tested alone. Products and open orders have never run alongside them in the same execution.</li>
+     <li><strong>Scale:</strong> the successful cycle used a fraction of the eventual production volume.</li>
+     <li><strong>Timing under load:</strong> nobody has measured how long the full, dependent sequence actually takes.</li>
+     <li><strong>Recovery:</strong> no failure has yet been deliberately tested and recovered from.</li>
+   </ul>
+ </div>
+ <p>None of that is visible if the only question asked is "did the last cycle pass?" It only becomes visible once someone asks "what has this project genuinely never had to prove?"</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Each cycle must have a purpose, scope and success criteria.</p></div></div>`
+},
+{
+ id:"b3",nav:"A controlled rehearsal",title:"A migration cycle is a controlled rehearsal, and cycles reduce uncertainty",type:"content",
+ html:`<p class="lead">A migration cycle is a planned execution of an agreed migration scope through the migration process, followed by validation, learning and controlled improvement.</p>
+ <div class="visual-card">
+   <div class="visual-title">A useful cycle has</div>
+   <ul class="framework-checks">
+     <li>A defined purpose</li>
+     <li>An agreed scope</li>
+     <li>Known inputs and baseline</li>
+     <li>A planned execution sequence</li>
+     <li>Success criteria</li>
+     <li>Validation and reconciliation</li>
+     <li>Defect capture</li>
+     <li>Timing evidence</li>
+     <li>A clear conclusion about what was learned</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>A cycle is not "run the scripts again". It is a controlled experiment in whether the migration is becoming ready for production.</div>
+ <p>At the start of a migration project, many important things are uncertain.</p>
+ <div class="visual-card">
+   <div class="visual-title">What cycles can reveal</div>
+   <ul class="framework-checks">
+     <li><strong>Source data:</strong> unexpected values, volumes, quality issues and relationships.</li>
+     <li><strong>Mapping:</strong> missing decisions, ambiguous rules and incorrect assumptions.</li>
+     <li><strong>Build:</strong> transformation defects, load errors, restart problems and performance.</li>
+     <li><strong>Target:</strong> configuration dependencies, validation behaviour and constraints.</li>
+     <li><strong>Business usability:</strong> whether migrated data supports required processes.</li>
+     <li><strong>Execution:</strong> actual duration, sequencing, dependencies and recovery behaviour.</li>
+     <li><strong>People/process:</strong> whether owners, testers and decision-makers can perform their roles in time.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The purpose of repeated cycles is not repetition itself. It is the progressive removal of uncertainty.</p></div></div>`
+},
+{
+ id:"b4",nav:"Different questions, different scope",title:"Early and late cycles answer different questions, and scope should follow purpose",type:"content",
+ html:`<p class="lead">As a project matures, the questions a cycle needs to answer genuinely change.</p>
+ <div class="visual-card">
+   <div class="visual-title">Earlier versus later cycle questions</div>
+   <ul class="framework-checks">
+     <li><strong>Can we extract the intended population?</strong> becomes <strong>Can we execute the agreed production-like scope reliably?</strong></li>
+     <li><strong>Do the mappings work?</strong> becomes <strong>Are mappings stable enough for cutover?</strong></li>
+     <li><strong>Can the target accept the data?</strong> becomes <strong>Can dependencies and sequencing work at realistic scale?</strong></li>
+     <li><strong>What defects appear?</strong> becomes <strong>Are recurring defects controlled and residual risks understood?</strong></li>
+     <li><strong>Can we validate the result?</strong> becomes <strong>Can validation and sign-off complete inside the available window?</strong></li>
+     <li><strong>How long do major steps take?</strong> becomes <strong>Are measured timings credible enough for cutover planning?</strong></li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>As the project matures, the question should move from "Can we make it work?" towards "Can we execute it predictably under production-like conditions?"</div>
+ <p>A cycle should be designed around what the project needs to learn, not loaded with objects merely because they exist.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cycle purpose to possible scope</div>
+   <ul class="framework-checks">
+     <li><strong>Prove customer transformation:</strong> customers plus required reference/dependency data.</li>
+     <li><strong>Test open-order relationships:</strong> customers, products, addresses, reference data and open sales orders.</li>
+     <li><strong>Rehearse full migration sequence:</strong> all agreed migration objects and dependencies.</li>
+     <li><strong>Measure performance:</strong> representative production-scale population and infrastructure.</li>
+     <li><strong>Rehearse cutover:</strong> production-like scope, sequence, controls, timings, roles and hand-offs.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Scope a cycle to answer its question. Do not load objects merely because they exist.</p></div></div>`
+},
+{
+ id:"b5",nav:"Define Cycle 3",title:"Build it yourself: define Bramwell Cycle 3",type:"situations",
+ html:`<p class="lead">Bramwell has already proved individual customer, product and order migrations. The next cycle must test how the objects work together. For each proposed objective, identify the success criterion that would actually prove it.</p>`,
+ items: objectiveSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Cycle Definition: purpose &rarr; scope &rarr; baseline &rarr; success criteria &rarr; evidence required &rarr; learning outcome.</p></div></div>`
+},
+{
+ id:"b6",nav:"Success first, useful failure",title:"Success criteria must be decided before the result, and a cycle can succeed by failing usefully",type:"content",
+ html:`<p class="lead">Compare a weak cycle objective, "Run customer migration and see how it goes," with a stronger one: "Execute the agreed customer population using the approved mapping/build baseline, reconcile the full population, validate critical transformations and relationships, record execution timings and close or classify all material defects."</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Decide what success means before you know whether the cycle succeeded.</div>
+ <p>Suppose Cycle 3 exposes a serious product/site dependency defect. Does that mean the cycle was a failure? Not necessarily. If the cycle was designed to expose integration and dependency risks, discovering the defect before production may be exactly the value the cycle was intended to provide.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A test cycle that exposes a real risk can be more valuable than a green cycle that tested too little.</p></div></div>`
+},
+{
+ id:"b7",nav:"Success is not readiness",title:"Do not confuse cycle success with migration readiness, and later cycles should become more production-like",type:"content",
+ html:`<p class="lead">A cycle may meet its own objectives while the overall migration is still not ready for production. Customer migration may be stable while open orders remain defective, data may validate while execution time exceeds the cutover window, technical loads may work while business sign-off takes too long, one legal entity may be ready while another has unresolved mapping decisions, and the process may work only with heavy manual intervention.</p>
+ <div class="principle"><strong>Core principle</strong><br>A successful cycle answers the questions it was designed to answer. It does not automatically answer every cutover-readiness question.</div>
+ <p>As confidence grows, remove unrealistic test conditions where practical.</p>
+ <div class="visual-card">
+   <div class="visual-title">Less production-like versus more production-like</div>
+   <ul class="framework-checks">
+     <li><strong>Small sample data</strong> becomes <strong>representative/full agreed volumes.</strong></li>
+     <li><strong>Single object</strong> becomes <strong>integrated dependent objects.</strong></li>
+     <li><strong>Developer-led execution</strong> becomes <strong>planned roles and hand-offs.</strong></li>
+     <li><strong>Unlimited test time</strong> becomes <strong>measured execution window.</strong></li>
+     <li><strong>Ad hoc manual fixes</strong> becomes <strong>controlled defect/recovery process.</strong></li>
+     <li><strong>Loose validation</strong> becomes <strong>defined reconciliation and acceptance criteria.</strong></li>
+     <li><strong>Idealised environment</strong> becomes <strong>infrastructure/configuration closer to production.</strong></li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>The final rehearsal should reduce surprises, not preserve comforts that will disappear at cutover.</div>
+ ${TPKit.fromField({
+   title:"The Cycle That Proved Nothing New", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/core6-lesson1-fromfield-sam.mp3",
+   reflection:"Have you seen a migration cycle repeated without anyone being able to say what new question it was actually there to answer?"
+ })}`
+},
+{
+ id:"b8",nav:"Measure from the start",title:"Measure timings from the beginning",type:"content",
+ html:`<p class="lead">Module 4 captured Bramwell customer timings.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cycle 1 versus Cycle 2</div>
+   <ul class="framework-checks">
+     <li><strong>Extract:</strong> 18 min &rarr; 17 min</li>
+     <li><strong>Transform:</strong> 42 min &rarr; 31 min</li>
+     <li><strong>Validation:</strong> 24 min &rarr; 22 min</li>
+     <li><strong>Load:</strong> 58 min &rarr; 49 min</li>
+     <li><strong>Total of measured steps:</strong> 142 min &rarr; 119 min</li>
+   </ul>
+ </div>
+ <p>These timings are useful because the same step boundaries were measured across cycles. But do not simply assume the next run will take 119 minutes. Ask what changed: data volume, build version, environment capacity, target configuration, parallel activity, manual steps, validation scope.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Record actual timings. Do not build cutover plans from remembered or optimistic estimates.</p></div></div>`
+},
+{
+ id:"b9",nav:"Learning, not surprises",title:"Defects should become learning, not recurring surprises, and cycles need careful comparison",type:"content",
+ html:`<p class="lead">A recurring defect across cycles is a warning sign.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cycle finding to expected progression</div>
+   <ul class="framework-checks">
+     <li><strong>New source value breaks mapping:</strong> add controlled treatment and coverage check.</li>
+     <li><strong>Load order causes dependency failure:</strong> correct sequence and prove it next cycle.</li>
+     <li><strong>Validation takes too long:</strong> improve validation method and remeasure.</li>
+     <li><strong>Manual patch required:</strong> remove or control the workaround before later rehearsal.</li>
+     <li><strong>Same defect returns:</strong> investigate why the correction did not become part of the repeatable process.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>A cycle should leave the migration better understood and better controlled than it found it.</div>
+ <p>Cycle 3 may show fewer defects than Cycle 2, but that only matters if the comparison is meaningful. Check whether the cycles used comparable scope, data volume/population, mapping baseline, build version, target environment/configuration, validation coverage, and defect classification.</p>
+ <div class="principle"><strong>Core principle</strong><br>Trend evidence is useful only when you understand what changed between the cycles.</div>`
+},
+{
+ id:"b10",nav:"How many are enough?",title:"How many cycles are enough?",type:"content",
+ html:`<p class="lead">There is no universal correct number. The required number depends on factors such as migration complexity, number and dependency of objects, data quality, volume, target maturity, business risk, cutover constraints, how quickly major defects stabilise, and whether production-like rehearsal has been achieved.</p>
+ <p>"At least two" or "always three" may be useful organisational conventions, but they are not universal migration laws.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Do not count cycles. Ask whether the remaining migration uncertainty has been reduced enough to support the next decision.</p></div></div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: what is this cycle actually proving?",type:"content",
+ html:`<p class="lead">Five situations show why the same-looking cycle can mean very different things.</p>
+ <div class="quote">The team reruns the same customer extract with the same build and performs no new validation.</div>
+ <p>It may prove basic repeatability, but its learning value is limited unless that is the explicit purpose.</p>
+ <div class="quote">Customers, products, addresses and open orders are loaded together for the first time.</div>
+ <p>Strong purpose: prove dependencies, sequencing, integrated validation and business usability.</p>
+ <div class="quote">A cycle passes perfectly using 40% of production volume.</div>
+ <p>Useful evidence, but it does not yet prove production-scale performance or timing.</p>
+ <div class="quote">A cycle exposes 600 relationship defects, which are found, understood and drive mapping/build corrections.</div>
+ <p>The cycle may have been highly valuable if relationship risk was one of its objectives.</p>
+ <div class="quote">A fourth cycle is proposed because "we always do four", with no new risk, scope or rehearsal objective defined.</div>
+ <p>Challenge the purpose. A cycle should exist to prove something, not satisfy a ritual.</p>`
+},
+{
+ id:"b12",nav:"AI and cycle progression",title:"AI can help analyse cycle progression",type:"content",
+ html:`<p class="lead">AI can assist with comparing defect patterns between cycles, summarising recurring versus new issues, comparing measured timings, identifying controls that repeatedly fail, drafting cycle objectives from known risks, and highlighting differences in scope or baseline that make comparisons misleading.</p>
+ <p>The project team still decides what the next cycle needs to prove and whether the evidence is sufficient.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to reveal patterns across cycles. Do not let it replace the judgement required to define readiness.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"Zero defects, but what does that mean?",type:"reflection",
+ html:`<p>Imagine a migration cycle that finished with zero defects.</p>
+ <div class="quote">What would you need to know before deciding that this was genuinely reassuring?</div>
+ <p>Ask what was in scope, what was validated, how realistic the volume and environment were, which dependencies were exercised and whether the cycle tested the risks that actually matter at cutover.</p>
+ <textarea id="reflection" placeholder="Before I found that reassuring, I would want to know..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/scope|object|population/i, strength:"You considered what was actually in scope for this cycle.", gap:"Consider exactly what was in scope: which objects and which population." },
+   { test:/volume|scale|realistic/i, strength:"You considered whether the volume and environment were realistic.", gap:"Consider whether the volume and environment were genuinely realistic, not a small comfortable sample." },
+   { test:/depend|integrat/i, strength:"You considered which dependencies were actually exercised.", gap:"Consider which dependencies were actually exercised, not left untested." },
+   { test:/risk|cutover|matter/i, strength:"You connected this to whether the cycle tested the risks that actually matter at cutover.", gap:"Consider whether the cycle tested the specific risks that matter most at cutover." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before zero defects reassured me, I would want to know exactly what was in scope, whether the volume and environment were genuinely production-like, which dependencies were actually exercised rather than avoided, and whether the cycle tested the specific risks that matter most at cutover. Zero defects on a narrow, easy scope tells you very little.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely healthy scepticism. You are refusing to let a clean result substitute for a hard test.":"You have made a start. Push further into what specifically would need to have been tested for zero defects to actually mean something."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now understands why repeated migration cycles are essential and what makes a cycle purposeful rather than repetitive.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Migration cycles are controlled rehearsals, not repeated script runs.</li>
+   <li>Each cycle needs a purpose, scope and success criteria.</li>
+   <li>Cycles progressively reduce uncertainty in data, mapping, build, target, execution and business usability.</li>
+   <li>Earlier and later cycles should answer different questions.</li>
+   <li>Cycle scope should follow the learning objective.</li>
+   <li>Define success before seeing the result.</li>
+   <li>A cycle can be valuable because it exposes risk.</li>
+   <li>Cycle success does not automatically mean overall migration readiness.</li>
+   <li>Later cycles should become increasingly production-like.</li>
+   <li>Capture actual timings and understand why they change.</li>
+   <li>Recurring defects should drive process improvement.</li>
+   <li>Compare cycles only with awareness of changes in scope and baseline.</li>
+   <li>There is no universal correct number of migration cycles.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A migration cycle earns its place by reducing uncertainty. Know what you are trying to prove, measure what happened and use the result to make the next migration stronger.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"Customers migrated successfully in test. A project manager asks why another cycle is needed. What is the strongest response?",
+   options:[
+     {label:"Agree; passing validation once means repeating it adds little value", correct:false, feedback:"Not quite. One successful cycle proves a limited set of conditions, not that production will behave the same way."},
+     {label:"Challenge the assumption; production will use later data, broader dependencies and different conditions that have not yet been tested", correct:true, feedback:"Correct. Migration cycles progressively test the migration under conditions that increasingly resemble the real event."},
+     {label:"Run as many further cycles as possible, since more cycles automatically reduce risk", correct:false, feedback:"Not quite. Quantity is not the objective; a cycle without a clear purpose can consume time without reducing meaningful risk."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"What is a migration cycle, at its core?",
+   options:[
+     {label:"Rerunning the same scripts to confirm they still work", correct:false, feedback:"Not quite. A cycle is a controlled experiment in whether the migration is becoming ready, not a repeat run."},
+     {label:"A planned execution of an agreed scope through the migration process, followed by validation, learning and controlled improvement", correct:true, feedback:"Correct. A cycle is a controlled rehearsal, not just an execution event."},
+     {label:"Any time the migration team loads data into a test environment", correct:false, feedback:"Not quite. Without a defined purpose and success criteria, this is not yet a proper cycle."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why should a cycle's scope be chosen based on what the project needs to learn, rather than including every available object?",
+   options:[
+     {label:"Because larger scope is always slower and therefore worse", correct:false, feedback:"Not quite. Speed is not the reason given here."},
+     {label:"Because scope should answer the cycle's specific question, not be loaded with objects merely because they exist", correct:true, feedback:"Correct. Scope a cycle to answer its question."},
+     {label:"Because only one object can be migrated per cycle", correct:false, feedback:"Not quite. Later cycles specifically test integrated, dependent objects together."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Cycle 3 exposes a serious product/site dependency defect. Was the cycle a failure?",
+   options:[
+     {label:"Yes, any defect found means the cycle failed", correct:false, feedback:"Not quite. If the cycle was designed to expose integration risk, finding the defect may be exactly its value."},
+     {label:"Not necessarily; if the cycle was designed to expose this kind of risk, finding it before production is valuable", correct:true, feedback:"Correct. A test cycle that exposes a real risk can be more valuable than a green cycle that tested too little."},
+     {label:"Only DML-level staff can judge whether a cycle failed", correct:false, feedback:"Not quite. This judgement is exactly what the Core lesson equips any migration professional to make."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A cycle meets its own success criteria for customer migration. Does this prove the whole migration is ready for production?",
+   options:[
+     {label:"Yes, a successful cycle always means the migration is production-ready", correct:false, feedback:"Not quite. Open orders, timing, sign-off or another legal entity could still be unresolved."},
+     {label:"No, a successful cycle answers the questions it was designed to answer, not every cutover-readiness question", correct:true, feedback:"Correct. Cycle success and overall migration readiness are different things."},
+     {label:"Only if the cycle used 100% of the production data volume", correct:false, feedback:"Not quite. Volume is one factor among several, not the sole determinant."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why is comparing Cycle 3's defect count with Cycle 2's potentially misleading?",
+   options:[
+     {label:"Because defect counts should never be compared across cycles", correct:false, feedback:"Not quite. Comparison is useful, provided it is done carefully."},
+     {label:"Because the comparison is only meaningful once you know whether scope, volume, baseline and coverage were comparable", correct:true, feedback:"Correct. Trend evidence is useful only when you understand what changed between the cycles."},
+     {label:"Because Cycle 3 will always show fewer defects regardless of what changed", correct:false, feedback:"Not quite. There is no guarantee of this; it depends entirely on what changed."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Why migration happens in cycles.</strong></p>
+ <p>Bramwell now understands why repeated migration cycles are essential and what makes a cycle purposeful rather than repetitive.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Planning and executing a migration cycle:</strong> you will turn those objectives into an executable cycle plan covering scope, prerequisites, sequence, roles, controls, timings and completion criteria.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 6",
+  moduleTitle: "Data Migration Cycles & Cutover",
+  lessonLabel: "Lesson 1: Why migration happens in cycles",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Know what you are trying to prove",
+  storageKey: "tp_core6_lesson1_v1",
+  lessonId: "core6-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

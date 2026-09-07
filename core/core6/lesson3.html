@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Learning, refining and improving between cycles</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 6 — LESSON 3 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-2 and the story bible: Cycle 1
+   customer raw population 18,530, Cycle 2 18,612; Cycle 1 transform
+   42 min/load 58 min, Cycle 2 31 min/49 min. Cycle 3 figures in this
+   lesson (population 18,640; pre-load exceptions 21; target
+   rejections 2; transform 30 min; load 48 min) are illustrative
+   training data introduced for this lesson.
+============================================================== */
+
+// Section 6 — "The Cycle Improvement Register". The learner matches
+// each Cycle 3 finding to the improvement action that actually
+// addresses it. Options are reordered per item so the correct
+// answer's position does not track the item number.
+const actionLabels = [
+  "Add a product/site readiness checkpoint before execution",
+  "Move edits into a controlled reference baseline/preparation step",
+  "Resolve the underlying cross-reference/ownership treatment",
+  "Prepare/automate high-volume controls and tighten the hand-off",
+  "Document a recovery rule based on cause and affected population"
+];
+const findingItems = [
+  {
+   q:"Product loading started 34 minutes late because a site prerequisite was not ready.",
+   order:[3,0,4,1,2], a:0,
+   why:"The recurring cause is a missing readiness check, so the fix is a checkpoint that confirms the prerequisite before execution even begins."
+  },
+  {
+   q:"Three people manually edited reference files immediately before execution.",
+   order:[2,4,1,0,3], a:1,
+   why:"Manual, last-minute edits are a preparation problem. Moving them into a controlled baseline step removes the dependency on last-minute memory."
+  },
+  {
+   q:"The same SalesOwner exception appeared for the third cycle.",
+   order:[0,3,2,4,1], a:2,
+   why:"A defect that keeps recurring means the underlying cross-reference or ownership treatment was never actually resolved, only worked around each time."
+  },
+  {
+   q:"Validation took nearly two hours longer than planned because results were assembled manually.",
+   order:[4,1,3,2,0], a:3,
+   why:"The cause is manual assembly of high-volume results, so the fix is preparing or automating those controls and tightening the hand-off into validation."
+  },
+  {
+   q:"A failed order population had to be reprocessed after the team initially reran only the rejected records.",
+   order:[1,2,0,4,3], a:4,
+   why:"Selecting the wrong population to rerun points to an undocumented recovery rule. Documenting it by cause and affected population prevents the same mistake next time."
+  }
+];
+const findingSituations = findingItems.map((f, idx) => ({
+  title:`Finding ${idx+1}`,
+  question:f.q,
+  options: f.order.map(li => ({
+    label: actionLabels[li],
+    correct: li === f.a,
+    feedback: (li === f.a ? "Correct.<br>" : "Not quite. Ask what would actually stop this specific finding recurring next cycle.<br>") + f.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Cycle 3 was successful",title:"Opening scenario: Cycle 3 was successful",type:"mcq",
+ html:`<p class="lead">Bramwell Cycle 3 met its headline objectives. All planned objects loaded, the final populations reconciled and the business completed its validation.</p>
+ <p>But the execution record shows product loading started 34 minutes late because a site prerequisite was not ready, three people manually edited reference files immediately before execution, the same SalesOwner exception appeared for the third cycle, validation took nearly two hours longer than planned because results were assembled manually, and a failed order population had to be reprocessed after the team initially reran only the rejected records.</p>
+ <p>The team proposes closing the cycle as green and moving straight to the next rehearsal.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Agree. The final data passed, so the operational problems are no longer relevant.",
+ "Record the issues but leave the process unchanged unless they cause a production failure.",
+ "Treat the cycle result as successful but convert the execution evidence into specific improvements before the next cycle, then prove those improvements in the next run.",
+ "Redesign the entire migration because any manual activity means the process has failed."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The final result can be successful while the process still contains avoidable risk. The purpose of repeated cycles is to expose and reduce that risk before cutover.",
+ "Waiting for a production failure to justify fixing a known weakness defeats the purpose of rehearsal.",
+ "Correct. Every cycle should leave the migration more predictable than it found it.",
+ "Manual activity is not automatically failure. The question is whether it is controlled, reliable and proportionate."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to file five real operational problems under "green, move on".</p>
+ <p>They take each observation and ask what it actually reveals about the process, rather than the person or moment that happened to expose it.</p>
+ <div class="visual-card">
+   <div class="visual-title">What that reframing produces</div>
+   <ul class="framework-checks">
+     <li><strong>Late product start:</strong> not "the product team was slow", but "there is no readiness check before product load begins".</li>
+     <li><strong>Manual reference edits:</strong> not "remember to do it next time", but "manual preparation needs a controlled, repeatable step".</li>
+     <li><strong>Recurring SalesOwner exception:</strong> not "same few records again", but "the underlying ownership treatment has never actually been resolved".</li>
+     <li><strong>Slow validation:</strong> not "validators need to work faster", but "validation preparation needs automation and a tighter hand-off".</li>
+   </ul>
+ </div>
+ <p>Five incidents become five process weaknesses, each with somewhere real to go before Cycle 4 starts.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Every cycle should leave the migration more predictable than it found it.</p></div></div>`
+},
+{
+ id:"b3",nav:"Result versus process",title:"Separate the result from the process, and turn observations into learning",type:"content",
+ html:`<p class="lead">Two questions should be asked after every cycle: did the migrated data achieve the cycle success criteria, and what did the way we achieved that result reveal about the migration process?</p>
+ <p>A cycle can produce correct data through fragile execution. That fragility matters because production cutover may offer less time, fewer recovery opportunities and greater business consequence.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak response versus useful learning</div>
+   <ul class="framework-checks">
+     <li><strong>Product load started late:</strong> weak response "product team was slow"; useful learning "required site prerequisite needs an explicit readiness check and owner before product load".</li>
+     <li><strong>Reference file edited manually:</strong> weak response "remember to do it again"; useful learning "manual preparation needs a controlled, repeatable step or removal".</li>
+     <li><strong>SalesOwner exception recurs:</strong> weak response "same few records again"; useful learning "the underlying source/reference/ownership treatment has not been permanently resolved".</li>
+     <li><strong>Validation took two extra hours:</strong> weak response "validators need to work faster"; useful learning "validation preparation, automation or hand-off needs improvement and remeasurement".</li>
+     <li><strong>Wrong rerun population selected:</strong> weak response "developer mistake"; useful learning "recovery rules do not clearly define the population affected by the cause".</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Describe the process weakness, not just the person or incident that exposed it.</p></div></div>`
+},
+{
+ id:"b4",nav:"Patterns and classification",title:"Look for patterns across cycles, and classify what needs to improve",type:"content",
+ html:`<p class="lead">One cycle gives evidence. Several cycles reveal trends.</p>
+ <div class="visual-card">
+   <div class="visual-title">Customer measures across three cycles</div>
+   <ul class="framework-checks">
+     <li><strong>Raw population:</strong> 18,530 &rarr; 18,612 &rarr; 18,640</li>
+     <li><strong>Pre-load exceptions:</strong> 114 &rarr; 39 &rarr; 21</li>
+     <li><strong>Target rejections:</strong> 14 &rarr; 5 &rarr; 2</li>
+     <li><strong>Transform time:</strong> 42 min &rarr; 31 min &rarr; 30 min</li>
+     <li><strong>Load time:</strong> 58 min &rarr; 49 min &rarr; 48 min</li>
+   </ul>
+ </div>
+ <p>The Cycle 3 figures are illustrative. The pattern suggests improving stability, but the team still needs to explain population change and understand the remaining exceptions.</p>
+ <div class="principle"><strong>Core principle</strong><br>A trend is evidence to investigate, not a story to assume.</div>
+ <div class="visual-card">
+   <div class="visual-title">Improvement area to typical evidence</div>
+   <ul class="framework-checks">
+     <li><strong>Source/data quality:</strong> recurring invalid or incomplete source values.</li>
+     <li><strong>Scope/mapping:</strong> repeated questions, new values, unclear treatments.</li>
+     <li><strong>Reference data:</strong> missing or manually maintained cross-references.</li>
+     <li><strong>Build:</strong> repeated technical defects or inefficient processing.</li>
+     <li><strong>Validation:</strong> slow, inconsistent or incomplete controls.</li>
+     <li><strong>Target prerequisites:</strong> configuration repeatedly unavailable at the required point.</li>
+     <li><strong>Execution:</strong> poor sequence, unclear hand-offs, recovery uncertainty.</li>
+     <li><strong>People/decision:</strong> required decisions repeatedly wait for the same owner.</li>
+   </ul>
+ </div>`
+},
+{
+ id:"b5",nav:"The Improvement Register",title:"Build it yourself: the Cycle Improvement Register",type:"situations",
+ html:`<p class="lead">Use the five Bramwell Cycle 3 observations from the opening scenario. For each finding, identify the improvement action that actually addresses the underlying weakness.</p>`,
+ items: findingSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Cycle Improvement Register: evidence &rarr; cause/process weakness &rarr; risk &rarr; action &rarr; owner &rarr; next-cycle proof. An improvement is not real until the next cycle actually proves it.</p></div></div>`
+},
+{
+ id:"b6",nav:"Risk over annoyance",title:"Prioritise by risk, not annoyance, and remove accidental manual work, not judgement",type:"content",
+ html:`<p class="lead">Not every inconvenience deserves immediate engineering effort. Prioritise improvements using questions such as: could this create wrong or missing production data? Could it make the migration unrecoverable? Could it threaten the cutover window? Could it invalidate validation or sign-off? Is it recurring? Does it depend on one person remembering something? Is the effort to control it proportionate to the risk?</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Fix first what can damage correctness, recoverability or cutover predictability.</div>
+ <p>Repeated cycles often expose manual steps. Some should be automated or controlled. Others legitimately require human judgement.</p>
+ <div class="visual-card">
+   <div class="visual-title">Automate/control versus judgement remains appropriate</div>
+   <ul class="framework-checks">
+     <li><strong>Repeatable file preparation</strong> can be automated, but <strong>approving an ambiguous mapping treatment</strong> needs a person.</li>
+     <li><strong>Standard reconciliation queries</strong> can be automated, but <strong>assessing whether a business exception is acceptable</strong> needs a person.</li>
+     <li><strong>Known cross-reference validation</strong> can be automated, but <strong>deciding ownership of an unresolved source value</strong> needs a person.</li>
+     <li><strong>Run logging and timing capture</strong> can be automated, but <strong>deciding whether a material variance allows continuation</strong> needs a person.</li>
+     <li><strong>Repeatable exception reports</strong> can be automated, but <strong>interpreting business impact and approving treatment</strong> needs a person.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Automate repetition. Keep judgement where judgement is genuinely required.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Green Cycle With a Fragile Process", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/core6-lesson3-fromfield-owen.mp3",
+   reflection:"Have you seen a cycle get marked green while the process underneath it was actually held together by manual heroics?"
+ })}`
+},
+{
+ id:"b7",nav:"Deliberate baseline, kept controls",title:"Improve the baseline deliberately, and do not optimise away useful controls",type:"content",
+ html:`<p class="lead">Between cycles, improvements may change source data, mapping, reference data, build logic, validation or target configuration. Record enough information to know what changed and why. Otherwise, a better next-cycle result may be impossible to attribute.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <p>Cycle 3 &rarr; Cycle 4 change: SalesOwner cross-reference updated under approved business decision; affected records identified; build/reference baseline updated; targeted validation added.</p>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>A controlled improvement has a reason, an implementation and a way to prove its effect.</div>
+ <p>A team may notice that pre-load validation takes 35 minutes and propose removing it to shorten the migration window. That is not automatically an improvement. Ask whether the control finds defects earlier than the target load, protects downstream dependencies, provides required reconciliation evidence, can be made faster without reducing coverage, or could safely run in parallel with another activity.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Optimisation should remove waste, not evidence.</div>`
+},
+{
+ id:"b8",nav:"Explain timing, rehearse changes",title:"Timing improvement needs explanation, and rehearse the improvements that matter",type:"content",
+ html:`<p class="lead">Bramwell customer transform time improved from 42 minutes in Cycle 1 to 31 minutes in Cycle 2. Before assuming the process became faster, check: was the population comparable? Was the environment comparable? Did the transformation scope change? Did the build change? Were errors or exceptions handled differently? Once the cause is understood, the team can decide whether the improvement is likely to persist into cutover.</p>
+ <p>Some improvements should be deliberately exercised in the next cycle: a planned partial rerun after a controlled failure, a new reference-data preparation process, a revised dependency checkpoint, automated reconciliation, a new hand-off notification, or a revised execution sequence.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Do not assume a process improvement works because the document describing it looks better. Rehearse it.</p></div></div>`
+},
+{
+ id:"b9",nav:"Closing the loop",title:"Close the learning loop, and know when stability is emerging",type:"content",
+ html:`<p class="lead">The learning loop is the discipline underneath every improvement.</p>
+ <div class="visual-card">
+   <div class="visual-title">Learning loop</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">OBSERVE &rarr; INVESTIGATE &rarr; IMPROVE &rarr; REHEARSE &rarr; MEASURE &rarr; KEEP / REFINE</p>
+ </div>
+ <p>If the next cycle shows the change did not work, refine it again. Migration maturity comes from this repeated evidence loop.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A lesson is not learned until the process changes and the new behaviour is proved.</div>
+ <p>Useful signs of emerging stability include fewer new high-impact defects, recurring defects staying closed, mapping/reference decisions stabilising, execution following the planned sequence, recovery behaviour being understood, timings becoming explainable and consistent, validation completing reliably, manual interventions reducing or becoming controlled, and business reviewers seeing fewer surprises.</p>
+ <p>Stability does not mean zero change. It means change and exceptions are increasingly understood and controlled.</p>`
+},
+{
+ id:"b10",nav:"Judgement calls",title:"Judgement calls: improvement or illusion?",type:"content",
+ html:`<p class="lead">Five situations show why an apparent improvement still needs scrutiny.</p>
+ <div class="quote">Load time drops 20%, but Cycle 4 contains 30% fewer records.</div>
+ <p>Do not claim performance improvement until the population difference is accounted for.</p>
+ <div class="quote">A mapping defect marked closed in Cycle 2 reappears in Cycle 3.</div>
+ <p>Investigate whether the correction was one-off, the wrong baseline was used, or the affected population was incomplete.</p>
+ <div class="quote">One analyst manually updates a cross-reference file before every cycle and has never made a mistake.</div>
+ <p>It remains a dependency on memory and one person. Control or automate it where proportionate.</p>
+ <div class="quote">A reconciliation that took 90 minutes manually now runs in 8 minutes with the same verified coverage.</div>
+ <p>Strong improvement, provided the automated control itself is validated.</p>
+ <div class="quote">Cycle 4 finds defects not seen in Cycle 3 because validation coverage was expanded.</div>
+ <p>This may indicate better testing rather than worsening migration quality.</p>`
+},
+{
+ id:"b11",nav:"AI and improvement",title:"AI can help find improvement opportunities",type:"content",
+ html:`<p class="lead">AI can assist with comparing defect categories across cycles, identifying recurring exception values, analysing planned versus actual timings, clustering delays by cause, summarising manual interventions, suggesting regression tests for changed rules, and highlighting improvements that have not yet been proved.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to expose patterns and candidate improvements. Verify the evidence and prove the change in a real cycle.</p></div></div>`
+},
+{
+ id:"b12",nav:"Reflection",title:"Which is more dangerous?",type:"reflection",
+ html:`<p>Think about two different kinds of cutover risk.</p>
+ <div class="quote">What is more dangerous at cutover: a known technical defect with a tested recovery, or a manual step that has always worked because one experienced person remembers to do it?</div>
+ <p>Consider predictability, dependency on individuals, recovery evidence and what happens under time pressure.</p>
+ <textarea id="reflection" placeholder="I think the more dangerous one is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/person|memory|individual/i, strength:"You considered the risk of depending on one person's memory.", gap:"Consider the risk of depending on one specific person's memory, especially under time pressure." },
+   { test:/tested|recovery|evidence/i, strength:"You considered the value of a defect that already has a tested recovery.", gap:"Consider that a known defect with a tested recovery is, in a sense, already understood and controlled." },
+   { test:/pressure|available|unavailable/i, strength:"You considered what happens if that person is unavailable under pressure.", gap:"Consider what happens specifically if that experienced person is unavailable when it matters most." },
+   { test:/predictab|control/i, strength:"You framed this in terms of predictability and control, not just which sounds scarier.", gap:"Consider which situation is genuinely more predictable and controlled, not just which sounds worse." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The manual step that has always worked worries me more. A known defect with a tested recovery is, in its own way, already understood and controlled. A step that depends entirely on one experienced person remembering to do it has never actually been proven to survive that person being unavailable, which is exactly the kind of moment cutover pressure creates.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature risk thinking. You are looking past which option feels tidier to which is actually more predictable.":"You have made a start. Push further into what genuinely happens if that one person is unavailable at the worst possible moment."}</div>`
+},
+{
+ id:"b13",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now use each migration cycle as an evidence-driven improvement loop rather than a repeated test event.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Separate the quality of the final data from the quality of the process that produced it.</li>
+   <li>Turn observations into process learning, not blame.</li>
+   <li>Use multiple cycles to identify patterns and recurring weaknesses.</li>
+   <li>Classify improvements across data, mapping, build, validation, prerequisites and execution.</li>
+   <li>Prioritise correctness, recoverability and cutover risk.</li>
+   <li>Automate repetition without automating business judgement.</li>
+   <li>Control baseline changes between cycles.</li>
+   <li>Do not remove valuable controls merely to improve runtime.</li>
+   <li>Explain timing improvements before relying on them.</li>
+   <li>Rehearse important process changes.</li>
+   <li>Close the learning loop by proving the improvement in the next cycle.</li>
+   <li>Look for increasing predictability, not imaginary perfection.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>The value of a migration cycle is not only what it proves today. It is what the evidence allows you to make safer, faster and more predictable before the next one.</div>`
+},
+{
+ id:"b14",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A cycle passes its success criteria, but the execution record shows several manual workarounds and a recurring defect. What is the right response?",
+   options:[
+     {label:"Close it as green; the final data passed, so the process issues are no longer relevant", correct:false, feedback:"Not quite. A cycle can produce correct data through fragile execution, and that fragility matters at cutover."},
+     {label:"Treat the result as successful, but convert the execution evidence into specific improvements before the next cycle", correct:true, feedback:"Correct. Every cycle should leave the migration more predictable than it found it."},
+     {label:"Redesign the whole migration, since any manual activity means the process has failed", correct:false, feedback:"Not quite. Manual activity is not automatically failure; some manual steps are appropriate."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Why is 'the product team was slow' a weaker observation than 'there is no readiness check before product load begins'?",
+   options:[
+     {label:"Because it blames a person instead of describing the process weakness that actually needs fixing", correct:true, feedback:"Correct. Describe the process weakness, not just the person or incident that exposed it."},
+     {label:"Because it is factually incorrect", correct:false, feedback:"Not quite. It may be true; the problem is that it doesn't point anywhere useful."},
+     {label:"There is no real difference between the two statements", correct:false, feedback:"Not quite. One describes a person; the other describes a fixable process gap."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Load time drops 20% between cycles, but the later cycle also has 30% fewer records. What should the team conclude?",
+   options:[
+     {label:"The process genuinely got 20% faster", correct:false, feedback:"Not quite. The population difference has to be accounted for first."},
+     {label:"Nothing yet; the improvement cannot be claimed until the population difference is explained", correct:true, feedback:"Correct. Do not claim performance improvement until the population difference is accounted for."},
+     {label:"The comparison is meaningless and should be discarded entirely", correct:false, feedback:"Not quite. It is still useful evidence, once properly understood rather than discarded."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A team wants to remove a 35-minute pre-load validation step to shorten the migration window. What should happen first?",
+   options:[
+     {label:"Remove it immediately, since shortening the window is always beneficial", correct:false, feedback:"Not quite. Optimisation should remove waste, not evidence."},
+     {label:"Check whether the control finds defects earlier, protects dependencies, or provides required evidence before removing it", correct:true, feedback:"Correct. Ask whether the control could instead be made faster or run in parallel without losing coverage."},
+     {label:"Keep it exactly as is forever, since validation steps should never change", correct:false, feedback:"Not quite. A control can be improved or streamlined, provided its coverage is preserved."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"One analyst manually updates a cross-reference file before every cycle and has never made a mistake. Is this a risk?",
+   options:[
+     {label:"No, since the process has a perfect track record", correct:false, feedback:"Not quite. A perfect track record does not remove the underlying dependency."},
+     {label:"Yes, it remains a dependency on memory and one person, and should be controlled or automated where proportionate", correct:true, feedback:"Correct. A flawless history does not prove organisational repeatability."},
+     {label:"Only if the analyst has already made a mistake at least once", correct:false, feedback:"Not quite. The risk exists regardless of whether a mistake has happened yet."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"When is an improvement actually 'proved', according to the learning loop?",
+   options:[
+     {label:"As soon as the change is documented and everyone agrees it sounds better", correct:false, feedback:"Not quite. A documented change is not the same as a rehearsed, measured one."},
+     {label:"Once it has been rehearsed, measured in a real cycle, and the new behaviour confirmed", correct:true, feedback:"Correct. A lesson is not learned until the process changes and the new behaviour is proved."},
+     {label:"Improvements do not need proving; intent is sufficient", correct:false, feedback:"Not quite. Intent alone does not confirm the change actually worked."}
+   ]
+  }
+ ]
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Learning, refining and improving between cycles.</strong></p>
+ <p>Bramwell can now use each migration cycle as an evidence-driven improvement loop rather than a repeated test event.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Preparing for production cutover:</strong> you will use the evidence accumulated across cycles to determine whether the migration process, data, dependencies, timings, validation and people are ready for the production event.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 6",
+  moduleTitle: "Data Migration Cycles & Cutover",
+  lessonLabel: "Lesson 3: Learning, refining and improving between cycles",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Prove it in the next cycle, or it is not learned yet",
+  storageKey: "tp_core6_lesson3_v1",
+  lessonId: "core6-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

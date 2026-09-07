@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Planning and executing a migration cycle</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 6 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lesson 1 and the story bible: customer
+   C10482, delivery address C10482-DEL-02, product PRD-44781, site
+   UK01, warehouse WH-BRI, currency GBP, payment terms 45E, delivery
+   terms STDROAD; 18 CustomerGroup 99 exceptions.
+============================================================== */
+
+// Section 6 — "Plan SO-78452 through Cycle 3". The learner matches
+// each dependency to what must be true before order validation.
+// Options are reordered per item so the correct answer's position
+// does not track the item number.
+const requirementLabels = [
+  "C10482 exists in target",
+  "C10482-DEL-02 is correctly related to C10482",
+  "PRD-44781 exists",
+  "UK01 is available for the product relationship",
+  "WH-BRI is valid in the required context",
+  "GBP is configured/available",
+  "The approved target equivalent of 45E is available",
+  "STDROAD is available"
+];
+const dependencyItems = [
+  {
+   q:"Customer",
+   order:[3,0,6,2,7,5,1,4], a:0,
+   why:"The order's customer dependency is only satisfied once the actual customer record exists in the target."
+  },
+  {
+   q:"Delivery address",
+   order:[5,1,4,0,7,3,2,6], a:1,
+   why:"An address record existing is not enough on its own. It must be correctly related to this specific customer."
+  },
+  {
+   q:"Product",
+   order:[6,4,2,0,1,7,3,5], a:2,
+   why:"The order line's product dependency is satisfied once PRD-44781 genuinely exists in the target."
+  },
+  {
+   q:"Site",
+   order:[0,7,3,5,2,6,4,1], a:3,
+   why:"Existence of the product is not enough; UK01 must actually be available for that product relationship."
+  },
+  {
+   q:"Warehouse",
+   order:[2,6,4,1,0,3,7,5], a:4,
+   why:"The warehouse dependency is satisfied once WH-BRI is confirmed valid in the required context, not just present as a code."
+  },
+  {
+   q:"Currency",
+   order:[7,3,5,4,6,0,1,2], a:5,
+   why:"The order cannot process correctly unless GBP itself is configured and available in the target."
+  },
+  {
+   q:"Payment terms",
+   order:[4,5,1,6,3,2,0,7], a:6,
+   why:"45E is a source code. The order depends on its approved target equivalent actually being available, not the source code itself."
+  },
+  {
+   q:"Delivery terms",
+   order:[1,2,0,7,5,4,6,3], a:7,
+   why:"The final dependency is simply that STDROAD, the approved delivery term, is available in the target."
+  }
+];
+const dependencySituations = dependencyItems.map((d, idx) => ({
+  title:`Dependency ${idx+1}`,
+  question:d.q,
+  options: d.order.map(li => ({
+    label: requirementLabels[li],
+    correct: li === d.a,
+    feedback: (li === d.a ? "Correct.<br>" : "Not quite. Think about exactly what has to be true for this specific dependency before the order can validate.<br>") + d.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Start loading and sort it out",title:"Opening scenario: Start loading and sort it out as we go",type:"mcq",
+ html:`<p class="lead">Bramwell Cycle 3 is due to start at 08:00 Monday. The objective is to migrate customers, products and open sales orders together for the first time.</p>
+ <p>At 07:50 the team knows the customer extract is ready, the product team has not confirmed whether UK01 product releases are complete, the open-order extract was generated on Friday, one payment-term configuration change is still being deployed, business validators are available from 13:00, and the team has a rough object order in a spreadsheet but no agreed stop conditions.</p>
+ <div class="quote">"Let's start customers now. We can resolve the rest while the loads are running."<br><span class="small">Technical developer</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Start. Keeping the technical team busy is more important than waiting for every prerequisite.",
+ "Start customers because they are independent, then decide later whether the cycle still counts.",
+ "Check the agreed cycle entry criteria and dependencies first. Start only the work that is consistent with the cycle plan and does not invalidate the baseline or downstream objectives.",
+ "Cancel the entire cycle whenever any prerequisite is imperfect."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Activity is not the objective. Starting early can create a mixed baseline, wasted loads and results that no longer prove the intended cycle.",
+ "Sometimes partial execution is legitimate, but it must be deliberate. If the cycle objective is integrated migration, independently loading one object may undermine what the rehearsal is meant to prove.",
+ "Correct. Use entry criteria and dependency logic to decide whether execution can begin cleanly, partially, or must wait.",
+ "Not every issue requires cancellation. The team needs agreed thresholds and stop/go logic, not automatic paralysis."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and actually checks entry criteria before anyone touches a keyboard.</p>
+ <p>Rather than the developer's instinct to "start customers and sort out the rest," the team runs through what the cycle plan actually requires.</p>
+ <div class="visual-card">
+   <div class="visual-title">What checking entry criteria reveals</div>
+   <ul class="framework-checks">
+     <li><strong>Customers:</strong> genuinely ready. Extract confirmed, mapping baseline confirmed, nothing blocks starting.</li>
+     <li><strong>Products:</strong> not ready. Starting product load now would use an unconfirmed site-release state, producing a result the cycle cannot trust.</li>
+     <li><strong>Open orders:</strong> the extract is three days old and depends on both customers and products, so it cannot safely start yet regardless of what happens with customers.</li>
+     <li><strong>Payment terms:</strong> the in-flight configuration change means any order touching payment terms right now would use an unstable target state.</li>
+   </ul>
+ </div>
+ <p>Customers can start. Products should wait for confirmation. Open orders were never going to be ready this early regardless. The cycle begins cleanly on the piece that is actually ready, rather than gambling the whole rehearsal on "we'll sort it out while it runs".</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>A migration cycle starts when its prerequisites support the purpose of the cycle, not merely when the clock reaches the planned start time.</p></div></div>`
+},
+{
+ id:"b3",nav:"From plan to execution",title:"Turn the cycle definition into an executable plan, and define entry criteria first",type:"content",
+ html:`<p class="lead">Cycle 3 already has a purpose: execute customers, products and open sales orders together, prove dependencies, capture timings, test controlled reruns and complete validation inside the planned window.</p>
+ <p>The execution plan now needs to answer: what exactly is in scope? Which source snapshots and mapping/build baselines apply? What must be ready before each step? In what order must objects run? Who performs and who validates each step? What evidence is captured? What causes a pause or stop? How are failures recovered? When is the cycle considered complete?</p>
+ <div class="principle"><strong>Core principle</strong><br>A cycle plan connects the migration method to a specific execution event.</div>
+ <p>Entry criteria are the conditions that should be true before the cycle or a major phase begins.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example Cycle 3 entry criteria</div>
+   <ul class="framework-checks">
+     <li><strong>Scope:</strong> customer, product and open-sales-order populations approved for this cycle.</li>
+     <li><strong>Source:</strong> controlled extracts/snapshots available and dated.</li>
+     <li><strong>Mapping:</strong> required mappings and reference treatments at agreed baseline.</li>
+     <li><strong>Build:</strong> approved build version deployed to the cycle environment.</li>
+     <li><strong>Target:</strong> required configuration and reference data available.</li>
+     <li><strong>Environment:</strong> target reset/preparation complete and access confirmed.</li>
+     <li><strong>Dependencies:</strong> required product/site and customer/address prerequisites ready.</li>
+     <li><strong>Validation:</strong> queries/checks prepared and validators available.</li>
+     <li><strong>Execution:</strong> run sequence, owners, communication route and stop conditions agreed.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Entry criteria prevent the cycle from becoming an expensive way to discover that nobody checked whether the starting conditions were valid.</p></div></div>`
+},
+{
+ id:"b4",nav:"Freeze and sequence",title:"Freeze the cycle baseline, and sequence by dependency, not convenience",type:"content",
+ html:`<p class="lead">A cycle needs enough baseline control to explain what was executed.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell Cycle 3 baseline</div>
+   <ul class="framework-checks">
+     <li><strong>Cycle ID:</strong> CYCLE03</li>
+     <li><strong>Source snapshot:</strong> agreed Cycle 3 extract set</li>
+     <li><strong>Mapping baseline:</strong> approved Cycle 3 mapping/reference version</li>
+     <li><strong>Build version:</strong> approved Cycle 3 migration build</li>
+     <li><strong>Target environment:</strong> agreed test environment and reset state</li>
+     <li><strong>Scope:</strong> customers, products, open sales orders and required dependencies</li>
+   </ul>
+ </div>
+ <p>This does not mean nothing can change during a cycle. It means changes are visible and their effect on the cycle result can be understood.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>If you cannot state what version of the data, rules and build you ran, you cannot fully explain the result.</div>
+ <p>Open sales orders depend on data that must already exist or be available in the target.</p>
+ <div class="visual-card">
+   <div class="visual-title">Simplified Bramwell dependency sequence</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">Reference/configuration prerequisites &rarr; Customers and customer addresses &rarr; Products and site/warehouse relationships &rarr; Open sales orders &rarr; Relationship validation &rarr; Functional validation</p>
+ </div>
+ <p>The exact sequence depends on the target design, but the planning principle is stable: identify parent/master dependencies, identify reference/configuration dependencies, identify transactions that require those dependencies, and identify validation that cannot begin until downstream objects exist.</p>
+ <div class="principle"><strong>Core principle</strong><br>Load order should follow dependency logic, not whichever developer is free first.</div>`
+},
+{
+ id:"b5",nav:"Plan SO-78452",title:"Build it yourself: plan SO-78452 through Cycle 3",type:"situations",
+ html:`<p class="lead">Ensure Bramwell order SO-78452 can be loaded and validated. For each dependency, identify exactly what must be true before order validation.</p>`,
+ items: dependencySituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Cycle Run Plan: step &rarr; prerequisite &rarr; owner &rarr; planned timing &rarr; execution result &rarr; control point &rarr; next dependency.</p></div></div>`
+},
+{
+ id:"b6",nav:"Roles and decisions",title:"Assign roles to actions and decisions",type:"content",
+ html:`<p class="lead">A migration cycle involves more than the person pressing Run.</p>
+ <div class="visual-card">
+   <div class="visual-title">Activity to typical responsibility</div>
+   <ul class="framework-checks">
+     <li><strong>Prepare/extract source data:</strong> migration/source technical team, depending on project model.</li>
+     <li><strong>Execute transformations/loads:</strong> migration technical delivery.</li>
+     <li><strong>Confirm target prerequisites:</strong> relevant functional/technical owners.</li>
+     <li><strong>Run reconciliations:</strong> migration team with relevant business/finance input.</li>
+     <li><strong>Perform business validation:</strong> appropriate business/functional validators.</li>
+     <li><strong>Resolve mapping/data decisions:</strong> authorised data/business owners.</li>
+     <li><strong>Decide whether a blocked step can proceed:</strong> appropriate cycle/project authority under agreed governance.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>For every critical cycle step, know who acts, who validates and who decides when the result is ambiguous.</div>
+ ${TPKit.fromField({
+   title:"The Cycle That Started Anyway", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/core6-lesson2-fromfield-farah.mp3",
+   reflection:"Have you seen a cycle start on time despite unmet entry criteria, only to produce a result nobody could actually trust?"
+ })}`
+},
+{
+ id:"b7",nav:"Control points and stop conditions",title:"Build control points into the run, and define stop conditions before you need them",type:"content",
+ html:`<p class="lead">Do not wait until every object has loaded before asking whether the migration is still healthy.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful control points</div>
+   <ul class="framework-checks">
+     <li>Source population reconciled before transformation</li>
+     <li>Pre-load exceptions reviewed before submission</li>
+     <li>Accepted/rejected counts reconciled after each object</li>
+     <li>Critical dependencies validated before dependent transactions load</li>
+     <li>Financial control totals checked before functional testing</li>
+     <li>Material defects assessed before continuing to downstream stages</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A control point is a deliberate place to decide whether the evidence supports continuing.</p></div></div>
+ <p>Examples of conditions that may justify stopping or pausing a cycle include the source population unexpectedly collapsing from the expected range, the wrong legal entity or environment being detected, the mapping/build baseline not being the approved version, critical reference data being missing, target commit state being unknown after a process failure, material financial reconciliation not being explainable, and a dependency defect that would make downstream results meaningless.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Agree the conditions that make continuing unsafe or meaningless before schedule pressure arrives.</div>`
+},
+{
+ id:"b8",nav:"Not every error stops the cycle",title:"Not every error should stop the cycle",type:"content",
+ html:`<p class="lead">A controlled record-level exception may be exactly what the migration is designed to handle. If 18 CustomerGroup 99 records are deliberately routed to a known exception population, that may not justify stopping the whole customer load.</p>
+ <p>The decision depends on materiality, whether the exception is expected, whether the population is controlled, whether downstream results remain meaningful, whether the cycle success criteria allow the exception, and whether the appropriate owner is available to decide treatment.</p>
+ <div class="principle"><strong>Core principle</strong><br>Distinguish a controlled exception from a condition that invalidates the cycle.</div>`
+},
+{
+ id:"b9",nav:"Actual execution, real hand-offs",title:"Record actual execution, not the plan you hoped to follow, and manage hand-offs explicitly",type:"content",
+ html:`<p class="lead">A run plan should become a factual execution record.</p>
+ <div class="visual-card">
+   <div class="visual-title">Illustrative run record</div>
+   <ul class="framework-checks">
+     <li><strong>Customer extract:</strong> planned 08:00-08:20, actual 08:03-08:20, complete.</li>
+     <li><strong>Customer transform:</strong> planned 08:20-08:55, actual 08:24-08:56, complete.</li>
+     <li><strong>Customer load:</strong> planned 09:00-09:50, actual 09:02-09:54, complete.</li>
+     <li><strong>Product load:</strong> planned 10:00-12:10, actual 10:08-12:34, delayed: site prerequisite issue.</li>
+     <li><strong>Open order load:</strong> planned 12:30-14:30, actual 13:05-15:12, started after product control point.</li>
+   </ul>
+ </div>
+ <p>The exact figures are illustrative. The discipline is to preserve actual start, finish, delay and cause.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Cutover planning needs observed execution evidence, not a cleaned-up version of what the schedule said should happen.</p></div></div>
+ <p>A cycle often loses time between technical completion and the next person starting their task: a load finishes but nobody tells the validator, finance waits for a reconciliation file that has not been produced, the functional team assumes products are ready before relationship validation completes, or a defect decision waits because the correct owner was not alerted.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A step is not operationally complete if the next required person does not know it is ready.</div>`
+},
+{
+ id:"b10",nav:"Useful timings, deliberate closure",title:"Capture timings at useful boundaries, and close the cycle deliberately",type:"content",
+ html:`<p class="lead">Measure enough detail to support later planning and improvement: extract duration, transformation duration, pre-load validation, load duration, post-load reconciliation, business/functional validation, recovery/reprocessing time, and waiting time at critical hand-offs. Do not create so many timestamps that the team cannot maintain them.</p>
+ <div class="principle"><strong>Core principle</strong><br>Measure the steps that determine when the migration can safely move forward.</div>
+ <p>A cycle is not complete simply because the final load job ended. Before closure, establish which planned scope actually executed, which success criteria passed or failed, validation/reconciliation status, material defects and open exceptions, actual timings and delays, reruns/recovery performed, lessons requiring change before the next cycle, and whether the cycle evidence is usable for the next readiness decision.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>End every cycle with a factual answer to: What did we prove, what did we fail to prove, and what must change next?</div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: continue, pause or stop?",type:"content",
+ html:`<p class="lead">Five situations show that this is never a fixed rule.</p>
+ <div class="quote">The customer load produces the 23 already-known exceptions and all other controls pass.</div>
+ <p>Potentially continue if the exceptions are controlled and consistent with cycle criteria.</p>
+ <div class="quote">The expected customer population is around 18,600 but the extract contains 11,204.</div>
+ <p>Stop/pause. Continuing would make downstream evidence unreliable until the source population is explained.</p>
+ <div class="quote">The product load runs 25 minutes late, with no data/control failure.</div>
+ <p>Continue if dependencies and window permit, while recording the delay and impact. The timing itself is valuable evidence.</p>
+ <div class="quote">A wrong mapping baseline is discovered after the customer load, which used a superseded mapping version.</div>
+ <p>Assess immediately. The customer result may be invalid for the cycle purpose and downstream work may need to pause.</p>
+ <div class="quote">One open order rejects for an unexpected target rule, but the rest of the population is controlled.</div>
+ <p>Capture/investigate the rejection. It may not justify stopping the cycle unless its cause could affect a wider population or invalidate downstream evidence.</p>`
+},
+{
+ id:"b12",nav:"AI during execution",title:"AI can help during cycle execution",type:"content",
+ html:`<p class="lead">AI can assist with summarising run logs and delays, comparing planned and actual timings, grouping execution errors, drafting status updates from factual run data, highlighting unmet entry criteria or success criteria, and identifying repeated hand-off delays across cycles.</p>
+ <p>It should not decide independently to bypass a stop condition or approve a material migration exception.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to improve situational awareness. Keep control decisions with the people accountable for the migration.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"What time is most underestimated?",type:"reflection",
+ html:`<p>Think about the different kinds of time a migration cycle consumes.</p>
+ <div class="quote">Which part of a migration cycle is most likely to be underestimated: technical runtime, validation time, decision time or hand-off time? Why?</div>
+ <p>Think about the difference between a script finishing and the migration being ready for the next dependent activity.</p>
+ <textarea id="reflection" placeholder="I think the most underestimated is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/hand.off|next person|waiting/i, strength:"You considered hand-off or waiting time between people, not just technical runtime.", gap:"Consider hand-off time: the gap between a step finishing and the next person actually knowing it is ready." },
+   { test:/decision|approve|authority/i, strength:"You considered how long a decision can take once a result is ambiguous.", gap:"Consider how long it can take to get a decision once a result is ambiguous." },
+   { test:/valid|business|functional/i, strength:"You considered validation or business review time specifically.", gap:"Consider validation or business review time, which often does not scale the way technical runtime does." },
+   { test:/script|technical|runtime/i, strength:"You compared this against technical runtime as a baseline.", gap:"Consider contrasting this against technical runtime, which is usually the easiest part to measure." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Hand-off time is often the most underestimated. A script finishing is easy to measure, but the gap before the next person actually knows it is ready, and the time it takes to get a decision once something is ambiguous, rarely show up in a schedule built only from technical runtimes.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely sharp operational thinking. You are looking past the script finishing to the whole human process around it.":"You have made a start. Push further into the difference between a script finishing and the migration actually being ready for the next dependent activity."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now plan and execute a migration cycle as a controlled event rather than a sequence of disconnected technical jobs.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Turn a cycle objective into an executable plan.</li>
+   <li>Use entry criteria to protect the purpose and baseline of the cycle.</li>
+   <li>Record the source, mapping, build and environment baseline.</li>
+   <li>Sequence objects according to dependencies.</li>
+   <li>Assign responsibility for actions, validation and decisions.</li>
+   <li>Use control points to decide whether evidence supports continuing.</li>
+   <li>Define stop conditions before execution pressure arrives.</li>
+   <li>Distinguish controlled exceptions from cycle-invalidating failures.</li>
+   <li>Record actual timings, delays and causes.</li>
+   <li>Manage hand-offs explicitly.</li>
+   <li>Close the cycle by stating what was and was not proved.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A migration cycle is controlled execution. Know what must be true before you start, what must happen in what order, where you will stop and check, and what evidence will tell you whether the cycle achieved its purpose.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"At 07:50, product releases are unconfirmed but a developer wants to start customers anyway 'and sort out the rest while it runs'. What should happen?",
+   options:[
+     {label:"Start everything to keep momentum, since delays cost more than mistakes", correct:false, feedback:"Not quite. Activity is not the objective; starting early can create a mixed baseline that no longer proves the intended cycle."},
+     {label:"Check the agreed entry criteria and dependencies, and start only what is consistent with the cycle plan", correct:true, feedback:"Correct. A cycle starts when its prerequisites support its purpose, not when the clock says so."},
+     {label:"Cancel the whole cycle because one prerequisite is not ready", correct:false, feedback:"Not quite. Not every unmet condition requires cancelling everything; the team needs agreed stop/go logic instead."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Why does a cycle need a frozen baseline of source snapshot, mapping version and build version?",
+   options:[
+     {label:"Because nothing is allowed to change once the baseline is set", correct:false, feedback:"Not quite. Changes can still happen; the point is that they remain visible and explainable."},
+     {label:"Because if you cannot state what version of the data, rules and build you ran, you cannot fully explain the result", correct:true, feedback:"Correct. Freezing the baseline is about explainability, not preventing all change."},
+     {label:"Because target environments cannot be reset otherwise", correct:false, feedback:"Not quite. Environment reset is a separate concern from baseline traceability."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why should open sales orders load after customers, products and reference data, rather than whichever developer happens to be free first?",
+   options:[
+     {label:"Because open orders depend on that other data already existing or being available in the target", correct:true, feedback:"Correct. Load order should follow dependency logic, not developer availability."},
+     {label:"Because open orders always take the longest to process", correct:false, feedback:"Not quite. Duration is not the reason for this sequencing."},
+     {label:"There is no real reason; any load order works equally well", correct:false, feedback:"Not quite. Dependency logic genuinely constrains a safe load order."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"18 CustomerGroup 99 records are deliberately routed to a known exception population during a customer load. Should this stop the cycle?",
+   options:[
+     {label:"Yes, any exception found during a cycle should stop it immediately", correct:false, feedback:"Not quite. A controlled, expected exception is different from a condition that invalidates the cycle."},
+     {label:"Not necessarily, if the exception is expected, controlled, and downstream results remain meaningful", correct:true, feedback:"Correct. Distinguish a controlled exception from a condition that invalidates the cycle."},
+     {label:"Only the technical developer can decide this", correct:false, feedback:"Not quite. This depends on cycle success criteria and appropriate ownership, not just technical judgement."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Why should a cycle record actual start, finish, delay and cause rather than a cleaned-up version of the schedule?",
+   options:[
+     {label:"Because cutover planning needs observed execution evidence, not what the schedule said should happen", correct:true, feedback:"Correct. A cleaned-up record would hide exactly the evidence cutover planning needs."},
+     {label:"Because the schedule is always wrong and should be ignored entirely", correct:false, feedback:"Not quite. The schedule is still the baseline; the point is recording what actually happened against it."},
+     {label:"Timing detail is optional and rarely useful", correct:false, feedback:"Not quite. Timing evidence is exactly what later planning and improvement rely on."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"A load finishes but nobody tells the validator it is ready. What does this represent?",
+   options:[
+     {label:"A hand-off failure; the step is not operationally complete until the next required person knows it is ready", correct:true, feedback:"Correct. A step is not operationally complete if the next required person does not know it is ready."},
+     {label:"A technical defect in the load itself", correct:false, feedback:"Not quite. The load may be entirely correct; the problem is purely in communication."},
+     {label:"An issue that only matters if it happens more than once", correct:false, feedback:"Not quite. Even a single missed hand-off can cost real time and should be managed explicitly."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Planning and executing a migration cycle.</strong></p>
+ <p>Bramwell can now plan and execute a migration cycle as a controlled event rather than a sequence of disconnected technical jobs.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Learning, refining and improving between cycles:</strong> you will use the evidence from each run to improve data, mappings, build, validation, timings and operating discipline before the next rehearsal.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 6",
+  moduleTitle: "Data Migration Cycles & Cutover",
+  lessonLabel: "Lesson 2: Planning and executing a migration cycle",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Know what must be true before you start",
+  storageKey: "tp_core6_lesson2_v1",
+  lessonId: "core6-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

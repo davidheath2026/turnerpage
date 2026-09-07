@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Preparing for production cutover</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 6 — LESSON 4 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-3 and the story bible: 18
+   CustomerGroup 99 records, by this stage carrying an agreed cutover
+   treatment and owner but remaining controlled exceptions; no
+   specific target mapping is invented for them. Rehearsal timings in
+   this lesson are illustrative training data.
+============================================================== */
+
+// Section 6 — "Bramwell production runbook extract". The learner
+// matches each runbook step to the condition that should stop or
+// pause it. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const stopConditionLabels = [
+  "Cut-off not reached or snapshot integrity cannot be confirmed",
+  "Approved treatments are not available or confirmed",
+  "Population or key relationships do not reconcile",
+  "Product/site validation fails",
+  "Counts, value or critical relationships do not reconcile",
+  "Required scenarios fail and cannot be escalated in time",
+  "Critical evidence is incomplete or decision authority is unavailable"
+];
+const runbookItems = [
+  {
+   q:"Freeze/confirm source population",
+   order:[3,1,5,0,6,2,4], a:0,
+   why:"This step exists to establish a trustworthy starting population. It should stop if the cut-off has not genuinely been reached or the snapshot cannot be confirmed."
+  },
+  {
+   q:"Prepare reference/configuration baseline",
+   order:[4,0,6,1,3,5,2], a:1,
+   why:"This step depends entirely on approved treatments actually being available. Without them, nothing downstream can be trusted."
+  },
+  {
+   q:"Migrate customers + addresses",
+   order:[5,3,0,2,1,6,4], a:2,
+   why:"The control for this step is reconciliation of population and key relationships, so that is exactly what should stop it if it fails."
+  },
+  {
+   q:"Migrate products + site/warehouse relationships",
+   order:[2,6,4,3,0,1,5], a:3,
+   why:"This step's own control point is product/site validation, so a failure there is the condition that should stop it."
+  },
+  {
+   q:"Migrate open sales orders",
+   order:[0,5,1,6,4,3,2], a:4,
+   why:"Open orders depend on everything before them, so their control is counts, value and critical relationships reconciling, and that is what should stop the step if it fails."
+  },
+  {
+   q:"Critical business validation",
+   order:[6,2,3,0,5,4,1], a:5,
+   why:"This step exists to prove business usability, so it should stop when required scenarios genuinely fail and cannot be escalated in time."
+  },
+  {
+   q:"Migration acceptance/release input",
+   order:[1,4,2,5,6,0,3], a:6,
+   why:"This final step depends on assembled evidence and an available decision authority, so a gap in either is exactly what should stop it."
+  }
+];
+const runbookSituations = runbookItems.map((r, idx) => ({
+  title:`Step ${idx+1}`,
+  question:r.q,
+  options: r.order.map(li => ({
+    label: stopConditionLabels[li],
+    correct: li === r.a,
+    feedback: (li === r.a ? "Correct.<br>" : "Not quite. Think about what this specific step's own control point is actually there to prove.<br>") + r.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Are we ready?",title:"Opening scenario: Are we ready?",type:"mcq",
+ html:`<p class="lead">Bramwell has completed its final planned rehearsal. The major data objects validate successfully and the project is targeting production cutover on Friday evening.</p>
+ <p>Four points remain: the last full rehearsal completed inside the planned window, but only with 45 minutes to spare; one manual product/site preparation step still depends on a single analyst; 18 CustomerGroup 99 records have an agreed cutover treatment and owner, but will remain controlled exceptions; and the recovery procedure for a failed open-order load was tested successfully two cycles ago but not in the final rehearsal.</p>
+ <div class="quote">"Nothing is perfect. We have done enough testing. Mark data migration ready."<br><span class="small">Project manager</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Mark ready because the final rehearsal passed.",
+ "Mark not ready because any remaining exception makes production migration unsafe.",
+ "Assess each remaining point against the production migration plan: correctness, dependency, recoverability, timing, ownership and impact. Readiness must be an evidence-based conclusion, potentially with explicit conditions.",
+ "Let the technical developer decide because the migration scripts are the main cutover risk."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A single passing rehearsal does not, on its own, address the four specific points still open.",
+ "Zero exceptions is not a universal readiness requirement. Known, owned, controlled residual risk can be acceptable.",
+ "Correct. Readiness is not perfection and it is not a feeling. It is a reasoned conclusion that the migration can be executed, controlled, validated and recovered within the production conditions, with residual risks explicitly understood.",
+ "Cutover readiness spans more than scripts: data, dependencies, ownership, timing and recovery all matter."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and works through the four points individually instead of accepting one green rehearsal as the whole answer.</p>
+ <p>Each point gets assessed on its own terms, not lumped together as "nothing is perfect".</p>
+ <div class="visual-card">
+   <div class="visual-title">What individual assessment produces</div>
+   <ul class="framework-checks">
+     <li><strong>45 minutes of contingency:</strong> tight, but genuinely inside the window. Worth investigating the critical path, not a blocker on its own.</li>
+     <li><strong>Single-person product/site step:</strong> a real fragility. This becomes a condition: a documented backup procedure or a second trained person before Friday.</li>
+     <li><strong>18 CustomerGroup 99 records:</strong> the treatment and owner are agreed. This is a controlled exception, not an open question.</li>
+     <li><strong>Untested recovery in the final rehearsal:</strong> the procedure worked two cycles ago, but has not been proven against the current baseline. This genuinely needs assessing before Friday, not assumed.</li>
+   </ul>
+ </div>
+ <p>Four points that looked like one vague cloud of "nothing is perfect" become one accepted risk, one explicit condition, and one point that genuinely needs more evidence before Friday.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Cutover readiness is evidence that the migration can be executed safely under production conditions, not confidence that everything will probably be fine.</p></div></div>`
+},
+{
+ id:"b3",nav:"What changes at cutover",title:"What changes at production cutover, and readiness is built from evidence already collected",type:"content",
+ html:`<p class="lead">Production cutover is not a different migration method. It is the rehearsed process, executed for real.</p>
+ <div class="visual-card">
+   <div class="visual-title">Migration cycle versus production cutover</div>
+   <ul class="framework-checks">
+     <li><strong>Test/rehearsal data state</strong> becomes <strong>live production data state.</strong></li>
+     <li><strong>Failure can usually be reset and rerun with limited consequence</strong> becomes <strong>failure may affect go-live timing and business operations.</strong></li>
+     <li><strong>Timings are learning evidence</strong> becomes <strong>timings determine whether the business can open on time.</strong></li>
+     <li><strong>Manual workaround may be tolerated for learning</strong> becomes <strong>manual dependency must be explicitly planned, owned and reliable.</strong></li>
+     <li><strong>Validation can sometimes continue next day</strong> becomes <strong>critical validation may be required before business release.</strong></li>
+     <li><strong>Environment can often be reset</strong> becomes <strong>recovery must respect actual production state.</strong></li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Cutover turns migration assumptions into operational commitments.</div>
+ <p>Do not invent a separate definition of readiness at the end of the project. Use the evidence accumulated across cycles.</p>
+ <div class="visual-card">
+   <div class="visual-title">Readiness question to evidence source</div>
+   <ul class="framework-checks">
+     <li><strong>Is scope clear?</strong> Approved scope, populations, exclusions and dependencies.</li>
+     <li><strong>Are mappings stable?</strong> Controlled mapping baseline and resolved material decisions.</li>
+     <li><strong>Is the process repeatable?</strong> Cycle execution and rerun evidence.</li>
+     <li><strong>Is data quality controlled?</strong> Profiling, cleansing progress and known exceptions.</li>
+     <li><strong>Does the target accept/use the data?</strong> Validation, reconciliation, relationship and functional evidence.</li>
+     <li><strong>Can defects be recovered?</strong> Tested correction/reprocessing procedures.</li>
+     <li><strong>Will it fit the window?</strong> Measured cycle timings and realistic contingency.</li>
+     <li><strong>Can people execute it?</strong> Rehearsed roles, hand-offs and decision routes.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Readiness should be the accumulated conclusion of the migration lifecycle, not a last-minute checklist disconnected from it.</p></div></div>`
+},
+{
+ id:"b4",nav:"The readiness view",title:"Build a cutover readiness view",type:"content",
+ html:`<p class="lead">For each important area, record the evidence, residual risk and required action or condition.</p>
+ <div class="visual-card">
+   <div class="visual-title">Bramwell cutover readiness view</div>
+   <ul class="framework-checks">
+     <li><strong>Customer migration:</strong> validated across repeated cycles; 18 controlled CustomerGroup exceptions; ready with agreed treatment.</li>
+     <li><strong>Product/site:</strong> final rehearsal passed; single-person manual preparation; condition: backup/controlled procedure required.</li>
+     <li><strong>Open orders:</strong> integrated validation passed; recovery not retested in final rehearsal; assess whether prior evidence remains sufficient.</li>
+     <li><strong>Timing:</strong> full rehearsal within window; only 45 min spare; tight contingency, investigate critical path.</li>
+     <li><strong>Validation:</strong> critical controls rehearsed; none material outstanding; ready.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>A readiness status without the evidence and residual risk behind it is only a label.</div>`
+},
+{
+ id:"b5",nav:"The runbook",title:"The migration runbook translates readiness into an executable sequence",type:"content",
+ html:`<p class="lead">The runbook translates the production migration into an executable sequence. It should be usable under pressure, not merely descriptive.</p>
+ <div class="visual-card">
+   <div class="visual-title">At Core level, expect the runbook to identify</div>
+   <ul class="framework-checks">
+     <li>Step and sequence</li>
+     <li>Planned start/duration</li>
+     <li>Prerequisites</li>
+     <li>Owner/executor</li>
+     <li>Input/baseline</li>
+     <li>Expected output</li>
+     <li>Control/validation point</li>
+     <li>Communication or hand-off</li>
+     <li>Stop/escalation condition</li>
+     <li>Recovery or rerun reference where needed</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>If a critical cutover step exists only in someone's memory, it is not yet a controlled cutover step.</div>`
+},
+{
+ id:"b6",nav:"The runbook extract",title:"Build it yourself: Bramwell production runbook extract",type:"situations",
+ html:`<p class="lead">Each runbook step already has its own prerequisite, owner and control point. For each step, identify the condition that should actually stop or pause it.</p>`,
+ items: runbookSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is completing a Production Runbook Extract: sequence &rarr; prerequisite &rarr; owner &rarr; timing &rarr; control &rarr; hand-off &rarr; stop/recovery condition. Notice how the seven steps also form the critical path to business release.</p></div></div>`
+},
+{
+ id:"b7",nav:"Measured windows, critical path",title:"Use measured timings, not hopeful estimates, and find the critical path",type:"content",
+ html:`<p class="lead">Suppose Bramwell's final rehearsal measured: source extraction and controls 1h05, transformations/pre-load validation 2h10, target loads 3h25, post-load reconciliation 1h20, critical business validation 1h15, known hand-offs/waiting 0h35.</p>
+ <p>Total measured elapsed work is not automatically the cutover duration because some activities may overlap and others may sit on the critical path. The plan must reflect actual dependencies.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A cutover window is built from measured steps, dependencies and contingency. It is not the sum of optimistic estimates.</p></div></div>
+ <p>Some delays affect nothing downstream. Others move the business release time. Ask: which step cannot start until this one completes? Which validation gates dependent work? Where can activities safely run in parallel? Which hand-offs repeatedly caused delay in rehearsal? Which failure would require rollback, rerun or a major decision?</p>
+ <div class="principle"><strong>Core principle</strong><br>Focus contingency on the steps that can move the cutover outcome, not evenly across every task.</div>`
+},
+{
+ id:"b8",nav:"Prerequisites and freeze",title:"Production prerequisites must be explicit, and freeze does not mean the world stops",type:"content",
+ html:`<p class="lead">Confirm production access and permissions, source freeze/cut-off conditions, approved production mapping/reference baseline, target configuration and legal entities, required infrastructure/capacity, file locations/interfaces, business and technical resources, validation queries/reports, communication channels, and recovery mechanisms and backup/restore arrangements where relevant.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not discover a production prerequisite during the production migration if it could have been proved beforehand.</div>
+ <p>A data freeze or cut-off defines what changes are allowed and how the migration population is protected. The exact approach depends on the system and business.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible patterns</div>
+   <ul class="framework-checks">
+     <li>Full transaction freeze</li>
+     <li>Object-specific freeze</li>
+     <li>Time-based extraction cut-off</li>
+     <li>Controlled delta migration after an initial extract</li>
+     <li>Business restrictions on selected activities</li>
+   </ul>
+ </div>
+ <p>The migration team must understand which source changes can still occur, how they will be captured and what population the production reconciliation should use.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A cut-off is a population-control decision, not simply a timestamp in the runbook.</p></div></div>`
+},
+{
+ id:"b9",nav:"Owned risk, no single points",title:"Residual risks need owners and treatments, and single-person dependencies are cutover risks",type:"content",
+ html:`<p class="lead">The 18 CustomerGroup 99 records are not automatically a blocker if their treatment has been explicitly decided and controlled. For any residual risk, know what the issue is, which population/process is affected, business impact, planned treatment or workaround, who owns the decision/action, whether it affects cutover continuation, and how it will be validated or resolved afterwards if accepted.</p>
+ <div class="principle"><strong>Core principle</strong><br>Known residual risk can be planned. Unowned ambiguity cannot.</div>
+ <p>If only one analyst knows how to prepare the product/site reference file, the process may have worked perfectly in every rehearsal and still be fragile.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible controls</div>
+   <ul class="framework-checks">
+     <li>Document the procedure</li>
+     <li>Rehearse a second person</li>
+     <li>Automate or simplify the step</li>
+     <li>Prepare and approve the input before the cutover window where possible</li>
+     <li>Define what happens if the person is unavailable</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeated success by one expert does not prove organisational repeatability.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Readiness That Wasn't a Feeling", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/core6-lesson4-fromfield-nadia.mp3",
+   reflection:"Have you seen a project call itself ready mostly because everyone was tired of testing, rather than because the evidence actually said so?"
+ })}`
+},
+{
+ id:"b10",nav:"Recovery and validation",title:"Recovery readiness matters before failure, and define production validation before cutover",type:"content",
+ html:`<p class="lead">For critical migration steps, the team should know the safe response to likely failure modes: record-level exceptions, target load interruption with known commit state, target load interruption with unknown commit state, incorrect mapping/build version, dependency unavailable, validation control fails materially, and execution exceeds the available window.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A recovery plan becomes credible when it has been rehearsed or otherwise evidenced, not when it is first discussed during the incident.</div>
+ <p>The team should know which controls are required before business release and which can continue afterwards.</p>
+ <div class="visual-card">
+   <div class="visual-title">Before release versus may continue after, if agreed</div>
+   <ul class="framework-checks">
+     <li><strong>Critical population reconciliation</strong> versus <strong>lower-risk extended sampling.</strong></li>
+     <li><strong>Material financial/control totals</strong> versus <strong>non-critical analytical checks.</strong></li>
+     <li><strong>Critical relationships/dependencies</strong> versus <strong>additional reporting comparisons.</strong></li>
+     <li><strong>Required functional smoke tests</strong> versus <strong>further low-risk business review.</strong></li>
+     <li><strong>Known stop/go exception checks</strong> versus <strong>post-cutover monitoring.</strong></li>
+   </ul>
+ </div>
+ <p>The exact split is project-specific. The important point is to decide it before cutover pressure arrives.</p>
+ <div class="principle"><strong>Core principle</strong><br>Know what evidence is required to release the business before the production clock starts.</div>`
+},
+{
+ id:"b11",nav:"Conditional readiness",title:"Readiness can be conditional",type:"content",
+ html:`<p class="lead">A readiness conclusion does not always need to be simply green or red. Examples: "Ready, subject to product/site reference file approval by Thursday 12:00." "Ready, with 18 CustomerGroup exceptions under approved treatment." "Not ready until open-order recovery is successfully rehearsed." "Ready, provided the final source volume remains within the tested operating range."</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A condition is useful only if it is specific, owned, time-bound where relevant and genuinely checked.</p></div></div>`
+},
+{
+ id:"b12",nav:"Judgement calls",title:"Judgement calls: ready for production?",type:"content",
+ html:`<p class="lead">Five situations show that readiness always needs a real, evidenced judgement.</p>
+ <div class="quote">All validation passes but the final rehearsal exceeds the cutover window by three hours.</div>
+ <p>Not migration-ready for the current plan. Correct data that cannot be delivered in time is still a cutover problem.</p>
+ <div class="quote">The business has approved the CustomerGroup treatment, impact is understood and the runbook handles the population explicitly.</div>
+ <p>Potentially ready with accepted residual risk. Zero exceptions is not a universal readiness requirement.</p>
+ <div class="quote">A critical load failed in an early cycle. The procedure was changed but the new recovery has never been exercised.</div>
+ <p>This is material evidence to assess. For a critical path step it may justify a readiness condition or blocker.</p>
+ <div class="quote">A manual step is documented, rehearsed by both operators and takes 12 minutes consistently.</div>
+ <p>Manual does not automatically mean uncontrolled. The question is whether the step is reliable and proportionate.</p>
+ <div class="quote">The final rehearsal was green, but a new business rule is approved Friday morning.</div>
+ <p>Assess impact and required retesting. Final-rehearsal status does not automatically cover a materially changed production baseline.</p>`
+},
+{
+ id:"b13",nav:"AI and cutover evidence",title:"AI can help prepare cutover evidence",type:"content",
+ html:`<p class="lead">AI can assist with comparing readiness criteria with available evidence, analysing rehearsal timings and critical delays, identifying recurring manual dependencies, summarising residual risks and owners, checking runbook steps for missing prerequisites or hand-offs, and comparing the final production baseline with the rehearsed baseline.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to challenge completeness and expose inconsistencies. Do not delegate the production-readiness decision to it.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Which would worry you more?",type:"reflection",
+ html:`<p>Think about two very different pre-cutover pictures.</p>
+ <div class="quote">What would worry you more before cutover: one known defect with a tested treatment, or a green rehearsal that depended on several undocumented manual interventions?</div>
+ <p>Think in terms of predictability, evidence, ownership and recovery rather than the colour of the final status.</p>
+ <textarea id="reflection" placeholder="The one that would worry me more is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/undocumented|manual|hidden/i, strength:"You considered the risk of undocumented manual interventions specifically.", gap:"Consider why undocumented manual interventions are harder to trust than a known, documented defect." },
+   { test:/evidence|known|understood/i, strength:"You connected your answer to how well the risk is actually evidenced and understood.", gap:"Consider how well each situation is actually evidenced and understood." },
+   { test:/green|status|colour|color/i, strength:"You questioned whether a green status alone should be reassuring.", gap:"Consider why a green status alone should not be automatically reassuring." },
+   { test:/predictab|control|recover/i, strength:"You framed your answer around predictability and recoverability, not just appearance.", gap:"Consider which situation is genuinely more predictable and recoverable." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The green rehearsal held together by undocumented manual interventions worries me more. A known defect with a tested treatment is understood and controlled. A rehearsal that only passed because of hidden manual fixes has not actually proven anything reliable, and cutover pressure is exactly when those interventions are most likely to be missing or wrong.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature readiness judgement. You are looking past the status colour to what has actually been proven.":"You have made a start. Push further into why a green status built on hidden manual work is less trustworthy than a known, documented defect."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now has an evidence-based production migration plan rather than a hopeful go-live date.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Production cutover changes migration evidence into operational commitment.</li>
+   <li>Build readiness from evidence accumulated across cycles.</li>
+   <li>Use a readiness view that exposes evidence and residual risk.</li>
+   <li>Translate the production migration into a usable runbook.</li>
+   <li>Use measured timings and dependency logic to build the window.</li>
+   <li>Identify the critical path and meaningful contingency.</li>
+   <li>Confirm production prerequisites before the event.</li>
+   <li>Understand source freeze/cut-off as population control.</li>
+   <li>Give residual risks explicit owners and treatments.</li>
+   <li>Control single-person dependencies.</li>
+   <li>Establish recovery readiness before failure.</li>
+   <li>Define required production validation before cutover.</li>
+   <li>Readiness may legitimately be conditional.</li>
+   <li>Reassess readiness when the production baseline changes.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Cutover readiness means being able to explain how the production migration will run, how long it should take, what evidence will prove it worked, what could stop it and what the team will do if something goes wrong.</div>`
+},
+{
+ id:"b16",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A project manager says 'nothing is perfect, mark data migration ready' after the final rehearsal passes. What is the strongest response?",
+   options:[
+     {label:"Agree, since the rehearsal passed", correct:false, feedback:"Not quite. A single passing rehearsal does not address every remaining open point on its own."},
+     {label:"Assess each remaining point against correctness, dependency, recoverability, timing, ownership and impact, potentially with explicit conditions", correct:true, feedback:"Correct. Readiness is not perfection and it is not a feeling; it is a reasoned, evidenced conclusion."},
+     {label:"Refuse to mark anything ready until every exception is eliminated", correct:false, feedback:"Not quite. Zero exceptions is not a universal readiness requirement."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Why does a manual workaround that was 'tolerated for learning' during test cycles need to change for production cutover?",
+   options:[
+     {label:"It does not need to change; cutover treats manual work exactly like a rehearsal", correct:false, feedback:"Not quite. Cutover turns migration assumptions into operational commitments."},
+     {label:"Because at cutover, a manual dependency must be explicitly planned, owned and reliable, since failure now affects real business operations", correct:true, feedback:"Correct. What was tolerated for learning becomes a genuine operational risk in production."},
+     {label:"Manual workarounds are never acceptable at any stage of a migration", correct:false, feedback:"Not quite. Manual steps can be acceptable in rehearsal, or even in production, provided they are controlled."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why is readiness built from evidence accumulated across cycles rather than a separate end-of-project checklist?",
+   options:[
+     {label:"Because a checklist is always inaccurate", correct:false, feedback:"Not quite. The issue is disconnection from evidence, not checklists themselves."},
+     {label:"Because readiness should be the accumulated conclusion of the migration lifecycle, not a last-minute exercise", correct:true, feedback:"Correct. Use the evidence the cycles have already produced, rather than inventing readiness at the end."},
+     {label:"Because checklists are only used in DML-level governance", correct:false, feedback:"Not quite. This is not about who uses checklists; it is about where the evidence actually comes from."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Total measured elapsed work across all rehearsal steps adds up to more than the actual rehearsal duration. Why?",
+   options:[
+     {label:"Because the measurements must have been recorded incorrectly", correct:false, feedback:"Not quite. This is a normal, expected outcome, not a measurement error."},
+     {label:"Because some activities can overlap and are not all on the critical path", correct:true, feedback:"Correct. A cutover window is built from measured steps, dependencies and contingency, not the sum of every individual duration."},
+     {label:"Because rehearsals always run faster than their component steps suggest", correct:false, feedback:"Not quite. The explanation is dependency and parallelism, not general rehearsal speed."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Only one analyst knows how to prepare the product/site reference file, and it has worked perfectly in every rehearsal. Is this a cutover risk?",
+   options:[
+     {label:"No, since it has never failed", correct:false, feedback:"Not quite. Repeated success by one expert does not prove organisational repeatability."},
+     {label:"Yes, and it should be addressed through documentation, a second trained person, automation, or a defined fallback", correct:true, feedback:"Correct. A single-person dependency is fragile even with a perfect track record."},
+     {label:"Only if the analyst has explicitly said they might be unavailable", correct:false, feedback:"Not quite. The risk exists regardless of whether unavailability has been flagged yet."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Which best describes a genuinely useful conditional readiness statement?",
+   options:[
+     {label:"'Probably ready, we will see how it goes'", correct:false, feedback:"Not quite. This is vague and not genuinely checked or owned."},
+     {label:"'Ready, subject to product/site reference file approval by Thursday 12:00'", correct:true, feedback:"Correct. A condition is useful only if it is specific, owned, time-bound where relevant and genuinely checked."},
+     {label:"Any statement that includes the word 'ready' regardless of detail", correct:false, feedback:"Not quite. The word alone does not make a condition meaningful or checkable."}
+   ]
+  }
+ ]
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Preparing for production cutover.</strong></p>
+ <p>Bramwell now has an evidence-based production migration plan rather than a hopeful go-live date.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Executing cutover and stabilising afterwards:</strong> you will take that plan into the live migration event, manage deviations and decisions, prove the production result and transition from cutover into controlled post-go-live stabilisation.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 6",
+  moduleTitle: "Data Migration Cycles & Cutover",
+  lessonLabel: "Lesson 4: Preparing for production cutover",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Evidence that it can be executed safely, not confidence that it probably will",
+  storageKey: "tp_core6_lesson4_v1",
+  lessonId: "core6-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
