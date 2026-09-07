@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Errors, logging and restartability</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 4 — LESSON 5 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-4 and the story bible: 185,000
+   products; customer C11872 payment term CASHX.
+============================================================== */
+
+// Section 13 — "Stop or continue?" The learner matches each condition
+// to the treatment it actually needs before the reasoning is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const treatmentLabels = [
+  "Capture exception and continue eligible records",
+  "Stop and investigate",
+  "Capture/reconcile according to approved process",
+  "Stop dependent transformation/load",
+  "Stop before downstream load",
+  "Stop and preserve controlled state"
+];
+const stopContinueItems = [
+  {
+   q:"One known non-critical mapping exception occurs during a run of thousands of records.",
+   order:[1,3,0,5,2,4], a:0,
+   why:"A single known, non-critical exception is exactly what controlled exception handling exists for. Capture it and let eligible records continue."
+  },
+  {
+   q:"The expected source population is down 20% compared with every previous extract.",
+   order:[4,0,5,2,1,3], a:1,
+   why:"This is not a record-level problem. A population control has failed, and continuing technically would only produce a run built on the wrong starting point."
+  },
+  {
+   q:"The target rejects one malformed record out of a much larger accepted batch.",
+   order:[0,5,3,1,2,4], a:2,
+   why:"One malformed record is normal operational noise. Reconcile it through the approved rejection process rather than stopping everything."
+  },
+  {
+   q:"A reference table the transformation depends on is missing entirely.",
+   order:[2,1,4,5,0,3], a:3,
+   why:"Without the reference table, the dependent transformation cannot produce a trustworthy result for any record, so it must stop rather than guess."
+  },
+  {
+   q:"An output control total does not reconcile to the expected population before load.",
+   order:[3,0,1,4,5,2], a:4,
+   why:"An unreconciled control total means something is already wrong. Stop before the output reaches the target, not after."
+  },
+  {
+   q:"The target environment becomes unavailable partway through a run.",
+   order:[5,2,0,3,1,4], a:5,
+   why:"With the target gone, continuing risks an uncertain commit state. Stop and preserve whatever controlled state currently exists."
+  }
+];
+const stopContinueSituations = stopContinueItems.map((s, idx) => ({
+  title:`Condition ${idx+1}`,
+  question:s.q,
+  options: s.order.map(li => ({
+    label: treatmentLabels[li],
+    correct: li === s.a,
+    feedback: (li === s.a ? "Correct.<br>" : "Not quite. Ask whether this is a record-level problem or a control failure affecting the whole run.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"It failed at 02:17",title:"Opening scenario: It failed at 02:17",type:"mcq",
+ html:`<p class="lead">Bramwell is loading 185,000 product records during a test migration. At 02:17, after 137,842 records have been processed, the load job stops.</p>
+ <div class="quote">PRODUCT LOAD FAILED, ERROR<br><span class="small">The only entry in the job log</span></div>
+ <p>The developer does not know which record caused the failure, whether 137,842 records were committed or only processed, whether the target contains a partial load, whether the job can restart from the failed point, whether rerunning from the beginning will create duplicates, or which transformation/build version produced the output.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Restart the job from the beginning and see what happens.",
+ "Delete the target product data and rerun everything.",
+ "First establish the actual state of the run and target. A controlled migration needs logging and restart behaviour that makes the failure point, processed population, target state and safe recovery action knowable.",
+ "Increase the application timeout and rerun because the failure was probably technical."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "Without knowing target behaviour, rerunning can create duplicates, overwrite good data or make diagnosis harder.",
+ "Deleting data can affect relationships and may not even be possible in later cycles or production.",
+ "Correct. Recovery starts by knowing what happened, what completed and what state the target is in.",
+ "A timeout is only one possibility. The evidence should identify the actual failure."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to guess at recovery before establishing the actual state.</p>
+ <p>They query the target directly rather than trusting the job log's single unhelpful line.</p>
+ <div class="visual-card">
+   <div class="visual-title">What establishing the real state reveals</div>
+   <ul class="framework-checks">
+     <li><strong>Target product count:</strong> exactly 137,842 products exist, matching the processed count before failure. Nothing partial or uncertain about that batch.</li>
+     <li><strong>Cause:</strong> a database connection dropped during a bulk insert, unrelated to any specific product's data.</li>
+     <li><strong>Build version:</strong> the run used the approved product build baseline from that morning, confirmed from the run's own metadata.</li>
+     <li><strong>Safe recovery point:</strong> resume the remaining 47,158 products from the load boundary, since the completed batch is confirmed committed and unaffected by the connection issue.</li>
+   </ul>
+ </div>
+ <p>None of that would have been knowable from "PRODUCT LOAD FAILED, ERROR" alone. A guess-and-rerun approach could easily have duplicated 137,842 perfectly good records.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Recovery starts by knowing what happened, what completed and what state the target is in.</p></div></div>`
+},
+{
+ id:"b3",nav:"Errors are normal",title:"Errors are normal, and record errors and process failures are different",type:"content",
+ html:`<p class="lead">Migration build should expect bad source values, failed cross-reference lookups, unexpected target validation rules, duplicate keys, missing dependencies, file or API failures, environment outages, network interruptions, performance/timeouts, and code defects.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not design only the happy path. Design what happens when a record, a rule or the process itself fails.</div>
+ <div class="visual-card">
+   <div class="visual-title">Five kinds of failure, and how they typically behave</div>
+   <ul class="framework-checks">
+     <li><strong>Record-level exception:</strong> a customer has unmapped payment term CASHX. The record is captured as an exception while other eligible records may continue.</li>
+     <li><strong>Record-level target rejection:</strong> one customer violates a target rule. The target rejects that record; accepted/rejected populations are reconciled.</li>
+     <li><strong>Process failure:</strong> a database connection drops halfway through a load. Execution stops or becomes uncertain; target state must be established.</li>
+     <li><strong>Dependency failure:</strong> required target configuration is unavailable. The affected object or records cannot safely proceed.</li>
+     <li><strong>Control failure:</strong> input count differs unexpectedly from the agreed population. The process may need to stop even though the technology is functioning.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A process can be technically healthy and still need to stop because a migration control has failed.</p></div></div>`
+},
+{
+ id:"b4",nav:"A useful log",title:"Logging should answer useful questions",type:"content",
+ html:`<p class="lead">A useful migration log should help answer: what ran? When did it start and finish? Which migration cycle/batch was it? Which object and population did it process? Which code/mapping baseline was used? How many records entered and left each important stage? What warnings/errors occurred? Which records were affected? Did the step complete, partially complete or fail? What should happen next?</p>
+ <div class="principle"><strong>Core principle</strong><br>Log for diagnosis and evidence, not simply to prove that the program wrote messages.</div>
+ <p>For Bramwell's product load, a run-control record could contain the following.</p>
+ <div class="visual-card">
+   <div class="visual-title">Migration Run Record</div>
+   <ul class="framework-checks">
+     <li><strong>Migration cycle:</strong> CYCLE02</li>
+     <li><strong>Run ID:</strong> CYCLE02_PRODUCT_003</li>
+     <li><strong>Object:</strong> Product</li>
+     <li><strong>Pipeline step:</strong> Target load</li>
+     <li><strong>Start time / End or failure time:</strong> 01:42 / 02:17</li>
+     <li><strong>Input population:</strong> 185,000</li>
+     <li><strong>Processed before failure:</strong> 137,842</li>
+     <li><strong>Accepted/committed, Rejected:</strong> to be confirmed from target evidence</li>
+     <li><strong>Status:</strong> FAILED / TARGET STATE UNKNOWN</li>
+     <li><strong>Build version:</strong> product build baseline used for this cycle</li>
+     <li><strong>Error reference:</strong> ERR-LOAD-0047</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>The learner is creating a Migration Run Record: identity + population + timing + result + error + target state + recovery status.</p></div></div>`
+},
+{
+ id:"b5",nav:"Context in errors",title:"Error messages need context",type:"content",
+ html:`<p class="lead">Compare these two error messages.</p>
+ <div class="visual-card">
+   <div class="visual-title">Weak versus useful</div>
+   <ul class="framework-checks">
+     <li><strong>Weak:</strong> "Lookup failed."</li>
+     <li><strong>Useful:</strong> "Cycle CYCLE02 | Object Customer | SourceKey C11872 | Field PaymentTerms | SourceValue CASHX | Rule PaymentTermCrossReference | Result No approved target match"</li>
+   </ul>
+ </div>
+ <p>Useful context often includes the cycle/run, object, source/business key, field/rule, source value where appropriate, stage, error category, technical message/reference, and timestamp.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>An error should point the investigation towards the failed record, rule or dependency.</div>
+ ${TPKit.fromField({
+   title:"The Log That Said Nothing", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/core4-lesson5-fromfield-nadia.mp3",
+   reflection:"Have you seen a single unhelpful log line turn what should have been a five-minute fix into a full day of guessing?"
+ })}`
+},
+{
+ id:"b6",nav:"The right audience",title:"Do not bury business exceptions in technical logs",type:"content",
+ html:`<p class="lead">A business mapping exception such as CustomerGroup 99 should be visible to the people who can resolve it. A 10,000-line developer log is the wrong control surface for business decisions.</p>
+ <div class="visual-card">
+   <div class="visual-title">Different information, different homes</div>
+   <ul class="framework-checks">
+     <li><strong>Unapproved CustomerGroup value:</strong> a business-facing exception/issue dataset.</li>
+     <li><strong>SQL connection timeout:</strong> the technical execution log.</li>
+     <li><strong>Target rejection code:</strong> load/rejection evidence, linked to the record.</li>
+     <li><strong>Approved exception decision:</strong> the controlled mapping/decision record.</li>
+     <li><strong>Run counts/status:</strong> the migration run control/report.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Different audiences need different views of the same migration failure. Preserve the links between them.</p></div></div>`
+},
+{
+ id:"b7",nav:"Restart and idempotence",title:"Restartability starts with knowing what completed, and idempotence at a practical level",type:"content",
+ html:`<p class="lead">After a failure, the team needs to identify a safe recovery point.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible states, and what they mean for recovery</div>
+   <ul class="framework-checks">
+     <li><strong>Nothing committed:</strong> the whole step may be safely rerun if inputs/rules remain controlled.</li>
+     <li><strong>Some records committed and identifiable:</strong> may support controlled continuation or selective reprocessing.</li>
+     <li><strong>Some records committed but state uncertain:</strong> investigate/reset before rerun.</li>
+     <li><strong>Whole step committed but downstream step failed:</strong> do not automatically repeat the completed step.</li>
+     <li><strong>Output created but target load never started:</strong> reuse the controlled output if still valid for the cycle.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Restart from the last known safe state, not from the last place someone remembers seeing the process run.</div>
+ <p>At Core level, the key practical question is simple: if this step runs twice with the same controlled input, what happens? Possible outcomes include the same controlled output being recreated safely, existing target records being updated predictably, duplicates being created, values being transformed twice, relationships being duplicated, or the second run failing because records already exist. A process does not have to be technically idempotent in every component, but its rerun behaviour must be understood.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeatable does not mean "press Run again". It means the effect of running again is known and controlled.</p></div></div>`
+},
+{
+ id:"b8",nav:"Compounding and cause",title:"Beware of transformations that compound, and let recovery follow the cause",type:"content",
+ html:`<p class="lead">Some transformations are unsafe if applied twice: adding a prefix to an already prefixed identifier, multiplying a monetary amount by an exchange rate twice, appending text to a description, creating duplicate relationship records, or re-standardising already transformed data using different assumptions. This is another reason to retain raw state and clearly separate pipeline stages.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Restarting from transformed data when the step expects raw data.</p></div>
+ <p>Suppose Bramwell's product load failed because the target API became unavailable. If the transformed/load-ready dataset is complete and unchanged, there may be no reason to rerun extraction and transformation. If instead the failure came from a bad transformation rule affecting all products, the correct recovery point is earlier.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cause and likely recovery point</div>
+   <ul class="framework-checks">
+     <li><strong>Temporary target outage:</strong> resume/restart target load from the controlled load-ready state, subject to target behaviour.</li>
+     <li><strong>Bad transformation rule:</strong> correct the rule and retransform the affected population.</li>
+     <li><strong>Incorrect source extract:</strong> re-extract the correct population and rerun downstream.</li>
+     <li><strong>Missing target reference configuration:</strong> resolve the prerequisite, then rerun the affected load population.</li>
+     <li><strong>Corrupted staging data:</strong> return to the last trustworthy upstream state.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>The root cause tells you how far back the recovery needs to go.</div>`
+},
+{
+ id:"b9",nav:"Population control",title:"Partial reprocessing needs population control",type:"content",
+ html:`<p class="lead">Selective reruns can save time, but they introduce risk if the affected population is not defined correctly.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <p>A country cross-reference was wrong for UK customers. Do not reprocess only the five customers who happened to raise defects. Identify every record to which the wrong rule applied.</p>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Partial reprocessing is safe only when you can define the complete affected population.</div>`
+},
+{
+ id:"b10",nav:"Stop or continue",title:"Build it yourself: should the process stop or continue?",type:"situations",
+ html:`<p class="lead">Not every error should allow the process to continue. For each condition, decide the correct treatment before the reasoning is revealed.</p>`,
+ items: stopContinueSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Continuing after a control failure can turn one understandable problem into an entire untrustworthy migration run. Thresholds and stop/go rules should be agreed for the context.</p></div></div>`
+},
+{
+ id:"b11",nav:"Timing evidence",title:"Logging should support timing as well as errors",type:"content",
+ html:`<p class="lead">Run logs should also capture durations.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <ul class="framework-checks">
+     <li><strong>Customer extract:</strong> 18 min (Cycle 1) &rarr; 17 min (Cycle 2)</li>
+     <li><strong>Customer transform:</strong> 42 min &rarr; 31 min</li>
+     <li><strong>Customer validation:</strong> 24 min &rarr; 22 min</li>
+     <li><strong>Customer load:</strong> 58 min &rarr; 49 min</li>
+   </ul>
+ </div>
+ <p>Timing evidence helps identify performance regressions, estimate later migration windows, find bottlenecks, and test whether improvements actually worked. Module 6 will use these timings when migration cycles move towards cutover readiness.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Measure migration duration during real cycles. Cutover timings should be based on evidence, not optimism.</div>`
+},
+{
+ id:"b12",nav:"Judgement calls",title:"Judgement calls: where should you restart?",type:"content",
+ html:`<p class="lead">Five situations show why recovery needs real judgement, not a fixed rule.</p>
+ <div class="quote">Transformation completed successfully. The target API failed before any records were accepted.</div>
+ <p>Preserve the controlled output and restart at the load boundary once the target is available, assuming the dataset is still valid.</p>
+ <div class="quote">The load completed, but UK was incorrectly mapped to US for 2,400 customers.</div>
+ <p>Fix the approved rule/build and identify the full affected population. Do not patch only reported customers.</p>
+ <div class="quote">A network failure occurs after 50,000 orders were sent. The client cannot tell whether the final batch committed.</div>
+ <p>Establish target state before rerunning. An uncertain commit state is not a safe restart point.</p>
+ <div class="quote">One customer fails a known validation while 18,000 others are valid and the design supports record-level exceptions.</div>
+ <p>Capture the exception and continue if that behaviour is approved and reconciliation remains intact.</p>
+ <div class="quote">The normal customer population is about 18,530 but today's extract contains 11,204.</div>
+ <p>Stop. The pipeline is functioning technically, but the population control has failed.</p>`
+},
+{
+ id:"b13",nav:"AI and logs",title:"AI can make logs usable",type:"content",
+ html:`<p class="lead">Migration logs can be large and repetitive. AI can help cluster similar errors, summarise new versus recurring failure types, identify the first meaningful error before cascaded messages, compare run durations, draft likely investigation paths, and turn technical errors into a clearer summary for functional teams.</p>
+ <p>AI should not automatically execute recovery actions or modify migration data based only on inferred causes.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to shorten diagnosis. Confirm the root cause before changing the pipeline or rerunning data.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Could someone else recover it?",type:"reflection",
+ html:`<p>Imagine your migration failed halfway through tonight.</p>
+ <div class="quote">Could somebody other than the developer who built it determine what completed, what failed and what can safely run next?</div>
+ <p>That is a strong test of professional migration build. A process that only its creator can recover is operationally fragile.</p>
+ <textarea id="reflection" placeholder="They would be able to tell by..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/log|record|evidence/i, strength:"You considered what the logs or run records would need to show.", gap:"Consider what the logs or run record would need to contain for someone else to understand the failure." },
+   { test:/complete|processed|committed/i, strength:"You considered how someone would know what had actually completed or committed.", gap:"Consider how someone else would confirm what had genuinely completed or committed before the failure." },
+   { test:/cause|reason|why/i, strength:"You considered whether the actual cause of failure would be identifiable.", gap:"Consider whether the actual cause of the failure would be clear to someone else, not just that it failed." },
+   { test:/safe|restart|rerun|recover/i, strength:"You connected this to knowing where it would be safe to resume.", gap:"Consider whether someone else could work out a safe point to resume from." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">They would need a run record showing exactly what completed, what state the target was left in, and what actually caused the failure, not just that it failed. With that evidence, another competent consultant should be able to work out a safe restart point without needing to ask me anything.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is a genuinely strong operational standard. You are designing for someone else's recovery, not just your own memory.":"You have made a start. Push further into exactly what evidence someone else would need, not just that logging in general would help."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's migration build can now fail without becoming a mystery.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Migration build should expect errors and failures.</li>
+   <li>Record-level exceptions, target rejections, process failures and control failures are different.</li>
+   <li>Logging should identify the run, population, stage, result and affected records.</li>
+   <li>Business exceptions should not disappear inside technical logs.</li>
+   <li>Restartability depends on knowing the last safe state.</li>
+   <li>Understand what happens if the same step or load runs twice.</li>
+   <li>Some transformations compound and must not be reapplied blindly.</li>
+   <li>The root cause determines how far back recovery should go.</li>
+   <li>Partial reprocessing requires a complete definition of the affected population.</li>
+   <li>Important control failures may require the process to stop even when the technology is still running.</li>
+   <li>Capture real execution timings for later cycle and cutover planning.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A robust migration process does not merely report that it failed. It tells you what happened, what state the data is in and where it is safe to continue.</div>`
+},
+{
+ id:"b16",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A job log says only 'PRODUCT LOAD FAILED, ERROR'. What is the main problem with this?",
+   options:[
+     {label:"Nothing; the job correctly reported that it failed", correct:false, feedback:"Not quite. Knowing that it failed is not the same as knowing what to do next."},
+     {label:"It does not identify what completed, what state the target is in, or what caused the failure", correct:true, feedback:"Correct. Recovery starts by knowing what happened, what completed and what state the target is in."},
+     {label:"The message should have been written in a friendlier tone", correct:false, feedback:"Not quite. Tone is irrelevant; the missing content is the problem."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A control failure occurs even though the technology is running perfectly, such as the source population being 20% smaller than expected. What should happen?",
+   options:[
+     {label:"Continue, since nothing is technically broken", correct:false, feedback:"Not quite. A control failure can be a serious problem even when the technology itself is healthy."},
+     {label:"The process may need to stop, because a migration control has failed even though the technology has not", correct:true, feedback:"Correct. A process can be technically healthy and still need to stop because a migration control has failed."},
+     {label:"Ignore it and investigate only after the full run completes", correct:false, feedback:"Not quite. Continuing risks building an entire run on the wrong starting population."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Which error message gives a developer genuinely useful information?",
+   options:[
+     {label:"'Lookup failed.'", correct:false, feedback:"Not quite. This gives no cycle, object, field or value to investigate."},
+     {label:"'Cycle CYCLE02 | Object Customer | SourceKey C11872 | Field PaymentTerms | SourceValue CASHX | Result No approved target match'", correct:true, feedback:"Correct. An error should point the investigation towards the failed record, rule or dependency."},
+     {label:"Any message that includes a timestamp, regardless of other content", correct:false, feedback:"Not quite. A timestamp alone still leaves the actual cause unclear."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"An unapproved CustomerGroup value like 99 turns up during a run. Where should this information live?",
+   options:[
+     {label:"Buried inside the technical execution log alongside connection errors", correct:false, feedback:"Not quite. A 10,000-line developer log is the wrong control surface for business decisions."},
+     {label:"In a business-facing exception/issue dataset the right people can see and act on", correct:true, feedback:"Correct. Different audiences need different views of the same migration failure."},
+     {label:"It should not be recorded anywhere until the next full migration cycle", correct:false, feedback:"Not quite. This kind of exception needs to be visible immediately, not deferred."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A country cross-reference was wrong for UK customers, but only five customers happened to raise defects. What is the safe reprocessing scope?",
+   options:[
+     {label:"Only the five customers who raised defects", correct:false, feedback:"Not quite. Other UK customers may have been affected without raising a visible defect."},
+     {label:"Every record to which the wrong rule actually applied", correct:true, feedback:"Correct. Partial reprocessing is safe only when you can define the complete affected population."},
+     {label:"The entire customer database, to be certain", correct:false, feedback:"Not quite. That is broader than necessary and does not target the actual cause."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why should transformation logic never be re-run starting from already-transformed data when it expects raw data?",
+   options:[
+     {label:"Because some transformations compound if applied twice, such as multiplying by an exchange rate again", correct:true, feedback:"Correct. Restarting from transformed data when the step expects raw data is a common and dangerous trap."},
+     {label:"Because raw data always loads faster than transformed data", correct:false, feedback:"Not quite. Performance is not the concern here."},
+     {label:"There is no real risk, since transformation rules are always safe to repeat", correct:false, feedback:"Not quite. Many transformations are genuinely unsafe to apply more than once."}
+   ]
+  }
+ ]
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Errors, logging and restartability.</strong></p>
+ <p>Failure is no longer a mystery. The team now knows what happened, what state the data is in and where it is safe to continue.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building for repeatable migration cycles:</strong> you will bring the Module 4 controls together so the same pipeline can run again and again with new extracts, changed mappings and improving data quality without becoming a sequence of manual one-off fixes.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 4",
+  moduleTitle: "Staging, ETL & Migration Build",
+  lessonLabel: "Lesson 5: Errors, logging and restartability",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Know what happened, what completed and what is safe next",
+  storageKey: "tp_core4_lesson5_v1",
+  lessonId: "core4-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building for repeatable migration cycles</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 4 — LESSON 6 DATA (final lesson of the module). All
+   chrome, styling and engine behaviour come from shared/
+   turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-5 and the story bible: Cycle 1
+   raw active customers 18,530, pre-load exceptions 114, target
+   rejections 14, transform 42 min, load 58 min; Cycle 2 raw active
+   customers 18,612, pre-load exceptions 39, target rejections 5,
+   transform 31 min, load 49 min.
+============================================================== */
+
+// Section 6 — "Turn Cycle 1 into Cycle 2". The learner matches each
+// fragile manual dependency to the repeatable treatment that replaces
+// it. Options are reordered per item so the correct answer's position
+// does not track the item number.
+const treatmentLabels = [
+  "Single controlled cycle/extract parameter",
+  "Approved controlled cross-reference source",
+  "Source correction, approved rule or enrichment",
+  "Generated filename/output tied to cycle/run",
+  "Controlled execution sequence/runbook",
+  "Defined target reset/reload procedure",
+  "Cycle-specific exception dataset/control"
+];
+const cycleItems = [
+  {
+   q:"Edit the extract date by hand in three separate scripts before every run.",
+   order:[1,3,0,5,6,2,4], a:0,
+   why:"A value that legitimately changes between runs should live in one controlled parameter, not be scattered across scripts where it is easy to miss one."
+  },
+  {
+   q:"Copy the country cross-reference from an email attachment into a developer's local folder.",
+   order:[5,0,1,4,2,6,3], a:1,
+   why:"An email attachment has no version control and no visible approval trail. The reference needs to live in an approved, controlled source instead."
+  },
+  {
+   q:"Fix two customer records directly in staging because the numbers look wrong.",
+   order:[3,6,4,0,2,1,5], a:2,
+   why:"A direct staging edit disappears the next time the extract runs. The fix needs to become a source correction, an approved rule, or an enrichment source."
+  },
+  {
+   q:"Rename the output file by hand after every run so the team knows which one is current.",
+   order:[0,4,6,1,3,5,2], a:3,
+   why:"A manual rename is exactly the kind of step someone eventually forgets. The filename or output should be generated and tied to the cycle automatically."
+  },
+  {
+   q:"Ask the original developer which transformation step has to run first.",
+   order:[6,2,5,0,4,1,3], a:4,
+   why:"Run order should not live in one person's memory. It belongs in a controlled execution sequence or runbook anyone competent can follow."
+  },
+  {
+   q:"Clear the target manually using an undocumented sequence of steps before reloading.",
+   order:[4,1,3,6,0,5,2], a:5,
+   why:"An undocumented reset is a reset risk waiting to happen. It needs to become a defined, repeatable target reset/reload procedure."
+  },
+  {
+   q:"Save the final exception list as FinalExceptions_v7_REALLYFINAL.xlsx.",
+   order:[2,5,0,3,1,6,4], a:6,
+   why:"A filename like this is a symptom of version confusion. Exceptions need a genuine cycle-specific dataset, not an ever-growing chain of manually named versions."
+  }
+];
+const cycleSituations = cycleItems.map((c, idx) => ({
+  title:`Cycle 1 action ${idx+1}`,
+  question:c.q,
+  options: c.order.map(li => ({
+    label: treatmentLabels[li],
+    correct: li === c.a,
+    feedback: (li === c.a ? "Correct.<br>" : "Not quite. Ask what would let a different competent consultant repeat this step safely.<br>") + c.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"The successful first run",title:"Opening scenario: The successful first run",type:"mcq",
+ html:`<p class="lead">Bramwell's customer migration works in Cycle 1. To make it work, the team manually changes the extract date in three scripts, copies the latest country cross-reference into a developer's local folder, edits two customer records directly in staging, renames the output file by hand, asks the developer which transformation step must run first, clears the target manually using an undocumented sequence, and keeps the final exception list as FinalExceptions_v7_REALLYFINAL.xlsx.</p>
+ <p>The target result is correct.</p>
+ <div class="quote">"Great. We now have a proven migration process for Cycle 2."<br><span class="small">Project manager</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Agree. If the result was correct once, the process is proven.",
+ "Mostly agree. The team just needs a checklist reminding everyone of the manual steps.",
+ "Disagree. The migration produced a successful result, but the process is not yet reliably repeatable. The manual dependencies need to become controlled parameters, rules, run steps or documented exceptions.",
+ "Automate every step immediately. A repeatable migration must have zero manual activity."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A correct output can still depend on fragile, unrecorded actions that will not reproduce safely next time.",
+ "Repeatability means more than remembering the same workarounds.",
+ "Correct. The goal is a controlled process whose inputs, rules, sequence and outputs can be reproduced and explained.",
+ "Some manual approvals or controlled actions may be entirely appropriate. The important point is that they are explicit, owned and repeatable."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to call Cycle 1 a proven process just because it produced the right answer once.</p>
+ <p>They go through the seven manual dependencies one at a time, and turn each into something controlled.</p>
+ <div class="visual-card">
+   <div class="visual-title">What that actually changes before Cycle 2</div>
+   <ul class="framework-checks">
+     <li><strong>Extract date:</strong> now a single controlled parameter, set once, used everywhere.</li>
+     <li><strong>Country cross-reference:</strong> now an approved, version-controlled source, not an email attachment in someone's folder.</li>
+     <li><strong>Run order:</strong> now a documented runbook, not a question for the original developer.</li>
+     <li><strong>Exception list:</strong> now a genuine cycle-specific dataset, not the eighth version of a spreadsheet.</li>
+   </ul>
+ </div>
+ <p>Cycle 2 still needs to produce a correct result. The difference is that this time, if the original developer were unavailable, someone else could actually run it.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeatability means controlled change through a stable method, not forcing every cycle to look the same.</p></div></div>`
+},
+{
+ id:"b3",nav:"Iterative by design",title:"Migration is iterative by design, and repeatable does not mean identical",type:"content",
+ html:`<p class="lead">Bramwell's data and migration build will change between cycles. Later runs may contain new and changed source records, resolved data-quality issues, newly discovered source values, approved mapping changes, target configuration changes, performance improvements, new validation checks, and fewer known defects and possibly new ones.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not build a migration that survives one dataset. Build a process that can absorb controlled change across repeated cycles.</div>
+ <p>Cycle 2 should not necessarily produce the same output as Cycle 1. The source may have improved. Mapping decisions may have changed. The target may be better configured. What should remain controlled is the method.</p>
+ <div class="visual-card">
+   <div class="visual-title">May legitimately change versus should remain controlled</div>
+   <ul class="framework-checks">
+     <li><strong>Source population/data</strong> may change, but the <strong>population definition and extract evidence</strong> should remain controlled.</li>
+     <li><strong>Approved mappings</strong> may change, but the <strong>version/baseline used for the cycle</strong> should remain controlled.</li>
+     <li><strong>Cross-reference contents</strong> may change, but their <strong>controlled source and approval</strong> should remain controlled.</li>
+     <li><strong>Exception counts</strong> may change, but the <strong>rules used to identify exceptions</strong> should remain controlled.</li>
+     <li><strong>Performance</strong> may change, but the <strong>timing measurement method</strong> should remain controlled.</li>
+     <li><strong>Target configuration</strong> may change, but <strong>known prerequisites/readiness checks</strong> should remain controlled.</li>
+     <li><strong>Output result</strong> may change, but <strong>reconciliation and evidence</strong> should remain controlled.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeatability means controlled change through a stable method, not forcing every cycle to look the same.</p></div></div>`
+},
+{
+ id:"b4",nav:"Parameterise and separate",title:"Parameterise what legitimately varies, and separate configuration from logic",type:"content",
+ html:`<p class="lead">Values that change between runs should not be scattered through code and filenames.</p>
+ <div class="visual-card">
+   <div class="visual-title">Examples</div>
+   <ul class="framework-checks">
+     <li><strong>Migration cycle:</strong> CYCLE01, CYCLE02, MOCK01, PROD</li>
+     <li><strong>Extract date/time:</strong> a cycle-specific extraction parameter</li>
+     <li><strong>Source environment:</strong> approved source connection/configuration</li>
+     <li><strong>Target environment:</strong> TEST, UAT, PROD as applicable</li>
+     <li><strong>Legal entity/company:</strong> an explicit run parameter</li>
+     <li><strong>Input/output locations:</strong> controlled configuration</li>
+     <li><strong>Mapping/reference baseline:</strong> an approved version identifier</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>If a value is expected to change between cycles, make the change deliberate and visible rather than hidden inside code.</div>
+ <p>Imagine the same transformation script contains the database server name, a file path, the cycle date, the legal entity, country cross-references, payment-term translations and the transformation code, all mixed together. Every cycle requires editing the script in several places. A stronger design separates environment/run configuration (connections, paths, cycle ID, dates, company), business reference data (approved cross-references), transformation logic (how approved rules are applied), and execution control (sequence, status, counts, timings, errors).</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A repeatable build makes expected change easy and unintended change difficult.</p></div></div>`
+},
+{
+ id:"b5",nav:"Turn Cycle 1 into Cycle 2",title:"Build it yourself: turn Cycle 1 into Cycle 2",type:"situations",
+ html:`<p class="lead">Bramwell's fragile Cycle 1 process worked, but only through manual dependencies. For each one, identify the repeatable treatment that should replace it.</p>`,
+ items: cycleSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Repeatability Review: manual dependency &rarr; risk &rarr; controlled replacement.</p></div></div>`
+},
+{
+ id:"b6",nav:"Cycle identity and baselines",title:"Give every cycle an identity, and baseline the rules used for each one",type:"content",
+ html:`<p class="lead">Cycle identity should flow through the pipeline.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <ul class="framework-checks">
+     <li>MigrationCycle = CYCLE02</li>
+     <li>RunID = CYCLE02_CUSTOMER_001</li>
+     <li>MappingBaseline = MAP_2026_09_03</li>
+     <li>ExtractDate = 2026-09-03</li>
+   </ul>
+ </div>
+ <p>That identity should connect source extracts, staging data, transformation output, exceptions, load files/API batches, target results, validation evidence, and timings and run logs.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A migration result without cycle identity becomes difficult to compare, investigate or trust.</div>
+ <p>Module 3 established that mappings change. Module 4 must know which approved rules were actually built and used. Suppose Cycle 1 used EXPORT &rarr; EXPORT, but before Cycle 2, Bramwell approves EXPORT &rarr; INTERNATIONAL. Both cycle results may be correct for their approved baselines. The problem comes if the team cannot tell which rule produced which output.</p>
+ <div class="principle"><strong>Core principle</strong><br>Never compare two migration cycles without knowing whether the inputs, rules and target conditions changed between them.</div>
+ ${TPKit.fromField({
+   title:"The Process Only One Person Could Run", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/core4-lesson6-fromfield-elena.mp3",
+   reflection:"Have you seen a migration process that technically worked, but only because one specific person happened to be in the room?"
+ })}`
+},
+{
+ id:"b7",nav:"New values are normal",title:"New source values are normal",type:"content",
+ html:`<p class="lead">A repeatable pipeline should not assume that profiling discovered every future source value. Cycle 2 might introduce a new payment term, a new product status, a new customer group value, a newly created warehouse, or a salesperson not present in the earlier extract.</p>
+ <p>Safe behaviour is to detect the new value, route it through the relevant exception/control, obtain the required decision or configuration, update the approved reference/rule, and reprocess the affected population.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A robust pipeline expects new exceptions. It does not hide them behind catch-all defaults.</p></div></div>`
+},
+{
+ id:"b8",nav:"Evidence, not vibes",title:"Compare cycles using evidence",type:"content",
+ html:`<p class="lead">Bramwell's customer quality and migration results can improve across cycles.</p>
+ <div class="visual-card">
+   <div class="visual-title">Cycle 1 versus Cycle 2</div>
+   <ul class="framework-checks">
+     <li><strong>Raw active customers:</strong> 18,530 &rarr; 18,612</li>
+     <li><strong>Pre-load exceptions:</strong> 114 &rarr; 39</li>
+     <li><strong>Target rejections:</strong> 14 &rarr; 5</li>
+     <li><strong>Customer transform duration:</strong> 42 min &rarr; 31 min</li>
+     <li><strong>Customer load duration:</strong> 58 min &rarr; 49 min</li>
+   </ul>
+ </div>
+ <p>The learner should ask: why did the population increase by 82? Which issues explain the reduction from 114 to 39 pre-load exceptions? Are the five target rejections recurring or new? Was the performance improvement caused by code, infrastructure, data volume or target conditions? Did the mapping baseline change?</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A better number is not automatically evidence of a better migration. Explain why it changed.</div>`
+},
+{
+ id:"b9",nav:"Learn from defects",title:"Use defects to improve the process",type:"content",
+ html:`<p class="lead">Every migration cycle should teach the team something.</p>
+ <div class="visual-card">
+   <div class="visual-title">Defect to process improvement</div>
+   <ul class="framework-checks">
+     <li><strong>New unmapped source value:</strong> add profiling/reference coverage check.</li>
+     <li><strong>Target rejects missing configuration:</strong> add a prerequisite readiness check.</li>
+     <li><strong>Manual staging correction repeated:</strong> replace with an approved repeatable rule.</li>
+     <li><strong>Load takes too long:</strong> investigate batching/performance and retest.</li>
+     <li><strong>Wrong run order:</strong> make the dependency sequence explicit.</li>
+     <li><strong>Count mismatch discovered late:</strong> move reconciliation earlier in the pipeline.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The value of a test cycle is not that it proves the migration is perfect. It is that it exposes what must improve before the next one.</p></div></div>`
+},
+{
+ id:"b10",nav:"Manual work and environments",title:"Reduce manual work intelligently, and stay consistent across environments",type:"content",
+ html:`<p class="lead">Manual work is not automatically bad. Reasonable manual activities may include business approval, controlled exception decisions, Go/No-Go decisions, authorised environment actions, and review of unusual records.</p>
+ <div class="visual-card">
+   <div class="visual-title">Fragile manual activities</div>
+   <ul class="framework-checks">
+     <li>Editing final load files</li>
+     <li>Remembering undocumented sequence</li>
+     <li>Changing code constants each run</li>
+     <li>Copying reference files from personal folders</li>
+     <li>Clearing staging without preserving cycle identity</li>
+     <li>Fixing recurring data defects by hand</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Automate repetition. Keep judgement where judgement is genuinely required.</div>
+ <p>Migration build often moves through development, test, UAT and production-like environments. The logic should remain consistent while environment-specific configuration changes deliberately: approved transformation rules, control/reconciliation logic, exception treatment, object dependency logic and logging structure should usually stay the same; connections/endpoints, credentials/access, file/storage locations, target company/environment identifiers and performance/infrastructure settings may change by environment.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Promote the migration method. Configure the environment.</div>`
+},
+{
+ id:"b11",nav:"Repeatability includes people",title:"Repeatability includes people",type:"content",
+ html:`<p class="lead">A process is fragile if only its original developer can run it. Before later cycles, another competent team member should be able to understand what inputs are required, which parameters must be set, the run sequence, the expected control counts, where outputs and exceptions appear, how failures are diagnosed, what requires approval, and how a safe rerun is performed.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeatability is partly a technical property and partly an operational property.</p></div></div>`
+},
+{
+ id:"b12",nav:"Judgement calls",title:"Judgement calls: is it genuinely repeatable?",type:"content",
+ html:`<p class="lead">Five situations show what genuine repeatability actually looks like.</p>
+ <div class="quote">Every technical step is automated, but the script contains hard-coded TEST database names and Cycle 1 dates.</div>
+ <p>Not reliably repeatable. Automation with hidden run-specific values is still fragile.</p>
+ <div class="quote">The pipeline pauses for the business owner to approve 12 unresolved customer exceptions.</div>
+ <p>Potentially good control. Human judgement can be a deliberate part of a repeatable process.</p>
+ <div class="quote">Cycle 2 finishes 30% faster than Cycle 1.</div>
+ <p>Useful, but investigate why before using it as the cutover estimate.</p>
+ <div class="quote">Cycle 3 contains a source value never seen before and the pipeline routes it to an exception.</div>
+ <p>Good behaviour. The pipeline exposed change rather than inventing a target value.</p>
+ <div class="quote">A new consultant follows the controlled process and reproduces the expected migration result without the original developer present.</div>
+ <p>Strong evidence that the process is operationally repeatable.</p>`
+},
+{
+ id:"b13",nav:"AI across cycles",title:"AI can help compare and improve cycles",type:"content",
+ html:`<p class="lead">AI can assist with repeated migration execution by comparing exception patterns between cycles, summarising new versus recurring errors, reviewing mapping/build changes, identifying manual steps that recur, comparing run timings, suggesting candidate automation opportunities, and drafting regression test cases from prior defects.</p>
+ <p>The team should still verify causes and approve changes.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to find patterns across cycles. Do not let it turn correlation into an unverified migration rule.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Could someone else run the next cycle?",type:"reflection",
+ html:`<p>Imagine you disappeared from the project tomorrow.</p>
+ <div class="quote">Could another competent migration consultant run the next cycle and explain the result?</div>
+ <p>If the answer is no, identify what currently exists only in your memory, local files or manual habits. Those are repeatability risks.</p>
+ <textarea id="reflection" placeholder="What currently exists only in my memory or habits is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/memory|remember|habit/i, strength:"You considered what currently only exists in your own memory or habits.", gap:"Consider what run-order knowledge, workarounds or habits currently exist only in your own memory." },
+   { test:/parameter|config|control/i, strength:"You considered whether key values are properly parameterised and controlled.", gap:"Consider whether the values that change between cycles are properly parameterised rather than hidden in code." },
+   { test:/document|runbook|explain/i, strength:"You considered whether the process is actually documented well enough for someone else to follow.", gap:"Consider whether a runbook or documentation exists that someone else could actually follow." },
+   { test:/local|personal|folder/i, strength:"You considered whether anything important lives only in a personal file or folder.", gap:"Consider whether any reference file or configuration lives only in a personal folder." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">If I am honest, the run order and a couple of the recovery steps currently exist mostly in my head, and one reference file still sits in my own folder rather than an approved shared location. Those are exactly the kind of repeatability risks this lesson is about: things that work perfectly well as long as I am the one running it.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely honest professional reflection. Naming your own single points of failure is exactly the right instinct.":"You have made a start. Push further into naming something specific that currently depends only on you."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Lesson and Module 4 summary",type:"content",
+ html:`<p class="lead">Bramwell now has something more valuable than a script that once moved data successfully. It has the foundations of a migration process that can be run, measured, challenged and improved.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Migration must support repeated cycles, not just a single successful run.</li>
+   <li>Repeatable means controlled change through a stable method, not identical output every time.</li>
+   <li>Parameterise what legitimately varies; separate configuration from transformation logic.</li>
+   <li>Give every cycle an identity that connects extract, staging, transformation, exceptions, load and evidence.</li>
+   <li>Know which mapping/rule baseline produced which cycle's result.</li>
+   <li>New source values are normal and should be exposed, not hidden behind defaults.</li>
+   <li>Compare cycles using evidence and explain why numbers changed.</li>
+   <li>Use defects to drive genuine process improvement.</li>
+   <li>Automate repetition; keep genuine judgement where it is actually required.</li>
+   <li>Keep the method consistent across environments while configuration changes deliberately.</li>
+   <li>Repeatability is both a technical and an operational property, including whether someone else could run it.</li>
+ </ul>
+ <div class="visual-card">
+   <div class="visual-title">Across Module 4</div>
+   <ul class="framework-checks">
+     <li><strong>Lesson 1</strong> established a controlled path from source to target.</li>
+     <li><strong>Lesson 2</strong> preserved raw state, traceability and working data.</li>
+     <li><strong>Lesson 3</strong> turned approved mapping into repeatable transformation logic.</li>
+     <li><strong>Lesson 4</strong> controlled the target handover and rejection handling.</li>
+     <li><strong>Lesson 5</strong> made failure diagnosable and recovery safe.</li>
+     <li><strong>Lesson 6</strong> brought it together into a process that can run, and improve, again and again.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Module principle</strong><br>Build the migration so that every important input, transformation, exception, load result and rerun can be explained and repeated.</div>`
+},
+{
+ id:"b16",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"Cycle 1 produced the correct result, but only through several manual workarounds. What does this actually prove?",
+   options:[
+     {label:"That the process is now proven and ready for Cycle 2 unchanged", correct:false, feedback:"Not quite. A correct result can still depend on fragile, unrecorded actions."},
+     {label:"That the result was correct once, but the process itself is not yet reliably repeatable", correct:true, feedback:"Correct. Result and process are different things."},
+     {label:"That every manual step must be eliminated immediately, with zero exceptions", correct:false, feedback:"Not quite. Some manual approvals or controlled actions can be entirely appropriate."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Cycle 2 produces a different customer count and different exception numbers from Cycle 1. What does this mean?",
+   options:[
+     {label:"The process is broken, since repeatable should mean identical output", correct:false, feedback:"Not quite. Repeatable does not mean identical; the source and mappings are allowed to change."},
+     {label:"This can be entirely normal, provided the method used to produce and measure the result stayed controlled", correct:true, feedback:"Correct. Repeatability means controlled change through a stable method."},
+     {label:"Only Cycle 1's result can be trusted as the baseline going forward", correct:false, feedback:"Not quite. Either cycle can be valid for its own approved baseline."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A country cross-reference lives as an email attachment copied into a developer's local folder. What is the repeatable alternative?",
+   options:[
+     {label:"An approved, controlled cross-reference source that anyone on the team can access and trust", correct:true, feedback:"Correct. A repeatable build makes expected change easy and unintended change difficult."},
+     {label:"Keeping the email attachment but asking the developer to forward it to more people", correct:false, feedback:"Not quite. More copies of an uncontrolled file does not create control."},
+     {label:"Removing the country cross-reference entirely", correct:false, feedback:"Not quite. The reference is still needed; it just needs a controlled home."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Why does every migration cycle need its own identity, such as a cycle and run ID?",
+   options:[
+     {label:"So the output looks more professional in reports", correct:false, feedback:"Not quite. This is about genuine traceability, not appearance."},
+     {label:"Because a migration result without cycle identity becomes difficult to compare, investigate or trust", correct:true, feedback:"Correct. Cycle identity connects extract, staging, transformation, exceptions, load and evidence."},
+     {label:"Cycle identity is only needed once the project reaches production", correct:false, feedback:"Not quite. It matters from the very first test cycle."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Cycle 3 contains a completely new source value the pipeline has never seen before, and it gets routed to an exception. Is this good or bad?",
+   options:[
+     {label:"Bad; a mature pipeline should never produce new exceptions", correct:false, feedback:"Not quite. A robust pipeline expects new exceptions rather than hiding them."},
+     {label:"Good; the pipeline exposed genuine change instead of inventing a plausible value", correct:true, feedback:"Correct. This is exactly the safe behaviour a repeatable pipeline should show."},
+     {label:"Neutral; it makes no difference either way", correct:false, feedback:"Not quite. This is a meaningful, positive signal about how the pipeline handles the unexpected."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"What is the strongest evidence that a migration process is genuinely repeatable?",
+   options:[
+     {label:"It ran successfully once, with the original developer present", correct:false, feedback:"Not quite. That only proves the result was achievable, not that the process is repeatable."},
+     {label:"A different, competent consultant can follow the controlled process and reproduce the expected result without the original developer", correct:true, feedback:"Correct. Repeatability is partly a technical property and partly an operational property."},
+     {label:"The process has been automated end to end, regardless of what is hidden inside it", correct:false, feedback:"Not quite. Automation with hidden run-specific values can still be fragile."}
+   ]
+  }
+ ]
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building for repeatable migration cycles, and Core Module 4.</strong></p>
+ <p>Bramwell now has a migration process that can run, be measured, be challenged and improve, cycle after cycle, without depending on any one person's memory.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next</h3>
+ <p><strong>Module 5: Validation &amp; Reconciliation.</strong> How do we prove that the data produced by this process is complete, accurate, connected and usable?</p>
+ <p>Before moving on, complete the Core Module 4 assessment to confirm what you have learned across all six lessons.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 4",
+  moduleTitle: "Staging, ETL & Migration Build",
+  lessonLabel: "Lesson 6: Building for repeatable migration cycles",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "Controlled change through a stable method",
+  storageKey: "tp_core4_lesson6_v1",
+  lessonId: "core4-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6-complete.html",
+  finalButtonLabel: "Finish Lesson 6 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Staging data properly</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 4 — LESSON 2 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lesson 1 and the story bible: customer
+   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ.
+============================================================== */
+
+// Section 6 — "Design Bramwell's customer stage". The learner
+// classifies each staging field into its category before the
+// reasoning is revealed. Options are reordered per item so the
+// correct answer's position does not track the item number.
+const categoryLabels = ["Identity", "Cycle metadata", "Raw values", "Transformed values", "Control", "Audit"];
+const stageFieldItems = [
+  {
+   q:"StageRecordID / SourceCustomerNumber",
+   order:[2,0,4,5,3,1], a:0,
+   why:"These fields answer 'which record is this, and where did it come from', which is exactly what identity fields are for."
+  },
+  {
+   q:"MigrationCycle / ExtractDate",
+   order:[3,5,1,0,4,2], a:1,
+   why:"These fields tie the record to a specific execution, which is the job of cycle metadata, not identity or values."
+  },
+  {
+   q:"RawTerms = 45E",
+   order:[4,1,2,3,5,0], a:2,
+   why:"This preserves exactly what the source contained, before any rule touched it. That is a raw value, kept as evidence."
+  },
+  {
+   q:"PaymentTerms = approved target equivalent",
+   order:[0,3,5,2,1,4], a:3,
+   why:"This is the result of applying the approved mapping rule to the raw value. That makes it a transformed value, not raw evidence."
+  },
+  {
+   q:"RecordStatus / ReadyToLoad",
+   order:[1,4,0,5,2,3], a:4,
+   why:"These fields describe where the record currently stands in the process, which is a control field, not a business value."
+  },
+  {
+   q:"TransformationTimestamp / RuleVersion",
+   order:[5,2,3,1,0,4], a:5,
+   why:"These fields record when and under which rule version the transformation happened. That is audit information, supporting later investigation."
+  }
+];
+const stageFieldSituations = stageFieldItems.map((s, idx) => ({
+  title:`Field ${idx+1}`,
+  question:s.q,
+  options: s.order.map(li => ({
+    label: categoryLabels[li],
+    correct: li === s.a,
+    feedback: (li === s.a ? "Correct.<br>" : "Not quite. Ask what job this specific field is actually doing.<br>") + s.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"Which customer did we migrate?",title:"Opening scenario: Which customer did we actually migrate?",type:"mcq",
+ html:`<p class="lead">During Bramwell's second customer test, a user reports that Harrison Trade Supplies Ltd has the wrong payment terms in the target.</p>
+ <p>The developer opens the staging table and finds a single row: CustomerName = Harrison Trade Supplies Ltd, PaymentTerms = NET30, CustomerGroup = KEY.</p>
+ <p>The original source value is no longer present. The staging table was overwritten during transformation, so nobody can see whether the source contained 45E, whether the cross-reference returned NET30, whether someone manually changed the staged value, or whether the extract itself was different in this cycle.</p>
+ <div class="quote">"Let's just query the live source system to see what the customer contains now."<br><span class="small">Developer</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "That is sufficient. The current source value is the best evidence of what was migrated.",
+ "Restore the source value into the same staging column and rerun the transformation.",
+ "The staging design has lost traceability. Preserve the extracted source state separately from transformed values so the team can compare what entered the pipeline with what the rules produced.",
+ "Remove staging entirely and transform directly from source to avoid duplicate data."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The live source tells you what is there now, not necessarily what was extracted for the migration cycle.",
+ "Once the original cycle data has been overwritten, reconstructing it introduces uncertainty.",
+ "Correct. Raw and transformed states serve different purposes. Retaining both makes defects explainable and reruns controllable.",
+ "Direct transformation can be appropriate in some architectures, but the migration still needs retained evidence and traceability somewhere."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and rebuilds staging so raw and transformed values are kept apart.</p>
+ <p>The very next time a payment-term question comes up, the answer is already sitting there instead of being unrecoverable.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the redesigned stage now shows</div>
+   <ul class="framework-checks">
+     <li><strong>RawTerms:</strong> 45E, exactly as extracted from the source, untouched.</li>
+     <li><strong>PaymentTerms:</strong> NET30, the result of the approved cross-reference applied to 45E.</li>
+     <li><strong>TransformationTimestamp / RuleVersion:</strong> confirms which mapping baseline actually produced NET30.</li>
+   </ul>
+ </div>
+ <p>The question "was 45E always going to become NET30, or did someone change it by hand?" now has a real answer, because the raw value was never overwritten in the first place.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Staging is not just somewhere to put data. It is where the migration becomes observable and repeatable.</p></div></div>`
+},
+{
+ id:"b3",nav:"What staging is for",title:"What staging is for, and thinking in data states",type:"content",
+ html:`<p class="lead">Staging is a controlled working area for migration data between source extraction and target load.</p>
+ <div class="visual-card">
+   <div class="visual-title">It helps the team</div>
+   <ul class="framework-checks">
+     <li>Freeze the source population used for a migration run</li>
+     <li>Retain source values before transformation</li>
+     <li>Apply and inspect migration rules</li>
+     <li>Store enrichment and cross-reference results</li>
+     <li>Separate valid records from exceptions</li>
+     <li>Reconcile populations between stages</li>
+     <li>Rerun part of the process without repeating everything</li>
+     <li>Compare results between migration cycles</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Staging is not just somewhere to put data. It is where the migration becomes observable and repeatable.</div>
+ <p>A practical staging design distinguishes different states of the same business record.</p>
+ <div class="visual-card">
+   <div class="visual-title">Four states of the same Bramwell customer</div>
+   <ul class="framework-checks">
+     <li><strong>Raw:</strong> preserve what was extracted. Terms = 45E; Country = UK; Group = STD.</li>
+     <li><strong>Transformed:</strong> show the result of approved migration rules. PaymentTerms = approved target equivalent; Country = GB; Group = STANDARD.</li>
+     <li><strong>Exception:</strong> retain records or fields that cannot yet produce a safe output. CustomerGroup = 99; reason = unresolved mapping.</li>
+     <li><strong>Load-ready:</strong> contain the values prepared for the target import mechanism, using target field names, formats and accepted references.</li>
+   </ul>
+ </div>
+ <p>These states do not have to be four physical databases or schemas. They need to be distinguishable enough that the migration team can prove which state it is looking at.</p>
+ <div class="principle"><strong>Core principle</strong><br>Do not overwrite the evidence you may need to explain the transformation.</div>`
+},
+{
+ id:"b4",nav:"Raw as evidence",title:"Raw means raw enough to be evidence, and never rely on row position",type:"content",
+ html:`<p class="lead">Raw staging should normally retain source values as received.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful raw-stage metadata</div>
+   <ul class="framework-checks">
+     <li><strong>Source system:</strong> identifies where the record came from.</li>
+     <li><strong>Source object/file:</strong> identifies the specific extract origin.</li>
+     <li><strong>Source business key:</strong> allows the record to be traced back.</li>
+     <li><strong>Migration cycle/batch ID:</strong> separates one execution from another.</li>
+     <li><strong>Extract timestamp:</strong> shows when the source snapshot was taken.</li>
+     <li><strong>Extract/file identifier:</strong> links records to the actual input dataset.</li>
+     <li><strong>Row/load timestamp:</strong> supports operational troubleshooting.</li>
+   </ul>
+ </div>
+ <p>The raw layer can still include technical metadata. What it should avoid is silently replacing source business values with transformed ones.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Raw staging is the migration team's receipt for what it received.</p></div></div>
+ <p>Suppose Bramwell extracts customers to a CSV and later joins an exception file back using row number. The next extract sorts differently. Row 8,412 is now another customer. Stable traceability should use a source business key, a source system plus source key, a controlled composite key, or a generated staging record ID linked permanently to the source key.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Using spreadsheet row numbers, temporary sort order or other unstable positions as record identity.</p></div>`
+},
+{
+ id:"b5",nav:"Design the stage",title:"Build it yourself: design Bramwell's customer stage",type:"situations",
+ html:`<p class="lead">For customer C10482, Harrison Trade Supplies Ltd, decide which category each candidate staging field actually belongs to.</p>`,
+ items: stageFieldSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Staging Record Design: identity + cycle metadata + raw state + transformed state + control status + audit. Deciding which information is essential for traceability, and which would be unnecessary duplication, is the actual design skill here.</p></div></div>`
+},
+{
+ id:"b6",nav:"Not a photocopy",title:"Do not confuse staging with the target model, and preserve rejected records",type:"content",
+ html:`<p class="lead">A staging structure does not have to look exactly like the target. Bramwell's source may contain FULL_ADDRESS = 18 King Street, Bristol, BS1 4AB, UK, while the target requires AddressLine1, City, Postcode and CountryCode separately.</p>
+ <p>A useful stage may retain both the raw full address and the parsed components. That makes the transformation inspectable.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Stage for migration control. Do not force staging to be a photocopy of either the source or the target.</div>
+ <p>If a record fails a transformation or validation rule, do not simply delete it from the working population. A controlled exception record should usually retain source identity, cycle/batch, the failed rule or field, the exception reason, current status, and resolution where applicable.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example exceptions</div>
+   <ul class="framework-checks">
+     <li><strong>C10991:</strong> CustomerGroup = 99, no approved target treatment.</li>
+     <li><strong>C11872:</strong> PaymentTerms = CASHX, no approved cross-reference.</li>
+     <li><strong>C12604:</strong> SalesOwner = JONESP, no active target worker match.</li>
+   </ul>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>An exception is still part of the migration population until an approved decision says otherwise.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Column That Ate the Evidence", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/core4-lesson2-fromfield-sam.mp3",
+   reflection:"Have you seen a staging column get overwritten during transformation, taking the only evidence of the source value with it?"
+ })}`
+},
+{
+ id:"b7",nav:"Reprocessing and cycle separation",title:"Staging enables controlled reprocessing, and cycle data must stay separate",type:"content",
+ html:`<p class="lead">Imagine the business approves a target treatment for CustomerGroup 99 after the raw extract has already been taken. If the raw population is retained, Bramwell may be able to update the approved mapping/cross-reference, rerun transformation for the affected records, revalidate the output, and avoid re-extracting unchanged source data.</p>
+ <div class="principle"><strong>Core principle</strong><br>Fix the rule, then reprocess the data through the rule. Do not repair final output by hand.</div>
+ <p>Bramwell's CYCLE01 and CYCLE02 should never become indistinguishable.</p>
+ <div class="visual-card">
+   <div class="visual-title">Risky versus controlled</div>
+   <ul class="framework-checks">
+     <li><strong>Risky:</strong> TRUNCATE staging and reload without retaining prior evidence. <strong>Controlled:</strong> archive or retain cycle-specific data/evidence according to project needs.</li>
+     <li><strong>Risky:</strong> same filenames reused with no run identity. <strong>Controlled:</strong> controlled filenames, folders or metadata tied to cycle/batch.</li>
+     <li><strong>Risky:</strong> exception list has no cycle column. <strong>Controlled:</strong> every exception belongs to a specific execution.</li>
+     <li><strong>Risky:</strong> developer queries "current staging" during investigation. <strong>Controlled:</strong> investigation identifies the exact cycle/run first.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>When someone asks "What happened in Cycle 2?", the answer should not depend on what happens to be in staging today.</div>`
+},
+{
+ id:"b8",nav:"Reconciliation and protection",title:"Staging should support reconciliation, and staging can protect the source",type:"content",
+ html:`<p class="lead">Counts should be available at meaningful control points.</p>
+ <div class="visual-card">
+   <div class="visual-title">Control points</div>
+   <ul class="framework-checks">
+     <li><strong>Extracted customers:</strong> 18,530</li>
+     <li><strong>Raw staged customers:</strong> 18,530</li>
+     <li><strong>Transformed customers:</strong> 18,530</li>
+     <li><strong>Valid load-ready:</strong> 18,416</li>
+     <li><strong>Pre-load exceptions:</strong> 114</li>
+   </ul>
+ </div>
+ <p>Useful controls may also include distinct business-key counts, duplicate counts, sum/control totals for financial data, counts by company/country/status, exception counts by rule, and cross-reference coverage.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A total count proves only one thing. Segmenting counts can reveal that one population gained records while another lost the same number.</p></div></div>
+ <p>Repeated profiling and transformation directly against a production legacy system can create performance load, changing results while users continue working, limited query access, dependency on source availability, and difficulty reproducing an earlier result. A controlled extract into staging provides a stable migration working set, though it does not remove the need to define when and how the source snapshot is taken.</p>
+ <div class="principle"><strong>Core principle</strong><br>A stable staging snapshot separates migration analysis from a moving operational source.</div>`
+},
+{
+ id:"b9",nav:"Swamp and sensitivity",title:"Staging can become a data swamp, and sensitive data remains sensitive",type:"content",
+ html:`<p class="lead">Poorly controlled staging creates its own risks: old and new cycles mixed together, temporary tables nobody understands, manual fixes with no audit trail, duplicate copies with unclear authority, personal data retained longer than needed, unsecured extracts, and no cleanup or retention approach.</p>
+ <p>Staging therefore needs proportionate naming, access, retention and housekeeping controls.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Assuming that because staging is temporary, governance and security do not matter.</p></div>
+ <p>A customer extract copied into a staging database or CSV is still customer data. Migration teams should follow project and organisational controls for access, storage location, encryption where required, non-production masking where required, retention/deletion, transfer, and use of AI or external tools. The exact controls depend on the project and data classification.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Moving data into staging does not reduce its sensitivity.</div>`
+},
+{
+ id:"b10",nav:"Judgement calls",title:"Judgement calls: good staging or bad staging?",type:"content",
+ html:`<p class="lead">Five situations show what genuinely good staging practice looks like.</p>
+ <div class="quote">Raw Country is replaced with GB during transformation.</div>
+ <p>Poor traceability. Preserve the raw value and transformed value separately or retain equivalent auditable states.</p>
+ <div class="quote">A small static currency list passes through twelve physical staging tables.</div>
+ <p>Probably excessive unless there is a genuine control need. Staging should be proportionate.</p>
+ <div class="quote">A developer changes CASHX to CASH in staging so the load can proceed.</div>
+ <p>Uncontrolled unless this is an approved, repeatable rule. Fix the mapping/enrichment/source and reprocess.</p>
+ <div class="quote">The final load file contains only target fields and no source key because the target format does not allow it.</div>
+ <p>That may be unavoidable in the file, but traceability should still exist elsewhere linking output records to staged source identity.</p>
+ <div class="quote">Cycle 1 staging is removed immediately after Cycle 2 starts to save space, while Cycle 1 defects are still being investigated.</div>
+ <p>Risky. Retain enough evidence for active investigation and agreed audit/retention needs.</p>`
+},
+{
+ id:"b11",nav:"AI and staging",title:"AI can help design and inspect staging",type:"content",
+ html:`<p class="lead">AI can assist with technical staging work when used within approved data controls.</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Suggest staging schemas from source and target metadata</li>
+     <li>Generate table-creation scripts</li>
+     <li>Identify missing traceability fields</li>
+     <li>Compare raw and transformed records</li>
+     <li>Summarise exception patterns</li>
+     <li>Draft housekeeping or reconciliation queries</li>
+   </ul>
+ </div>
+ <p>Do not upload client extracts to unapproved public AI services.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>AI can help structure and interrogate staging. The migration team remains responsible for security, traceability and correctness.</p></div></div>`
+},
+{
+ id:"b12",nav:"Reflection",title:"What would you need to retain?",type:"reflection",
+ html:`<p>Imagine someone challenges one migrated value six weeks after a test cycle.</p>
+ <div class="quote">What would you need to retain to prove what the source contained, which rule was applied and what output was produced?</div>
+ <p>That answer defines much of the useful staging evidence. Retain what makes the migration explainable, not every possible copy of the data.</p>
+ <textarea id="reflection" placeholder="I would need to retain..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/raw|source value|original/i, strength:"You considered retaining the original raw source value.", gap:"Consider retaining the raw source value exactly as it was extracted." },
+   { test:/rule|mapping|version|baseline/i, strength:"You considered recording which rule or mapping version was actually applied.", gap:"Consider recording which rule or mapping baseline version was applied." },
+   { test:/cycle|batch|timestamp|date/i, strength:"You considered cycle or timestamp metadata tying the evidence to a specific run.", gap:"Consider retaining cycle or timestamp metadata so the evidence ties to a specific run." },
+   { test:/output|transformed|produced/i, strength:"You considered retaining the transformed output alongside the raw value.", gap:"Consider retaining the transformed output itself, not just the raw input." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would need the raw source value exactly as extracted, the transformed output the rule actually produced, the rule or mapping baseline version that was applied, and the cycle and timestamp tying all of that to a specific run. Together, those let me answer what we received, what we did to it, and what we produced.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely strong staging instinct. You are retaining evidence, not just data.":"You have made a start. Push further into what specific evidence would let someone else answer this without asking you."}</div>`
+},
+{
+ id:"b13",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell now has a staging design that preserves evidence instead of overwriting it.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Staging provides a controlled working area between source and target.</li>
+   <li>Raw, transformed, exception and load-ready states serve different purposes.</li>
+   <li>Preserve source identity and cycle/batch identity.</li>
+   <li>Do not overwrite the only evidence of the source state.</li>
+   <li>Staging should support reconciliation and controlled reprocessing.</li>
+   <li>Rejected records remain part of the migration population until explicitly resolved or excluded.</li>
+   <li>Cycle data must remain distinguishable.</li>
+   <li>Staging should be proportionate rather than unnecessarily complex.</li>
+   <li>Security and data-handling obligations still apply in staging.</li>
+   <li>Good staging makes migration defects easier to explain and fixes easier to repeat.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Stage data so you can always answer three questions: What did we receive? What did we do to it? What did we produce?</div>`
+},
+{
+ id:"b14",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A staging table overwrites the raw source value during transformation. What has been lost?",
+   options:[
+     {label:"Nothing important; the transformed value is what matters", correct:false, feedback:"Not quite. Without the raw value, nobody can prove what the rule actually started from."},
+     {label:"The ability to prove what the source contained and compare it with what the rule produced", correct:true, feedback:"Correct. Raw and transformed states serve different purposes, and both need to be retained."},
+     {label:"Only the file size, since the same information exists elsewhere", correct:false, feedback:"Not quite. Once overwritten, the raw value is genuinely gone unless it exists somewhere else."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Which best describes the raw staging state?",
+   options:[
+     {label:"The values prepared specifically for the target import mechanism", correct:false, feedback:"Not quite. That describes the load-ready state."},
+     {label:"What was extracted from the source, preserved before business transformation", correct:true, feedback:"Correct. Raw staging is the migration team's receipt for what it received."},
+     {label:"Records that failed a transformation or validation rule", correct:false, feedback:"Not quite. That describes the exception state."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"Why is joining an exception file back to staging using spreadsheet row number risky?",
+   options:[
+     {label:"Row numbers are always slower to process than business keys", correct:false, feedback:"Not quite. Performance is not the concern here."},
+     {label:"Row order can change between extracts, so row 8,412 might become a different customer next time", correct:true, feedback:"Correct. Stable traceability needs a genuine business key or controlled identifier, not row position."},
+     {label:"Row numbers cannot be stored in a staging table at all", correct:false, feedback:"Not quite. They can be stored; the problem is relying on them for identity."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"A record fails a transformation rule. What is the correct treatment?",
+   options:[
+     {label:"Delete it from the working population so it does not clutter reporting", correct:false, feedback:"Not quite. An exception is still part of the migration population until an approved decision says otherwise."},
+     {label:"Retain it as a controlled exception with source identity, cycle, failed rule and reason", correct:true, feedback:"Correct. This keeps the record visible and actionable rather than silently lost."},
+     {label:"Automatically default it to a plausible value so the count stays complete", correct:false, feedback:"Not quite. That hides the exception instead of resolving it."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"Cycle 1 staging is deleted the moment Cycle 2 begins, while Cycle 1 defects are still under investigation. What is the risk?",
+   options:[
+     {label:"None; only the current cycle's data is ever relevant", correct:false, feedback:"Not quite. Active investigations still need the evidence from the cycle being investigated."},
+     {label:"Evidence needed for an active investigation may be lost before the investigation is finished", correct:true, feedback:"Correct. Retain enough evidence for active investigation and agreed audit/retention needs."},
+     {label:"Deleting old staging data always corrupts the new cycle's data", correct:false, feedback:"Not quite. The risk is losing evidence, not corrupting the new cycle."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"Why does customer data copied into a staging CSV still need access and retention controls?",
+   options:[
+     {label:"Because moving data into staging does not reduce its sensitivity", correct:true, feedback:"Correct. Staging is often treated as temporary, but the data inside it is still real customer data."},
+     {label:"Because staging files are always shared publicly by default", correct:false, feedback:"Not quite. The risk exists regardless of default sharing settings."},
+     {label:"Staging data does not actually need these controls, only production data does", correct:false, feedback:"Not quite. This is exactly the common trap the lesson warns against."}
+   ]
+  }
+ ]
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Staging data properly.</strong></p>
+ <p>Raw and transformed states are now kept apart, exceptions are preserved rather than deleted, and every cycle has its own identity.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building transformations:</strong> you will turn the approved mapping rules into repeatable migration logic while keeping business meaning separate from technical implementation.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 4",
+  moduleTitle: "Staging, ETL & Migration Build",
+  lessonLabel: "Lesson 2: Staging data properly",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "What did we receive? What did we do to it? What did we produce?",
+  storageKey: "tp_core4_lesson2_v1",
+  lessonId: "core4-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

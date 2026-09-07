@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building transformations</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 4 — LESSON 3 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-2 and the story bible: customer
+   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ, status
+   1, country UK, CustomerGroup STD.
+============================================================== */
+
+// Section 6 — "Implement Harrison Trade Supplies". The learner
+// matches each target field to its correct transformation treatment.
+// Options are reordered per item so the correct answer's position
+// does not track the item number.
+const treatmentLabels = [
+  "Direct from CustNo",
+  "Direct after approved technical validation",
+  "Resolve 45E through the approved payment-term cross-reference",
+  "Resolve SMITHJ through the approved worker cross-reference",
+  "Apply the approved source-status to target-status rule",
+  "Translate UK to GB through the approved country reference",
+  "Trim/standardise STD to STANDARD"
+];
+const fieldItems = [
+  {
+   q:"CustomerNumber",
+   order:[0,3,5,1,2,4,6], a:0,
+   why:"CustNo already matches the target's identity requirement, so the value moves across without business transformation."
+  },
+  {
+   q:"CustomerName",
+   order:[2,1,4,0,6,3,5], a:1,
+   why:"The business meaning is unchanged, but the value should still pass approved technical validation, such as length and character checks, before being called direct."
+  },
+  {
+   q:"PaymentTerms",
+   order:[5,4,2,6,0,1,3], a:2,
+   why:"45E is a source code, not a target value. It only becomes usable once resolved through the approved payment-term cross-reference."
+  },
+  {
+   q:"SalesOwner",
+   order:[1,6,3,5,2,0,4], a:3,
+   why:"SMITHJ identifies a person in the source system. The target needs the actual worker record, found through the approved cross-reference."
+  },
+  {
+   q:"CustomerStatus",
+   order:[6,0,4,2,1,5,3], a:4,
+   why:"Source status 1 only means something once translated through the approved rule that maps source business status to the target status/control treatment."
+  },
+  {
+   q:"CountryCode",
+   order:[3,2,5,0,6,4,1], a:5,
+   why:"UK is a legacy code. The approved country reference translates it to the ISO value GB that the target actually expects."
+  },
+  {
+   q:"CustomerGroup",
+   order:[4,1,0,6,3,2,5], a:6,
+   why:"STD is an approved variant. Once trimmed and standardised, it becomes STANDARD, the value the target recognises."
+  }
+];
+const fieldSituations = fieldItems.map((f, idx) => ({
+  title:`Target field ${idx+1}`,
+  question:f.q,
+  options: f.order.map(li => ({
+    label: treatmentLabels[li],
+    correct: li === f.a,
+    feedback: (li === f.a ? "Correct.<br>" : "Not quite. Check what the approved mapping actually requires for this field.<br>") + f.why
+  }))
+}));
+
+// Section 11 — "Test transformations at rule level". A genuinely
+// sequential walkthrough of test-case types, each building on the
+// idea introduced before it, so this uses guidedSteps.
+const testCaseSteps = [
+  { title:"Normal expected case", html:`<p>Input STD. Because STD is an approved variant, the rule should produce STANDARD. If the rule cannot handle even the most common, expected input correctly, nothing else about it matters yet.</p>` },
+  { title:"Known source variant", html:`<p>Input STANDARD with a trailing space. This is a second, slightly different way of writing the same approved value. The rule should still produce STANDARD, proving it trims and standardises rather than only matching one exact string.</p>` },
+  { title:"Confirmed value, unchanged", html:`<p>Input KEY. This value is already correct and approved. The rule should preserve it exactly as KEY, not reinterpret or overwrite something that was never broken.</p>` },
+  { title:"Blank with a supporting condition", html:`<p>Input blank, with Strategic account = Y. Only if the business has approved this derivation should the rule produce KEY. If no such derivation is approved, the correct result is an exception, not a guess.</p>` },
+  { title:"Unmapped lookup value", html:`<p>Input 99. There is no approved target treatment for this value yet. The rule should produce EXCEPTION until a decision exists, never a plausible-looking default.</p>` },
+  { title:"Conflicting derivation conditions", html:`<p>Input blank, with two derivation conditions both true at once. Unless an approved precedence rule says which one wins, the correct result is EXCEPTION, not whichever condition the code happens to check first.</p>` }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The code works",title:"Opening scenario: The code works",type:"mcq",
+ html:`<p class="lead">Bramwell's customer transformation completes without errors. Every one of the 18,530 staged customer records produces an output row.</p>
+ <p>The developer proudly demonstrates this rule: "If CustomerGroup is blank or unrecognised, set CustomerGroup = STANDARD." The code runs perfectly. There are no nulls, no exceptions and no rejected records.</p>
+ <p>But the approved mapping says STD and STANDARD-space translate to STANDARD; KEY, EXPORT and INTERNAL retain their approved equivalents; legacy value 99 remains an exception until resolved; blank values may use an approved derivation only where the required source indicators support it; and otherwise the record remains an exception.</p>
+ <h3>Your decision</h3>`,
+ options:[
+ "Accept the transformation because it produces a complete target-ready dataset.",
+ "Accept it for the first test cycle and ask users to identify incorrect groups in UAT.",
+ "Reject the implementation because technically successful code is not correct if it changes the approved business rule.",
+ "Keep the code but add a warning whenever STANDARD is defaulted."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "The transformation has removed exceptions by inventing a rule the business did not approve.",
+ "Test cycles should challenge the approved rule, not compensate for a rule the build team ignored.",
+ "Correct. The implementation must express the approved mapping. A process can run flawlessly and still produce wrong data.",
+ "Visibility helps, but the underlying transformation is still wrong."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and rejects the implementation, no matter how clean its zero-exception output looked.</p>
+ <p>The developer rebuilds the rule to actually match the approved mapping, and the exceptions that were quietly hidden come straight back into view.</p>
+ <div class="visual-card">
+   <div class="visual-title">What the honest rerun looks like</div>
+   <ul class="framework-checks">
+     <li><strong>STD and STANDARD-space:</strong> now correctly standardise to STANDARD.</li>
+     <li><strong>KEY, EXPORT, INTERNAL:</strong> pass through unchanged, exactly as approved.</li>
+     <li><strong>CustomerGroup 99:</strong> reappears as an exception, 18 records, exactly where the mapping said it should be.</li>
+     <li><strong>Genuinely blank values with no derivation support:</strong> also become visible exceptions instead of a silent STANDARD.</li>
+   </ul>
+ </div>
+ <p>The output is no longer "zero exceptions". It looks messier, and it is correct. That is the trade the team had to accept before the build actually matched the decision the business approved.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Code is an implementation of the mapping, not an alternative version of it.</p></div></div>`
+},
+{
+ id:"b3",nav:"Rule to build",title:"Transformation build starts with an approved rule, and business rules should stay visible",type:"content",
+ html:`<p class="lead">The technical implementation may be SQL, SSIS, Power Query, Python, ADF, another ETL platform or custom code. The sequence should still be the same.</p>
+ <div class="visual-card">
+   <div class="visual-title">Rule-to-build chain</div>
+   <p style="font-weight:700;text-align:center;margin:6px 0">Approved mapping rule &rarr; Technical implementation &rarr; Test cases &rarr; Transformation output &rarr; Validation evidence</p>
+ </div>
+ <p>The developer decides how to implement the rule efficiently. The developer should not silently decide what the business rule ought to be.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Code is an implementation of the mapping, not an alternative version of it.</div>
+ <div class="visual-card">
+   <div class="visual-title">Hidden implementation versus controlled implementation</div>
+   <ul class="framework-checks">
+     <li><strong>Hidden:</strong> CASE WHEN Country='UK' THEN 'GB' WHEN Country='NOR' THEN 'NO'... buried inside code, requiring code edits for every new country code.</li>
+     <li><strong>Controlled:</strong> a join to an approved CountryCrossReference containing source value, target value and status, readable and reviewable by business reviewers, and updatable under mapping control.</li>
+   </ul>
+ </div>
+ <p>Not every rule belongs in a lookup table. The point is to separate business decisions from code where doing so improves visibility and maintainability.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>If a business rule changes frequently or needs business review, hiding it deep inside code makes the migration harder to control.</p></div></div>`
+},
+{
+ id:"b4",nav:"Steps and boundaries",title:"Build transformations in logical steps, and know where the business boundary sits",type:"content",
+ html:`<p class="lead">A large transformation is easier to understand when broken into deliberate operations.</p>
+ <div class="visual-card">
+   <div class="visual-title">A simplified Bramwell sequence</div>
+   <ul class="framework-checks">
+     <li><strong>1. Standardise raw text:</strong> trim approved fields; normalise known technical formatting where safe.</li>
+     <li><strong>2. Apply reference translations:</strong> country, payment terms, customer group variants.</li>
+     <li><strong>3. Resolve target references:</strong> SalesOwner and other cross-references.</li>
+     <li><strong>4. Apply approved derivations/defaults:</strong> only to defined populations.</li>
+     <li><strong>5. Validate transformed values:</strong> mandatory values, permitted codes, formats, key rules.</li>
+     <li><strong>6. Route exceptions:</strong> retain source key, failed rule and reason.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>Make transformation logic understandable enough that defects can be isolated to a rule or step rather than hunted through one opaque process.</div>
+ <p>Some changes are mainly technical: trimming accidental trailing spaces, converting an approved date representation, changing datatype, normalising line endings or encoding, removing known non-printing characters. Others change business meaning: reclassifying a customer, assigning a salesperson, changing payment terms, deciding whether a customer is active, choosing which duplicate record survives.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>The closer a transformation gets to changing business meaning, the stronger the need for explicit business authority.</div>`
+},
+{
+ id:"b5",nav:"Implement Harrison",title:"Build it yourself: implement Harrison Trade Supplies",type:"situations",
+ html:`<p class="lead">Raw staging contains CustNo C10482, Name Harrison Trade Supplies Ltd, Terms 45E, Rep SMITHJ, Status 1, Country UK, CustomerGroup STD. For each target field, identify the correct transformation treatment.</p>`,
+ items: fieldSituations,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Transformation Flow: raw input &rarr; rule &rarr; transformed output &rarr; exception condition &rarr; validation. Notice that most fields needed more than a simple copy, even where the field names looked aligned.</p></div></div>`
+},
+{
+ id:"b6",nav:"Fail safely",title:"Cross-reference lookups must fail safely, and precedence must be explicit",type:"content",
+ html:`<p class="lead">Suppose the approved payment-term cross-reference contains 30D, 45E and 60D. A later extract contains CASHX.</p>
+ <div class="visual-card">
+   <div class="visual-title">Unsafe versus controlled</div>
+   <ul class="framework-checks">
+     <li><strong>Unsafe:</strong> if no payment-term match is found, use NET30.</li>
+     <li><strong>Controlled:</strong> attempt the approved cross-reference lookup; if no match exists, retain the source value CASHX, flag the record as an exception, and do not invent a target payment term.</li>
+   </ul>
+ </div>
+ <p>The exact load treatment depends on the target and business rule, but the transformation should expose the failed lookup.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A failed lookup is information. Do not turn it into a plausible value merely to keep the pipeline moving.</div>
+ <p>Derived logic often contains overlapping conditions. For CustomerGroup: Strategic account = Y could suggest KEY, Internal company = Y could suggest INTERNAL, Export indicator = Y could suggest INTERNATIONAL, and standard criteria met could suggest STANDARD. What if a customer is both Strategic and Internal? The code will always choose something if conditions are evaluated in sequence. That does not mean the sequence is correct.</p>
+ <div class="principle"><strong>Core principle</strong><br>If two rules can apply to the same record, precedence must be a business decision, not an accidental consequence of code order.</div>
+ ${TPKit.fromField({
+   title:"The Rule That Ran Perfectly and Wrongly", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/core4-lesson3-fromfield-farah.mp3",
+   reflection:"Have you seen a transformation run flawlessly while quietly producing the wrong answer for every affected record?"
+ })}`
+},
+{
+ id:"b7",nav:"Meaning matters",title:"Null, blank, zero and unknown are not interchangeable, and do not silently truncate",type:"content",
+ html:`<p class="lead">Transformation logic often damages meaning by treating different states as equivalent.</p>
+ <div class="visual-card">
+   <div class="visual-title">Possible meanings behind similar-looking values</div>
+   <ul class="framework-checks">
+     <li><strong>NULL:</strong> no value stored, unknown, or not applicable, depending on source.</li>
+     <li><strong>Blank string:</strong> may be deliberate, poor-quality data, or system behaviour.</li>
+     <li><strong>0:</strong> may be a real numeric value, a default, or an unknown indicator.</li>
+     <li><strong>UNKNOWN:</strong> may be an explicit business classification.</li>
+     <li><strong>N/A:</strong> may mean not applicable, or may simply be free-text shorthand.</li>
+   </ul>
+ </div>
+ <p>The mapping and profiling evidence should determine treatment.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>COALESCE everything to a convenient default before establishing what the missing or zero value actually means.</p></div>
+ <p>Bramwell has 27 customer names longer than the target's 60-character limit. A technically easy transformation is CustomerName = first 60 characters of source Name, but this can alter legal/business identity. Possible approved treatments could include a target design change, a business-approved abbreviation, use of another target field, manual cleansing for the affected population, or exception and escalation.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A target field length is a technical constraint. How to preserve business meaning within that constraint is a migration decision.</p></div></div>`
+},
+{
+ id:"b8",nav:"Test the rule",title:"Build it yourself: test transformations at rule level",type:"guidedSteps",
+ html:`<p class="lead">Do not wait for a full migration run to discover whether a transformation behaves correctly. Walk through a proper set of test cases for the CustomerGroup rule, one at a time.</p>`,
+ steps: testCaseSteps,
+ firstLabel:"Walk through Test 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Test the rule where it is cheapest to diagnose, before it is buried inside a full target load.</p></div></div>`
+},
+{
+ id:"b9",nav:"Reconcile and repeat",title:"Transformation counts should reconcile, and avoid one-off fixes",type:"content",
+ html:`<p class="lead">If 18,530 raw customers enter the transformation layer, every one should be accounted for.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <ul class="framework-checks">
+     <li><strong>Successfully transformed:</strong> 18,416</li>
+     <li><strong>Mapping/lookup exceptions:</strong> 96</li>
+     <li><strong>Other rule exceptions:</strong> 18</li>
+     <li><strong>Total accounted for:</strong> 18,530</li>
+   </ul>
+ </div>
+ <p>A transformation process that outputs only 18,416 rows without retaining the other 114 has lost migration evidence.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Exceptions are an output of transformation, not an absence of output.</p></div></div>
+ <p>During testing, a developer discovers that customer C11872 has payment term CASHX and manually changes it to CASH in the transformed table. The next cycle extracts CASHX again. A repeatable correction should instead correct the source if appropriate, add an approved cross-reference, use a controlled enrichment source, apply an approved transformation rule, or change scope/treatment through an explicit decision.</p>
+ <div class="principle"><strong>Core principle</strong><br>If the fix matters next time, put it somewhere the pipeline can repeat next time.</div>`
+},
+{
+ id:"b10",nav:"Change control",title:"Transformation logic needs change control too",type:"content",
+ html:`<p class="lead">Module 3 controlled changes to the mapping. The build must stay aligned. When a mapping rule changes, identify the affected transformation, update the implementation, update or add rule-level tests, rerun affected data, compare output with the prior rule where useful, and retain evidence of which rule version produced which cycle.</p>
+ <p>A mapping change is not complete merely because the spreadsheet was updated.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>A changed decision is only real in the migration when the build and evidence change with it.</div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: is the transformation safe?",type:"content",
+ html:`<p class="lead">Five situations show why a working transformation still needs scrutiny.</p>
+ <div class="quote">A new source country code ENG appears. The developer adds ENG &rarr; GB because it seems obvious.</div>
+ <p>Unsafe without confirming meaning and approving the cross-reference.</p>
+ <div class="quote">Source stores 20260903 as text and the approved target representation is 2026-09-03.</div>
+ <p>A deterministic technical conversion is appropriate, with invalid-date handling.</p>
+ <div class="quote">Blank CreditLimit is converted to 0 because the target field is numeric.</div>
+ <p>Potentially dangerous. Zero may mean no credit while blank may mean unknown/not maintained.</p>
+ <div class="quote">Customer and Supplier transformations each contain separate hard-coded country translations.</div>
+ <p>They may work today, but a controlled shared reference can reduce inconsistency if the business rule is genuinely common.</p>
+ <div class="quote">Every record transforms and there are zero exceptions for the first time.</div>
+ <p>Investigate whether quality genuinely improved or whether a new fallback/default has hidden the exceptions.</p>`
+},
+{
+ id:"b12",nav:"AI and transformation build",title:"AI can accelerate transformation build",type:"content",
+ html:`<p class="lead">Once the rule is approved, AI can be useful for:</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Drafting SQL, Power Query, Python or ETL expressions</li>
+     <li>Converting decision tables into candidate logic</li>
+     <li>Generating rule-level test cases</li>
+     <li>Reviewing code against plain-English mapping rules</li>
+     <li>Identifying branches with no exception treatment</li>
+     <li>Explaining complex code back in business language</li>
+   </ul>
+ </div>
+ <p>Generated logic should be reviewed, tested and handled within approved data/security controls.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Ask AI to implement the rule and challenge the implementation. Do not ask it to guess the rule from incomplete business context.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"Error, or silent success?",type:"reflection",
+ html:`<p>Consider two kinds of transformation.</p>
+ <div class="quote">Which transformation would worry you more: one that throws an error, or one that always returns a valid target value?</div>
+ <p>Errors are visible. A transformation that silently produces plausible but incorrect data can travel much further before anyone notices.</p>
+ <textarea id="reflection" placeholder="The one that would worry me more is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/silent|hide|plausible|unnoticed/i, strength:"You recognised how a silently successful rule can hide incorrect data.", gap:"Consider how a rule that never throws an error can hide incorrect data behind a plausible result." },
+   { test:/visible|error|surface/i, strength:"You noted the value of an error surfacing the problem immediately.", gap:"Consider the advantage of an error: at least it makes the problem visible straight away." },
+   { test:/travel|further|later|downstream/i, strength:"You considered how far incorrect data could travel before anyone notices.", gap:"Consider how far a silently wrong value could travel through the business before anyone catches it." },
+   { test:/exception|fail/i, strength:"You connected this to the value of a rule producing a visible exception when it should.", gap:"Consider why a visible exception is often the safer outcome than an always-successful rule." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The transformation that always returns a valid target value worries me more. An error stops the process and forces investigation immediately. A rule that never fails can keep producing plausible but wrong data for weeks before anyone notices, and by then it may have travelled deep into business reporting and decisions.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely mature transformation judgement. You understand that silence is not the same as correctness.":"You have made a start. Push further into how far a silently wrong value could actually travel before detection."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell's transformation layer now expresses the mapping rather than competing with it.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Transformation code implements approved mapping decisions.</li>
+   <li>Keep business rules visible rather than hiding them unnecessarily inside code.</li>
+   <li>Break complex transformations into understandable logical steps.</li>
+   <li>Distinguish technical cleaning from changes to business meaning.</li>
+   <li>Cross-reference failures should produce controlled exceptions rather than invented values.</li>
+   <li>Rule precedence must be explicit where conditions overlap.</li>
+   <li>Null, blank, zero and unknown can carry different meanings.</li>
+   <li>Do not silently truncate business data to satisfy target constraints.</li>
+   <li>Test significant transformations at rule level before full migration execution.</li>
+   <li>Every input record should be accounted for as transformed, excepted or deliberately treated.</li>
+   <li>One-off fixes should become controlled repeatable corrections.</li>
+   <li>Mapping changes must propagate into build and test evidence.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>Good transformation logic produces the approved answer when it can and a visible exception when it cannot.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A transformation produces zero exceptions for the first time ever. What is the right response?",
+   options:[
+     {label:"Celebrate immediately; zero exceptions is always good news", correct:false, feedback:"Not quite. A sudden jump to zero can be a sign that exceptions are being hidden, not resolved."},
+     {label:"Investigate whether quality genuinely improved or a new fallback/default has hidden the exceptions", correct:true, feedback:"Correct. A process can run flawlessly and still produce wrong data."},
+     {label:"Ignore it, since a working transformation needs no further review", correct:false, feedback:"Not quite. This is exactly the moment to check what actually changed."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"A payment-term cross-reference has no match for source value CASHX. What is the controlled response?",
+   options:[
+     {label:"Default it to NET30 so the pipeline keeps moving", correct:false, feedback:"Not quite. Inventing a plausible value is exactly the unsafe pattern to avoid."},
+     {label:"Retain the source value, flag the record as an exception, and do not invent a target term", correct:true, feedback:"Correct. A failed lookup is information, not a problem to paper over."},
+     {label:"Skip the record entirely with no record of why", correct:false, feedback:"Not quite. Silently dropping the record loses evidence just as badly as guessing a value."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"A customer is both Strategic and Internal at once, and both conditions could set CustomerGroup differently. What does the rule need?",
+   options:[
+     {label:"Whichever condition the code happens to check first", correct:false, feedback:"Not quite. That makes precedence an accident of code order, not a decision."},
+     {label:"An explicit, approved precedence rule stating which condition wins", correct:true, feedback:"Correct. If two rules can apply to the same record, precedence must be a business decision."},
+     {label:"Both values applied simultaneously to the same field", correct:false, feedback:"Not quite. A single field can only hold one resolved value."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"27 customer names exceed the target's 60-character limit. Why is truncating to the first 60 characters risky?",
+   options:[
+     {label:"It is not risky; truncation is always the correct technical solution", correct:false, feedback:"Not quite. Truncation can alter legal or business identity."},
+     {label:"It can alter legal/business identity, and a target constraint is not automatically a business decision", correct:true, feedback:"Correct. How to preserve meaning within a technical constraint is itself a migration decision."},
+     {label:"Length limits should always be removed from the target instead", correct:false, feedback:"Not quite. That may not be feasible; the point is to find an approved treatment, not assume one answer."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A developer manually changes CASHX to CASH in the transformed table during testing. Why is this a problem even though it fixes the immediate issue?",
+   options:[
+     {label:"It is not a problem, since the record is now correct", correct:false, feedback:"Not quite. The fix will not survive the next cycle's extract."},
+     {label:"The next cycle will extract CASHX again, so the fix needs to live in a controlled, repeatable rule instead", correct:true, feedback:"Correct. If the fix matters next time, put it somewhere the pipeline can repeat next time."},
+     {label:"Manual fixes are always faster and therefore always preferable", correct:false, feedback:"Not quite. Speed does not make an unrepeatable fix a good long-term solution."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"An approved mapping rule changes. What does that require in the build?",
+   options:[
+     {label:"Nothing further, since the spreadsheet has already been updated", correct:false, feedback:"Not quite. A changed decision is only real when the build and evidence change with it."},
+     {label:"Updating the implementation, updating tests, rerunning affected data and retaining evidence of which rule version produced which cycle", correct:true, feedback:"Correct. Mapping changes must propagate into build and test evidence, not stop at the workbook."},
+     {label:"Waiting until the next full migration cycle to make any changes", correct:false, feedback:"Not quite. The build should be brought into line as soon as the change is approved, not left stale."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building transformations.</strong></p>
+ <p>The transformation layer now expresses the approved mapping, fails safely when it should, and accounts for every input record.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Loading the target system:</strong> you will take validated migration output into the target and deal with load mechanisms, sequencing, target rejections and the difference between a successful import and usable migrated data.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 4",
+  moduleTitle: "Staging, ETL & Migration Build",
+  lessonLabel: "Lesson 3: Building transformations",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "The approved answer when it can, a visible exception when it cannot",
+  storageKey: "tp_core4_lesson3_v1",
+  lessonId: "core4-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

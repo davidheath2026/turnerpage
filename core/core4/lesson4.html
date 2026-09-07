@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Loading the target system</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   CORE MODULE 4 — LESSON 4 DATA. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+
+   Recurring programme client: Bramwell Industries. Facts used here
+   must stay consistent with Lessons 1-3 and the story bible: 18,530
+   raw active customers; 114 pre-load exceptions; 18,416 submitted;
+   18,402 accepted; 14 rejected; customer C10482, Harrison Trade
+   Supplies Ltd.
+============================================================== */
+
+// Section 9 — "Classify Bramwell's rejections". The learner matches
+// each rejection example to its cause type before the reasoning is
+// revealed. Options are reordered per item so the correct answer's
+// position does not track the item number.
+const causeLabels = [
+  "Data issue",
+  "Mapping/transformation issue",
+  "Reference/configuration issue",
+  "Sequence/dependency issue",
+  "Technical/load-format issue",
+  "Unknown target rule"
+];
+const rejectionItems = [
+  {
+   q:"A customer is rejected for a duplicate customer key already present in the target.",
+   order:[0,3,1,5,2,4], a:0,
+   why:"The record itself conflicts with existing data, which is a data issue to correct or resolve under an approved rule."
+  },
+  {
+   q:"A customer loads with the wrong target status value.",
+   order:[4,1,5,0,3,2], a:1,
+   why:"The status value came out wrong because of how the transformation logic mapped it, so this is a mapping/transformation issue to correct in the build."
+  },
+  {
+   q:"A customer is rejected because its payment term is not configured for the relevant company.",
+   order:[5,0,2,4,1,3], a:2,
+   why:"The value itself may be correctly mapped, but the target prerequisite it depends on has not been set up, which is a reference/configuration issue."
+  },
+  {
+   q:"A delivery address is rejected because it loaded before its parent customer record existed.",
+   order:[1,4,3,2,0,5], a:3,
+   why:"The individual records may both be valid, but the order they were loaded in broke the dependency, making this a sequence/dependency issue."
+  },
+  {
+   q:"A record is rejected because of an invalid date format in the load file.",
+   order:[2,5,4,1,0,3], a:4,
+   why:"This is a structural problem with how the output file itself was built, which is a technical/load-format issue."
+  },
+  {
+   q:"A record is rejected by a target validation rule the team has never encountered before.",
+   order:[3,2,0,5,4,1], a:5,
+   why:"Nobody yet understands why the target is rejecting this record, so it needs investigation with the target functional/technical team before it can be classified further."
+  }
+];
+const rejectionSituations = rejectionItems.map((r, idx) => ({
+  title:`Rejection ${idx+1}`,
+  question:r.q,
+  options: r.order.map(li => ({
+    label: causeLabels[li],
+    correct: li === r.a,
+    feedback: (li === r.a ? "Correct.<br>" : "Not quite. Ask what actually went wrong here, not just where the error appeared.<br>") + r.why
+  }))
+}));
+
+const blocks=[
+{
+ id:"b1",nav:"100% imported",title:"Opening scenario: 100% imported",type:"mcq",
+ html:`<p class="lead">Bramwell's first controlled customer load reports 18,416 submitted, 18,416 accepted, 0 rejected, import status SUCCESS.</p>
+ <p>The team celebrates. Then Customer Services opens Harrison Trade Supplies Ltd. The customer exists, but the delivery address is not available for sales orders, the salesperson relationship is missing, the payment term displays correctly but is not valid for the relevant company setup, and the customer is blocked from creating an order because another required target configuration is absent.</p>
+ <div class="quote">"The migration worked. The target accepted every record."<br><span class="small">Technical lead</span></div>
+ <h3>Your decision</h3>`,
+ options:[
+ "Agree. Zero target rejections proves the customer migration succeeded.",
+ "Agree technically. Any later business-process issue belongs entirely to UAT.",
+ "The load mechanism succeeded, but target acceptance is only one layer of evidence. The migrated data still needs relationship, configuration and business-usability validation.",
+ "Reload the same 18,416 customers because a second successful import will confirm the result."
+ ],
+ _correctIndex:2,
+ feedback:[
+ "A target can accept structurally valid records that still lack the relationships or configuration required by the business.",
+ "Post-load functional testing is important, but the migration team should understand and reconcile what the load actually created.",
+ "Correct. Target acceptance proves that the load mechanism accepted the submitted data. It does not by itself prove completeness, correctness, relationships or business usability.",
+ "Running the same load again without understanding the defect can duplicate data or simply reproduce the same problem."
+ ]
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next",type:"content",
+ html:`<p class="lead">Suppose the team takes option C and refuses to let a green import status stand in for genuine business usability.</p>
+ <p>Someone actually opens Harrison Trade Supplies Ltd and checks it the way a Customer Services user would.</p>
+ <div class="visual-card">
+   <div class="visual-title">What checking usability actually finds</div>
+   <ul class="framework-checks">
+     <li><strong>Delivery address:</strong> the record exists, but the relationship linking it to the customer for sales orders never resolved.</li>
+     <li><strong>Salesperson:</strong> the SalesOwner cross-reference was never populated for this customer, so ownership is simply missing.</li>
+     <li><strong>Payment term:</strong> the value displays, but it is not configured for this customer's company, so it cannot actually be used.</li>
+     <li><strong>Order blocking:</strong> a required target configuration prerequisite was never confirmed as available before load.</li>
+   </ul>
+ </div>
+ <p>Every one of these problems sat quietly behind a status that said SUCCESS. None of them would ever have surfaced from the import log alone.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Load only data that is ready for the target, then capture exactly what the target did with it.</p></div></div>`
+},
+{
+ id:"b3",nav:"A controlled handover",title:"The target load is a controlled handover, and load-ready means more than a correct file",type:"content",
+ html:`<p class="lead">Before loading, the migration pipeline has already identified the source population, retained the raw extract, applied approved transformations, resolved or exposed mapping exceptions, and performed pre-load validation. The load step hands that controlled output to the target.</p>
+ <div class="principle"><strong>Turner Page principle</strong><br>Load only data that is ready for the target, then capture exactly what the target did with it.</div>
+ <p>A load-ready dataset should satisfy the requirements known before import.</p>
+ <div class="visual-card">
+   <div class="visual-title">Questions before load</div>
+   <ul class="framework-checks">
+     <li><strong>Population:</strong> is this the intended cycle/object/population?</li>
+     <li><strong>Mapping:</strong> does the output implement the approved mapping baseline?</li>
+     <li><strong>Format:</strong> are target field names, datatypes, lengths and file/API structures correct?</li>
+     <li><strong>References:</strong> do known reference values and cross-references resolve?</li>
+     <li><strong>Dependencies:</strong> are prerequisite objects/configuration available?</li>
+     <li><strong>Exceptions:</strong> have unresolved records been separated or treated under an approved rule?</li>
+     <li><strong>Environment:</strong> is the correct target company/environment available and prepared?</li>
+     <li><strong>Traceability:</strong> can submitted records be tied back to the cycle and staged source?</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Core principle</strong><br>A technically valid payload is not load-ready if the prerequisites that make it meaningful are missing.</div>`
+},
+{
+ id:"b4",nav:"Mechanism and sequence",title:"Use the target's supported loading mechanism, and let dependencies determine load order",type:"content",
+ html:`<p class="lead">Different target systems provide different supported ways to import data: a native import framework, file-based import such as CSV, spreadsheet or XML, a supported API, an approved integration/ETL connector, or another project-specific mechanism agreed with the target technical team.</p>
+ <p>Core learners do not need to master every target tool. They do need to understand the control around whichever mechanism is used.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Treating the target loader as a black box: submit a file, see a green status and move on.</p></div>
+ <p>Module 3 established that data objects depend on one another. The target load must respect those dependencies.</p>
+ <div class="visual-card">
+   <div class="visual-title">A simplified Bramwell sequence</div>
+   <ul class="framework-checks">
+     <li><strong>Countries, currencies, terms, sites, warehouses and other configuration available:</strong> master data can resolve required reference values.</li>
+     <li><strong>Customers exist:</strong> customer delivery addresses and open sales orders can resolve the customer.</li>
+     <li><strong>Products exist and are appropriately configured/released:</strong> open order lines can resolve products.</li>
+     <li><strong>Workers/salespeople exist or valid cross-references are available:</strong> customer ownership relationships can resolve.</li>
+     <li><strong>Master and reference dependencies resolve:</strong> transactional data can be loaded meaningfully.</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Do not load in the order that files happen to be ready. Load in an order that allows the target relationships to resolve.</div>`
+},
+{
+ id:"b5",nav:"Prepare and reconcile",title:"Prepare the load, and capture submitted, accepted and rejected counts",type:"content",
+ html:`<p class="lead">Bramwell has 18,530 active customers in the cycle's raw population. After transformation and pre-load validation, 18,416 are load-ready and 114 are controlled pre-load exceptions, totalling 18,530.</p>
+ <p>Before submitting the 18,416, the learner should confirm the target legal entities are available, required country/reference values exist, approved payment-term mappings resolve, required salesperson/worker references can resolve, customer numbering/key behaviour is understood, the load is pointed at the correct environment/company, the submitted dataset is tied to the correct migration cycle, and the team knows where target success/rejection output will be captured.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>The learner is creating a Load Readiness Check: population + mapping baseline + prerequisites + environment + load mechanism + expected evidence.</p></div></div>
+ <p>The target load should then produce a simple population equation: SUBMITTED = ACCEPTED + REJECTED.</p>
+ <div class="visual-card">
+   <div class="visual-title">Full population, reconciled</div>
+   <ul class="framework-checks">
+     <li>18,530 raw = 18,416 submitted + 114 pre-load exceptions</li>
+     <li>18,416 submitted = 18,402 accepted + 14 target rejections</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Keep pre-load exceptions separate from target rejections. They occurred at different control points and may have different causes.</div>`
+},
+{
+ id:"b6",nav:"Rejection is evidence",title:"A target rejection is evidence",type:"content",
+ html:`<p class="lead">Suppose the 14 rejected customers fail for these reasons: target payment term not configured for company (6), SalesOwner reference not valid in target (4), duplicate customer key (3), unexpected target validation rule (1).</p>
+ <p>Do not simply correct the load file and resubmit. Ask: was the mapping wrong? Was a target prerequisite missing? Did pre-load validation fail to model a known target rule? Did the source change? Is this a genuinely new target behaviour? Does the fix apply only to these records or to the underlying rule?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A rejection tells you something about the relationship between your migration design and the target. Fix the cause, not just the rejected row.</p></div></div>
+ ${TPKit.fromField({
+   title:"The Import That Said Yes", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/core4-lesson4-fromfield-owen.mp3",
+   reflection:"Have you seen a load report say SUCCESS while the migrated record was still unusable for the actual business process?"
+ })}`
+},
+{
+ id:"b7",nav:"Classify the rejections",title:"Build it yourself: classify Bramwell's rejections",type:"situations",
+ html:`<p class="lead">A useful first classification tells you where the real fix belongs. For each rejection example, identify its cause type before the reasoning is revealed.</p>`,
+ items: rejectionSituations,
+ takeawayHtml:`<div class="principle"><strong>Core principle</strong><br>Do not create one generic bucket called "load errors". The category often tells you where the real fix belongs.</div>`
+},
+{
+ id:"b8",nav:"Reprocess with care",title:"Reprocess deliberately, and beware of duplicates on rerun",type:"content",
+ html:`<p class="lead">After fixing the cause of a rejection, decide what needs to be rerun. Possible levels include one affected record, all records affected by the same rule, one transformation stage, one migration object, or the entire dependent chain.</p>
+ <div class="visual-card">
+   <div class="visual-title">Example</div>
+   <p>If a payment-term cross-reference was wrong for 214 customers, correcting only the six records that happened to reject may leave other accepted records incorrectly classified.</p>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>Reprocess the population affected by the cause, not merely the records that made the problem visible.</div>
+ <p>Target loaders may behave differently when the same record is submitted twice: insert only may create duplicates or fail, update existing may overwrite values unexpectedly, upsert may insert or update based on a configured key, delete/reload may affect relationships or target-generated identifiers, and target-specific import logic depends on object and system.</p>
+ <p>Before rerunning, understand what identifies an existing target record, whether the loader inserts, updates or upserts, whether previously accepted records should be included, whether target-generated IDs or relationships will change, and whether cleanup/reset is required.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>"Just rerun it" is not a migration strategy until you know what rerun means to the target.</p></div></div>`
+},
+{
+ id:"b9",nav:"Beyond acceptance",title:"Target acceptance is only the first post-load test, and a green import can still hide partial failure",type:"content",
+ html:`<p class="lead">Once the target accepts records, the migration team still needs evidence that the result is usable.</p>
+ <div class="visual-card">
+   <div class="visual-title">Post-load checks may include</div>
+   <ul class="framework-checks">
+     <li>Record counts and key populations</li>
+     <li>Field/value spot checks</li>
+     <li>Reference relationships</li>
+     <li>Parent-child relationships</li>
+     <li>Business totals where relevant</li>
+     <li>Ability to use migrated records in critical processes</li>
+     <li>Comparison with expected transformation output</li>
+   </ul>
+ </div>
+ <div class="principle"><strong>Turner Page principle</strong><br>The target loader answers "Did I accept this data?" Validation answers "Did we migrate the right data correctly?"</div>
+ <p>Some load mechanisms report overall success even when individual rows generated warnings, related records failed in a separate step, default target values were applied, records loaded into the wrong company/context, optional relationships were skipped, or business rules changed values during import. Retain detailed target output, not only the headline status.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Screenshotting "Import completed successfully" as the only migration evidence.</p></div>`
+},
+{
+ id:"b10",nav:"Target defaults",title:"Target defaults can change migrated data",type:"content",
+ html:`<p class="lead">The migration output may not always equal the final stored target value. The target might apply a default, generate an identifier, normalise a value, derive a field, apply configuration-driven logic, or reject or ignore an unsupported attribute. That is not automatically wrong. It must be understood and validated.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The migration owns what it submits. The target may still transform what it stores. Validation must compare the intended business result, not assume byte-for-byte identity.</p></div></div>`
+},
+{
+ id:"b11",nav:"Judgement calls",title:"Judgement calls: what does the load result really tell you?",type:"content",
+ html:`<p class="lead">Five situations show why a load result still needs interpretation.</p>
+ <div class="quote">All 18,416 customers are accepted, but 72 receive a target default payment term rather than the submitted value.</div>
+ <p>The import status is green, but the migration result needs investigation. Understand why the target overrode the value and whether the final state is approved.</p>
+ <div class="quote">Six customers reject because NET45 is not configured in one legal entity.</div>
+ <p>This is likely a configuration/reference dependency. Fix the prerequisite or approved mapping, then reprocess the affected population.</p>
+ <div class="quote">The load succeeds but was run against the Belgian company instead of the UK company.</div>
+ <p>Technical success is irrelevant. Environment/company is part of load readiness and the erroneous load must be safely remediated.</p>
+ <div class="quote">Fourteen customers reject, so the developer resubmits all 18,416 after fixing them.</div>
+ <p>Potentially unsafe. Understand loader behaviour and whether already accepted records should be resubmitted.</p>
+ <div class="quote">An order line rejects because the referenced product was excluded from migration scope.</div>
+ <p>This is a scope/dependency problem, not merely a technical load error. Revisit the approved treatment.</p>`
+},
+{
+ id:"b12",nav:"AI and load results",title:"AI can help interpret load results",type:"content",
+ html:`<p class="lead">Target loads can produce large error logs. AI can help with:</p>
+ <div class="visual-card">
+   <div class="visual-title">Useful applications</div>
+   <ul class="framework-checks">
+     <li>Grouping similar rejection messages</li>
+     <li>Summarising the most common causes</li>
+     <li>Linking errors to likely mapping or configuration areas</li>
+     <li>Drafting investigation queries</li>
+     <li>Comparing rejection patterns between cycles</li>
+     <li>Identifying new error types</li>
+   </ul>
+ </div>
+ <p>The migration team still needs to verify the cause and choose the correct fix.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">AI principle</div><p>Use AI to reduce the time spent reading repetitive load errors. Do not let it turn a probable cause into an unverified fix.</p></div></div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"What evidence would you want?",type:"reflection",
+ html:`<p>Imagine you are about to tell a business owner that the customer migration was successful.</p>
+ <div class="quote">What evidence would you want before saying that?</div>
+ <p>A green load status would be part of the answer, but not the whole answer. Think population, rejections, relationships, final target values and business usability.</p>
+ <textarea id="reflection" placeholder="Before saying it was successful, I would want..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/population|count|reconcil/i, strength:"You considered whether the full population reconciles, not just the accepted count.", gap:"Consider whether the full population, including exceptions and rejections, genuinely reconciles." },
+   { test:/reject|exception/i, strength:"You considered rejections and exceptions as part of the evidence.", gap:"Consider rejections and pre-load exceptions as part of what you would want to see." },
+   { test:/relationship|address|depend/i, strength:"You considered whether relationships, such as addresses or dependencies, actually resolved.", gap:"Consider whether relationships like delivery addresses or salesperson links actually resolved." },
+   { test:/usable|process|business/i, strength:"You tied your evidence back to whether the business could genuinely use the migrated data.", gap:"Consider whether the migrated data is actually usable in a real business process, not just present." },
+   { test:/default|value|changed/i, strength:"You considered whether the target changed any submitted values, such as applying a default.", gap:"Consider whether the target applied any defaults or changed submitted values during load." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would want the full population reconciled across submitted, accepted and rejected counts, evidence that relationships like delivery addresses and salesperson links actually resolved, confirmation that the target has not silently overridden submitted values, and proof that migrated customers can genuinely be used in real business processes such as creating an order. A green status alone would not be enough.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"This is genuinely thorough evidence thinking. You are not letting a single green status stand in for proof.":"You have made a start. Push further into what specific evidence would actually prove business usability, not just technical acceptance."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Lesson summary",type:"content",
+ html:`<p class="lead">Bramwell can now move controlled data into the target and explain what happened at the load boundary.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Target loading is the controlled handover of validated migration output into the target.</li>
+   <li>Load-ready data requires correct population, mapping, format, prerequisites, environment and traceability.</li>
+   <li>Use supported target loading mechanisms and understand their behaviour.</li>
+   <li>Dependencies influence load sequencing.</li>
+   <li>Submitted records must reconcile to accepted plus rejected records.</li>
+   <li>Pre-load exceptions and target rejections are different populations.</li>
+   <li>Target rejections should be classified and investigated at cause level.</li>
+   <li>Reprocess the population affected by the cause, not only the visible rejected rows.</li>
+   <li>Understand insert/update/upsert behaviour before rerunning.</li>
+   <li>Target acceptance does not prove migrated data is correct or usable.</li>
+   <li>Target defaults and system logic may alter submitted values and must be validated.</li>
+ </ul>
+ <div class="principle"><strong>Key takeaway</strong><br>A successful load is not the moment the target says "accepted". It is the point at which the submitted population is accounted for and the resulting data behaves as intended.</div>`
+},
+{
+ id:"b15",nav:"Knowledge check",title:"Knowledge check: test what stuck",type:"situations",
+ html:`<p class="lead">A quick recall check on this lesson. No score, no pressure, and it will not affect your progress or certification, but it is a good way to catch anything that did not quite stick while it is still fresh.</p>`,
+ items:[
+  {
+   title:"Check 1",
+   question:"A load reports 100% accepted, but a migrated customer cannot actually be used to create a sales order. What does this show?",
+   options:[
+     {label:"The migration failed, since something is wrong", correct:false, feedback:"Not quite. The load mechanism itself succeeded; the issue lies elsewhere."},
+     {label:"Target acceptance proves the load mechanism worked, not that the data is complete, correct or usable", correct:true, feedback:"Correct. Acceptance and usability are two different layers of evidence."},
+     {label:"The target system must be faulty", correct:false, feedback:"Not quite. The target behaved as designed; the missing dependency is the real issue."}
+   ]
+  },
+  {
+   title:"Check 2",
+   question:"Why must load order be dependency-driven rather than based on which files happen to be ready?",
+   options:[
+     {label:"Because target systems always load faster in alphabetical order", correct:false, feedback:"Not quite. Performance ordering is unrelated to this principle."},
+     {label:"Because loading a dependent object before its prerequisite exists prevents the relationship from resolving", correct:true, feedback:"Correct. Do not load in the order that files happen to be ready; load in an order that allows relationships to resolve."},
+     {label:"File readiness is actually the correct basis for load order", correct:false, feedback:"Not quite. This is exactly the approach the lesson warns against."}
+   ]
+  },
+  {
+   title:"Check 3",
+   question:"18,416 records are submitted, 18,402 are accepted, and 14 are rejected. What equation does this represent?",
+   options:[
+     {label:"ACCEPTED = REJECTED", correct:false, feedback:"Not quite. These are two different, unequal populations."},
+     {label:"SUBMITTED = ACCEPTED + REJECTED", correct:true, feedback:"Correct. This is the basic load reconciliation equation."},
+     {label:"SUBMITTED = ACCEPTED only, with rejections tracked separately and not reconciled", correct:false, feedback:"Not quite. Rejections must reconcile back to the submitted population, not sit outside it."}
+   ]
+  },
+  {
+   title:"Check 4",
+   question:"Why is classifying rejection causes into categories such as data, mapping, configuration or dependency useful?",
+   options:[
+     {label:"It looks more organised in a report, but has no practical effect", correct:false, feedback:"Not quite. The category genuinely points towards where the fix belongs."},
+     {label:"The category often tells you where the real fix belongs, rather than treating every rejection the same way", correct:true, feedback:"Correct. Do not create one generic bucket called 'load errors'."},
+     {label:"Only technical rejections need to be classified; data issues can be ignored", correct:false, feedback:"Not quite. All rejection types benefit from classification, including data issues."}
+   ]
+  },
+  {
+   title:"Check 5",
+   question:"A payment-term cross-reference was wrong for 214 customers, but only six happened to reject. What is the safest reprocessing scope?",
+   options:[
+     {label:"Only the six records that visibly rejected", correct:false, feedback:"Not quite. That would leave other incorrectly classified records accepted and unnoticed."},
+     {label:"All 214 records affected by the underlying wrong rule", correct:true, feedback:"Correct. Reprocess the population affected by the cause, not merely the records that made the problem visible."},
+     {label:"The entire customer population, regardless of whether they were affected", correct:false, feedback:"Not quite. That is broader than necessary and does not target the actual cause."}
+   ]
+  },
+  {
+   title:"Check 6",
+   question:"The target silently applies a default value to 72 accepted customer records during load. What should the migration team do?",
+   options:[
+     {label:"Nothing; the import status was successful, so no further action is needed", correct:false, feedback:"Not quite. A green status can still hide changes to submitted values."},
+     {label:"Investigate why the target overrode the value and confirm whether the final state is approved", correct:true, feedback:"Correct. The migration owns what it submits, but the target may still transform what it stores."},
+     {label:"Assume the target's default is always correct, since it comes from the system itself", correct:false, feedback:"Not quite. A system default still needs to be understood and validated against business intent."}
+   ]
+  }
+ ]
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Loading the target system.</strong></p>
+ <p>Target acceptance is no longer treated as proof of success on its own. The team now knows what evidence a truly successful load actually requires.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that improves professional judgement"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Errors, logging and restartability:</strong> you will build the controls that make failures diagnosable and recovery safe instead of relying on heroic reruns.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it before your next migration project and ask how it should change your behaviour.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Core Module 4",
+  moduleTitle: "Staging, ETL & Migration Build",
+  lessonLabel: "Lesson 4: Loading the target system",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Accepted is not the same as usable",
+  storageKey: "tp_core4_lesson4_v1",
+  lessonId: "core4-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
