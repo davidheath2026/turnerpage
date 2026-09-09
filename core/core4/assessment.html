@@ -122,14 +122,14 @@ const PASS_MARK = 8; // out of 10 — hardcoded, matches current site-wide conve
 const questions = [
 {
   type:"single",
-  prompt:"A one-script design loads 18,112 of an expected 18,530 customers, with no way to explain where the other 418 went. What is the strongest response?",
+  prompt:"A one-script design reports 6,420 supplier records written to the target load file, exactly matching the expected active-supplier population, but the team cannot show which raw classification source fed the 73 conflicting suppliers, or how the 1,184 payment-detail records were handled. What is the strongest response?",
   options:[
     {label:"Add more error handling to the same single script and rerun", correct:false},
-    {label:"Separate the migration into controlled stages so the team can prove what was extracted, changed, rejected and loaded", correct:true},
-    {label:"Load all 18,530 without transformation and correct the target afterwards", correct:false},
-    {label:"Accept the result, since 418 is a small percentage of the total", correct:false}
+    {label:"Separate the migration into controlled stages so the team can prove what was extracted, changed and presented to the target", correct:true},
+    {label:"Load all 6,420 without transformation and correct the target afterwards", correct:false},
+    {label:"Accept the result, since the overall count matches the expected population", correct:false}
   ],
-  mentorTip:"A good pipeline lets you explain what happened to the data between source and target. A single opaque script removes the places you would otherwise look."
+  mentorTip:"A matching total is not proof of correctness. A good pipeline lets you explain what happened to every part of the population, including exceptions a single count can hide."
 },
 {
   type:"single",

@@ -18,19 +18,30 @@
 
    Recurring programme client: Bramwell Industries. Facts used here
    must stay consistent with Lesson 1 and the story bible: customer
-   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ.
+   C10482, Harrison Trade Supplies Ltd, terms 45E, rep SMITHJ. Still
+   used in b6 (example exceptions) and b8 (reconciliation control
+   points) below.
+
+   The opening scenario, "what happens next" and build-it-yourself
+   staging design (b1, b2, b5) were revised to use the fixed-asset
+   case instead, per the Core HTML diversity brief: 14,380 active
+   fixed assets in scope; 126 have a legacy depreciation category not
+   in the approved target reference set; FA-009871 (site UK01) is one
+   of the 126, legacy category DEP-07; DEP-07's target treatment
+   remains unresolved. No transformed target category value is
+   invented anywhere in this lesson.
 ============================================================== */
 
-// Section 6 — "Design Bramwell's customer stage". The learner
+// Section 6 — "Design Bramwell's fixed-asset stage". The learner
 // classifies each staging field into its category before the
 // reasoning is revealed. Options are reordered per item so the
 // correct answer's position does not track the item number.
 const categoryLabels = ["Identity", "Cycle metadata", "Raw values", "Transformed values", "Control", "Audit"];
 const stageFieldItems = [
   {
-   q:"StageRecordID / SourceCustomerNumber",
+   q:"AssetID / Site (FA-009871 / UK01)",
    order:[2,0,4,5,3,1], a:0,
-   why:"These fields answer 'which record is this, and where did it come from', which is exactly what identity fields are for."
+   why:"These fields answer 'which asset is this, and where does it sit in the organisation', which is exactly what identity fields are for."
   },
   {
    q:"MigrationCycle / ExtractDate",
@@ -38,24 +49,24 @@ const stageFieldItems = [
    why:"These fields tie the record to a specific execution, which is the job of cycle metadata, not identity or values."
   },
   {
-   q:"RawTerms = 45E",
+   q:"RawDepreciationCategory = DEP-07",
    order:[4,1,2,3,5,0], a:2,
    why:"This preserves exactly what the source contained, before any rule touched it. That is a raw value, kept as evidence."
   },
   {
-   q:"PaymentTerms = approved target equivalent",
+   q:"DepreciationCategory (transformed slot, currently empty pending an approved treatment)",
    order:[0,3,5,2,1,4], a:3,
-   why:"This is the result of applying the approved mapping rule to the raw value. That makes it a transformed value, not raw evidence."
+   why:"This is the slot where the result of an approved rule would go once one exists. For an asset like FA-009871, it stays visibly empty rather than being filled with something invented."
   },
   {
-   q:"RecordStatus / ReadyToLoad",
+   q:"ExceptionStatus / ApprovalReference",
    order:[1,4,0,5,2,3], a:4,
-   why:"These fields describe where the record currently stands in the process, which is a control field, not a business value."
+   why:"These fields describe where the record currently stands in the process and whether it has an approved treatment, which is a control field, not a business value."
   },
   {
-   q:"TransformationTimestamp / RuleVersion",
+   q:"TransformationTimestamp / RuleVersion / DecisionReference",
    order:[5,2,3,1,0,4], a:5,
-   why:"These fields record when and under which rule version the transformation happened. That is audit information, supporting later investigation."
+   why:"These fields record when the record was last touched and under which rule or decision, if any. That is audit information, supporting later investigation."
   }
 ];
 const stageFieldSituations = stageFieldItems.map((s, idx) => ({
@@ -70,39 +81,39 @@ const stageFieldSituations = stageFieldItems.map((s, idx) => ({
 
 const blocks=[
 {
- id:"b1",nav:"Which customer did we migrate?",title:"Opening scenario: Which customer did we actually migrate?",type:"mcq",
- html:`<p class="lead">During Bramwell's second customer test, a user reports that Harrison Trade Supplies Ltd has the wrong payment terms in the target.</p>
- <p>The developer opens the staging table and finds a single row: CustomerName = Harrison Trade Supplies Ltd, PaymentTerms = NET30, CustomerGroup = KEY.</p>
- <p>The original source value is no longer present. The staging table was overwritten during transformation, so nobody can see whether the source contained 45E, whether the cross-reference returned NET30, whether someone manually changed the staged value, or whether the extract itself was different in this cycle.</p>
- <div class="quote">"Let's just query the live source system to see what the customer contains now."<br><span class="small">Developer</span></div>
+ id:"b1",nav:"Which category did we approve?",title:"Opening scenario: Which category did we actually approve?",type:"mcq",
+ html:`<p class="lead">During Bramwell's second fixed-asset test, a query flags that asset FA-009871, site UK01, now carries a depreciation category that passes target validation.</p>
+ <p>The developer opens the staging table and finds a single row for the asset: identity confirmed as FA-009871 at UK01, with a depreciation category already recorded that satisfies the target's own validation rules.</p>
+ <p>The original legacy value, DEP-07, is no longer present. The staging table was overwritten during transformation, so nobody can see whether DEP-07 was ever meant to become this category, whether the treatment was actually approved, whether someone manually changed the staged value, or which cycle or build produced it.</p>
+ <div class="quote">"Let's just query the live source system to see what the asset contains now."<br><span class="small">Developer</span></div>
  <h3>Your decision</h3>`,
  options:[
  "That is sufficient. The current source value is the best evidence of what was migrated.",
  "Restore the source value into the same staging column and rerun the transformation.",
- "The staging design has lost traceability. Preserve the extracted source state separately from transformed values so the team can compare what entered the pipeline with what the rules produced.",
+ "The staging design has lost traceability. Preserve the extracted legacy depreciation category separately from the transformed value so the team can compare what entered the pipeline with what the rule produced.",
  "Remove staging entirely and transform directly from source to avoid duplicate data."
  ],
  _correctIndex:2,
  feedback:[
- "The live source tells you what is there now, not necessarily what was extracted for the migration cycle.",
- "Once the original cycle data has been overwritten, reconstructing it introduces uncertainty.",
- "Correct. Raw and transformed states serve different purposes. Retaining both makes defects explainable and reruns controllable.",
- "Direct transformation can be appropriate in some architectures, but the migration still needs retained evidence and traceability somewhere."
+ "The live source tells you what is there now, not necessarily what DEP-07 actually was for this asset in this cycle, or whether it has since changed.",
+ "Once the original cycle data has been overwritten, reconstructing it introduces uncertainty, and for a fixed-asset accounting value that uncertainty matters.",
+ "Correct. Raw and transformed states serve different purposes. Retaining both makes it possible to prove what DEP-07 actually was, what rule or decision produced the new value, and whether that treatment was ever approved.",
+ "Direct transformation can be appropriate in some architectures, but the migration still needs retained evidence and traceability somewhere, especially for an unresolved case like this one."
  ]
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next",type:"content",
- html:`<p class="lead">Suppose the team takes option C and rebuilds staging so raw and transformed values are kept apart.</p>
- <p>The very next time a payment-term question comes up, the answer is already sitting there instead of being unrecoverable.</p>
+ html:`<p class="lead">Suppose the team takes option C and rebuilds staging so the legacy depreciation category and the transformed value are kept apart.</p>
+ <p>The very next time a question comes up about FA-009871, the answer is already sitting there instead of being unrecoverable.</p>
  <div class="visual-card">
    <div class="visual-title">What the redesigned stage now shows</div>
    <ul class="framework-checks">
-     <li><strong>RawTerms:</strong> 45E, exactly as extracted from the source, untouched.</li>
-     <li><strong>PaymentTerms:</strong> NET30, the result of the approved cross-reference applied to 45E.</li>
-     <li><strong>TransformationTimestamp / RuleVersion:</strong> confirms which mapping baseline actually produced NET30.</li>
+     <li><strong>RawDepreciationCategory:</strong> DEP-07, exactly as extracted from the legacy ERP, untouched.</li>
+     <li><strong>DepreciationCategory (transformed):</strong> still marked as an unresolved exception, not silently replaced with a plausible-looking value.</li>
+     <li><strong>TransformationTimestamp / RuleVersion / DecisionReference:</strong> confirms whether any approved rule or decision has actually been applied, or whether the exception is still genuinely open.</li>
    </ul>
  </div>
- <p>The question "was 45E always going to become NET30, or did someone change it by hand?" now has a real answer, because the raw value was never overwritten in the first place.</p>
+ <p>The question "was DEP-07 ever meant to become this category, or did someone change it by hand?" now has a real answer, because the raw value was never overwritten in the first place.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Staging is not just somewhere to put data. It is where the migration becomes observable and repeatable.</p></div></div>`
 },
 {
@@ -156,8 +167,8 @@ const blocks=[
  <div class="callout misconception"><div class="callout-label">Common trap</div><p>Using spreadsheet row numbers, temporary sort order or other unstable positions as record identity.</p></div>`
 },
 {
- id:"b5",nav:"Design the stage",title:"Build it yourself: design Bramwell's customer stage",type:"situations",
- html:`<p class="lead">For customer C10482, Harrison Trade Supplies Ltd, decide which category each candidate staging field actually belongs to.</p>`,
+ id:"b5",nav:"Design the stage",title:"Build it yourself: design Bramwell's fixed-asset stage",type:"situations",
+ html:`<p class="lead">For fixed asset FA-009871, site UK01, decide which category each candidate staging field actually belongs to.</p>`,
  items: stageFieldSituations,
  takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Staging Record Design: identity + cycle metadata + raw state + transformed state + control status + audit. Deciding which information is essential for traceability, and which would be unnecessary duplication, is the actual design skill here.</p></div></div>`
 },

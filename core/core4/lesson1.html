@@ -19,50 +19,59 @@
    Recurring programme client: Bramwell Industries. Facts used here
    must stay consistent with Modules 1-3 and the story bible: 18,530
    active customers; customer C10482, Harrison Trade Supplies Ltd.
+   Still used in b4, b5, b7, b8, b10 and the b14 knowledge check below.
+
+   The opening scenario and build-it-yourself pipeline exercise (b1,
+   b2, b6) were revised to use the supplier case instead, per the
+   Core HTML diversity brief: 6,420 active suppliers in scope; 1,184
+   in-scope suppliers require bank-payment details; 73 suppliers have
+   a classification conflict between the legacy ERP and
+   SupplierClass.accdb, including S20418. No target accepted/rejected
+   total is invented for this population; deliberately unresolved.
 ============================================================== */
 
-// Section 8 — "Build it yourself: Bramwell customer pipeline". The
+// Section 8 — "Build it yourself: Bramwell supplier pipeline". The
 // learner matches each pipeline step to its actual control point.
 // Options are reordered per item so the correct answer's position
 // does not track the item number.
 const controlLabels = [
-  "18,530 expected source records",
-  "Raw count reconciles to extract",
-  "Exceptions separated and counted",
-  "Only valid/build-approved records proceed",
-  "Output count plus rejected count reconcile to transformed population",
-  "Target accepted/rejected counts captured"
+  "6,420 expected source records captured",
+  "Raw supplier state retained, including both classification sources",
+  "The 73 classification conflicts, including S20418, remain separately visible",
+  "The 1,184 in-scope bank-payment-detail suppliers are identifiable as a controlled subset",
+  "Load-ready population reconciles to the raw population plus controlled exceptions and exclusions",
+  "Target evidence is captured when available"
 ];
 const pipelineItems = [
   {
-   q:"Extract: capture the agreed active-customer scope and required source fields from the legacy ERP.",
+   q:"Extract: capture the agreed active-supplier scope and required source fields from the legacy ERP and SupplierClass.accdb.",
    order:[0,2,4,1,5,3], a:0,
-   why:"Extraction is only controlled if it can prove it captured the intended population, which for Bramwell means demonstrating 18,530 expected source records."
+   why:"Extraction is only controlled if it can prove it captured the intended population, which for Bramwell means demonstrating 6,420 expected source records."
   },
   {
-   q:"Raw stage: retain source values plus source key, extract date and cycle ID in RawCustomer.",
+   q:"Raw stage: retain source values plus source key, extract date and cycle ID in RawSupplier, from both the legacy ERP and SupplierClass.accdb.",
    order:[3,1,5,0,2,4], a:1,
-   why:"The raw stage exists to preserve exactly what was received. Its control is that the raw count reconciles to the extract, nothing more and nothing less."
+   why:"The raw stage exists to preserve exactly what was received, including both classification sources; that is what lets a later conflict be traced back to where it came from."
   },
   {
-   q:"Transform: apply approved mappings, lookups, standardisation and derivations in CustomerTransform.",
+   q:"Transform: apply approved mappings, lookups and derivations in SupplierTransform.",
    order:[4,0,2,5,1,3], a:2,
-   why:"Transformation should never make exceptions disappear. Its control is that exceptions are separated out and counted, not silently absorbed."
+   why:"Transformation should never make a conflict disappear. Its control is that the 73 classification conflicts, including S20418, stay separately visible rather than being silently resolved one way or the other."
   },
   {
-   q:"Validate: check required target values, formats, keys and cross-reference coverage in CustomerValidated.",
+   q:"Validate: check required target values, formats, keys and cross-reference coverage in SupplierValidated, and identify which records need bank-payment details.",
    order:[1,3,0,4,2,5], a:3,
-   why:"Validation exists to stop known-bad output going further. Its control is that only valid, build-approved records proceed to load preparation."
+   why:"Validation is only controlled here if the 1,184 in-scope, payment-detail-requiring suppliers can be pointed to directly, not assumed to be somewhere inside the total."
   },
   {
    q:"Load output: create the target-ready population as a load file, API payload or native import dataset.",
    order:[5,2,1,4,0,3], a:4,
-   why:"This step packages the approved output for the target. Its control is that the output count plus the rejected count reconcile back to the transformed population."
+   why:"This step packages the approved output for the target. Its control is that the load-ready population reconciles back to the raw population plus whatever controlled exceptions and exclusions were recorded along the way."
   },
   {
-   q:"Target load: load the accepted customer records through the target import mechanism.",
+   q:"Target load: load the accepted supplier records through the target import mechanism.",
    order:[2,4,3,0,1,5], a:5,
-   why:"The final handover to the target is only controlled if the accepted and rejected counts coming back from the target are actually captured as evidence."
+   why:"The final handover to the target is only controlled if whatever evidence the target returns, accepted, rejected or otherwise, is actually captured, not assumed from a single overall count."
   }
 ];
 const pipelineSituations = pipelineItems.map((p, idx) => ({
@@ -78,39 +87,39 @@ const pipelineSituations = pipelineItems.map((p, idx) => ({
 const blocks=[
 {
  id:"b1",nav:"One script, source to target",title:"Opening scenario: One script from source to target",type:"mcq",
- html:`<p class="lead">Bramwell is ready to begin customer migration build. A developer proposes a fast approach.</p>
- <div class="quote">"Read the customer tables directly from the legacy ERP, transform the values in one script, and insert the final output straight into the target import interface. No intermediate data needs to be retained because the script can simply be rerun."<br><span class="small">Developer, proposed design</span></div>
- <p>The first test run loads 18,112 customer records. The expected active-customer population is 18,530.</p>
- <div class="quote">"418 records must have failed somewhere in the logic. I'll add more error handling and rerun."<br><span class="small">Developer</span></div>
+ html:`<p class="lead">Bramwell is ready to begin supplier migration build. A developer proposes a fast approach.</p>
+ <div class="quote">"Read the supplier tables directly from the legacy ERP and SupplierClass.accdb, transform the values in one script, and insert the final output straight into the target import interface. No intermediate data needs to be retained because the script can simply be rerun."<br><span class="small">Developer, proposed design</span></div>
+ <p>The first test run reports 6,420 supplier records written to the target load file, exactly matching the expected active-supplier population.</p>
+ <div class="quote">"6,420 out, 6,420 expected. The count matches, so the logic must be right."<br><span class="small">Developer</span></div>
  <h3>Your decision</h3>`,
  options:[
- "Continue with the design. A single process is simpler and therefore less likely to fail.",
+ "Continue with the design. The count matches, so a single process is proven correct.",
  "Add logging to the existing script, but there is no need to change the pipeline structure.",
- "Separate the migration into controlled stages so the team can prove what was extracted, what changed, what was rejected and what was presented to the target.",
- "Load all 18,530 customers without transformation first, then correct the target data after import."
+ "Separate the migration into controlled stages so the team can prove what was extracted, changed and presented to the target.",
+ "Load all 6,420 suppliers without transformation first, then correct the target data after import."
  ],
  _correctIndex:2,
  feedback:[
- "A compact process can still be difficult to explain or recover when extraction, transformation and rejection are all mixed together.",
- "Logs are useful, but retained stage boundaries make populations and transformations easier to inspect, reconcile and rerun.",
- "Correct. A migration pipeline should make the movement and treatment of data visible enough to explain every population change.",
+ "A matching count is not proof of correctness. It says nothing about whether the 73 classification conflicts or the 1,184 payment-detail records were handled the way the team intended.",
+ "Logs are useful, but retained stage boundaries make populations and transformations easier to inspect, reconcile and rerun; a log line does not replace evidence of which raw source fed which transformed value.",
+ "Correct. A migration pipeline should make the movement and treatment of data visible enough to explain every population change, including the exceptions a matching total can hide.",
  "Knowingly loading untransformed or invalid data into the target shifts migration problems into the business system and weakens control."
  ]
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next",type:"content",
- html:`<p class="lead">Suppose the team takes option C and separates the process into controlled stages instead of patching the one-script design.</p>
- <p>The 418-record gap stops being a mystery the moment there are stage boundaries to look between.</p>
+ html:`<p class="lead">Suppose the team takes option C and separates the process into controlled stages instead of trusting a single matching total.</p>
+ <p>The 6,420-record total stops being reassuring the moment there are stage boundaries to look between.</p>
  <div class="visual-card">
    <div class="visual-title">What separating the stages reveals</div>
    <ul class="framework-checks">
-     <li><strong>Extraction:</strong> 18,530 records genuinely leave the source. The gap is not happening here.</li>
-     <li><strong>Transformation:</strong> 114 records produce a known mapping exception, such as unresolved CustomerGroup 99.</li>
-     <li><strong>Pre-load validation:</strong> a further set fail a target format or reference check before ever reaching the target.</li>
-     <li><strong>Target load:</strong> a small remainder are rejected by the target itself for reasons the pipeline can now name.</li>
+     <li><strong>Extraction:</strong> 6,420 supplier records genuinely leave the source. The population itself was never in question.</li>
+     <li><strong>Transformation:</strong> 73 records carry a classification conflict between the legacy ERP and SupplierClass.accdb, including S20418, and now sit in a separately visible exception set rather than being silently resolved one way or the other.</li>
+     <li><strong>Payment-detail handling:</strong> the 1,184 in-scope suppliers requiring bank-payment details can now be identified as a controlled subset, rather than assumed to have been handled correctly because the overall count matched.</li>
+     <li><strong>Target load:</strong> whatever the target eventually does with the transformed output can be captured as evidence, rather than inferred from a single pass/fail total.</li>
    </ul>
  </div>
- <p>418 unexplained records becomes several small, explainable populations, each with its own cause. That is only possible because the stages were separated in the first place.</p>
+ <p>A single matching total becomes several separately visible populations, each with its own evidence. That's only possible because the stages were separated in the first place.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A good pipeline lets you explain what happened to the data between source and target.</p></div></div>`
 },
 {
@@ -175,8 +184,8 @@ const blocks=[
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Reject early when the pipeline already knows the output cannot satisfy the agreed target rule.</p></div></div>`
 },
 {
- id:"b6",nav:"Build the pipeline",title:"Build it yourself: Bramwell customer pipeline",type:"situations",
- html:`<p class="lead">Design a simple pipeline for Bramwell's 18,530 active customers. For each step, identify the control point that actually proves it worked.</p>`,
+ id:"b6",nav:"Build the pipeline",title:"Build it yourself: Bramwell supplier pipeline",type:"situations",
+ html:`<p class="lead">Design a simple pipeline for Bramwell's 6,420 active suppliers. For each step, identify the control point that actually proves it worked.</p>`,
  items: pipelineSituations,
  takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The learner is creating a Migration Pipeline View: stage &rarr; input &rarr; treatment &rarr; output &rarr; control/reconciliation point.</p></div></div>`
 },
