@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Your client: Bramwell Industries</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   SITE INTRODUCTORY PAGE — sits immediately before Core Module 1.
+   Not a numbered lesson: no lessonId is set, so TPKit does not
+   write a progress-record entry for it, and it does not count
+   toward lesson progress or assessment scoring. Built with
+   TPKit.mount() using two content-only blocks so it reuses the
+   site's normal chrome, styling and navigation pattern rather
+   than inventing a new visual system. All chrome, styling and
+   engine behaviour come from shared/turner-page-kit.css + .js.
+============================================================== */
+
+const blocks=[
+{
+ id:"intro1",nav:"Meet Bramwell",title:"Meet Bramwell Industries",type:"content",
+ html:`<p class="lead">Throughout your Turner Page training, you will work with Bramwell Industries, a fictional international business undertaking a major ERP transformation.</p>
+ <p>You will encounter Bramwell repeatedly as the migration progresses. Its systems, data problems, stakeholders and migration challenges will develop across the programme, allowing you to work with the same organisation from initial discovery through mapping, build, migration cycles, validation, cutover, governance and leadership.</p>
+ <p>Bramwell is deliberately realistic. It is a substantial international organisation, but its core data migration team is small. That means the team cannot solve every problem by adding more people. It must prioritise, build repeatable processes, use business expertise effectively and maintain control as delivery pressure increases.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Repeated Bramwell scenarios are there to build familiarity, not to imply that every lesson uses the same data domain. Different modules will draw on whichever part of Bramwell teaches that lesson best.</p></div></div>`
+},
+{
+ id:"intro2",nav:"Company profile",title:"Bramwell Industries: company profile",type:"content",
+ html:`<p class="lead">A quick reference for the organisation you will be working with.</p>
+ <div class="status-grid">
+   <div class="status-card"><strong>Headquarters</strong>United Kingdom</div>
+   <div class="status-card"><strong>Employees</strong>Approximately 4,200</div>
+   <div class="status-card"><strong>Annual turnover</strong>Approximately \u00a31 billion</div>
+   <div class="status-card"><strong>Operations</strong>International; UK, Norway, Belgium and Germany are established programme contexts</div>
+   <div class="status-card"><strong>Transformation</strong>Replacement of legacy ERP and surrounding applications with a new ERP and CRM landscape</div>
+   <div class="status-card"><strong>Overall ERP programme budget</strong>Approximately \u00a33\u20134 million</div>
+   <div class="status-card"><strong>Programme duration</strong>Approximately 18 months</div>
+   <div class="status-card"><strong>Core data migration team</strong>Typically 2\u20133 dedicated people, supported by part-time internal business, Finance and IT resources and specialist implementation-partner input when required</div>
+ </div>
+ <div class="principle"><strong>Worth remembering as you go</strong><br>There is no separate, ring-fenced data migration budget at Bramwell. Data migration is funded and resourced as part of the wider ERP programme.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Before you begin",
+  moduleTitle: "Your client: Bramwell Industries",
+  lessonLabel: "Introduction",
+  lessonShortLabel: "Introduction",
+  lessonTagline: "The company you'll work with throughout your training",
+  storageKey: "tp_bramwell_intro_v1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "/core1/lesson1.html",
+  finalButtonLabel: "Continue to Core Module 1",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
