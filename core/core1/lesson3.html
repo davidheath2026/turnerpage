@@ -35,10 +35,10 @@ const targetContractCategories=[
 ];
 
 const sourceToTargetSteps=[
- {html:`<h4>Step 1 \u2014 AccountID (from CustNo)</h4><p><em>Legacy value: C10482.</em></p><p>This looks like a direct mapping, but it isn't automatically one. The question to resolve is whether the legacy identifier is retained as-is, or whether the target's own uniqueness and format rules mean a new key has to be assigned instead. Looking similar on the screen doesn't settle it.</p>`},
- {html:`<h4>Step 2 \u2014 PaymentTerms (from Terms)</h4><p><em>Legacy value: 45E.</em></p><p>This is a conversion, not a mapping. \u201c45E\u201d has to be understood in business terms first, then matched to whichever target payment-term code carries the same agreed meaning \u2014 not whichever code merely looks closest.</p>`},
- {html:`<h4>Step 3 \u2014 SalesOwnerID (from Rep)</h4><p><em>Legacy value: SMITHJ.</em></p><p>This is a lookup, and a fragile one. It depends on SMITHJ resolving to the correct, currently active user identifier in the target \u2014 and on a decision for what happens if that salesperson has since left.</p>`},
- {html:`<h4>Step 4 \u2014 CustomerGroup (no source field)</h4><p><em>Legacy value: none.</em></p><p>This is a genuine gap, not a mapping problem at all. The value has to come from somewhere \u2014 derived, defaulted, enriched from another source, or supplied by the business \u2014 and that decision has to be made deliberately rather than left for someone to quietly invent during build.</p>`}
+ {html:`<h4>Step 1 \u2014 Supplier identity (SupplierID)</h4><p><em>Legacy value: S20418.</em></p><p>This looks like a direct mapping, but it isn't automatically one. The question to resolve is whether the legacy supplier identifier is retained as-is, or whether the target's own uniqueness and format rules mean a new key has to be assigned instead. Looking similar on the screen doesn't settle it.</p>`},
+ {html:`<h4>Step 2 \u2014 Supplier classification</h4><p><em>Legacy values: STRATEGIC in the ERP; STANDARD in SupplierClass.accdb.</em></p><p>This isn't a mapping question yet at all; it's an unresolved conflict. Before anything can be transformed, Procurement needs to confirm which classification is actually correct for S20418, or whether the two systems are genuinely describing something different. The migration team cannot resolve this by picking whichever value happens to be more convenient to build.</p>`},
+ {html:`<h4>Step 3 \u2014 Country</h4><p><em>Legacy value: Norway.</em></p><p>This is a lookup, and it depends on the target confirming Norway as an approved, active operating country in its own reference data, not simply carrying the value across as free text.</p>`},
+ {html:`<h4>Step 4 \u2014 Payment-related meaning</h4><p><em>Legacy value: not yet confirmed in any source.</em></p><p>Bramwell's target operating model requires bank-payment details for in-scope suppliers such as S20418. Whether that information already exists reliably anywhere, and who is authorised to confirm it, has not been established. This is a genuine gap, not something to quietly populate during build.</p>`}
 ];
 
 const conflictSituations=[
@@ -157,26 +157,26 @@ const knowledgeCheckItems=[
 
 const blocks=[
 {
- id:"b1",nav:"Which system owns the customer?",title:"Which system owns the customer?",type:"mcq",
+ id:"b1",nav:"Which classification is right?",title:"Which classification is right?",type:"mcq",
  html:`<div class="promise-card">
  <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
  </div>
- <p class="lead">Bramwell Industries is replacing a legacy ERP and several surrounding applications. The migration team is preparing to design the customer migration.</p>
- <p>A workshop reveals that customer information exists in three places. Finance says the legacy ERP is the official customer record. Sales says the CRM holds the most current information. Regional Sales says a sales workbook contains recent changes not yet entered anywhere else. The target landscape will also split customer information between a new ERP and CRM platform.</p>
- <div class="quote">\u201cWhich system is the customer master? Tell me which one to extract.\u201d \u2014 the project manager</div>
+ <p class="lead">Bramwell Industries is replacing a legacy ERP and several surrounding applications. The migration team is preparing to design the supplier migration.</p>
+ <p>A workshop reveals that supplier classification does not agree everywhere. For supplier S20418, Nordvik Components AS, active in Norway, the legacy ERP records the classification as STRATEGIC. SupplierClass.accdb, maintained by Procurement, records the same supplier as STANDARD. Finance may separately hold payment-related information for this supplier. The target landscape expects one confirmed classification before go-live.</p>
+ <div class="quote">\u201cWhich system is right? Tell me which classification to load.\u201d \u2014 the project manager</div>
  <h3>What is the best response?</h3>`,
- options:["Use the ERP. ERP systems are always the master source for customer data.","Use the CRM because Sales says it contains the newest information.","Use all three and take the most recently updated value for every field.","Do not choose a system yet. Determine which source is authoritative for each required business attribute and how conflicts will be resolved."],
+ options:["Use the legacy ERP for every supplier attribute. ERP systems are always the master source for supplier data.","Use SupplierClass.accdb for every supplier attribute, since it is Procurement's own system.","Combine both sources and take whichever classification value was updated most recently.","Do not choose a system yet. Determine which source is authoritative for each required supplier attribute, starting with classification and payment-related meaning, and how conflicts will be resolved."],
  feedback:[
- "A dangerous assumption. The ERP may be authoritative for some attributes, but the system type doesn't prove ownership \u2014 sales contacts or account hierarchy may legitimately be mastered elsewhere.",
- "Recency is not authority. The newest value isn't automatically the approved value. CRM may be right for some information and wrong for other information, such as credit status or tax treatment.",
- "A tempting technical shortcut. Combining sources may be necessary, but \u201clatest timestamp wins\u201d is a business rule, not a neutral technical fact \u2014 it has to be justified and agreed, not assumed.",
- "This is the best response. Source authority may exist at system, object or even field level. The migration team must understand ownership, meaning and conflict rules before designing the migration."
+ "A dangerous assumption. The ERP may be authoritative for some supplier attributes, but the system type doesn't prove ownership; SupplierClass.accdb may legitimately be authoritative for classification specifically.",
+ "Closer, but it overreaches. Procurement's own system is a strong candidate for classification meaning, but that ownership doesn't automatically extend to every supplier attribute, such as payment-related meaning, which sits with Finance.",
+ "A tempting technical shortcut. Combining sources may be necessary, but \u201clatest timestamp wins\u201d is a business rule, not a neutral technical fact; it has to be justified and agreed, not assumed.",
+ "This is the best response. Source authority may exist at system, object or even field level. The migration team must understand ownership, meaning and conflict rules for each attribute before designing the migration."
  ]
 },
 {
  id:"b2",nav:"Two different worlds",title:"What happens next: two different data worlds",type:"content",
- html:`<p class="lead">The team takes option D. Instead of naming one system as \u201cthe\u201d customer master, they work attribute by attribute: Finance confirms authority over billing and credit data, Sales confirms authority over contacts and account hierarchy, and a documented rule is agreed for anything genuinely contested.</p>
- <p>It takes longer than picking one system and moving on. But six weeks later, when a data-quality question comes up about a customer's credit status, there's already a documented answer for who owns that fact \u2014 rather than a scramble to work it out under pressure, with go-live approaching.</p>
+ html:`<p class="lead">The team takes option D. Instead of naming one system as \u201cthe\u201d supplier master, they work attribute by attribute: Procurement confirms it owns the meaning of supplier classification, Finance confirms it owns payment-related meaning, and a documented rule is agreed for anything genuinely contested, such as S20418, where the ERP shows STRATEGIC and SupplierClass.accdb shows STANDARD.</p>
+ <p>It takes longer than picking one system and moving on. But weeks later, when a question comes up about which classification S20418 should carry into the target, there's already a documented answer for who owns that fact, rather than a scramble to work it out under pressure, with go-live approaching. The classification itself may still be unresolved pending Procurement's decision, but the authority to decide it is not in doubt.</p>
  <p>The phrase \u201csource-to-target\u201d can sound simple: take data from the old system and put it into the new one. Real migrations are rarely one-to-one. The source side may include one or more ERP systems, CRM applications, HR or payroll systems, warehouse applications, bespoke databases, Excel workbooks, and archived systems. The target side may also contain several applications and data stores, each representing the same customer differently.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Migration design is not a journey from one database to another. It is a controlled translation between two business and data landscapes.</p></div></div>
  <div class="principle"><strong>Key takeaway</strong><br>A migration professional needs enough system understanding to ask good questions, without needing to be the functional expert for every application involved.</div>`
@@ -216,15 +216,15 @@ const blocks=[
 },
 {
  id:"b6",nav:"Build it yourself",title:"First-pass source-to-target analysis",type:"guidedSteps",
- html:`<p class="lead">Bramwell's legacy customer record for account C10482 needs to become a valid target Account record. Before revealing the analysis, think about what kind of question each field raises \u2014 a direct mapping, a lookup, a conversion, or a genuine gap.</p>`,
+ html:`<p class="lead">Bramwell's legacy supplier record for S20418, Nordvik Components AS, needs to become a valid target Supplier record. Before revealing the analysis, think about what kind of question each field raises \u2014 a direct mapping, an unresolved conflict, a lookup, or a genuine gap.</p>`,
  firstLabel:"Start the analysis",
  steps: sourceToTargetSteps,
- closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Even this small example already contains a direct-looking mapping, a conversion, a lookup and a genuine gap. A later module turns this into a controlled field-level mapping artefact with transformation rules, ownership, approval and change history \u2014 this is deliberately just the beginning of that.</p></div></div>`
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Even this small example already contains a direct-looking mapping, an unresolved authority conflict, a lookup and a genuine gap. A later module turns this into a controlled field-level mapping artefact with transformation rules, ownership, approval and change history \u2014 this is deliberately just the beginning of that.</p></div></div>`
 },
 {
  id:"b7",nav:"Conflicting truths",title:"Multiple sources and conflicting truths",type:"content",
- html:`<p class="lead">Return to Bramwell's three customer sources. For account C10482, the migration team finds the customer name recorded consistently, but the sales owner, payment terms, phone number and segment all disagree across ERP, CRM and the sales workbook.</p>
- <p>There is no safe generic rule such as \u201cERP wins\u201d, \u201cCRM wins\u201d or \u201clatest value wins\u201d. Different attributes may have different owners and different reasons for disagreement. A professional response identifies the required target attribute, the candidate sources, the business meaning in each source, the accountable owner, the rule for resolving conflicts, and the evidence that the rule was applied.</p>
+ html:`<p class="lead">Return to Bramwell's supplier sources. For supplier S20418, Nordvik Components AS, the legacy ERP and SupplierClass.accdb disagree on classification, and payment-related meaning has not yet been confirmed in either system.</p>
+ <p>There is no safe generic rule such as \u201cERP wins\u201d, \u201cthe classification system wins\u201d or \u201cthe newest change wins\u201d. Different attributes may have different owners and different reasons for disagreement. A professional response identifies the required target attribute, the candidate sources, the business meaning in each source, the accountable owner (Procurement for classification meaning, Finance for payment-related meaning), the rule for resolving conflicts, and the evidence that the rule was applied.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A source-of-truth decision is a business decision supported by data analysis. It should not be hidden inside ETL logic because a developer needed to choose something.</p></div></div>`
 },
 {
@@ -281,7 +281,7 @@ const blocks=[
  id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
  html:`<div class="complete"><div class="tick">\u2713</div>
  <p class="lead"><strong>You have completed Source systems, target systems and data models.</strong></p>
- <p>Bramwell's migration team now understands that customer data comes from several sources, that authority may differ by attribute, and that the target imposes its own structure and rules.</p>
+ <p>Bramwell's migration team now understands that data, whether customer or supplier, comes from several sources, that authority may differ by attribute, and that the target imposes its own structure and rules.</p>
  </div>
  ${TPKit.promiseCard()}
  <h3>What is the single most valuable thing you learned?</h3>
