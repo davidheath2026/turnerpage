@@ -123,14 +123,14 @@ const PASS_MARK = 8; // out of 10 — hardcoded, matches current site-wide conve
 const questions = [
 {
   type:"single",
-  prompt:"Bramwell has 18 active German customers with legacy CustomerGroup value 99 and no approved target treatment. A developer says the evidence is strong enough to map them straight to INTERNATIONAL today. What is the strongest response?",
+  prompt:"Bramwell has an unresolved supplier classification conflict for S20418, Nordvik Components AS: the legacy ERP records STRATEGIC, SupplierClass.accdb records STANDARD, and no approved target treatment exists. A developer says SupplierClass.accdb is Procurement's own system, so STANDARD must be right, and proposes mapping S20418 straight to STANDARD today. What is the strongest response?",
   options:[
     {label:"Agree; the developer has enough evidence to make the most sensible mapping", correct:false},
-    {label:"Keep the records as controlled exceptions and obtain the mapping decision from the authorised business or data owner", correct:true},
-    {label:"Exclude all 18 customers from migration, since unresolved data should never be loaded", correct:false},
-    {label:"Split the population, mapping the strategic customers to KEY and the rest to INTERNATIONAL", correct:false}
+    {label:"Keep the record as a controlled exception and obtain the classification decision from Procurement, the authorised classification owner", correct:true},
+    {label:"Exclude S20418 from migration, since unresolved data should never be loaded", correct:false},
+    {label:"Map every conflicting supplier straight to STANDARD, since SupplierClass.accdb is Procurement's own system", correct:false}
   ],
-  mentorTip:"The migration team can present the evidence and the choice of target values, but the final meaning of a legacy value belongs to the authorised business or data owner, not the migration team."
+  mentorTip:"The migration team can present the evidence and the conflict between STRATEGIC and STANDARD, but the final meaning of a legacy classification belongs to the authorised business or data owner, not the migration team."
 },
 {
   type:"single",
@@ -203,21 +203,21 @@ const questions = [
 },
 {
   type:"single",
-  prompt:"A business reviewer only needs 94 records and a handful of fields, but asks for the full 18,530-customer extract by email for convenience. What is the strongest response?",
+  prompt:"A specialist only needs record-level evidence for a handful of records, but asks for the full restricted PeopleCore extract, covering 3,860 workers and every field, by email for convenience. What is the strongest response?",
   options:[
-    {label:"Send the full extract, since the reviewer is an authorised employee", correct:false},
+    {label:"Send the full extract, since the specialist is authorised to work on the project", correct:false},
     {label:"Send the full extract in a password-protected file, with the password sent separately", correct:false},
-    {label:"Provide only the data needed for the review through an approved controlled location, with access limited to the appropriate people", correct:true},
-    {label:"Refuse to share any customer data outside the migration team", correct:false}
+    {label:"Provide only the data needed for the diagnosis through an approved controlled location, with access limited to the appropriate people", correct:true},
+    {label:"Refuse to share any HR data outside the migration team", correct:false}
   ],
-  mentorTip:"Migration access should be sufficient for the task, not convenient for every possible task. Use the minimum necessary data, an approved storage or transfer method, and appropriate access."
+  mentorTip:"Migration access should be sufficient for the task, not convenient for every possible task. Use the minimum necessary data, an approved storage or transfer method, and appropriate access, especially for restricted HR data."
 },
 {
   type:"ordering",
-  prompt:"Put the Bramwell customer data journey into the correct order, from source to evidence.",
-  items:["Load-ready file or API","Raw staging","Validation evidence","Production ERP","Transformed staging","Target test or production","Extract location"],
-  correctOrder:[3,6,1,4,0,5,2],
-  mentorTip:"Every stage of the journey, extract, raw staging, transformed staging, load-ready output, target environment and validation evidence, is another place where access, protection and traceability must be controlled."
+  prompt:"Put the Bramwell HR data journey into the correct order, from source to evidence.",
+  items:["Load-ready mechanism","Restricted/raw staging","Validation evidence","Transformed staging","PeopleCore","Target","Controlled extract"],
+  correctOrder:[4,6,1,3,0,5,2],
+  mentorTip:"Every stage of the journey, controlled extract, restricted/raw staging, transformed staging, load-ready output, target environment and validation evidence, is another place where access, protection and traceability must be controlled."
 },
 {
   type:"single",

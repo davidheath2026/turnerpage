@@ -166,8 +166,8 @@ const blocks=[
    <div class="visual-title">Four open Bramwell issues</div>
    <ul class="framework-checks">
      <li><strong>214 customers missing valid payment terms:</strong> Finance or data owner confirms treatment or correction, using a prioritised customer list plus source evidence. If late, records remain exceptions and cycle completeness is affected.</li>
-     <li><strong>18 CustomerGroup 99 records:</strong> customer data or mapping authority approves treatment, using the 18-record population plus business context and options. If late, the mapping baseline cannot close for those records.</li>
-     <li><strong>7 key-account delivery addresses still missing:</strong> migration team plus business validator confirm the corrected population, using before-and-after relationship evidence. If late, key-account usability is not proved.</li>
+     <li><strong>126 fixed-asset depreciation-category exceptions:</strong> the Fixed Asset Finance Owner confirms treatment, using the 126-record population plus source evidence. If late, the affected assets, including FA-009871, remain unresolved for the control point.</li>
+     <li><strong>1,126 LegacyDocs files with unresolved business-record links:</strong> Records Management or business ownership confirms treatment, using the unresolved-link population as evidence. If late, the files' status stays unclear, and they should not be assumed obsolete or deletable in the meantime.</li>
      <li><strong>Product/site prerequisite delayed Cycle 3:</strong> functional or product owner completes a readiness checkpoint, using a dependency checklist and the prior delay evidence. If late, product and order sequence and timing are at risk.</li>
    </ul>
  </div>
@@ -191,7 +191,7 @@ const blocks=[
    { test:/decision|action|confirm|approve|treatment/i, strength:"You were specific about the decision or action being requested.", gap:"Be specific about exactly what decision or action you are asking for." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">Decision required: treatment for the 18 active German customers with legacy CustomerGroup 99. Owner: authorised customer-data or mapping authority. Evidence: the 18-record population, the legacy procedure describing 99 as special export, and the six strategic customers within it. Needed before the mapping baseline freeze for the next cycle. If unresolved by then, these records remain open exceptions and the mapping baseline cannot close for them.</div>`,
+ <div class="quote">Decision required: treatment for the 126 fixed-asset depreciation-category exceptions, including FA-009871. Owner: the Fixed Asset Finance Owner. Evidence: the 126-record population and the legacy depreciation categories not in the approved target reference set, with FA-009871 as a worked example. Needed before the mapping baseline freeze for the next cycle. If unresolved by then, these assets remain open exceptions and the mapping baseline cannot close for them.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuinely usable stakeholder request. It gives the recipient everything they need to act.":"You have the right shape. Make sure the owner, evidence, deadline and consequence are all explicit rather than implied."}</div>`
 },
 {

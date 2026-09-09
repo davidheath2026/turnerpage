@@ -18,6 +18,15 @@
    and shared/turner-page-kit.js. No bespoke one-off visual is
    needed for this lesson, so there is no lesson-scoped <style>
    block — everything here uses existing kit classes.
+
+   Per the Core HTML diversity brief, the dominant authority case
+   throughout this lesson (b1, b2, b3's authorities, b5's matrix, b6
+   and b8) was moved from the old CustomerGroup 99 example to
+   supplier S20418, Nordvik Components AS: legacy ERP classification
+   STRATEGIC, SupplierClass.accdb classification STANDARD, one of 73
+   conflicting suppliers, Procurement owns classification meaning,
+   Finance owns payment-related meaning, deliberately unresolved.
+   b4, b7's fromField anecdote and b9's situations were untouched.
 ============================================================== */
 
 const authorities=[
@@ -25,21 +34,21 @@ const authorities=[
     title:"Data Definition Authority",
     short:"What does this data mean?",
     detail:`<p>This authority answers what a piece of data actually represents in business terms.</p>
-    <p><strong>Bramwell example:</strong> what does legacy CustomerGroup 99 actually represent? An old procedure describes it as "special export accounts", but nobody has confirmed that this is still accurate or complete.</p>
-    <p>The migration team can profile the values and describe the evidence. It cannot decide what the business intends the value to mean.</p>`
+    <p><strong>Bramwell example:</strong> what does supplier classification actually mean at Bramwell? The legacy ERP records S20418, Nordvik Components AS, as STRATEGIC. SupplierClass.accdb, maintained by Procurement, records the same supplier as STANDARD. Nobody has yet confirmed which source is authoritative for classification meaning, or whether the two systems are genuinely describing something different.</p>
+    <p>The migration team can profile both values and describe the evidence. It cannot decide what the business intends supplier classification to mean.</p>`
   },
   {
     title:"Mapping Authority",
     short:"How should that meaning be represented in the target?",
     detail:`<p>Once meaning is agreed, this authority approves how it should be represented in the target system.</p>
-    <p><strong>Bramwell example:</strong> once the meaning of CustomerGroup 99 is confirmed, should the approved treatment be KEY, INTERNATIONAL, another rule entirely, or a recorded exception? That is a Mapping Authority decision, not a migration build decision.</p>
+    <p><strong>Bramwell example:</strong> once the meaning of S20418's classification is confirmed, should the approved target treatment be STRATEGIC, STANDARD, another value entirely, or a recorded exception? That is a Mapping Authority decision, made by Procurement as the business authority for classification meaning, not a migration build decision.</p>
     <p>The migration team implements the approved rule. It does not choose between plausible target values on its own.</p>`
   },
   {
     title:"Quality Acceptance Authority",
     short:"Is the resulting data quality acceptable for migration and use?",
     detail:`<p>This authority decides whether a known residual data issue can be accepted rather than resolved.</p>
-    <p><strong>Bramwell example:</strong> can the 18 CustomerGroup 99 records be accepted as a known, controlled exception if a final mapping decision is not reached before the next baseline? That acceptance belongs to an authorised business or project authority, not to whoever is under the most delivery pressure.</p>
+    <p><strong>Bramwell example:</strong> can the remaining unresolved records among the 73 supplier classification conflicts be accepted as a known, controlled exception if a final decision is not reached before the next control point? That acceptance belongs to an authorised business or project authority, not to whoever is under the most delivery pressure.</p>
     <p>The migration team supplies the impact evidence. It does not accept the risk on the business's behalf.</p>`
   }
 ];
@@ -115,36 +124,36 @@ const blocks=[
  <p>Data migration contains hundreds of decisions. Some are technical. Many are not.</p>
  <p>A migration team can extract, transform, load and validate data, but it cannot legitimately decide what the business means by every value, which records should be in scope, or what residual business risk is acceptable.</p>
  </div>
- <p class="lead">Bramwell still has 18 active German customers with legacy CustomerGroup value 99.</p>
- <p>The target design allows STANDARD, KEY, INTERNATIONAL and INTERNAL. The evidence shows:</p>
+ <p class="lead">Bramwell still has an unresolved supplier classification conflict for S20418, Nordvik Components AS.</p>
+ <p>The legacy ERP and SupplierClass.accdb do not agree, and the target still needs one confirmed classification. The evidence shows:</p>
  <ul class="framework-checks">
-   <li>All 18 customers belong to the German legal entity.</li>
-   <li>An old procedure describes 99 as "special export accounts".</li>
-   <li>Six of the 18 customers are also classified as strategic.</li>
-   <li>No approved target treatment for 99 exists.</li>
+   <li>S20418 is active in Norway and is one of 73 suppliers with a classification conflict between the legacy ERP and SupplierClass.accdb.</li>
+   <li>The legacy ERP records the classification as STRATEGIC.</li>
+   <li>SupplierClass.accdb, maintained by Procurement, records the same supplier as STANDARD.</li>
+   <li>No approved target treatment for S20418 exists.</li>
  </ul>
- <div class="quote">"They are obviously INTERNATIONAL. I can map 99 to INTERNATIONAL and clear the exception today."</div>
+ <div class="quote">"SupplierClass.accdb is Procurement's own system, so STANDARD must be right. I can map S20418 to STANDARD and clear the exception today."</div>
  <p class="small">The migration developer</p>
  <h3>Your decision</h3>`,
  options:[
-   {label:"Agree. The developer has enough evidence to make the most sensible mapping.", correct:false, feedback:"Agreeing turns a plausible technical read into an unauthorised business decision. Even a well-reasoned guess is not the same as sign-off from the business or data owner."},
-   {label:"Map all six strategic customers to KEY and the remaining twelve to INTERNATIONAL.", correct:false, feedback:"This goes even further from the mark. Splitting the population and inventing a strategic-customer rule is itself a business classification decision, and nobody has approved it."},
-   {label:"Keep the records as controlled exceptions and obtain the mapping decision from the authorised business or data owner.", correct:true, feedback:"This is the strongest response. The migration team can present the evidence and the choice between STANDARD, KEY, INTERNATIONAL and INTERNAL, but the final meaning of legacy value 99 belongs to the authorised business or data owner, not the migration team."},
-   {label:"Exclude all 18 from migration, because unresolved data should never be loaded.", correct:false, feedback:"Excluding the 18 customers avoids an unauthorised guess, but it creates a different problem: active customers silently disappearing from the target without an approved decision to leave them out. That is still not a decision the migration team should make alone."}
+   {label:"Agree. The developer has enough evidence to make the most sensible mapping.", correct:false, feedback:"Agreeing turns a plausible technical read into an unauthorised business decision. Even a well-reasoned guess, and even one that happens to match Procurement's own system, is not the same as sign-off from Procurement itself."},
+   {label:"Map S20418 and every other conflicting supplier straight to STANDARD, since SupplierClass.accdb is Procurement's own system.", correct:false, feedback:"This goes even further from the mark. Applying one blanket rule to all 73 conflicting suppliers, without confirming it record by record, is itself an unapproved classification decision, not a technical shortcut."},
+   {label:"Keep the record as a controlled exception and obtain the classification decision from Procurement, the authorised business owner for supplier classification.", correct:true, feedback:"This is the strongest response. The migration team can present the evidence and the conflict between STRATEGIC and STANDARD, but the final meaning of S20418's classification belongs to Procurement, the authorised business owner, not the migration team."},
+   {label:"Exclude S20418 and every other conflicting supplier from migration, because unresolved data should never be loaded.", correct:false, feedback:"Excluding S20418 and the other conflicting suppliers avoids an unauthorised guess, but it creates a different problem: active, in-scope suppliers silently disappearing from the target without an approved decision to leave them out. That is still not a decision the migration team should make alone."}
  ]
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next",type:"content",
- html:`<p class="lead">Choosing to keep the records as controlled exceptions does not resolve CustomerGroup 99. It protects the boundary between migration evidence and business decision while the real answer is still pending.</p>
- <p>The 18 customers stay flagged as controlled exceptions in the customer load. The migration team drafts a decision request setting out the evidence, and routes it to the authorised customer-data owner. Nothing about the target mapping changes until that decision arrives.</p>
+ html:`<p class="lead">Choosing to keep the record as a controlled exception does not resolve S20418's classification. It protects the boundary between migration evidence and business decision while the real answer is still pending.</p>
+ <p>S20418, and the other 72 conflicting suppliers, stay flagged as controlled exceptions in the supplier load. The migration team drafts a decision request setting out the evidence, and routes it to Procurement as the authorised classification owner. Nothing about the target mapping changes until that decision arrives.</p>
  <p>A person can be responsible for performing migration work without having authority to make every decision that affects it.</p>
  <div class="visual-card">
    <div class="visual-title">Responsibility is not the same as authority</div>
    <ul class="framework-checks">
-     <li><strong>Profile CustomerGroup values:</strong> the migration or data analyst can perform this work, but the migration team can only report the evidence. The business or data authority decides the intended meaning.</li>
-     <li><strong>Implement the 99 to target treatment:</strong> a developer or consultant can build it, but the authorised mapping or data authority must approve the rule first.</li>
-     <li><strong>Run the customer load:</strong> the migration technical team controls execution, but only within approved scope and rules.</li>
-     <li><strong>Accept unresolved customer classification risk:</strong> the migration team provides the impact evidence, but only an authorised business or project authority can accept the risk.</li>
+     <li><strong>Profile supplier classification values:</strong> the migration or data analyst can perform this work, but the migration team can only report the evidence. Procurement decides the intended meaning.</li>
+     <li><strong>Implement S20418's target treatment:</strong> a developer or consultant can build it, but the authorised mapping or data authority must approve the rule first.</li>
+     <li><strong>Run the supplier load:</strong> the migration technical team controls execution, but only within approved scope and rules.</li>
+     <li><strong>Accept unresolved supplier classification risk:</strong> the migration team provides the impact evidence, but only an authorised business or project authority can accept the risk.</li>
      <li><strong>Correct a technical coding defect:</strong> the developer or technical owner can own the implementation correction, as long as the business meaning is unchanged.</li>
    </ul>
  </div>
@@ -189,16 +198,16 @@ const blocks=[
  <div class="visual-card">
    <div class="visual-title">Decision Ownership Matrix: Bramwell examples</div>
    <ul class="framework-checks">
-     <li><strong>CustomerGroup 99 meaning unclear:</strong> evidence from migration profiling plus business context; decision owned by Data Definition or Mapping Authority; implemented by migration build after approval.</li>
-     <li><strong>45E payment term needs a target equivalent:</strong> evidence from migration mapping plus Finance input; decision owned by authorised Finance or data mapping owner; implemented by migration or reference build.</li>
-     <li><strong>SalesOwner SMITHJ has no active target worker match:</strong> evidence from migration exceptions plus business ownership information; decision owned by the relevant business or data owner; implemented via cross-reference or an approved exception treatment.</li>
+     <li><strong>S20418 supplier classification conflict:</strong> evidence from migration profiling of the legacy ERP and SupplierClass.accdb; decision owned by Procurement as the authorised classification owner; implemented by migration build after approval.</li>
+     <li><strong>DEP-07 fixed-asset category treatment, affecting FA-009871:</strong> evidence from migration profiling of the 126 depreciation-category exceptions; decision owned by the Fixed Asset Finance Owner; implemented by migration build after approval.</li>
+     <li><strong>An urgent HR diagnostic access request:</strong> evidence from the migration team's technical need to investigate a transformation failure; decision owned by the approved HR data access authority, since this is a security and access decision, not a technical one; implemented via the approved access route.</li>
+     <li><strong>Product-site exception treatment, from the 286 relationships outside the approved target reference set:</strong> evidence from migration validation; decision owned by the relevant business or data owner for product-site reference data; implemented via cross-reference or an approved exception treatment.</li>
      <li><strong>Customer load fails due to a coding defect:</strong> evidence from technical logs; decision owned by the technical delivery owner; implemented by the developer.</li>
-     <li><strong>18 known exceptions proposed for acceptance:</strong> evidence from migration validation and impact analysis; decision owned by Quality Acceptance Authority; implemented as a recorded acceptance and treatment.</li>
    </ul>
  </div>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Learner task</div><p>For each row, ask: who knows the facts? Who has authority to decide? Who performs the resulting action? Do not collapse all three into one role simply because it is convenient.</p></div></div>
- <p>Look again at the CustomerGroup 99 row. In your own words, explain why the evidence provider, the decision authority and the implementer should stay as three separate roles here, even though one person could plausibly do all three. What would be lost if Bramwell collapsed them into one?</p>
- <textarea id="reflection" placeholder="For CustomerGroup 99, the three roles should stay separate because..."></textarea>
+ <p>Look again at the S20418 row. In your own words, explain why the evidence provider, the decision authority and the implementer should stay as three separate roles here, even though one person could plausibly do all three. What would be lost if Bramwell collapsed them into one?</p>
+ <textarea id="reflection" placeholder="For S20418, the three roles should stay separate because..."></textarea>
  <div class="voice-row">
    <button id="micButton" class="btn secondary" type="button">Use microphone</button>
    <span id="micStatus" class="small"></span>
@@ -216,14 +225,14 @@ const blocks=[
    { test:/unauthoris|risk|mistake|wrong|accidental/i, strength:"You explained what could go wrong if the roles were collapsed.", gap:"Explain the consequence of collapsing the roles, such as an unauthorised business decision being made by mistake." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">The migration profiler has the facts but not the authority to decide what CustomerGroup 99 should mean. The Data Definition or Mapping Authority has the authority but is not the one running the profiling. The developer can implement whichever treatment is approved, but implementing a plausible answer without approval turns technical convenience into an unauthorised business decision. Keeping the three roles separate is what stops that from happening quietly.</div>`,
+ <div class="quote">The migration profiler has the facts but not the authority to decide what S20418's classification should mean. The Data Definition or Mapping Authority, Procurement in this case, has the authority but is not the one running the profiling. The developer can implement whichever treatment is approved, but implementing a plausible answer without approval turns technical convenience into an unauthorised business decision. Keeping the three roles separate is what stops that from happening quietly.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a clear, well-reasoned answer. You are thinking about decision ownership the way an experienced migration consultant would.":"You have the right instinct. Strengthen the answer by naming all three roles explicitly and being specific about what goes wrong if they collapse into one."}</div>`
 },
 {
  id:"b6",nav:"Decision requests",title:"A useful decision request",type:"content",
  html:`<p class="lead">"The business owns it" is often too vague to act on, and a vague question gets a vague answer.</p>
- <div class="callout misconception"><div class="callout-label">Weak</div><p>Can someone confirm what we should do with CustomerGroup 99?</p></div>
- <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger</div><p>Decision required: target treatment for 18 active German customers with legacy CustomerGroup 99. Evidence: old procedure describes 99 as special export; six customers are strategic; target values are STANDARD, KEY, INTERNATIONAL, INTERNAL. Current impact: records remain migration exceptions. Required from: authorised customer-data owner. Decision needed before the next customer baseline is approved.</p></div></div>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>Can someone confirm what we should do with S20418's classification?</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger</div><p>Decision required: target classification for supplier S20418, Nordvik Components AS. Evidence: legacy ERP records STRATEGIC; SupplierClass.accdb, maintained by Procurement, records STANDARD; the supplier is one of 73 active suppliers with the same kind of conflict. Current impact: record remains a migration exception. Required from: Procurement, as the authorised classification owner. Decision needed before the next supplier baseline is approved.</p></div></div>
  <div class="principle"><strong>Turner Page principle</strong><br>Make the decision easy to understand: what is being decided, what evidence exists, what happens if it remains unresolved, and who has authority.</div>
  <h3>Ownership should be specific enough to act</h3>
  <div class="visual-card">
@@ -240,7 +249,7 @@ const blocks=[
 },
 {
  id:"b7",nav:"When authorities disagree",title:"What if two authorised stakeholders disagree?",type:"content",
- html:`<p class="lead">Suppose the German Sales Director says CustomerGroup 99 should become INTERNATIONAL, while the Group Customer Data Owner says the six strategic customers should become KEY.</p>
+ html:`<p class="lead">Suppose two authorised stakeholders give genuinely different, defensible instructions for the same open decision, each with a real claim to being right.</p>
  <p>Both are authorised stakeholders. Both have a defensible view. The migration team should not choose the stakeholder it prefers, and there is no clean technical answer that makes this go away.</p>
  <ul class="framework-checks">
    <li>State the conflicting decisions clearly.</li>
@@ -282,12 +291,12 @@ const blocks=[
  <h3>Record the decision, not only the answer</h3>
  <p>A useful decision record retains enough context to explain why the migration behaves as it does.</p>
  <div class="status-grid">
-   <div class="status-card"><strong>Decision</strong>Treatment of legacy CustomerGroup 99</div>
-   <div class="status-card"><strong>Affected population</strong>18 active German customers</div>
-   <div class="status-card"><strong>Evidence</strong>Legacy procedure plus strategic classification evidence</div>
-   <div class="status-card"><strong>Decision owner</strong>Authorised customer-data or mapping authority</div>
+   <div class="status-card"><strong>Decision</strong>Target classification for supplier S20418</div>
+   <div class="status-card"><strong>Affected population</strong>S20418, one of 73 suppliers with a classification conflict</div>
+   <div class="status-card"><strong>Evidence</strong>Legacy ERP records STRATEGIC; SupplierClass.accdb records STANDARD</div>
+   <div class="status-card"><strong>Decision owner</strong>Procurement, as the authorised classification owner</div>
    <div class="status-card"><strong>Status</strong>Open, pending in this lesson</div>
-   <div class="status-card"><strong>Implementation impact</strong>Customer mapping and reference logic cannot be finalised until approved</div>
+   <div class="status-card"><strong>Implementation impact</strong>Supplier mapping cannot be finalised for the affected population until approved</div>
  </div>
  <p>When the decision is eventually made, the mapping, implementation and validation evidence should trace back to it. A previously unseen source code discovered mid-cycle follows the same logic: route it as an exception and obtain the required meaning or mapping decision, rather than inventing a target value to keep the load moving.</p>
  <div class="principle"><strong>Turner Page principle</strong><br>A migration rule should be traceable to an authorised decision when business judgement created that rule.</div>

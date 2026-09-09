@@ -15,10 +15,21 @@
 /* ==============================================================
    CORE MODULE 7 — LESSON 4 DATA — content only. No bespoke
    one-off visual is needed, so there is no lesson-scoped <style>.
+
+   Per the Core HTML diversity brief, the primary customer-file case
+   (b1, b2, b3's first item, b5's data journey, b9's Situation 1 and
+   b13's Check 1) was moved to PeopleCore HR: 3,860 current workers
+   in the migration population; the restricted extract includes
+   personal contact, bank-payment and national identifier fields; a
+   specialist outside the core team may need record-level evidence
+   to diagnose a transformation failure; the exact retention period
+   is not established, and none is invented here. b4, b6-b8, b10-b12
+   and b14 were untouched; Owen's "The Password in the Group Chat"
+   fromField clip in b7 was already a good fit and needed no change.
 ============================================================== */
 
 const fourQuestions=[
-  { title:"Do we need this data?", short:"Minimisation and scope.", detail:"<p>Data minimisation does not mean stripping migration extracts until they cannot support the migration. It means avoiding unnecessary fields, populations and copies.</p><p><strong>Bramwell example:</strong> for the blank tax-classification review, the business may need customer number, customer name, legal entity, country, current tax classification and relevant evidence. It does not automatically need unrelated contact, payment or address fields for all 18,530 customers.</p>" },
+  { title:"Do we need this data?", short:"Minimisation and scope.", detail:"<p>Data minimisation does not mean stripping migration extracts until they cannot support the migration. It means avoiding unnecessary fields, populations and copies.</p><p><strong>Bramwell example:</strong> for a PeopleCore transformation-defect diagnosis, the specialist may need worker identity, the affected field or fields, and relevant evidence for the small number of affected records. It does not automatically need bank-payment details, national identifier fields or contact details for all 3,860 workers in the migration population.</p>" },
   { title:"Who needs access?", short:"Least privilege and accountability.", detail:"<p>Access should reflect role and need. A migration developer needs staging or build data to implement and troubleshoot. A business validator needs the relevant records or fields to validate business meaning or usability. A project manager usually needs status, counts, risks and evidence summaries, not automatically raw record-level data.</p><p><strong>Core principle:</strong> project involvement does not automatically justify unrestricted data access.</p>" },
   { title:"Where may it be stored or moved?", short:"Approved environments and transfer methods.", detail:"<p>Not every environment or transfer method is appropriate for business data, even when it is technically convenient.</p><p>Before using production-derived data in test or development, understand the organisation's rules for environment classification, masking or anonymisation where required, who may access the environment, and any geographic or hosting restrictions.</p>" },
   { title:"How long do we need it?", short:"Retention and secure disposal.", detail:"<p>Some migration evidence needs to be retained for audit, reconciliation, support or contractual reasons. Other temporary data should be removed when no longer needed.</p><p>The actual retention period is determined by organisational, contractual, legal and regulatory requirements. The migration team should not invent it.</p>" }
@@ -27,12 +38,12 @@ const fourQuestions=[
 const knowledgeCheck=[
   {
     title:"Check 1",
-    question:"A business reviewer only needs 94 records and a handful of fields, but asks for the full 18,530-customer extract for convenience. What is the right response?",
+    question:"A specialist only needs record-level evidence for a handful of records, but asks for the full restricted PeopleCore extract for convenience. What is the right response?",
     options:[
-      {label:"Send the full extract, since the reviewer is an authorised employee.", correct:false, feedback:"Being authorised for the project does not justify distributing the entire migration population when only a small subset is needed."},
-      {label:"Provide only the data needed for the review, through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"Correct. Migration access should be sufficient for the task, not convenient for every possible task."},
-      {label:"Send the full extract in a password-protected file to make it more secure.", correct:false, feedback:"Password protection does not fix the underlying problem of sharing far more data than the task requires."},
-      {label:"Refuse to share any data at all.", correct:false, feedback:"Refusing entirely blocks a legitimate review; the answer is to minimise what is shared, not to withhold it."}
+      {label:"Send the full extract, since the specialist is authorised to work on the project.", correct:false, feedback:"Being authorised for the project does not justify distributing the entire restricted extract when only a small subset is needed."},
+      {label:"Provide only the data needed for the diagnosis, through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"Correct. Migration access should be sufficient for the task, not convenient for every possible task, especially for restricted HR data."},
+      {label:"Send the full extract in a password-protected file to make it more secure.", correct:false, feedback:"Password protection does not fix the underlying problem of sharing far more sensitive data than the task requires."},
+      {label:"Refuse to share any data at all.", correct:false, feedback:"Refusing entirely blocks a legitimate diagnosis; the answer is to minimise what is shared, not to withhold it."}
     ]
   },
   {
@@ -94,20 +105,20 @@ const blocks=[
  <div class="callout-label">Before you begin</div>
  <p>Migration deliberately creates additional copies of business data. Extract files, staging tables, exception reports, reconciliation outputs and test environments can all contain information that the organisation is required to protect. Good migration control therefore includes not only whether the data is correct, but also who can see it, where it is stored, how it moves and what happens to temporary copies when they are no longer needed.</p>
  </div>
- <p class="lead">Bramwell is investigating 94 active customers with blank tax classification. A business reviewer working from home asks the migration analyst to email the full customer extract so they can filter it themselves.</p>
- <p>The extract contains all 18,530 active customers and includes names, addresses, contact details, payment terms, tax information and internal classifications. The reviewer only needs the 94 affected records and a small number of fields to make the decision.</p>
+ <p class="lead">Bramwell is investigating a transformation failure affecting a small number of PeopleCore worker records. A specialist outside the core migration team, brought in to diagnose the defect, asks the migration analyst to email the full restricted PeopleCore extract so they can investigate directly.</p>
+ <p>The restricted extract covers all 3,860 current workers in the migration population and includes personal contact details, bank-payment details and national identifier fields. The specialist only needs record-level evidence for the small number of affected records to diagnose the defect.</p>
  <h3>Your decision</h3>`,
  options:[
-   {label:"Send the full extract because the reviewer is an authorised employee.", correct:false, feedback:"The reviewer may legitimately need customer data, but that does not justify distributing the entire migration population."},
-   {label:"Send the full extract in a password-protected ZIP and send the password separately.", correct:false, feedback:"Password protection addresses transit security, but not the underlying problem: far more data is being shared than the task requires."},
-   {label:"Provide only the data needed for the review through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"The reviewer may legitimately need customer data, but that does not justify distributing the entire migration population. Use the minimum necessary data, approved storage or transfer method and appropriate access."},
-   {label:"Refuse to share any customer data outside the migration team.", correct:false, feedback:"Refusing entirely blocks a legitimate business review; the answer is to minimise and control what is shared, not withhold it."}
+   {label:"Send the full extract because the specialist is diagnosing a genuine defect.", correct:false, feedback:"The specialist may legitimately need record-level evidence, but that does not justify distributing the full restricted extract, including bank-payment and national identifier fields for every worker."},
+   {label:"Send the full extract in a password-protected ZIP and send the password separately.", correct:false, feedback:"Password protection addresses transit security, but not the underlying problem: far more sensitive data is being shared than the diagnosis requires."},
+   {label:"Provide only the data needed for the diagnosis through an approved controlled location, with access limited to the appropriate people.", correct:true, feedback:"The specialist may legitimately need record-level evidence, but that does not justify distributing the full restricted extract. Use the minimum necessary data, approved storage or transfer method and appropriate access."},
+   {label:"Refuse to share any HR data outside the migration team.", correct:false, feedback:"Refusing entirely blocks a legitimate diagnostic need; the answer is to minimise and control what is shared, not withhold it."}
  ]
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next",type:"content",
- html:`<p class="lead">Providing only the 94 affected records through an approved controlled location does not slow the review down. It removes 18,436 customers' worth of unnecessary exposure from a decision that never needed them.</p>
- <p>The analyst exports just the relevant fields, for just the affected population, into the location the reviewer already has approved access to, rather than the reviewer's personal inbox or home device.</p>
+ html:`<p class="lead">Providing only the affected records through an approved controlled location does not slow the diagnosis down. It removes the rest of the 3,860 workers' worth of unnecessary exposure, including bank-payment and national identifier fields, from a diagnosis that never needed them.</p>
+ <p>The analyst exports just the relevant fields, for just the affected population, into the location the specialist already has approved access to, rather than the specialist's personal inbox or a convenient shared route.</p>
  <div class="principle"><strong>Turner Page principle</strong><br>Migration access should be sufficient for the task, not convenient for every possible task.</div>
  <h3>Why migration increases data exposure</h3>
  <p>A source system may have mature security controls. Migration can create new copies outside those normal boundaries:</p>
@@ -147,26 +158,26 @@ const blocks=[
  <div class="principle"><strong>Core principle</strong><br>Project involvement does not automatically justify unrestricted data access.</div>`
 },
 {
- id:"b5",nav:"Build it yourself",title:"Build it yourself: Control the Bramwell data journey",type:"reflection",
- html:`<p class="lead">Consider this simplified customer migration flow.</p>
+ id:"b5",nav:"Build it yourself",title:"Build it yourself: Control the Bramwell HR data journey",type:"reflection",
+ html:`<p class="lead">Consider this simplified restricted HR migration flow.</p>
  <div class="visual-card">
-   <div class="visual-title">The Bramwell data journey</div>
-   <p>Production ERP &rarr; extract location &rarr; raw staging &rarr; transformed staging &rarr; load-ready file or API &rarr; target test/production &rarr; validation evidence</p>
+   <div class="visual-title">The Bramwell HR data journey</div>
+   <p>PeopleCore &rarr; controlled extract &rarr; restricted/raw staging &rarr; transformed staging &rarr; load-ready mechanism &rarr; target &rarr; validation evidence</p>
  </div>
  <p>For each stage, define: what data is required, who needs access, approved storage or location, how data moves to the next stage, what audit or traceability is required, and when the copy can be deleted or archived under policy.</p>
  <div class="visual-card">
    <div class="visual-title">A primary control question per stage</div>
    <ul class="framework-checks">
-     <li><strong>Extract:</strong> is the population or field set necessary? Example control: extract only approved migration scope and required attributes.</li>
-     <li><strong>Raw staging:</strong> who can access source-state data? Example control: restricted migration access, with cycle identity retained.</li>
+     <li><strong>Controlled extract:</strong> is the population or field set necessary? Example control: extract only the approved HR migration scope and required attributes, not the full PeopleCore population by default.</li>
+     <li><strong>Restricted/raw staging:</strong> who can access source-state data? Example control: restricted migration access, with cycle identity retained.</li>
      <li><strong>Transformed staging:</strong> can changes be traced? Example control: controlled build plus cycle or batch metadata.</li>
-     <li><strong>Load-ready:</strong> how is it transferred? Example control: approved protected transfer or API, no uncontrolled desktop copies.</li>
+     <li><strong>Load-ready mechanism:</strong> how is it transferred? Example control: approved protected transfer or API, no uncontrolled desktop copies.</li>
      <li><strong>Target:</strong> is environment access appropriate? Example control: role-based access appropriate to test or production.</li>
      <li><strong>Validation evidence:</strong> does evidence expose more data than needed? Example control: use counts or summaries, or targeted records where sufficient.</li>
    </ul>
  </div>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Data Control Map: data stage, purpose, data required, access, storage or transfer, traceability, retention or disposal.</p></div></div>
- <p>Pick one stage of the Bramwell data journey above. Describe a realistic way that stage's control could quietly fail in practice, and what you would put in place to prevent it.</p>
+ <p>Pick one stage of the Bramwell HR data journey above. Describe a realistic way that stage's control could quietly fail in practice, and what you would put in place to prevent it.</p>
  <textarea id="reflection" placeholder="At the stage I have chosen, the control could fail if..."></textarea>
  <div class="voice-row">
    <button id="micButton" class="btn secondary" type="button">Use microphone</button>
@@ -184,7 +195,7 @@ const blocks=[
    { test:/prevent|control|approve|restrict|traceab/i, strength:"You proposed a concrete control to prevent the failure.", gap:"Propose a concrete control that would prevent the failure you described." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">At the load-ready stage, control could quietly fail if a developer copies the load-ready file to a personal desktop to troubleshoot a transfer issue overnight. The prevention is an approved protected transfer route that is quicker to use correctly than to work around, plus traceability metadata that makes an uncontrolled copy visibly out of place.</div>`,
+ <div class="quote">At the load-ready stage, control could quietly fail if a developer copies the load-ready file to a personal desktop to troubleshoot a transfer issue overnight. For restricted HR data, that risk is greater still. The prevention is an approved protected transfer route that is quicker to use correctly than to work around, plus traceability metadata that makes an uncontrolled copy visibly out of place.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a realistic, specific failure mode with a genuinely useful control attached.":"You have a reasonable scenario. Make the failure mode and the control both more concrete and specific to the stage you chose."}</div>`
 },
 {
@@ -245,12 +256,12 @@ const blocks=[
  items:[
    {
      title:"Situation 1",
-     question:"A validator needs to decide 94 tax-classification exceptions and asks for all customer fields for the full 18,530-customer population.",
+     question:"A specialist needs record-level evidence for a handful of PeopleCore transformation defects and asks for the full restricted extract, covering all 3,860 workers and every field, so they do not have to ask twice.",
      options:[
-       {label:"Send the full population and full fields, since the validator is on the project.", correct:false, feedback:"Being on the project does not justify access far beyond what the specific task requires."},
-       {label:"Provide only necessary evidence through an approved controlled method.", correct:true, feedback:"Correct. Provide only necessary evidence through an approved controlled method. Full-file convenience is not justified."},
-       {label:"Ask the validator to request access to the production system directly instead.", correct:false, feedback:"This widens access rather than minimising it, and does not solve the underlying problem."},
-       {label:"Refuse the request entirely.", correct:false, feedback:"The validator has a legitimate need; the right response is to minimise what is shared, not refuse it."}
+       {label:"Send the full population and full fields, since the specialist is diagnosing a genuine defect.", correct:false, feedback:"Genuine diagnostic need does not justify access far beyond what the specific defects require."},
+       {label:"Provide only necessary evidence through an approved controlled method.", correct:true, feedback:"Correct. Provide only necessary evidence through an approved controlled method. Full-extract convenience is not justified, especially for restricted HR data."},
+       {label:"Ask the specialist to request direct access to the production PeopleCore system instead.", correct:false, feedback:"This widens access rather than minimising it, and does not solve the underlying problem."},
+       {label:"Refuse the request entirely.", correct:false, feedback:"The specialist has a legitimate need; the right response is to minimise what is shared, not refuse it."}
      ]
    },
    {

@@ -15,6 +15,14 @@
 /* ==============================================================
    CORE MODULE 7 — LESSON 3 DATA — content only. No bespoke
    one-off visual is needed, so there is no lesson-scoped <style>.
+
+   MINOR change per the Core HTML diversity brief: b5's Migration
+   Control View swapped the 18 CustomerGroup 99 item for the 1,126
+   LegacyDocs unresolved-link issue, and the open-order recovery item
+   for the OldSales-invoices-over-10-years retention decision. The
+   Credit Review Date thread (b1-b4), the product/site risk and the
+   seven missing delivery addresses (both cross-referenced elsewhere
+   in this lesson) were left unchanged.
 ============================================================== */
 
 const controls=[
@@ -171,10 +179,10 @@ const blocks=[
    <div class="visual-title">Bramwell Migration Control View</div>
    <ul class="framework-checks">
      <li><strong>Credit Review Date request</strong> (potential scope change): could add profiling, mapping, build and validation work. Owned by the business/data owner plus a migration impact assessment. Next control point: decision before the Cycle 4 baseline freeze.</li>
-     <li><strong>18 CustomerGroup 99 records</strong> (issue plus decision): records remain exceptions. Owned by the mapping authority, who needs to decide the treatment. Next control point: before the mapping baseline freeze.</li>
+     <li><strong>1,126 LegacyDocs unresolved links</strong> (issue requiring ownership and classification): files carry business-record links that cannot be resolved automatically. Owned by Records Management or business ownership, who need to classify the population. Next control point: before the archive/retention decision; the files should not be assumed obsolete or deletable in the meantime.</li>
      <li><strong>Product/site preparation</strong> (risk): could delay the product or open-order critical path. Owned by the functional owner, who needs to prove a readiness checkpoint. Next control point: before the production product step.</li>
      <li><strong>Seven missing delivery addresses</strong> (issue under correction): key-account relationship validation is affected. Owned by the migration team, who needs to reprocess and retest. Next control point: relationship validation.</li>
-     <li><strong>Open-order recovery</strong> (controlled risk and evidence): critical if the production load fails. Owned by the migration team, who needs to follow the tested recovery procedure. Next control point: production cutover.</li>
+     <li><strong>OldSales invoices older than 10 years</strong> (unresolved retention and scope decision): whether these invoices are in scope for migration, archive or another treatment has not yet been decided. Owned by the business or data owner for OldSales retention. Next control point: before the retention/scope baseline is confirmed.</li>
    </ul>
  </div>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Control View: item, type, affected population or area, impact, owner or action, due or control point, evidence or status.</p></div></div>
@@ -196,7 +204,7 @@ const blocks=[
    { test:/owner|authority|approve|decide/i, strength:"You connected the classification to who should own or decide it.", gap:"Connect the classification to who should own the response." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">The 18 CustomerGroup 99 records are both an issue and a decision: they are a current problem because the records remain exceptions today, and a decision because the target treatment needs authorised approval. If they were classified only as a risk, it would suggest the problem has not happened yet, when in fact it is already affecting the mapping baseline right now.</div>`,
+ <div class="quote">The 1,126 LegacyDocs unresolved links are best classified as an issue, not a risk: the broken business-record links exist right now, not as something that might happen later. Classification is also an open decision, since nobody has yet confirmed whether the files can be resolved automatically, need Records Management review, or require business ownership input. If they were classified only as a risk, it would suggest the problem has not happened yet, when in fact the unresolved links already exist today.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is precise classification with clear reasoning behind it.":"You have the right category. Strengthen the answer by explaining what specifically would go wrong with a different label."}</div>`
 },
 {

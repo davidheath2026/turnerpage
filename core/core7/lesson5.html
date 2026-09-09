@@ -16,6 +16,19 @@
    CORE MODULE 7 — LESSON 5 DATA — content only. This is the
    capstone lesson of the Core Programme. No bespoke one-off
    visual is needed, so there is no lesson-scoped <style>.
+
+   Per the Core HTML diversity brief, b5's "evidence brief" build
+   exercise was broadened from a customer-only position into a
+   genuinely enterprise-wide one: supplier S20418's classification
+   conflict (pending Procurement), the 126 fixed-asset
+   depreciation-category exceptions including FA-009871 (pending the
+   Fixed Asset Finance Owner), and the 1,126 LegacyDocs unresolved
+   links (pending Records Management/business ownership) now sit
+   alongside the existing customer threads. The 18 CustomerGroup 99
+   records remain as one open item among several, not the sole
+   example. b1, b2, b4 and the knowledge check were intentionally
+   left on the CustomerGroup 99 illustration, since it is still valid
+   canon and the same scenario is reused verbatim in the assessment.
 ============================================================== */
 
 const escalationTriggers=[
@@ -160,16 +173,19 @@ const blocks=[
 },
 {
  id:"b5",nav:"Build it yourself",title:"Build it yourself: The evidence brief",type:"reflection",
- html:`<p class="lead">You are asked to prepare a concise evidence brief for Bramwell customer migration. Use only what the evidence supports.</p>
+ html:`<p class="lead">You are asked to prepare a concise evidence brief for the Bramwell migration programme. Use only what the evidence supports.</p>
  <div class="visual-card">
    <div class="visual-title">Evidence position by area</div>
    <ul class="framework-checks">
-     <li><strong>Population:</strong> the later-cycle raw in-scope population of 18,612 is fully accounted for through accepted records, approved exclusions and controlled exceptions.</li>
-     <li><strong>Legal entity:</strong> the earlier 42-record UK/Belgium misclassification was identified and corrected; subsequent legal-entity validation passes.</li>
-     <li><strong>Relationships:</strong> seven key-account delivery addresses were traced to a transformation-filter defect; the rule was corrected, the affected population reprocessed, and relationship validation passes.</li>
+     <li><strong>Customer population:</strong> the later-cycle raw in-scope population of 18,612 is fully accounted for through accepted records, approved exclusions and controlled exceptions.</li>
+     <li><strong>Customer legal entity:</strong> the earlier 42-record UK/Belgium misclassification was identified and corrected; subsequent legal-entity validation passes.</li>
+     <li><strong>Customer relationships:</strong> seven key-account delivery addresses were traced to a transformation-filter defect; the rule was corrected, the affected population reprocessed, and relationship validation passes.</li>
      <li><strong>CustomerGroup:</strong> 18 active German records with legacy value 99 remain unresolved pending authorised treatment.</li>
+     <li><strong>Supplier classification:</strong> S20418, Nordvik Components AS, and 72 other suppliers remain unresolved pending Procurement's classification decision.</li>
+     <li><strong>Fixed assets:</strong> 126 depreciation-category exceptions, including FA-009871's legacy category DEP-07, remain unresolved pending the Fixed Asset Finance Owner's decision.</li>
+     <li><strong>Documents:</strong> 1,126 LegacyDocs files with unresolved business-record links remain pending Records Management or business ownership classification; none should be assumed obsolete or deletable in the meantime.</li>
      <li><strong>Functional usability:</strong> required customer or order smoke tests pass after corrections.</li>
-     <li><strong>Acceptance:</strong> unconditional acceptance should not be claimed while the 18-record treatment remains an open required decision.</li>
+     <li><strong>Acceptance:</strong> unconditional acceptance should not be claimed while these several items, CustomerGroup 99, S20418, the fixed-asset exceptions and the LegacyDocs links, remain open required decisions.</li>
    </ul>
  </div>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Artefact</div><p>Migration Evidence Brief: claim, supporting evidence, residual uncertainty, impact, decision or action required.</p></div></div>
@@ -187,13 +203,13 @@ const blocks=[
  checks:[
    { test:/proved|passes|validated|confirmed/i, strength:"You stated what has actually been proved.", gap:"State clearly what the evidence has actually proved." },
    { test:/correct|fixed|reprocess|misclassif/i, strength:"You identified what was corrected along the way.", gap:"Identify what was found wrong and corrected, such as the legal-entity misclassification or the address defect." },
-   { test:/99|open|unresolved|remain|pending/i, strength:"You kept the CustomerGroup 99 position genuinely open rather than resolving it yourself.", gap:"State clearly that the CustomerGroup 99 treatment remains open, without inventing a resolution." },
-   { test:/decision|treatment|authority|approve/i, strength:"You named the decision still required.", gap:"Name the specific decision still required and who it belongs to." },
+   { test:/99|s20418|dep-07|fa-009871|legacydocs|open|unresolved|remain|pending/i, strength:"You kept the still-open items genuinely open rather than resolving them yourself.", gap:"State clearly which items remain open, such as CustomerGroup 99, S20418's classification, the fixed-asset exceptions or the LegacyDocs links, without inventing a resolution for any of them." },
+   { test:/decision|treatment|authority|approve/i, strength:"You named the decisions still required and who they belong to.", gap:"Name the specific decisions still required and who each one belongs to." },
    { test:/accept|position|status|current/i, strength:"You gave an honest overall position rather than a single colour or verdict.", gap:"State the current position honestly, without collapsing it into a single colour or a simple pass/fail." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">Proved: the 18,612 in-scope customer population is fully accounted for, and legal-entity and key-account relationship validation both pass after correction. Corrected: a 42-record legal-entity misclassification and a delivery-address transformation defect were both found, fixed and retested. Remains open: 18 active German customers with legacy CustomerGroup 99 have no approved target treatment. Decision required: the authorised business or mapping owner must approve a treatment before the mapping baseline can close for these records. Current position: strong and reconciled everywhere except this one open, tracked decision, so unconditional acceptance should not yet be claimed.</div>`,
- mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuinely professional evidence brief. It proves what it claims and leaves nothing quietly unresolved.":"You have solid material here. Make sure each of the five lines is distinct and that CustomerGroup 99 stays visibly open rather than resolved by implication."}</div>`
+ <div class="quote">Proved: the 18,612 in-scope customer population is fully accounted for, and legal-entity and key-account relationship validation both pass after correction. Corrected: a 42-record legal-entity misclassification and a delivery-address transformation defect were both found, fixed and retested. Remains open: 18 active German customers with legacy CustomerGroup 99, supplier S20418's classification conflict, the 126 fixed-asset depreciation-category exceptions including FA-009871, and the 1,126 LegacyDocs unresolved links all still lack an approved treatment. Decision required: each needs its own authorised owner, the customer-data or mapping authority for CustomerGroup 99, Procurement for S20418, the Fixed Asset Finance Owner for the depreciation-category exceptions, and Records Management or business ownership for LegacyDocs, before the relevant baseline can close. Current position: strong and reconciled everywhere validated so far, with several open, tracked decisions still outstanding, so unconditional acceptance should not yet be claimed.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuinely professional evidence brief. It proves what it claims and leaves nothing quietly unresolved.":"You have solid material here. Make sure each of the five lines is distinct and that every open item stays visibly open rather than resolved by implication."}</div>`
 },
 {
  id:"b6",nav:"Precision, not overconfidence",title:"Say exactly what the evidence proves",type:"selectAll",
