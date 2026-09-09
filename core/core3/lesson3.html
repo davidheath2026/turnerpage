@@ -21,7 +21,18 @@
    CustomerGroup distribution STANDARD 14,982 / KEY 1,936 / EXPORT
    1,244 / INTERNAL 260 / STD 61 / "STANDARD" with a trailing space 29
    / 99 18; 18 German records with source CustomerGroup 99 remain
-   unresolved.
+   unresolved. Still used in b4 (rule-pattern examples), b6 (decision
+   table) and b10 (judgement calls) below.
+
+   The opening scenario, "what happens next" and build-it-yourself
+   exercise (b1, b2, b7) were revised to use the fixed-asset case
+   instead, per the Core HTML diversity brief: 14,380 active fixed
+   assets in scope; 126 have a legacy depreciation category not in
+   the approved target reference set; FA-009871 (site UK01) is one
+   of the 126, legacy category DEP-07; no default target category is
+   approved; DEP-07's target treatment remains unresolved; the Fixed
+   Asset Finance Owner is the authority for depreciation-category
+   treatment.
 ============================================================== */
 
 const rulePatterns = [
@@ -73,92 +84,107 @@ const rulePatterns = [
 ];
 
 // Section 8 — "Test the rule with examples before building it". The
-// learner predicts the output of Bramwell's CustomerGroup rule for
-// each representative case before the answer is revealed. Options are
-// reordered per item so the correct answer's position does not track
-// the item number.
-const outputLabels = ["STANDARD", "KEY", "EXPORT", "INTERNAL", "EXCEPTION", "Requires an approved precedence rule"];
-const ruleTestItems = [
+// learner predicts the outcome of Bramwell's fixed-asset depreciation-
+// category rule for each representative case before the answer is
+// revealed. Deliberately uses generic outcome labels rather than
+// inventing target category codes, per the Core HTML diversity brief.
+const fixedAssetRuleSituations = [
   {
-   q:"CustomerGroup = STD",
-   order:[0,1,4,2,3,5], a:0,
-   why:"STD is an approved variant that standardises to STANDARD once the business confirms the two mean the same thing."
+   title:"Test case 1",
+   question:"Legacy depreciation category = DEP-03, which has an approved, confirmed cross-reference to a target category.",
+   options:[
+     {label:"Requires confirmation before proceeding, not a straightforward mapping", correct:false,
+      feedback:"Not quite. A confirmed, approved cross-reference is exactly what makes this a straightforward mapping, not something requiring further confirmation."},
+     {label:"Approved target category, via the confirmed cross-reference", correct:true,
+      feedback:"Correct. Where an approved cross-reference already exists, the mapping is direct. That's what a confirmed cross-reference is for."},
+     {label:"Controlled exception, pending Fixed Asset Finance Owner decision", correct:false,
+      feedback:"Not quite. Treating an already-approved mapping as an unresolved exception would create unnecessary manual work and hide that a decision has already been made."}
+   ]
   },
   {
-   q:"CustomerGroup = KEY",
-   order:[1,3,0,5,2,4], a:1,
-   why:"KEY is already an approved, authoritative value. It is preserved as KEY, not reinterpreted."
+   title:"Test case 2",
+   question:"Legacy depreciation category = DEP-07 (FA-009871's category), which is not in the approved target reference set.",
+   options:[
+     {label:"Approved target category, via the confirmed cross-reference", correct:false,
+      feedback:"Not quite. There is no approved cross-reference for DEP-07 yet. Treating it as approved would mean inventing accounting meaning migration isn't authorised to invent."},
+     {label:"Controlled exception, pending Fixed Asset Finance Owner decision", correct:true,
+      feedback:"Correct. DEP-07 has no approved target treatment. It stays visible as a controlled exception, including for FA-009871, until the Fixed Asset Finance Owner confirms the correct category."},
+     {label:"Requires confirmation before proceeding, not a straightforward mapping", correct:false,
+      feedback:"Close, but too soft. This isn't a case that just needs a quick check; it's a genuine open exception with no approved treatment at all yet."}
+   ]
   },
   {
-   q:"CustomerGroup = 99",
-   order:[4,2,0,5,1,3], a:4,
-   why:"99's meaning is not yet confirmed. Until it is resolved, it stays an exception rather than being force-mapped to anything."
+   title:"Test case 3",
+   question:"Legacy depreciation category is blank, and no other field on the asset record indicates what it should be.",
+   options:[
+     {label:"Controlled exception, pending Fixed Asset Finance Owner decision", correct:true,
+      feedback:"Correct. With nothing to map or derive from, and no approved default, this is an exception, not a guess."},
+     {label:"Approved target category, via the confirmed cross-reference", correct:false,
+      feedback:"Not quite. There is nothing here for a cross-reference to act on; a blank value with no signal cannot resolve to an approved category on its own."},
+     {label:"Requires confirmation before proceeding, not a straightforward mapping", correct:false,
+      feedback:"Not quite; this undersells the position. There is no plausible starting value here to confirm. It needs a decision, not a check."}
+   ]
   },
   {
-   q:"CustomerGroup is blank; Strategic-account flag = Y",
-   order:[3,1,5,0,4,2], a:1,
-   why:"Where the business has accepted the derivation, a strategic-account flag of Y points to KEY."
+   title:"Test case 4",
+   question:"Legacy depreciation category has an approved cross-reference, but a separate source shows a manual adjustment was applied to the same asset outside the normal cross-reference process.",
+   options:[
+     {label:"Approved target category, via the confirmed cross-reference", correct:false,
+      feedback:"Not quite. An unexplained manual adjustment outside the approved process is exactly the kind of signal that should stop an automatic mapping from being trusted blindly."},
+     {label:"Requires confirmation before proceeding, not a straightforward mapping", correct:true,
+      feedback:"Correct. The cross-reference alone would normally be enough, but the unexplained manual adjustment needs to be understood and reconciled before the migration team can safely rely on it."},
+     {label:"Controlled exception, pending Fixed Asset Finance Owner decision", correct:false,
+      feedback:"Not quite. This differs from DEP-07's situation. Here an approved treatment exists; what's missing is confirmation that it still applies, not a decision from scratch."}
+   ]
   },
   {
-   q:"CustomerGroup is blank; Export indicator = Y",
-   order:[5,0,2,1,4,3], a:2,
-   why:"Where the business has accepted the derivation, an export indicator of Y points to EXPORT."
-  },
-  {
-   q:"CustomerGroup is blank; Strategic-account flag = Y; Internal-company indicator = Y",
-   order:[0,4,5,2,1,3], a:5,
-   why:"Two conditions are both true at once. Without an approved precedence rule stating which one wins, the output cannot be safely predicted."
-  },
-  {
-   q:"CustomerGroup is blank; all derivation inputs are also blank",
-   order:[2,3,1,4,0,5], a:4,
-   why:"With nothing to derive from and no approved default, this case is an exception, not a guess."
+   title:"Test case 5",
+   question:"126 assets, including FA-009871, currently sit outside the approved target reference set. A steering update is due this afternoon, and a developer proposes defaulting all 126 to the most common approved category so the population reaches 100% complete before the meeting.",
+   options:[
+     {label:"Approved target category, via the confirmed cross-reference", correct:false,
+      feedback:"Not quite. Frequency is not a cross-reference. None of the 126 have an approved mapping simply because one category happens to be common elsewhere."},
+     {label:"Controlled exception, pending Fixed Asset Finance Owner decision", correct:true,
+      feedback:"Correct. Completeness for a steering update is not a business justification. All 126, including FA-009871, remain controlled exceptions until the Fixed Asset Finance Owner decides."},
+     {label:"Requires confirmation before proceeding, not a straightforward mapping", correct:false,
+      feedback:"Not quite; this understates it. There is no plausible mapping to confirm here at all, only a proposal to hide an unresolved decision behind a completeness number."}
+   ]
   }
 ];
-const ruleTestSituations = ruleTestItems.map((r, idx) => ({
-  title:`Test case ${idx+1}`,
-  question:r.q,
-  options: r.order.map(li => ({
-    label: outputLabels[li],
-    correct: li === r.a,
-    feedback: (li === r.a ? "Correct.<br>" : "Not quite. Check what the approved rule actually says for this case.<br>") + r.why
-  }))
-}));
 
 const blocks=[
 {
  id:"b1",nav:"Just default it",title:"Opening scenario: Just default it",type:"mcq",
- html:`<p class="lead">Bramwell's target requires CustomerGroup for every migrated customer. The source ERP has no single field that maps cleanly to it. The current active population contains several known customer types, and profiling has already shown variation across countries and legacy classifications.</p>
- <div class="quote">"If CustomerGroup cannot be derived, set it to STANDARD. That guarantees every customer loads."<br><span class="small">Migration developer, proposed rule</span></div>
+ html:`<p class="lead">Bramwell's target requires an approved depreciation category for every migrated fixed asset. 14,380 active fixed-asset records are in scope, and profiling has already found that 126 of them, including asset FA-009871 at site UK01, carry a legacy depreciation category (DEP-07) that is not in the approved target reference set.</p>
+ <div class="quote">"If the legacy depreciation category isn't in the approved target reference set, use a valid default category so every asset loads."<br><span class="small">Migration developer, proposed rule</span></div>
  <p>The rule would eliminate load failures and make the field 100% complete.</p>
  <h3>Your decision</h3>`,
  options:[
- "Approve it. A mandatory target field needs a value, and STANDARD is the most common group.",
+ "Approve it. A mandatory target field needs a value, and a valid default guarantees every asset loads.",
  "Reject all defaults. Mandatory fields should always be populated from source data.",
- "Do not approve the default until the business can justify that STANDARD is correct for a defined population. Technical completeness is not evidence of business correctness.",
- "Use STANDARD for the first migration cycle and ask users to correct wrong values during UAT."
+ "Do not approve the default until the Fixed Asset Finance Owner confirms the correct treatment for these 126 assets. Technical completeness is not evidence of business correctness.",
+ "Default the 126 exceptions for the first migration cycle and ask Finance to correct wrong values during UAT."
  ],
  _correctIndex:2,
  feedback:[
- "The most common value is not automatically the correct fallback for every record.",
+ "Technical load success is not the same as being right. A default category invented by migration would misstate depreciation treatment for real financial assets, including FA-009871.",
  "Defaults can be legitimate when the business rule genuinely supports them. The problem is unjustified defaulting, not defaulting itself.",
- "Correct. A default is a business rule expressed through migration logic. It needs an applicable population, rationale and approval.",
- "A knowingly weak default can contaminate the test population and make business users perform avoidable cleansing in the target."
+ "Correct. A default depreciation category is a business rule expressed through migration logic. Migration cannot invent accounting meaning; the Fixed Asset Finance Owner needs to confirm it, and until then the 126 exceptions should stay visible, not defaulted away.",
+ "A knowingly wrong depreciation category on 126 assets, including FA-009871, is not a safe interim state. Finance accounting treatment carries real consequences even inside a test cycle."
  ]
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next",type:"content",
- html:`<p class="lead">Suppose the team takes option C and refuses to approve STANDARD-for-everyone without justification.</p>
- <p>Someone actually asks the business: is STANDARD correct for every customer with no clear group, or only some of them?</p>
+ html:`<p class="lead">Suppose the team takes option C and refuses to approve a default depreciation category without justification.</p>
+ <p>Someone actually asks the Fixed Asset Finance Owner: is there one correct target category for all 126 exceptions, or does it vary by asset?</p>
  <div class="visual-card">
    <div class="visual-title">What asking the question reveals</div>
    <ul class="framework-checks">
-     <li>Some blank-group customers turn out to have a reliable strategic-account flag that should route them to KEY instead.</li>
-     <li>Some have an export indicator that should route them to EXPORT.</li>
-     <li>A small population has no reliable signal at all, and genuinely needs to be flagged as an exception rather than guessed at.</li>
+     <li>Some of the 126, once reviewed individually, turn out to map cleanly onto an approved target category the business already recognises.</li>
+     <li>FA-009871 and a smaller group remain genuinely unresolved. DEP-07 doesn't correspond to anything currently approved in the target, and nobody has yet decided what it should become.</li>
+     <li>A single default across all 126 would have quietly misstated the treatment of assets that actually had a confirmed correct category waiting, not just filled a genuine gap.</li>
    </ul>
  </div>
- <p>The blanket STANDARD default would have quietly reclassified genuine key accounts and export customers, not just filled a gap. Refusing the easy answer is what surfaces that.</p>
+ <p>The blanket default would have quietly misstated depreciation treatment for assets that turn out to have a confirmed correct category, not just filled a genuine unknown. Refusing the easy answer is what surfaces that distinction.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A default is a business rule expressed through migration logic, not a technical convenience.</p></div></div>`
 },
 {
@@ -222,9 +248,9 @@ const blocks=[
  <div class="principle"><strong>Core principle</strong><br>Complex derivations should expose precedence and exception conditions explicitly. Do not rely on the order in which a developer happened to write the code.</div>`
 },
 {
- id:"b7",nav:"Test the rule",title:"Build it yourself: test Bramwell's CustomerGroup rule",type:"situations",
- html:`<p class="lead">The proposed rule trims source CustomerGroup, translates STD to STANDARD, preserves confirmed KEY, EXPORT and INTERNAL values, leaves 99 unresolved, and applies an approved derivation only where the business has accepted it. Predict the output for each representative case before the answer is revealed.</p>`,
- items: ruleTestSituations,
+ id:"b7",nav:"Test the rule",title:"Build it yourself: test Bramwell's fixed-asset rule",type:"situations",
+ html:`<p class="lead">The proposed rule maps a legacy depreciation category directly where an approved, confirmed cross-reference exists, treats DEP-07 and any other value with no approved cross-reference as a controlled exception, and never invents a target category to make an unresolved case disappear. Predict the outcome for each representative case before the answer is revealed.</p>`,
+ items: fixedAssetRuleSituations,
  takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Examples expose ambiguity faster than prose. If two competent people predict different outputs for the same input, the rule is not finished. The learner is building a Transformation Rule Specification: target field, applicable population, inputs, rule, precedence, output, exception treatment, owner and test examples.</p></div></div>`
 },
 {
