@@ -1,0 +1,3 @@
+SourcePaymentTerm,TargetPaymentTerms,Status
+P30,NET30,Approved
+P45,NET45,Approved
