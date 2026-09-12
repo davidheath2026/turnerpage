@@ -45,11 +45,11 @@ const ragSituations=[
    title:"Situation 1",
    question:"Your workstream missed an intermediate milestone two weeks ago, but the overall go-live date still looks achievable. What should this week's RAG say?",
    options:[
-     {label:"Green — the go-live date is still on track, which is what matters.",correct:false,
-      feedback:"The end date surviving doesn't mean nothing happened. A missed intermediate milestone with no visible impact yet is exactly the kind of thing RAG exists to surface before it compounds."},
      {label:"Amber, with a note on the missed milestone and why the end date still holds.",correct:true,
-      feedback:"Correct. This tells the reader both facts at once — something slipped, and here's why it hasn't (yet) threatened the date. That's more useful than either fact alone."},
-     {label:"Red — any missed milestone should trigger the most serious status.",correct:false,
+      feedback:"Correct. This tells the reader both facts at once \u2014 something slipped, and here's why it hasn't (yet) threatened the date. That's more useful than either fact alone."},
+     {label:"Green \u2014 the go-live date is still on track, which is what matters.",correct:false,
+      feedback:"The end date surviving doesn't mean nothing happened. A missed intermediate milestone with no visible impact yet is exactly the kind of thing RAG exists to surface before it compounds."},
+     {label:"Red \u2014 any missed milestone should trigger the most serious status.",correct:false,
       feedback:"Red should mean something specific and severe. Using it for every slipped intermediate date drains it of meaning by the time you need it for something that actually threatens the programme."}
    ]
  },
@@ -57,36 +57,36 @@ const ragSituations=[
    title:"Situation 2",
    question:"Your status has flipped Green \u2192 Red \u2192 Green twice in the last month, each time resolved within days. The PMO mentions, gently, that it's starting to look erratic. What's the real issue here?",
    options:[
-     {label:"Nothing — each flip was accurate at the time it was reported.",correct:false,
+     {label:"Nothing \u2014 each flip was accurate at the time it was reported.",correct:false,
       feedback:"Each individual flip may have been technically accurate. But a RAG history that whipsaws erodes trust in the signal itself, even when every reading was honest \u2014 and trust, once spent, is expensive to rebuild."},
-     {label:"The thresholds for moving to Red are probably too sensitive and need recalibrating.",correct:true,
-      feedback:"Correct. If minor, quickly-resolved issues are triggering Red, the Red threshold is catching noise, not signal. Fixing the threshold protects Red's meaning for when it's genuinely needed."},
      {label:"Stop reporting Red until something more serious happens.",correct:false,
-      feedback:"Suppressing an accurate reading to avoid looking erratic replaces one problem (a noisy signal) with a worse one (a false signal)."}
+      feedback:"Suppressing an accurate reading to avoid looking erratic replaces one problem (a noisy signal) with a worse one (a false signal)."},
+     {label:"The thresholds for moving to Red are probably too sensitive and need recalibrating.",correct:true,
+      feedback:"Correct. If minor, quickly-resolved issues are triggering Red, the Red threshold is catching noise, not signal. Fixing the threshold protects Red's meaning for when it's genuinely needed."}
    ]
  },
  {
    title:"Situation 3",
-   question:"A senior stakeholder asks you, informally, to \u201ckeep it Green until after Thursday's board meeting\u201d — the underlying position hasn't actually changed either way yet. What's the sharpest response?",
+   question:"A senior stakeholder asks you, informally, to \u201ckeep it Green until after Thursday's board meeting\u201d \u2014 the underlying position hasn't actually changed either way yet. What's the sharpest response?",
    options:[
-     {label:"Agree — it's only a few days, and the facts haven't changed yet anyway.",correct:false,
-      feedback:"If the facts genuinely haven't changed, there's no need to be asked at all — the request itself is the signal that something's expected to change before Thursday, and the RAG should reflect facts as they stand, not as they're convenient."},
-     {label:"Report the RAG honestly regardless of timing, and separately offer the stakeholder a heads-up on what to expect before the board sees it.",correct:true,
-      feedback:"Correct. The RAG stays accurate at all times; the courtesy of preparing someone for a meeting is a separate, legitimate conversation that doesn't require distorting the record."},
+     {label:"Report the RAG honestly, and offer a separate heads-up before the board meeting.",correct:true,
+      feedback:"Correct. The RAG stays accurate at all times, regardless of timing; the courtesy of preparing someone for what to expect at a meeting is a separate, legitimate conversation that doesn't require distorting the record."},
+     {label:"Agree \u2014 it's only a few days, and the facts haven't changed yet anyway.",correct:false,
+      feedback:"If the facts genuinely haven't changed, there's no need to be asked at all \u2014 the request itself is the signal that something's expected to change before Thursday, and the RAG should reflect facts as they stand, not as they're convenient."},
      {label:"Refuse outright and report the stakeholder's request to your manager.",correct:false,
-      feedback:"Most requests like this aren't malicious — they're someone trying to avoid a surprise in a meeting. A flat refusal-and-report response is disproportionate to what's usually just an awkward, well-intentioned ask."}
+      feedback:"Most requests like this aren't malicious \u2014 they're someone trying to avoid a surprise in a meeting. A flat refusal-and-report response is disproportionate to what's usually just an awkward, well-intentioned ask."}
    ]
  },
  {
    title:"Situation 4",
-   question:"Two dependent workstreams — yours and Testing — are both individually Green, but Testing's Green depends on an assumption about your delivery date that you privately think is optimistic. What do you do?",
+   question:"Two dependent workstreams \u2014 yours and Testing \u2014 are both individually Green, but Testing's Green depends on an assumption about your delivery date that you privately think is optimistic. What do you do?",
    options:[
-     {label:"Nothing — Testing owns their own RAG, not you.",correct:false,
+     {label:"Nothing \u2014 Testing owns their own RAG, not you.",correct:false,
       feedback:"Technically true, but if their Green is quietly resting on your data, your silence lets an inaccurate picture stand across two workstreams instead of one."},
-     {label:"Flag the dependency assumption directly to the PMO and to Testing's lead, even though your own status doesn't need to change.",correct:true,
-      feedback:"Correct. RAG is meant to give an accurate picture of the whole programme, not just defend your own square of it. A quiet word here can prevent two workstreams from being surprised together."},
      {label:"Wait until your own date is confirmed one way or the other before saying anything.",correct:false,
-      feedback:"Waiting for certainty here means Testing's Green stands unchallenged for longer than necessary, on an assumption you already have reason to doubt."}
+      feedback:"Waiting for certainty here means Testing's Green stands unchallenged for longer than necessary, on an assumption you already have reason to doubt."},
+     {label:"Flag the dependency assumption to the PMO and Testing's lead.",correct:true,
+      feedback:"Correct, even though your own status doesn't need to change. RAG is meant to give an accurate picture of the whole programme, not just defend your own square of it \u2014 a quiet word here can prevent two workstreams from being surprised together."}
    ]
  }
 ];
@@ -94,26 +94,24 @@ const ragSituations=[
 const blocks=[
 {
  id:"b1",nav:"The quiet signal",title:"The quiet signal",type:"mcq",
- html:`<div class="promise-card">
- <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
- </div>
- <p class="lead">You're two days from the monthly steering pack deadline. Your workstream's RAG has read Green for six straight weeks.</p>
+ html:`<p class="lead">You're two days from the monthly steering pack deadline. Your workstream's RAG has read Green for six straight weeks.</p>
  <p>This week's reconciliation numbers came in clean. But in three separate conversations, different people mentioned \u2014 almost in passing \u2014 that the source data extract is \u201ctaking longer than usual.\u201d Nothing is actually broken. There's no defect, no missed date, nothing you could point to in a RAID entry.</p>
  <div class="quote">\u201cIt's probably just a one-off. The numbers are fine.\u201d</div>
  <h3>What do you submit?</h3>`,
- options:["Green — nothing's technically broken, and the numbers back that up.","Amber, with a one-line note on the extract timing pattern you're noticing.","Wait another week to see if it's really becoming a trend before changing anything.","Call the PMO lead informally instead of changing the RAG."],
+ options:["Green \u2014 nothing's technically broken, and the numbers back that up.","Amber, with a one-line note on the extract timing pattern you're noticing.","Wait another week to see if it's really becoming a trend before changing anything.","Call the PMO lead informally instead of changing the RAG."],
  feedback:[
  "Technically defensible \u2014 nothing IS broken yet. But a RAG that only reports diagnosed problems misses the ones still forming. Green here isn't dishonest, it's just not looking far enough ahead.",
  "This is the strongest response. Amber isn't a confession of failure \u2014 it's evidence you're watching the right signals before they become a fire, while the numbers themselves are still genuinely fine.",
  "Waiting to see if a pattern is \u201creally\u201d a trend means the first anyone outside your team hears about it is once it's undeniable \u2014 with far less runway to react.",
  "An informal heads-up is genuinely useful, but alongside an honest RAG, not instead of one. The dashboard is what most senior stakeholders actually read; a private conversation that never gets reflected there hasn't really been escalated."
- ]
+ ],
+ _correctIndex:1
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next: two versions of the following month",type:"content",
  html:`<p class="lead">Two versions of the next month, depending on which answer you gave.</p>
- <p><strong>Version one — Amber, with the note.</strong> Two weeks later, the extract delay turns out to be a genuine infrastructure capacity issue, not a blip. But the PMO already knows a pattern was forming, because you told them before it became a problem. Nobody's surprised. The conversation is \u201chow do we fix this,\u201d not \u201cwhy didn't we know.\u201d</p>
- <p><strong>Version two — Green, because nothing was technically broken.</strong> The same infrastructure issue surfaces the same way, two weeks later. Except now it looks sudden \u2014 six straight weeks of Green, then a real problem out of nowhere. The PMO's first question isn't about the fix. It's about why a six-week pattern wasn't visible until it became urgent. You were watching the same signal in both versions. Only the reporting differed.</p>
+ <p><strong>Version one \u2014 Amber, with the note.</strong> Two weeks later, the extract delay turns out to be a genuine infrastructure capacity issue, not a blip. But the PMO already knows a pattern was forming, because you told them before it became a problem. Nobody's surprised. The conversation is \u201chow do we fix this,\u201d not \u201cwhy didn't we know.\u201d</p>
+ <p><strong>Version two \u2014 Green, because nothing was technically broken.</strong> The same infrastructure issue surfaces the same way, two weeks later. Except now it looks sudden \u2014 six straight weeks of Green, then a real problem out of nowhere. The PMO's first question isn't about the fix. It's about why a six-week pattern wasn't visible until it became urgent. You were watching the same signal in both versions. Only the reporting differed.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A RAG status is a forecast, not a photograph. A photograph only has to be accurate about the instant it was taken. A forecast has to be honest about which way things are moving \u2014 which is a different, harder standard.</p></div></div>
  <div class="principle"><strong>Key takeaway</strong><br>The underlying facts were identical in both versions. The only thing that changed the outcome was whether the report kept pace with what you already half-knew.</div>`
 },
@@ -131,17 +129,28 @@ const blocks=[
  items: ragHabits
 },
 {
- id:"b5",nav:"Report it yourself",title:"Writing this week's honest RAG",type:"guidedSteps",
- html:`<p class="lead">Let's write the actual submission for the extract-delay situation from the start of this lesson, one part at a time.</p>`,
- firstLabel:"Start the submission",
- steps:[
-   {html:`<h4>Step 1 — State the current status factually</h4><p><em>\u201cStatus: Amber (previously Green x6 weeks). Reconciliation results this cycle: within tolerance, no defects raised.\u201d</em></p><p>Notice both facts sit side by side \u2014 the numbers are genuinely fine, and the status still moved. That's not a contradiction, it's the whole point of reporting the trend and not just the snapshot.</p>`},
-   {html:`<h4>Step 2 — Name the signal, precisely</h4><p><em>\u201cThree independent mentions this week of the source extract running longer than baseline. No root cause confirmed yet; pattern first observed this cycle.\u201d</em></p><p>\u201cThree independent mentions\u201d is a fact. \u201cPeople seem worried\u201d is a feeling. Write the fact \u2014 it's what lets the reader judge the signal's weight for themselves.</p>`},
-   {html:`<h4>Step 3 — Define what moves this back to Green</h4><p><em>\u201cReturns to Green once two consecutive extract runs complete within baseline timing, or a root cause is confirmed with no downstream impact.\u201d</em></p><p>This is the line that turns an Amber from a vague worry into a plan with an exit condition \u2014 exactly what a reader needs to know what to watch for next.</p>`},
-   {html:`<h4>Step 4 — Attach the evidence</h4><p><em>\u201cEvidence: extract run-time log, last 6 cycles, attached.\u201d</em></p><p>A pattern claimed from memory is an opinion. The same pattern shown in a run-time log is a fact anyone can check themselves \u2014 which is what makes an early Amber credible rather than alarmist.</p>`}
+ id:"b5",nav:"Report it yourself",title:"Writing this week's honest RAG",type:"reflection",
+ html:`<p class="lead">Write the actual RAG submission for the extract-delay situation from the start of this lesson. Cover all four parts: the current status stated factually, the signal named precisely (not just a feeling), what would move this back to Green, and the evidence behind it.</p>
+ <textarea id="reflection" placeholder="Status: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/amber|status|tolerance|reconcil/i, strength:"You stated the current status factually, including that the numbers themselves are still fine.", gap:"State the status plainly \u2014 Amber, and that this cycle's reconciliation is still within tolerance." },
+   { test:/extract|mention|pattern|signal/i, strength:"You named the actual signal precisely, not just a general feeling that something's off.", gap:"Name the specific signal: the extract running longer than baseline, mentioned independently more than once." },
+   { test:/green|return|back to green|resolve/i, strength:"You defined what would move this back to Green.", gap:"State what would move this back to Green \u2014 an exit condition, not just a hope it improves." },
+   { test:/evidence|log|attach|run.?time/i, strength:"You attached real evidence, not just an asserted pattern.", gap:"Attach the evidence \u2014 the run-time log, not just a description of the pattern." }
  ],
- closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice this Amber took four short sentences. The habit that makes early reporting sustainable isn't writing more \u2014 it's writing precisely, the moment the signal appears, rather than waiting until there's enough to write a much longer explanation.</p></div></div>
- <div class="principle"><strong>Key takeaway</strong><br>An honest early Amber is almost always shorter and calmer than the Red that replaces a Green nobody saw coming.</div>`
+ modelAnswerHtml:`<h3>Turner Page model submission</h3>
+ <div class="quote">Status: Amber (previously Green x6 weeks). Reconciliation results this cycle: within tolerance, no defects raised. Signal: three independent mentions this week of the source extract running longer than baseline. No root cause confirmed yet; pattern first observed this cycle. Returns to Green once two consecutive extract runs complete within baseline timing, or a root cause is confirmed with no downstream impact. Evidence: extract run-time log, last 6 cycles, attached.</div>
+ <div class="principle"><strong>Key takeaway</strong><br>An honest early Amber is almost always shorter and calmer than the Red that replaces a Green nobody saw coming.</div>`,
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the kind of early, precise Amber the lesson is about \u2014 short, factual, and gives the reader something to watch for.":score>=4?"You've got some of the four parts, but check whether you named the actual signal specifically and attached real evidence, rather than describing the situation in general terms.":"This needs the full structure applied to the actual extract-delay signal \u2014 status, the specific signal, the route back to Green, and the evidence behind it."}</div>`
 },
 {
  id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
@@ -158,10 +167,10 @@ const blocks=[
    <div class="to-record-flag">\u26A0 PLACEHOLDER \u2014 record via ElevenLabs (or similar) and replace the src below before publishing. Script text will double as an on-page transcript once real audio is in place.</div>
    ${TPKit.fromField({
      title:"Holding the line under pressure",
-     name:"Farah",
+     name:"Zoe",
      role:"Data Migration Lead",
-     project:"Telecoms ERP",
-     src:"/assets/audio/lesson5-fromfield-farah.mp3",
+     project:"Manufacturing ERP",
+     src:"/assets/audio/lesson5-fromfield-zoe.mp3",
      reflection:"\u201cA sponsor once asked me, very politely, to hold our status Green until after a funding review. I told him I'd keep it accurate either way, but that I'd happily walk him through exactly what to expect beforehand so there were no surprises in the room. He appreciated that a lot more than a rehearsed Green would've. Two years on, I still do it that way \u2014 the RAG stays honest, the conversation stays kind.\u201d"
    })}
  </div>
@@ -230,29 +239,14 @@ const LESSON_CONFIG = {
   lessonTagline: "Dashboards, RAG status and interlocking timelines",
   storageKey: "tp_lesson5_v1",
   lessonId: "dml1-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
   nextUrl: "lesson5-complete.html",
   finalButtonLabel: "Finish Lesson 5 \u2192",
   blocks: blocks
 };
 
 TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
-</script>
-
-<script>
-(function(){
- const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
- if(!learner.name) return;
- const first=learner.name.split(' ')[0];
- document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
- const h1=document.querySelector('h1');
- if(h1 && !document.getElementById('tpGreeting')){
-   const d=document.createElement('div');
-   d.id='tpGreeting';
-   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
-   d.textContent='Welcome back, '+first+'.';
-   h1.parentNode.insertBefore(d,h1);
- }
-})();
 </script>
 </body>
 </html>

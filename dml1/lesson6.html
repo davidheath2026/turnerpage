@@ -42,10 +42,10 @@ const surpriseSituations=[
    title:"Situation 1",
    question:"You reported Green last Thursday. The issue discovered today means that Green was, in hindsight, wrong \u2014 the risk already existed, you just hadn't found it yet. How do you handle that in today's escalation?",
    options:[
-     {label:"Don't mention last week's status — focus only on today's facts.",correct:false,
+     {label:"Acknowledge it plainly \u2014 last week's Green reflected what was known then.",correct:true,
+      feedback:"Correct. This is honest without being self-flagellating. A status is only ever as good as what's known at the time it's given, and today's finding changes that picture \u2014 saying so plainly is very different from pretending it didn't happen."},
+     {label:"Don't mention last week's status \u2014 focus only on today's facts.",correct:false,
       feedback:"Leaving it out doesn't make the question go away, it just means someone else asks it later, at a worse moment, and it looks like you were hoping nobody would notice."},
-     {label:"Acknowledge it plainly: last week's Green reflected what was known then, and today's finding changes that picture.",correct:true,
-      feedback:"Correct. This is honest without being self-flagellating. A status is only ever as good as what's known at the time it's given \u2014 saying so plainly is very different from pretending it didn't happen."},
      {label:"Explain in detail why the issue was reasonably undetectable last week.",correct:false,
       feedback:"A long justification before the reader even has the facts of today's problem reads as defensive. Lead with what's happening now; context about why it wasn't caught earlier can follow if asked."}
    ]
@@ -54,36 +54,36 @@ const surpriseSituations=[
    title:"Situation 2",
    question:"Your sponsor mentions, slightly awkwardly, that they heard about the issue from someone else on the programme before you'd told them. What's the most useful thing to do right now?",
    options:[
-     {label:"Explain why you hadn't reached them yet — you were still confirming facts.",correct:false,
+     {label:"Explain why you hadn't reached them yet \u2014 you were still confirming facts.",correct:false,
       feedback:"This is true and reasonable, but leading with an explanation of the delay puts your timeline ahead of their concern. It reads as justifying yourself before addressing them."},
-     {label:"Apologise for the gap, then immediately give them the clearest, most current picture you have.",correct:true,
-      feedback:"Correct. A brief, genuine acknowledgement costs little and closes the trust gap fast \u2014 then the best repair is simply giving them excellent information right now, not relitigating why it was late."},
      {label:"Point out that they weren't the first person who needed to know.",correct:false,
-      feedback:"Technically this might even be true, but it reads as deflecting rather than addressing their actual concern, which is that they felt out of the loop."}
+      feedback:"Technically this might even be true, but it reads as deflecting rather than addressing their actual concern, which is that they felt out of the loop."},
+     {label:"Apologise for the gap, then immediately give them the clearest, most current picture you have.",correct:true,
+      feedback:"Correct. A brief, genuine acknowledgement costs little and closes the trust gap fast \u2014 then the best repair is simply giving them excellent information right now, not relitigating why it was late."}
    ]
  },
  {
    title:"Situation 3",
    question:"Two team members give you different severity assessments of the same issue within an hour of each other. The steering update is due in ninety minutes. What do you do?",
    options:[
+     {label:"Report the range honestly \u2014 both assessments, with a note that it's still being narrowed down.",correct:true,
+      feedback:"Correct. \u201cBetween X and Y, confirming which by end of day\u201d is genuinely useful information. Reporting a false precision you don't actually have helps nobody, however tidy it looks."},
      {label:"Go with whichever assessment sounds more serious, to be safe.",correct:false,
       feedback:"Defaulting to the scarier number isn't safe, it's just a different kind of inaccurate \u2014 and it can trigger an overreaction that costs real time and credibility once the truth turns out milder."},
-     {label:"Report the range honestly — both assessments, with a note that it's still being narrowed down.",correct:true,
-      feedback:"Correct. \u201cBetween X and Y, confirming which by end of day\u201d is genuinely useful information. Reporting a false precision you don't actually have helps nobody, however tidy it looks."},
      {label:"Delay the steering update until the two assessments are reconciled.",correct:false,
       feedback:"Delaying the whole update to resolve one detail means the steering group loses visibility on everything else that's genuinely ready to report, for the sake of one still-open question."}
    ]
  },
  {
    title:"Situation 4",
-   question:"By the time of the meeting, you genuinely can't get a reliable fix-effort estimate — the technical team themselves aren't sure yet. What's the strongest thing to say?",
+   question:"By the time of the meeting, you genuinely can't get a reliable fix-effort estimate \u2014 the technical team themselves aren't sure yet. What's the strongest thing to say?",
    options:[
      {label:"Give your best personal guess so the meeting has a number to work with.",correct:false,
       feedback:"A confident-sounding guess, once said out loud in a steering meeting, tends to get treated as a commitment \u2014 and you'll be held to a number nobody actually stood behind."},
-     {label:"State plainly that the estimate isn't reliable yet, and commit to a specific time you'll have a real one.",correct:true,
-      feedback:"Correct. \u201cI don't know yet, and here's exactly when I will\u201d is a complete, professional answer. It's more useful to a decision-maker than false certainty, and it's a promise you can actually keep."},
      {label:"Ask the technical team to commit to an estimate before the meeting, even if they're not confident in it.",correct:false,
-      feedback:"Pressuring a genuinely uncertain estimate into existence just moves the false confidence one step upstream \u2014 it still ends up in the room as if it were reliable."}
+      feedback:"Pressuring a genuinely uncertain estimate into existence just moves the false confidence one step upstream \u2014 it still ends up in the room as if it were reliable."},
+     {label:"State plainly that the estimate isn't reliable yet, and commit to a specific time you'll have a real one.",correct:true,
+      feedback:"Correct. \u201cI don't know yet, and here's exactly when I will\u201d is a complete, professional answer. It's more useful to a decision-maker than false certainty, and it's a promise you can actually keep."}
    ]
  }
 ];
@@ -91,10 +91,7 @@ const surpriseSituations=[
 const blocks=[
 {
  id:"b1",nav:"The 4pm surprise",title:"The 4pm surprise",type:"mcq",
- html:`<div class="promise-card">
- <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
- </div>
- <p class="lead">It's 4pm on Wednesday. Go/no-go for cutover is Friday morning.</p>
+ html:`<p class="lead">It's 4pm on Wednesday. Go/no-go for cutover is Friday morning.</p>
  <p>During a routine spot check \u2014 not a planned test, just someone double-checking something unrelated \u2014 QA notices the address mapping used the wrong reference table for a segment of major accounts. Early read: around 50 accounts affected. Nobody yet knows if the fix is a five-minute config change or a partial rebuild.</p>
  <div class="quote">\u201cWe don't actually know how bad this is yet.\u201d</div>
  <h3>What do you do in the next hour?</h3>`,
@@ -104,7 +101,8 @@ const blocks=[
  "This is the strongest response. An hour to turn a rumour into real numbers, then a same-day escalation with clear knowns and unknowns, respects both urgency and accuracy.",
  "With a go/no-go decision on Friday, waiting for tomorrow's normal cadence hands back nearly a full day of reaction time on something that could change the decision itself.",
  "This treats a programme-level risk as something to manage alone. Even a successful weekend fix doesn't undo the fact that a decision-relevant risk was hidden from the people who needed to weigh it."
- ]
+ ],
+ _correctIndex:1
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next: the escalation, built properly",type:"content",
@@ -131,17 +129,29 @@ const blocks=[
  items: firstHourHabits
 },
 {
- id:"b5",nav:"Write it yourself",title:"Writing the same-day escalation",type:"guidedSteps",
- html:`<p class="lead">Let's build the actual escalation for the address-mapping surprise, one part at a time \u2014 the same structure as before, applied live.</p>`,
- firstLabel:"Start the escalation",
- steps:[
-   {html:`<h4>Step 1 — Context, stated as fact</h4><p><em>\u201cSpot check identified 47 confirmed accounts mapped against the wrong reference table for delivery addresses; estimated total 50-60.\u201d</em></p><p>A range with a confirmed floor (\u201c47 confirmed, up to 60 estimated\u201d) is far more credible than either a vague \u201caround 50\u201d or a false-precision single number.</p>`},
-   {html:`<h4>Step 2 — Impact, tied to the decision that matters</h4><p><em>\u201cDirectly affects Friday's go/no-go decision. Fix scope not yet confirmed.\u201d</em></p><p>Everything else about this issue is secondary to the fact that it touches a specific, imminent decision. Lead with that connection so the reader immediately understands the stakes.</p>`},
-   {html:`<h4>Step 3 — Options, genuinely different from each other</h4><p><em>\u201ca) Hold the decision pending a confirmed estimate by Thursday noon. b) Proceed Friday, holding these accounts back for a follow-up load. c) Delay cutover 2-3 days as a precaution.\u201d</em></p><p>Three real choices with different risk profiles \u2014 not one obvious option and two token alternatives included just to look thorough.</p>`},
-   {html:`<h4>Step 4 — Recommendation, with the reasoning shown</h4><p><em>\u201cRecommend option a. Eighteen hours is well within the decision window, and it avoids both an unnecessary delay and an unnecessary risk.\u201d</em></p><p>The reasoning matters as much as the choice \u2014 it's what lets the reader agree quickly, or push back on the specific logic rather than the whole recommendation.</p>`}
+ id:"b5",nav:"Write it yourself",title:"Writing the same-day escalation",type:"reflection",
+ html:`<p class="lead">One day on. The technical team now confirms the real count: 61 accounts affected, not the 47-60 estimated on Wednesday. They've also confirmed the fix genuinely needs three working days, not hours \u2014 it's a source mapping rebuild, not a config change. Cutover go/no-go is still Friday morning.</p>
+ <p>Write the updated escalation yourself, in the same four parts: Context, Impact, Options, Recommendation. Don't just repeat Wednesday's message \u2014 this is new information that changes the picture.</p>
+ <textarea id="reflection" placeholder="Context: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:80,
+ checks:[
+   { test:/61|confirmed|three.?day|3.?day|rebuild/i, strength:"Your context reflects the actual new information \u2014 the confirmed count and the real fix effort, not Wednesday's estimate.", gap:"State the context with the new confirmed facts: 61 accounts, and a three-day rebuild, not a quick fix." },
+   { test:/friday|go.?no.?go|cutover|decision/i, strength:"You tied the impact directly to Friday's decision.", gap:"Land the impact on Friday's go/no-go decision \u2014 that's what the reader actually needs to weigh." },
+   { test:/option|a\)|b\)|hold|proceed|delay/i, strength:"You offered genuine options with real trade-offs, given the new facts.", gap:"Give at least two real options now that a three-day fix is confirmed \u2014 the old options may no longer all be realistic." },
+   { test:/recommend/i, strength:"You made an explicit recommendation, not just a list of options.", gap:"Say which option you recommend, and briefly why." }
  ],
- closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>This escalation took roughly the same four sentences as the environment-refresh example from the previous lesson. The stakes were much higher here \u2014 the structure didn't need to change at all.</p></div></div>
- <div class="principle"><strong>Key takeaway</strong><br>If you find yourself needing a completely different approach for a serious surprise, that's usually a sign of panic, not a sign the situation genuinely requires it.</div>`
+ modelAnswerHtml:`<h3>Turner Page model escalation (updated with new facts)</h3>
+ <div class="quote">Context: confirmed 61 accounts affected (up from the 47-60 estimated Wednesday); root cause requires a source mapping rebuild, confirmed at three working days minimum, not a same-day config fix. Impact: a three-day fix cannot complete before Friday's go/no-go. Options: a) delay cutover by three working days to complete the fix for all 61 accounts; b) proceed Friday, holding the 61 affected accounts back for a follow-up load early next week; c) proceed Friday with a manual workaround for the highest-priority accounts only, completing the rest post go-live. Recommendation: option b. It protects the Friday date for the rest of the population, and 61 accounts is a contained, well-understood follow-up load rather than a reason to delay everyone.</div>
+ <div class="principle"><strong>Key takeaway</strong><br>New facts should change the escalation, not just repeat it louder. The structure stays the same; the options and recommendation have to actually reflect what's now known.</div>`,
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This properly reflects the new facts rather than just restating Wednesday's message \u2014 exactly what a real update needs to do.":score>=4?"You've got some of the structure, but check whether your options and recommendation actually reflect the three-day rebuild, not just Wednesday's quicker-fix assumption.":"This needs the full structure applied to the new facts specifically \u2014 61 confirmed, three days, and what that actually does to Friday's options."}</div>`
 },
 {
  id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
@@ -157,10 +167,10 @@ const blocks=[
    <div class="to-record-flag">\u26A0 PLACEHOLDER \u2014 record via ElevenLabs (or similar) and replace the src below before publishing. Script text will double as an on-page transcript once real audio is in place.</div>
    ${TPKit.fromField({
      title:"The Meeting I Almost Over-Apologised In",
-     name:"Owen",
+     name:"Raj",
      role:"Data Migration Lead",
-     project:"Insurance ERP",
-     src:"/assets/audio/lesson6-fromfield-owen.mp3",
+     project:"Food & Beverage ERP",
+     src:"/assets/audio/lesson6-fromfield-raj.mp3",
      reflection:"\u201cI once opened a steering update with nearly two minutes of apology before I'd said a single fact. Halfway through I could see the sponsor's patience running out \u2014 not because she was angry about the issue, but because she still didn't know what it actually was. Now I say one honest sentence, own what's mine, and get straight to what happens next. People forgive problems. They get frustrated by not knowing what's actually going on.\u201d"
    })}
  </div>
@@ -230,29 +240,14 @@ const LESSON_CONFIG = {
   lessonTagline: "Managing surprises and PMO/steering reporting",
   storageKey: "tp_lesson6_v1",
   lessonId: "dml1-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
   nextUrl: "lesson6-complete.html",
   finalButtonLabel: "Finish Lesson 6 \u2192",
   blocks: blocks
 };
 
 TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
-</script>
-
-<script>
-(function(){
- const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
- if(!learner.name) return;
- const first=learner.name.split(' ')[0];
- document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
- const h1=document.querySelector('h1');
- if(h1 && !document.getElementById('tpGreeting')){
-   const d=document.createElement('div');
-   d.id='tpGreeting';
-   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
-   d.textContent='Welcome back, '+first+'.';
-   h1.parentNode.insertBefore(d,h1);
- }
-})();
 </script>
 </body>
 </html>

@@ -31,7 +31,7 @@ const cadenceElements=[
   detail:"Every meeting opens by confirming what was already decided last time \u2014 out loud, from a written record, not from memory. This single habit is what stops the same decision being quietly re-made three different ways by three different combinations of people over a month."},
  {title:"A risk register the whole team can see",short:"Not just the DML's private list",
   detail:"If the risk register only lives in the DML's head or inbox, the team can't help manage it, and new risks they spot have nowhere obvious to go. Visibility turns risk management from one person's burden into a shared habit."},
- {title:"A declared purpose for each meeting",short:"Status, decision, or problem-solving — pick one",
+ {title:"A declared purpose for each meeting",short:"Status, decision, or problem-solving \u2014 pick one",
   detail:"A status meeting, a decision meeting and a problem-solving session need different structures and different people in the room. Running all three inside one undifferentiated hour is why meetings balloon \u2014 nobody knows which mode they're supposed to be in."},
  {title:"A genuine cross-workstream sync point",short:"Not just your own team's meeting",
   detail:"Migration rarely fails in isolation \u2014 it fails at the seams with Testing, Functional, Training. A regular, specific touchpoint with dependent workstreams catches misalignment while it's still cheap to fix, rather than at the cutover rehearsal."}
@@ -42,10 +42,10 @@ const cadenceSituations=[
    title:"Situation 1",
    question:"A stakeholder asks to revisit a decision from three weeks ago, arguing that circumstances have genuinely changed since then. How do you handle it?",
    options:[
-     {label:"Decline — the decision log says it's settled, and reopening decisions undermines the log's purpose.",correct:false,
-      feedback:"A decision log exists to prevent casual re-litigation, not to make every decision permanently unchangeable. Treating it as immovable regardless of new facts turns discipline into rigidity."},
      {label:"Reopen it properly: log the new circumstance as the trigger, discuss it on its merits, and record whatever is decided as a new, dated entry.",correct:true,
       feedback:"Correct. A genuinely changed circumstance is a legitimate reason to revisit a decision. The discipline isn't \u201cnever change your mind,\u201d it's \u201cchange it visibly, with a reason attached, not quietly.\u201d"},
+     {label:"Decline \u2014 the decision log says it's settled, and reopening decisions undermines the log's purpose.",correct:false,
+      feedback:"A decision log exists to prevent casual re-litigation, not to make every decision permanently unchangeable. Treating it as immovable regardless of new facts turns discipline into rigidity."},
      {label:"Quietly go along with the change without formally updating the log, to avoid a lengthy discussion.",correct:false,
       feedback:"This is worse than either alternative \u2014 now the log itself is wrong, and the next person who reads it will be working from an outdated decision without knowing it."}
    ]
@@ -54,36 +54,36 @@ const cadenceSituations=[
    title:"Situation 2",
    question:"Two workstream leads disagree sharply in the meeting, and the discussion is eating into time reserved for other items. What's the sharpest move?",
    options:[
-     {label:"Let the debate run — it's clearly important to both of them and the meeting has time built in.",correct:false,
+     {label:"Let the debate run \u2014 it's clearly important to both of them and the meeting has time built in.",correct:false,
       feedback:"Important topics still deserve the right amount of time, not an unbounded amount taken from everything else on the agenda. Letting one disagreement consume the meeting punishes everyone else's items."},
-     {label:"Park it explicitly: name the disagreement, assign an owner and a follow-up slot, and move on.",correct:true,
-      feedback:"Correct. Naming the parked item and giving it a real home protects both the rest of the meeting and the disagreement itself \u2014 it gets proper attention later instead of a rushed, worse version now."},
      {label:"Make a snap call yourself to end the disagreement quickly.",correct:false,
-      feedback:"A rushed decision on a genuinely contested point, made mainly to save time, tends to get quietly re-litigated later anyway \u2014 which defeats the purpose of deciding it now."}
+      feedback:"A rushed decision on a genuinely contested point, made mainly to save time, tends to get quietly re-litigated later anyway \u2014 which defeats the purpose of deciding it now."},
+     {label:"Park it explicitly: name the disagreement, assign an owner and a follow-up slot, and move on.",correct:true,
+      feedback:"Correct. Naming the parked item and giving it a real home protects both the rest of the meeting and the disagreement itself \u2014 it gets proper attention later instead of a rushed, worse version now."}
    ]
  },
  {
    title:"Situation 3",
    question:"Someone insists they remember a decision differently from what's written in the decision log. What matters most here?",
    options:[
-     {label:"The written log wins automatically — that's the whole point of keeping one.",correct:false,
+     {label:"Check the log's detail together, and correct it visibly if it's genuinely wrong.",correct:true,
+      feedback:"Correct. This protects the log's authority while staying honest about the rare case where the record itself was the mistake \u2014 if it's accurate, the record stands as written; if not, corrected openly, not overwritten silently."},
+     {label:"The written log wins automatically \u2014 that's the whole point of keeping one.",correct:false,
       feedback:"The log should usually win, but treating it as infallible without even checking discourages people from ever raising a genuine logging error \u2014 and logs do sometimes get written up wrong."},
-     {label:"Check the log's detail together — if it's accurate, the record stands; if it's genuinely wrong, correct it visibly and note the correction.",correct:true,
-      feedback:"Correct. This protects the log's authority while staying honest about the rare case where the record itself was the mistake \u2014 corrected openly, not overwritten silently."},
      {label:"Go with whoever seems more confident in the room.",correct:false,
       feedback:"Confidence isn't evidence. This approach means whoever argues more forcefully effectively controls the record, which is exactly the problem a written log is meant to prevent."}
    ]
  },
  {
    title:"Situation 4",
-   question:"The cross-workstream sync with Testing keeps getting deprioritised — they've cancelled twice in a row, citing their own workload. What do you do?",
+   question:"The cross-workstream sync with Testing keeps getting deprioritised \u2014 they've cancelled twice in a row, citing their own workload. What do you do?",
    options:[
-     {label:"Stop scheduling it — if they're not treating it as a priority, it's clearly not needed.",correct:false,
+     {label:"Stop scheduling it \u2014 if they're not treating it as a priority, it's clearly not needed.",correct:false,
       feedback:"Two cancellations tell you about Testing's current workload, not about whether the sync itself is needed. The dependency risk it exists to catch hasn't gone away just because the meeting has."},
-     {label:"Escalate the pattern to the PMO as a cross-workstream risk, with the specific dependency at stake.",correct:true,
-      feedback:"Correct. A repeatedly cancelled dependency sync is exactly the kind of thing RAID and escalation habits exist for \u2014 treat the pattern itself as a risk, not just an inconvenience."},
      {label:"Keep rescheduling informally until it eventually happens.",correct:false,
-      feedback:"Informally chasing a meeting that keeps slipping tends to just repeat the same outcome. If it matters enough to escalate, it's worth actually naming as a risk rather than quietly persisting."}
+      feedback:"Informally chasing a meeting that keeps slipping tends to just repeat the same outcome. If it matters enough to escalate, it's worth actually naming as a risk rather than quietly persisting."},
+     {label:"Escalate the pattern to the PMO as a cross-workstream risk, with the specific dependency at stake.",correct:true,
+      feedback:"Correct. A repeatedly cancelled dependency sync is exactly the kind of thing RAID and escalation habits exist for \u2014 treat the pattern itself as a risk, not just an inconvenience."}
    ]
  }
 ];
@@ -91,20 +91,18 @@ const cadenceSituations=[
 const blocks=[
 {
  id:"b1",nav:"The meeting that grew",title:"The meeting that grew",type:"mcq",
- html:`<div class="promise-card">
- <div class="promise-lines"><div>Frameworks</div><div>Scenarios</div><div>Reflection</div><div>Assessment</div></div>
- </div>
- <p class="lead">You inherited a weekly workstream meeting six weeks ago. It's grown from thirty minutes to a full hour, gradually, without anyone deciding it should.</p>
+ html:`<p class="lead">You inherited a weekly workstream meeting six weeks ago. It's grown from thirty minutes to a full hour, gradually, without anyone deciding it should.</p>
  <p>Attendance is good. Discussion is lively. But three times now, the team has re-debated a decision that was already made two meetings earlier \u2014 each time landing somewhere slightly different, depending on who happened to be in the room that day. Nothing about any of it is written down anywhere except people's memories.</p>
  <div class="quote">\u201cWait, didn't we already decide this?\u201d</div>
  <h3>What do you actually change?</h3>`,
- options:["Shorten the time limit and hope that forces more focus.","Introduce a running decision log, reviewed at the start of every meeting, before any new discussion.","Move to written async updates only, and cancel the live meeting.","Let it continue — the team is clearly engaged, and that matters more than efficiency."],
+ options:["Shorten the time limit and hope that forces more focus.","Introduce a running decision log, reviewed at the start of every meeting, before any new discussion.","Move to written async updates only, and cancel the live meeting.","Let it continue \u2014 the team is clearly engaged, and that matters more than efficiency."],
  feedback:[
  "A shorter time limit attacks the symptom, not the cause. Without a record, the same re-debate will just happen faster and more rushed, not less often.",
  "This is the strongest response. The actual problem isn't meeting length, it's that nothing decided ever stays decided. A reviewed decision log fixes that directly.",
  "Async updates lose real-time debate exactly where it's most valuable \u2014 genuinely contested decisions. This solves the symptom by removing something the team actually needs.",
  "Engagement is real and valuable, but the cost here is invisible, not absent. Re-litigating settled decisions burns real hours across a team \u2014 it's not a sign of health, it's the fingerprint of a missing record."
- ]
+ ],
+ _correctIndex:1
 },
 {
  id:"b2",nav:"What happens next",title:"What happens next: the meeting after the log",type:"content",
@@ -128,17 +126,29 @@ const blocks=[
  items: cadenceElements
 },
 {
- id:"b5",nav:"Design it yourself",title:"Designing this week's agenda",type:"guidedSteps",
- html:`<p class="lead">Let's redesign the ballooning weekly meeting from the start of this lesson, one part at a time.</p>`,
- firstLabel:"Start the redesign",
- steps:[
-   {html:`<h4>Step 1 — Open with the decision log</h4><p><em>\u201cConfirmed from last time: phased cutover approach agreed; Testing owns environment sign-off. Any changed circumstances before we move on?\u201d</em></p><p>Thirty seconds, every single week, without exception. This is the single habit doing most of the work in this whole redesign.</p>`},
-   {html:`<h4>Step 2 — State today's one primary decision</h4><p><em>\u201cToday's decision: whether we extend the UAT window by three days. Everything else this week is status, not decision.\u201d</em></p><p>Naming one clear decision, rather than an undifferentiated list of ten discussion points, tells everyone exactly what kind of meeting this is for the next few minutes.</p>`},
-   {html:`<h4>Step 3 — Flag the specific cross-workstream check</h4><p><em>\u201cOne item for Testing: confirm by Thursday whether the extended window affects their resourcing.\u201d</em></p><p>One named, specific dependency beats a vague \u201clet's stay aligned with Testing\u201d \u2014 it's something that can actually be confirmed done or not done.</p>`},
-   {html:`<h4>Step 4 — Close with an immediate recap</h4><p><em>\u201cDecided today: UAT window extended by three days, contingent on Testing's Thursday confirmation. Logged.\u201d</em></p><p>Said out loud, in the room, and written down within the hour \u2014 not reconstructed from memory the next day, by which point details have already started to blur.</p>`}
+ id:"b5",nav:"Design it yourself",title:"Designing this week's agenda",type:"reflection",
+ html:`<p class="lead">The decision log habit from earlier in this lesson is now in place. This week, a new topic has come up: whether to bring in a second data analyst temporarily to help clear a mapping backlog before UAT starts.</p>
+ <p>Design this week's agenda yourself, using the same four elements: open with the decision log, name today's one primary decision, flag a specific cross-workstream check, and close with an immediate recap.</p>
+ <textarea id="reflection" placeholder="Open with the decision log: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:80,
+ checks:[
+   { test:/confirmed|last time|log/i, strength:"You opened with the decision log, confirming what's already settled before moving on.", gap:"Open with the decision log \u2014 confirm what was already decided last time before anything new." },
+   { test:/analyst|backlog|mapping|uat/i, strength:"You named this week's actual decision specifically \u2014 the analyst request, not a generic placeholder.", gap:"Name today's one decision specifically: the second analyst request for the mapping backlog." },
+   { test:/testing|functional|training|cross.?workstream|dependent/i, strength:"You flagged a specific, named cross-workstream check, not a vague \u201cstay aligned\u201d.", gap:"Flag one specific, named cross-workstream check \u2014 which team, confirming what, by when." },
+   { test:/decided|logged|recap/i, strength:"You closed with an immediate, logged recap.", gap:"Close with an immediate recap of what was actually decided, stated as logged." }
  ],
- closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Notice this redesigned meeting could easily run in twenty minutes. The original hour-long version wasn't doing more work \u2014 it was doing the same work repeatedly, unrecorded.</p></div></div>
- <div class="principle"><strong>Key takeaway</strong><br>A well-run cadence usually gets shorter over time, not longer \u2014 the opposite of what most teams experience by default.</div>`
+ modelAnswerHtml:`<h3>Turner Page model agenda</h3>
+ <div class="quote">Open with the decision log: "Confirmed from last time \u2014 phased cutover approach agreed, Testing owns environment sign-off. Any changed circumstances before we move on?" Today's decision: "Whether to bring in a second data analyst temporarily to clear the mapping backlog before UAT starts." Cross-workstream check: "One item for Functional: confirm by Wednesday whether a temporary analyst would need any additional system access provisioned." Close with recap: "Decided today: bringing in a second analyst for two weeks, contingent on Functional confirming access can be provisioned in time. Logged."</div>
+ <div class="principle"><strong>Key takeaway</strong><br>The four elements don't change from week to week. What changes is which specific decision and which specific dependency fill the second and third slots.</div>`,
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a properly designed agenda \u2014 all four elements present, and specific to this week's actual decision rather than generic placeholders.":score>=4?"You've got some of the four elements, but check whether your cross-workstream check is genuinely specific and named, not just a general mention of staying aligned.":"This needs all four elements, applied to the actual decision on the table \u2014 the second analyst request, not a generic agenda."}</div>`
 },
 {
  id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
@@ -154,10 +164,10 @@ const blocks=[
    <div class="to-record-flag">\u26A0 PLACEHOLDER \u2014 record via ElevenLabs (or similar) and replace the src below before publishing. Script text will double as an on-page transcript once real audio is in place.</div>
    ${TPKit.fromField({
      title:"The Log Nobody Wanted, At First",
-     name:"Nadia",
+     name:"Darren",
      role:"Data Migration Lead",
-     project:"Public Sector ERP",
-     src:"/assets/audio/lesson7-fromfield-nadia.mp3",
+     project:"Distribution ERP",
+     src:"/assets/audio/lesson7-fromfield-darren.mp3",
      reflection:"\u201cWhen I introduced a decision log on a four-person workstream, someone said, not unkindly, that it felt like overkill for a team our size. So I trimmed it right down \u2014 one shared doc, three lines per decision, updated at the end of the meeting, nothing more. Two weeks later, that same person was the one pulling it up mid-meeting to settle a disagreement. Nobody's called it bureaucratic since.\u201d"
    })}
  </div>
@@ -227,29 +237,14 @@ const LESSON_CONFIG = {
   lessonTagline: "Structured meetings, decision logs and cross-workstream alignment",
   storageKey: "tp_lesson7_v1",
   lessonId: "dml1-lesson7",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
   nextUrl: "lesson7-complete.html",
   finalButtonLabel: "Finish Lesson 7 \u2192",
   blocks: blocks
 };
 
 TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
-</script>
-
-<script>
-(function(){
- const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
- if(!learner.name) return;
- const first=learner.name.split(' ')[0];
- document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
- const h1=document.querySelector('h1');
- if(h1 && !document.getElementById('tpGreeting')){
-   const d=document.createElement('div');
-   d.id='tpGreeting';
-   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
-   d.textContent='Welcome back, '+first+'.';
-   h1.parentNode.insertBefore(d,h1);
- }
-})();
 </script>
 </body>
 </html>
