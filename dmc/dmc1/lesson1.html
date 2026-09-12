@@ -7,52 +7,15 @@
 <link rel="stylesheet" href="/shared/turner-page-kit.css">
 <style>
 /* ==============================================================
-   DMC-SPECIFIC COMPONENTS — v1, lesson-scoped.
-   These three components (data table, code block, download card)
-   are new: the shared kit has no equivalent yet. Per direction from
-   the person building this course, they're being drafted here first;
-   once approved, they should be promoted into
-   shared/turner-page-kit.css (and the copy-button behaviour into
-   shared/turner-page-kit.js) so every future DMC lesson pulls from
-   one shared definition instead of repeating this block.
-   Palette reuses the site's existing --ink/--deep/--teal/--aqua/
-   --line/--good/--warn variables — DMC should feel like the same
-   product in a more working-tool register, not a different product.
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
 ============================================================== */
-.tp-table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.tp-table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--paper)}
-.tp-table caption{text-align:left;padding:14px 18px 0;font-weight:800;color:var(--deep);font-size:13px;text-transform:uppercase;letter-spacing:.08em}
-.tp-table th{background:linear-gradient(180deg,#0b7f8e,#0a6f7c);color:#fff;text-align:left;padding:12px 16px;font-weight:700;white-space:nowrap;position:sticky;top:0}
-.tp-table td{padding:11px 16px;border-top:1px solid var(--line);vertical-align:top}
-.tp-table tbody tr:nth-child(even){background:#f7fbfb}
-.tp-table tbody tr:hover{background:#edfafa}
-.tp-table--mono td{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13.5px}
-.tp-tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.01em}
-.tp-tag--good{background:#e4f5ee;color:var(--good)}
-.tp-tag--warn{background:#fdf1dc;color:var(--warn)}
-.tp-tag--bad{background:#fbe7e7;color:#a5312c}
-
-.tp-code{margin:20px 0;border-radius:16px;overflow:hidden;background:#0c2b30;box-shadow:var(--shadow);border:1px solid #0a2226}
-.tp-code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;background:#0a2226;border-bottom:1px solid #123a41}
-.tp-code-lang{color:#7dd8d8;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
-.tp-code-copy{background:transparent;border:1px solid #2a5a61;color:#cfeeee;font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;cursor:pointer}
-.tp-code-copy:hover{background:#123a41}
-.tp-code pre{margin:0;padding:16px 18px;overflow-x:auto}
-.tp-code code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13.5px;line-height:1.62;color:#eaf7f7;white-space:pre}
-
-.tp-download{display:flex;align-items:center;gap:16px;border:1px solid var(--line);border-radius:18px;background:#fbfefe;padding:16px 18px;margin:14px 0}
-.tp-download-icon{flex:none;width:42px;height:42px;border-radius:12px;background:#e6f5f5;color:var(--deep);display:grid;place-items:center;font-size:19px;font-weight:900}
-.tp-download-body{flex:1}
-.tp-download-body strong{display:block;color:var(--deep);font-size:14.5px}
-.tp-download .btn{flex:none}
-
-.tp-defect{border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin:10px 0;background:#fbfefe}
-.tp-defect.selected{border-color:var(--teal);background:#edfafa}
-
-@media(max-width:640px){
-  .tp-table th,.tp-table td{padding:9px 12px;font-size:13.5px}
-  .tp-code pre{padding:13px 14px}
-}
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
 </style>
 </head>
 <body>
@@ -184,8 +147,8 @@ const workThroughRows = [
  title:"C10482",
  question:"CustNo C10482, Name \u201cHarrison Trade Supplies Ltd\u201d, Terms 45E, Status 1, Country UK. What should the consultant notice before build?",
  options:[
-   {label:"Country is approved (UK→GB). Payment term 45E is unresolved, so the row cannot silently receive a target term.", correct:true, feedback:"Correct. The country translates cleanly; the payment term does not, and that gap has to stay visible rather than being defaulted away."},
    {label:"Both Country and Terms are already approved and this row is fully build-ready.", correct:false, feedback:"Not quite. Country is approved, but 45E has no approved target equivalent, so this row is not fully build-ready yet."},
+   {label:"Country is approved (UK→GB). Payment term 45E is unresolved, so the row cannot silently receive a target term.", correct:true, feedback:"Correct. The country translates cleanly; the payment term does not, and that gap has to stay visible rather than being defaulted away."},
    {label:"The row should be excluded from migration since Terms is uncertain.", correct:false, feedback:"Excluding it isn't necessary; the country and status fields can still be built. Only the PaymentTerms output needs to stay as a controlled exception."},
    {label:"Terms 45E should default to NET30 since that value has appeared in staging before.", correct:false, feedback:"NET30 has appeared as an uncertain staging value, not an approved one. Using it as a default would manufacture a business decision nobody has actually made."}
  ]
@@ -194,10 +157,10 @@ const workThroughRows = [
  title:"C11001",
  question:"CustNo C11001, Name \u201cNorthshore Components\u201d, Terms 30D, Status 1, Country NOR. What should the consultant notice before build?",
  options:[
-   {label:"Country translation is approved. The payment-term result depends on whichever approved lab reference is supplied.", correct:true, feedback:"Correct. NOR→NO is approved and safe to build. 30D isn't one of the country-style codes already confirmed in this lesson, so its treatment depends on the approved payment-terms reference, not a guess."},
    {label:"30D is obviously the same as 45E and should follow the same unresolved treatment.", correct:false, feedback:"Not quite. 30D and 45E are different source values; assuming they behave identically without checking the approved reference is exactly the kind of guess build-ready logic avoids."},
    {label:"This row has no issues at all and needs no reference check.", correct:false, feedback:"The country is fine, but PaymentTerms still needs to be checked against the approved reference before assuming it is safe."},
-   {label:"Country NOR is unresolved, like ZZZ, so the row should be flagged as an exception.", correct:false, feedback:"NOR is one of the four approved country translations (NOR→NO) established earlier in this lesson. It is not unresolved."}
+   {label:"Country NOR is unresolved, like ZZZ, so the row should be flagged as an exception.", correct:false, feedback:"NOR is one of the four approved country translations (NOR→NO) established earlier in this lesson. It is not unresolved."},
+   {label:"Country translation is approved. The payment-term result depends on whichever approved lab reference is supplied.", correct:true, feedback:"Correct. NOR→NO is approved and safe to build. 30D isn't one of the country-style codes already confirmed in this lesson, so its treatment depends on the approved payment-terms reference, not a guess."}
  ]
 },
 {
@@ -214,18 +177,18 @@ const workThroughRows = [
  title:"C11003",
  question:"CustNo C11003, Name is a customer name deliberately longer than sixty characters, Terms 30D, Status 1, Country GER. What should the consultant notice before build?",
  options:[
+   {label:"The consultant should apply LEFT(Name,60) in the build, since that keeps the load moving without stopping for a decision.", correct:false, feedback:"That's the unapproved shortcut this lesson specifically warns against. It silently loses data without an approved rule behind it."},
+   {label:"Country GER is unresolved and should be routed as an exception, the same way ZZZ is treated elsewhere in this lesson.", correct:false, feedback:"GER→DE is one of the four approved country translations already established in this lesson."},
    {label:"The name breaches the known 60-character target constraint; no truncation is automatically authorised.", correct:true, feedback:"Correct. This is exactly the CUS-002 situation: a known constraint with no approved shortening rule. LEFT(Name,60) is not a safe default here."},
-   {label:"The consultant should apply LEFT(Name,60) since that keeps the load moving.", correct:false, feedback:"That's the unapproved shortcut this lesson specifically warns against. It silently loses data without an approved rule behind it."},
-   {label:"Country GER is unresolved and should be treated as an exception.", correct:false, feedback:"GER→DE is one of the four approved country translations already established in this lesson."},
-   {label:"This row is fully build-ready as it stands.", correct:false, feedback:"Not quite. The overlength name is exactly the kind of known constraint that needs an explicit decision before build, per CUS-002."}
+   {label:"This row is fully build-ready as it stands, since the country translation is approved and Status already has a defined treatment.", correct:false, feedback:"Not quite. The overlength name is exactly the kind of known constraint that needs an explicit decision before build, per CUS-002."}
  ]
 },
 {
  title:"C11004",
  question:"CustNo C11004, Name \u201cUnknown Export Customer\u201d, Terms 30D, Status 1, Country ZZZ. What should the consultant notice before build?",
  options:[
-   {label:"Country ZZZ is unresolved and must surface as an exception.", correct:true, feedback:"Correct. ZZZ has no approved target country. It has to be routed as a reviewable exception, not defaulted to a plausible-looking country."},
    {label:"ZZZ probably means \u201cexport\u201d given the customer name, so it can be mapped to a general export country code.", correct:false, feedback:"This is the exact temptation the lesson warns about: inferring a business meaning from a name and quietly encoding it. ZZZ has no approved match, full stop."},
+   {label:"Country ZZZ is unresolved and must surface as an exception.", correct:true, feedback:"Correct. ZZZ has no approved target country. It has to be routed as a reviewable exception, not defaulted to a plausible-looking country."},
    {label:"Since Status and Terms both look fine, the row is safe to build as-is.", correct:false, feedback:"Not quite. One unresolved field is enough to require exception handling for this row; the other fields being fine doesn't change that."},
    {label:"The row should be silently dropped from the load since ZZZ cannot be translated.", correct:false, feedback:"Dropping it silently would lose an active customer without an approved decision to exclude it. It needs to be a visible, reviewable exception instead."}
  ]
@@ -234,10 +197,10 @@ const workThroughRows = [
  title:"C11005",
  question:"CustNo C11005, Name \u201cBlank Terms Trading\u201d, Terms blank, Status 1, Country UK. What should the consultant notice before build?",
  options:[
-   {label:"Blank payment term must follow an explicit missing-data rule; no default is inferred.", correct:true, feedback:"Correct. A blank isn't the same as an unresolved code like 45E, but it still needs an approved missing-data rule rather than a quietly invented default."},
    {label:"A blank Terms value should default to whichever target term is most common.", correct:false, feedback:"Most-common-value defaulting is a business rule that needs approval, not a technical convenience the build layer can invent on its own."},
    {label:"Blank Terms should be treated identically to 45E, since both are \u201cnot approved\u201d.", correct:false, feedback:"They're related but not identical: 45E is a specific unresolved code, while a blank is a missing-data condition. Each needs its own approved rule, per the conditions table in CUS-003."},
-   {label:"Country UK is unresolved for this row.", correct:false, feedback:"UK→GB is one of the four approved country translations already established in this lesson."}
+   {label:"Country UK is unresolved for this row.", correct:false, feedback:"UK→GB is one of the four approved country translations already established in this lesson."},
+   {label:"Blank payment term must follow an explicit missing-data rule; no default is inferred.", correct:true, feedback:"Correct. A blank isn't the same as an unresolved code like 45E, but it still needs an approved missing-data rule rather than a quietly invented default."}
  ]
 }
 ];
@@ -268,8 +231,8 @@ const consultantSituations = [
    title:"Situation 1: \u201cDefault to the most common\u201d",
    question:"A developer finds eight source values with no country mapping and suggests using the most common target country.",
    options:[
-     {label:"Agree; using the most common target value keeps the load moving and affects few records.", correct:false, feedback:"Frequency is not authority. This defaults a business decision quietly into eight customer records, exactly the pattern this lesson warns against."},
      {label:"Record the eight values as an unresolved exception population and take the treatment question back to the business.", correct:true, feedback:"Correct. Technical determinism does not create business authority. Record the proposed logic if useful, but keep it unapproved and obtain the authorised rule before production use."},
+     {label:"Agree; using the most common target value keeps the load moving and affects few records.", correct:false, feedback:"Frequency is not authority. This defaults a business decision quietly into eight customer records, exactly the pattern this lesson warns against."},
      {label:"Let the developer choose whichever country makes the query pass validation.", correct:false, feedback:"This hides an unapproved decision inside implementation convenience rather than surfacing it."},
      {label:"Exclude the eight records from migration without raising it as a decision.", correct:false, feedback:"Silently excluding active records is itself an unapproved decision, just a different one."}
    ]
@@ -279,8 +242,8 @@ const consultantSituations = [
    question:"The target field is a code, but the mapping note only says \u201csame as legacy\u201d.",
    options:[
      {label:"Copy the legacy value across unchanged, since the mapping note says \u201csame\u201d.", correct:false, feedback:"\u201cSame\u201d is not build-ready if the source and target formats or codes actually differ, or if target context constrains the value."},
-     {label:"Inspect the actual source domain and target domain before assuming \u201csame\u201d means a direct copy.", correct:true, feedback:"Correct. Treat the reference baseline as ambiguous. Inspect what \u201csame\u201d actually means before implementing it as a direct copy."},
      {label:"Ask the developer to guess based on the field name.", correct:false, feedback:"This substitutes a guess for the actual domain comparison the mapping note is too vague to provide."},
+     {label:"Inspect the actual source domain and target domain before assuming \u201csame\u201d means a direct copy.", correct:true, feedback:"Correct. Treat the reference baseline as ambiguous. Inspect what \u201csame\u201d actually means before implementing it as a direct copy."},
      {label:"Reject the mapping outright and refuse to build any part of it.", correct:false, feedback:"Refusing everything is disproportionate; the right response is to investigate the actual domains, not to stop work entirely."}
    ]
  },
@@ -288,20 +251,20 @@ const consultantSituations = [
    title:"Situation 3: One reference value maps twice",
    question:"CountryCrossRef contains two approved-looking rows for UK with different target codes.",
    options:[
-     {label:"Use whichever row the join returns first.", correct:false, feedback:"\u201cFirst row wins\u201d is not a valid control, and the lesson explicitly warns against letting join order or cache behaviour decide the result."},
+     {label:"Use whichever row the join returns first, since the join has to resolve to some value before the load can continue running.", correct:false, feedback:"\u201cFirst row wins\u201d is not a valid control, and the lesson explicitly warns against letting join order or cache behaviour decide the result."},
      {label:"Treat the reference baseline as ambiguous and raise it as a reference-quality failure rather than letting the join silently decide.", correct:true, feedback:"Correct. Treat the reference baseline as ambiguous. Do not let join order or lookup cache behaviour decide the result."},
-     {label:"Pick the row that matches the most other approved rows in the table.", correct:false, feedback:"Pattern-matching against other rows is still an invented tiebreaker, not an approved control."},
-     {label:"Merge the two rows into one average value.", correct:false, feedback:"Country codes cannot be meaningfully averaged, and this still avoids raising the actual reference-quality problem."}
+     {label:"Pick the row that matches the most other approved rows in the table, on the assumption that popularity implies which one is correct.", correct:false, feedback:"Pattern-matching against other rows is still an invented tiebreaker, not an approved control."},
+     {label:"Merge the two rows into one average value, on the basis that combining them protects against picking the wrong one outright.", correct:false, feedback:"Country codes cannot be meaningfully averaged, and this still avoids raising the actual reference-quality problem."}
    ]
  },
  {
    title:"Situation 4: The hard one, technically deterministic, business rule missing",
    question:"A developer can derive VendorGroup perfectly from VendorType, but no authorised classification matrix exists.",
    options:[
-     {label:"Build it anyway, since the logic is technically sound and deterministic.", correct:false, feedback:"Technical determinism does not create business authority. A clean, deterministic derivation with no approved rule behind it is still an unapproved business decision."},
-     {label:"Record the proposed logic for reference, but keep it explicitly unapproved and take it back for the authorised classification decision.", correct:true, feedback:"Correct. Technical determinism does not create business authority. Record the proposed logic if useful, but keep it unapproved and obtain the authorised rule before production use."},
-     {label:"Implement it and note it in a comment in the code for later review.", correct:false, feedback:"A code comment is not a decision record. It puts an unapproved business rule into production without anyone outside the build team knowing it happened."},
-     {label:"Wait until testing to see whether the derived values look reasonable.", correct:false, feedback:"Waiting for testing to validate a business decision is exactly the guessing this lesson is built to prevent."}
+     {label:"Build it anyway, since the logic is technically sound and deterministic, and a clean derivation rarely needs separate business sign-off.", correct:false, feedback:"Technical determinism does not create business authority. A clean, deterministic derivation with no approved rule behind it is still an unapproved business decision."},
+     {label:"Implement it and note it in a comment in the code for later review, on the basis that a comment gives anyone reviewing later enough context.", correct:false, feedback:"A code comment is not a decision record. It puts an unapproved business rule into production without anyone outside the build team knowing it happened."},
+     {label:"Wait until testing to see whether the derived values look reasonable, since that gives a practical check before anyone raises it as a decision.", correct:false, feedback:"Waiting for testing to validate a business decision is exactly the guessing this lesson is built to prevent."},
+     {label:"Record the proposed logic for reference, but keep it explicitly unapproved and take it back for the authorised classification decision.", correct:true, feedback:"Correct. Technical determinism does not create business authority. Record the proposed logic if useful, but keep it unapproved and obtain the authorised rule before production use."}
    ]
  }
 ];
@@ -309,6 +272,7 @@ const consultantSituations = [
 const blocks=[
 {
  id:"b1",nav:"Opening scenario",title:"The mapping is \u201csigned off\u201d, but you still cannot build it",type:"mcq",
+ _correctIndex:2,
  html:`<div class="callout experience">
  <div class="callout-label">Before you begin</div>
  <p>Bramwell Industries has approved the customer mapping workbook. The project team now expects development to begin.</p>
@@ -593,11 +557,11 @@ FROM Customer;</code></pre></div>
  id:"b12",nav:"Consultant situations",title:"Consultant situations: build or go back for a decision?",type:"situations",
  html:`<p class="lead">For each situation, decide whether to build it or take it back for a decision before you see the discussion.</p>`,
  items: consultantSituations,
- takeawayHtml:`${TPKit.fromField({
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
    title:"The Mapping That Wasn't Buildable", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
    src:"/assets/audio/MappingWasntBuildable-Priya.mp3",
    reflection:"Have you ever started writing test cases for a mapping everyone called signed off, and found a value the mapping never actually addressed? What did you do?"
- })}<div class="principle"><strong>The pattern across all four</strong><br>Technical determinism is not business authority, frequency is not a rule, and an ambiguous reference should never be resolved by accident. When in doubt, take it back.</div>`
+ })}</div><div class="principle"><strong>The pattern across all four</strong><br>Technical determinism is not business authority, frequency is not a rule, and an ambiguous reference should never be resolved by accident. When in doubt, take it back.</div>`
 },
 {
  id:"b13",nav:"Reflection",title:"Reflection: what would make you refuse to build?",type:"reflection",
@@ -679,18 +643,6 @@ const LESSON_CONFIG = {
 };
 
 TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
-
-// ---------- Copy-to-clipboard for .tp-code blocks (v1, lesson-scoped) ----------
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".tp-code-copy");
-  if(!btn) return;
-  const code = btn.closest(".tp-code").querySelector("code");
-  navigator.clipboard.writeText(code.textContent).then(() => {
-    const original = btn.textContent;
-    btn.textContent = "Copied";
-    setTimeout(() => { btn.textContent = original; }, 1500);
-  });
-});
 </script>
 
 <script>
