@@ -425,7 +425,7 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
       else gaps.push(check.gap);
     });
     const denom = (b.checks || []).length || 1;
-    const score = Math.max(4, Math.min(10, Math.round((strengths.length/denom)*10*10)/10));
+    const score = Math.min(10, Math.round((strengths.length/denom)*10*10)/10);
     // mentorFeedbackHtml can be a fixed string, or a function(score) => html
     // if the coaching tone should vary with how complete the answer was.
     const mentorHtml = typeof b.mentorFeedbackHtml === "function" ? b.mentorFeedbackHtml(score) : (b.mentorFeedbackHtml || "");
@@ -433,7 +433,7 @@ renderers.reflection = ({ b, lesson, state, save, next }) => {
       <div class="score-card"><div class="score">${score.toFixed(1)}/10</div>
         <div><strong>Indicative assessment</strong><br><span class="small">Based on the breadth and quality of the reasoning in this response.</span></div></div>
       <div class="feedback good"><strong>Strong points</strong>
-        <ul>${(strengths.length?strengths:["You gave a direct, honest answer and engaged with the question."]).map(x=>`<li>${x}</li>`).join("")}</ul></div>
+        <ul>${(strengths.length?strengths:["No specific strengths were detected in this response against the framework below."]).map(x=>`<li>${x}</li>`).join("")}</ul></div>
       <div class="feedback"><strong>You could strengthen your answer by discussing</strong>
         <ul>${(gaps.length?gaps:["No major gaps detected."]).map(x=>`<li>${x}</li>`).join("")}</ul></div>
       ${b.modelAnswerHtml || ""}
