@@ -125,15 +125,16 @@ const fiveQuestions=[
     short:"Operational continuity and accepted risk",
     colour:"business",
     checks:["Process changes agreed","Users trained","Roles clearly defined","Adoption plan in place","Business sign-off obtained"],
-    detail:`<p>This is often the most underestimated part of migration readiness \u2014 and Bramwell already has a live example of it. Customer C10482, Harrison Trade Supplies Ltd, carries legacy payment term 45E, which has no approved target equivalent.</p>
+    detail:`<p>This is often the most underestimated part of migration readiness. The technical migration may succeed while the business still struggles on Monday morning.</p>
+    <p>Bramwell's seven-address defect is a useful test of this. The rule has been corrected and the affected records reprocessed \u2014 but that is a technical closure, not a business one.</p>
     <div class="tp-table-wrap" style="overflow-x:auto"><table class="framework-checks" style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:6px 10px">Possible response</th><th style="text-align:left;padding:6px 10px">Why it is weak or strong</th></tr>
-    <tr><td style="padding:6px 10px">Choose the closest-looking target term.</td><td style="padding:6px 10px">Weak. Plausibility is not authority.</td></tr>
-    <tr><td style="padding:6px 10px">Leave the decision invisible and fix it during cutover.</td><td style="padding:6px 10px">Weak. It converts an unresolved business decision into cutover risk.</td></tr>
-    <tr><td style="padding:6px 10px">Ask Finance to approve the target treatment and record the decision.</td><td style="padding:6px 10px">Strong. Business authority owns the rule; migration implements the approved outcome.</td></tr>
-    <tr><td style="padding:6px 10px">Have the DML choose the value to protect the date.</td><td style="padding:6px 10px">Weak. The DML owns control of the issue, not the underlying Finance policy.</td></tr>
+    <tr><td style="padding:6px 10px">Mark the defect closed once the rule is fixed and reprocessed.</td><td style="padding:6px 10px">Weak. Technical correction is not the same as business confirmation that the data is now usable.</td></tr>
+    <tr><td style="padding:6px 10px">Assume the warehouse and dispatch teams will notice if something is still wrong.</td><td style="padding:6px 10px">Weak. Silence is not sign-off; nobody may be looking.</td></tr>
+    <tr><td style="padding:6px 10px">Ask the teams who use delivery addresses daily to confirm the corrected data works for them.</td><td style="padding:6px 10px">Strong. Operational sign-off closes the loop a technical fix cannot close alone.</td></tr>
+    <tr><td style="padding:6px 10px">Wait until go-live to find out.</td><td style="padding:6px 10px">Weak. That turns a known question into an avoidable go-live surprise.</td></tr>
     </table></div>
-    <p>The Data Migration Lead should understand whether users can operate, whether business owners have signed off the results, and whether remaining risks have been accepted by the people responsible for running the organisation afterwards.</p>
-    <div class="principle"><strong>Key takeaway</strong><br>The DML owns getting the right decision made. They do not acquire business authority simply because a deadline is close.</div>`
+    <p>The same applies to the 18 CustomerGroup 99 records: even once a target value is eventually approved, someone still has to check the business teams handling those accounts know what changed and can operate against it.</p>
+    <div class="principle"><strong>Key takeaway</strong><br>Migration success is measured by whether the business can actually operate against the corrected data, not by whether the defect ticket is closed.</div>`
   },
   {
     title:"Are the environments ready?",
@@ -208,21 +209,26 @@ const readinessPillars=[
 ];
 
 const ownershipSituations=[
- {q:"Duplicate customer records require business resolution.",a:"other",why:"A business data owner acts, with migration support. The DML owns the impact, the named owner, the due date, the evidence and the consequence of it staying unresolved."},
- {q:"A transformation rule removes valid delivery addresses.",a:"mine",why:"The technical migration owner or consultant fixes the rule, but the DML owns the scope of impact, the correction evidence, regression and the delivery consequence."},
- {q:"Finance has not approved a payment-term treatment.",a:"other",why:"Finance authority owns the decision itself. The DML owns the decision need, the escalation, the decision-by date and the migration impact of it remaining open."},
- {q:"Environment access fails just before a rehearsal cycle.",a:"other",why:"The environment or security owner fixes access. The DML owns the migration consequence, the recovery option and whether the cycle can still proceed."},
- {q:"The programme asks whether to proceed to go-live.",a:"shared",why:"Governance makes the final Go/No-Go decision. The DML owns producing a defensible migration recommendation supported by evidence \u2014 not the decision itself."}
+ {q:"Duplicate customer records require business resolution.",a:"other",why:"A business data owner acts, with migration support. The DML owns the impact, the named owner, the due date, the evidence and the consequence of it staying unresolved.",order:["other","mine","shared"]},
+ {q:"A transformation rule removes valid delivery addresses.",a:"mine",why:"The technical migration owner or consultant fixes the rule, but the DML owns the scope of impact, the correction evidence, regression and the delivery consequence.",order:["shared","mine","other"]},
+ {q:"Finance has not approved a payment-term treatment.",a:"other",why:"Finance authority owns the decision itself. The DML owns the decision need, the escalation, the decision-by date and the migration impact of it remaining open.",order:["mine","shared","other"]},
+ {q:"Environment access fails just before a rehearsal cycle.",a:"other",why:"The environment or security owner fixes access. The DML owns the migration consequence, the recovery option and whether the cycle can still proceed.",order:["other","shared","mine"]},
+ {q:"The programme asks whether to proceed to go-live.",a:"shared",why:"Governance makes the final Go/No-Go decision. The DML owns producing a defensible migration recommendation supported by evidence \u2014 not the decision itself.",order:["mine","shared","other"]}
 ];
 // "ownership" is really just a 3-option situations exercise (My
 // responsibility / Shared / Someone else owns it) — reuse the
 // generic `situations` block type instead of a bespoke renderer.
+// Each item's own `order` varies which slot the correct answer lands
+// in, so position itself never becomes a tell (tp-html-build-guide.md
+// §11's lint check flagged the previous fixed My/Shared/Other order,
+// which put "Someone else owns it" — the correct answer for 3 of the
+// 5 situations — in the same third slot every time).
 const ownershipItems = ownershipSituations.map((s, idx) => {
   const labelFor = (key) => key === "mine" ? "My responsibility" : key === "shared" ? "Shared responsibility" : "Someone else owns it";
   return {
     title: `Situation ${idx+1}`,
     question: s.q,
-    options: ["mine","shared","other"].map(key => ({
+    options: s.order.map(key => ({
       label: labelFor(key),
       correct: key === s.a,
       feedback: (key === s.a ? "Your answer aligns with Turner Page thinking.<br>" : "Consider the ownership boundary again.<br>") + s.why
@@ -369,17 +375,56 @@ const blocks=[
  <div class="principle"><strong>A Data Migration Lead is not judged by how quickly they give an answer.</strong><br>They are judged by whether they can justify that answer with evidence.</div>`
 },
 {
- id:"b5",nav:"Build the picture",title:"Guided exercise: build the Bramwell readiness picture",type:"guidedSteps",
- html:`<p class="lead">Return to the opening question. This time, do not answer it. Build the evidence picture first, one readiness area at a time.</p>`,
- firstLabel:"Start with Data",
- steps:[
-   {html:`<h4>Data</h4><p><em>Evidence available:</em> 18,573 accepted; 42 UK customers misclassified; 18 Group 99 unresolved; 45E unresolved.</p><p><em>Still missing or unresolved:</em> semantic correction and validation; approved business treatments.</p><p><strong>DML position:</strong> not ready to call green from load acceptance alone.</p>`},
-   {html:`<h4>Process</h4><p><em>Evidence available:</em> repeatable cycle timings exist; controlled rerun and validation practices have been developed across two cycles.</p><p><em>Still missing or unresolved:</em> evidence that the next scope or environment can repeat within the required window.</p><p><strong>DML position:</strong> promising, but next-cycle assumptions must be checked, not assumed.</p>`},
-   {html:`<h4>Business</h4><p><em>Evidence available:</em> a known Finance decision is required for 45E.</p><p><em>Still missing or unresolved:</em> approved target treatment, and accountable acceptance of the relevant exceptions.</p><p><strong>DML position:</strong> the decision dependency remains visible \u2014 it has not been allowed to quietly disappear.</p>`},
-   {html:`<h4>Environment</h4><p><em>Evidence available:</em> prior cycles produced observed timings.</p><p><em>Still missing or unresolved:</em> current readiness for the next required cycle or cutover context.</p><p><strong>DML position:</strong> need current evidence, not historic reassurance.</p>`},
-   {html:`<h4>Risk</h4><p><em>Evidence available:</em> the known semantic defect and the unresolved reference/mapping items are all visible.</p><p><em>Still missing or unresolved:</em> impact, mitigation, owners, decision dates and formal acceptance for each.</p><p><strong>DML position:</strong> the risk picture must be made decision-grade, not just listed.</p>`}
+ id:"b5",nav:"Build the picture",title:"Exercise: build the Bramwell readiness picture",type:"situations",
+ html:`<p class="lead">Return to the opening question. This time, do not jump to an answer. Work through each readiness area in turn, commit to a call on what the evidence actually shows, and only then see how a Data Migration Lead would frame it.</p>`,
+ items:[
+   {
+     title:"Data",
+     question:`Evidence available: 18,573 accepted; 42 UK customers misclassified; 18 Group 99 unresolved; 45E unresolved. A stakeholder says: \u201cThe data is ready, the load hit 100% acceptance.\u201d What is the strongest response?`,
+     options:[
+       {label:"Agree. 100% acceptance means the data is ready.",correct:false,feedback:"Acceptance proves the records moved. It does not prove they are correct \u2014 the 42-record legal-entity defect happened inside a clean-looking total."},
+       {label:"Push back. Acceptance is not the same as correctness.",correct:true,feedback:"This is the DML position. A clean load is necessary evidence, not sufficient evidence \u2014 the legal-entity correction, the CustomerGroup 99 treatment and the 45E decision still need to close before this is Green."},
+       {label:"Ask for a rerun to double-check the numbers.",correct:false,feedback:"A rerun would repeat the same clean count. The gap here is not a counting error, it is unresolved meaning \u2014 rerunning does not touch that."}
+     ]
+   },
+   {
+     title:"Process",
+     question:"Evidence available: repeatable cycle timings exist; controlled rerun and validation practices have developed across two cycles. The programme wants to sign off process readiness on that basis. What is missing?",
+     options:[
+       {label:"Nothing. Two clean cycles is enough evidence.",correct:false,feedback:"Two cycles show the process has worked before. They do not show it will hold for what is coming next."},
+       {label:"A third rehearsal cycle, just to be safe.",correct:false,feedback:"Another repeat of the same scope adds confidence in the past pattern. It still does not test the next one."},
+       {label:"Confirm the next scope can still hit the same window.",correct:true,feedback:"This is the DML position: repeatability so far is real evidence, but it answers a different question to \u201ccan we do it again under the next conditions.\u201d"}
+     ]
+   },
+   {
+     title:"Business",
+     question:"Evidence available: the seven-address rule correction has been applied and the affected records reprocessed. Does that mean business readiness is proven?",
+     options:[
+       {label:"No. A technical fix is not the same as business sign-off.",correct:true,feedback:"This is the DML position: the fix is real evidence, but the people who use the data daily have not yet confirmed it, and CustomerGroup 99 still has no agreed interim process."},
+       {label:"Yes. The technical correction proves the issue is resolved.",correct:false,feedback:"It proves the rule was fixed. It does not prove the business teams who rely on the data are actually satisfied with the result."},
+       {label:"Only if IT formally signs off on the fix.",correct:false,feedback:"IT can confirm the fix was applied correctly. It cannot confirm the business is ready to operate on it \u2014 that is a different sign-off, from a different owner."}
+     ]
+   },
+   {
+     title:"Environment",
+     question:"Evidence available: prior cycles produced strong, consistent timings. Does that mean the environment is ready for the next, larger run?",
+     options:[
+       {label:"Yes. Consistent past performance is the strongest evidence.",correct:false,feedback:"Consistent past performance is real evidence, for the load that already ran. It is not evidence for a bigger or different one."},
+       {label:"Not on its own. Past timings are not current readiness.",correct:true,feedback:"This is the DML position: strong history is a good sign, but it is not the same claim as \u201cready for what is coming.\u201d"},
+       {label:"Only if infrastructure confirms nothing has changed.",correct:false,feedback:"That is a reasonable check, but it still only rules out regression. It does not confirm readiness for a genuinely bigger run."}
+     ]
+   },
+   {
+     title:"Risk",
+     question:"Evidence available: the known semantic defect and the unresolved reference/mapping items are all visible on the RAID log. Is that a decision-grade risk picture?",
+     options:[
+       {label:"Yes. If it is on the log, it is being managed.",correct:false,feedback:"Visible is not the same as managed. A logged risk with no owner or decision date is still just a list."},
+       {label:"Only once every item on the list is closed.",correct:false,feedback:"A DML does not need zero open risk to recommend. They need each open item to be decision-grade, which is a different bar."},
+       {label:"Not yet. Visible is not the same as decision-grade.",correct:true,feedback:"This is the DML position: visibility is the first step, not the last one. Decision-grade means someone specific can act on it, by when, with a route to acceptance."}
+     ]
+   }
  ],
- closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Model DML position</div><p>\u201cI would not recommend a readiness decision from the load result alone. We have strong execution evidence: 18,573 submitted and accepted with zero rejects. However, the 42-record legal-entity defect proves that acceptance and count reconciliation are not sufficient. We also have unresolved business treatments for CustomerGroup 99 and payment term 45E. Before I recommend Go or No-Go, I need the semantic correction and validation evidence, accountable decisions for the unresolved treatments, and confirmation that the next execution context remains viable. Those are decision conditions, not reasons to panic.\u201d</p></div></div>`
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Model DML position</div><p>\u201cI would not recommend a readiness decision from the load result alone. We have strong execution evidence: 18,573 submitted and accepted with zero rejects. However, the 42-record legal-entity defect proves that acceptance and count reconciliation are not sufficient. We also have unresolved business treatments for CustomerGroup 99 and payment term 45E. Before I recommend Go or No-Go, I need the semantic correction and validation evidence, accountable decisions for the unresolved treatments, and confirmation that the next execution context remains viable. Those are decision conditions, not reasons to panic.\u201d</p></div></div>`
 },
 {
  id:"b6",nav:"Ownership",title:"What a Data Migration Lead owns",type:"content",
@@ -561,7 +606,7 @@ const blocks=[
  <tr><td style="padding:6px 10px">\u201cAddress issue resolved.\u201d</td><td style="padding:6px 10px">\u201cThe seven observed addresses reappear after correction, but closure requires evidence of the mechanism-based affected population and regression.\u201d</td></tr>
  <tr><td style="padding:6px 10px">\u201cWe should probably go.\u201d</td><td style="padding:6px 10px">\u201cRecommendation is conditional on named evidence and decisions, with explicit change triggers.\u201d</td></tr>
  </table></div>
- <div class="principle"><strong>Key takeaway</strong><br>The DML owns getting the right decision made, and the language they use is part of how they do that.</div>`
+ <div class="principle"><strong>Key takeaway</strong><br>A recommendation is judged by the language and evidence behind it, not by how confidently it is delivered.</div>`
 },
 {
  id:"b11",nav:"Pressure test",title:"When \u201cready\u201d isn't ready",type:"mcq",
@@ -615,7 +660,7 @@ const blocks=[
    { test:/change|trigger|condition|before/i, strength:"You stated what evidence or decision would change your recommendation.", gap:"State explicitly what would need to happen before your answer would change." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">I would not recommend a readiness decision from the load result alone. We have strong execution evidence: 18,573 submitted and accepted with zero rejects. However, the 42-record legal-entity defect proves that acceptance and count reconciliation are not sufficient. We also have unresolved business treatments for CustomerGroup 99 and payment term 45E. Before I recommend Go or No-Go, I need the semantic correction and validation evidence, accountable decisions for the unresolved treatments, and confirmation that the next execution context remains viable. Those are decision conditions, not reasons to panic.</div>`,
+ <div class="quote">18,573 customers were submitted and accepted, with zero rejects, but that number alone proves nothing about correctness \u2014 the 42 UK customers sitting in the Belgian legal entity show a clean count can still be semantically wrong. Two business decisions are still open: what CustomerGroup 99 should become for the 18 affected German records, and what payment term 45E should translate to, and migration cannot resolve either on its own. My recommendation is conditional, not a Go or a No-Go: I need the semantic correction evidence for the legal-entity defect, a named owner and decision date for each of the two open treatments, and proof that the next execution cycle can still hit its window. Any one of those three failing to land would change my answer.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is strong professional thinking. You are approaching the question as a Data Migration Lead rather than as a technical specialist.":"You have the foundation. Strengthen the answer by naming the specific Bramwell evidence and owners rather than describing the approach in general terms."}</div>`
 },
 {
@@ -689,6 +734,8 @@ const LESSON_CONFIG = {
   lessonShortLabel: "Lesson 1",
   lessonTagline: "Making evidence-based decisions",
   storageKey: "tp_lesson1_v2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
   nextUrl: "lesson1-complete.html",
   finalButtonLabel: "Finish lesson",
   blocks: blocks
