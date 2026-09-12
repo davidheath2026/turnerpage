@@ -323,17 +323,34 @@ and doesn't need to know anything about the specific lesson.
   resolve relative to whatever subfolder the lesson sits in, breaking the
   logo and home link for every lesson in a subfolder. Fixed once in
   `turner-page-kit.js`; the per-lesson explicit values are just insurance.)
-- The `reflection`/`valuable` AI-coaching score is **floored at 4 out of
-  10 minimum** (`Math.max(4, ...)` in the kit's scoring logic), scaled up
-  to 10 based on how many of the block's `checks[]` matched. When writing
-  a `mentorFeedbackHtml(score)` threshold, compute what's actually
-  reachable given the number of checks — a naive low threshold (like
-  `score >= 3`) can be mathematically unreachable as a distinct tier from
-  the lowest one, silently killing the "needs more work" feedback branch.
-  Rough formula: with `denom` checks, the lowest non-floored score for
-  matching just outside "some but not enough" is `4 + (2/denom)*6`ish —
-  in practice, just check the specific numbers for the check count in
-  front of you rather than reusing a threshold from a different lesson.
+- **The `reflection` block's AI-coaching score has no floor.** It runs
+  the full 0-10 range, scaled by how many of the block's `checks[]`
+  matched. (Corrected: the score used to be floored at a guaranteed
+  minimum of 4/10 via `Math.max(4, ...)` in the kit's scoring logic, even
+  for a zero-match answer — paired with a fallback "Strong points" line
+  that fabricated praise ("you gave a direct, honest answer and engaged
+  with the question") regardless of what was actually written. Both are
+  now fixed in `turner-page-kit.js`: the floor is removed and the
+  fallback line states plainly that no strengths were detected.) Note
+  this applies to `reflection` only, not `valuable` — `valuable` has no
+  `checks[]` or scoring logic at all, just a length-gated save; the two
+  block types were previously conflated in this note, but only
+  `reflection` actually runs this scoring path.
+
+  When writing a `mentorFeedbackHtml(score)` threshold, compute what's
+  actually reachable given the number of checks: with `denom` checks, the
+  only reachable scores are `(k/denom)*10` for `k = 0..denom`, rounded to
+  one decimal — e.g. 4 checks reaches 0, 2.5, 5.0, 7.5, 10.0; 5 checks
+  reaches 0, 2, 4, 6, 8, 10. A threshold that doesn't line up with one of
+  these values for the check count in front of you won't behave as a
+  distinct tier — work out the actual reachable set for that block rather
+  than reusing a threshold from a different lesson. **Any lesson already
+  built against the old floored 4-10 range (DML1 Lesson 1 included) needs
+  its `mentorFeedbackHtml` thresholds re-checked against the real 0-10
+  range now that the floor is gone** — a threshold written to distinguish
+  tiers within 4-10 may now sit in the wrong place, or leave the bottom of
+  the range (a genuinely weak answer, 0-2ish) with no distinct feedback
+  tier of its own.
 - `next.disabled` for a `content`-type block **cannot be gated by
   `onMount`** — the kit sets `next.disabled = !ready` immediately after
   `onMount` runs, using a `ready` value that was already fixed to `true`
