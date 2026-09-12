@@ -321,9 +321,9 @@ button:disabled{opacity:.42;cursor:not-allowed}
     </p>
 
     <div class="assessment-facts">
-      <div class="fact"><strong>10 questions</strong>Mixed formats</div>
+      <div class="fact"><strong>11 questions</strong>Mixed formats</div>
+      <div class="fact"><strong>About 15 minutes</strong>Complete in one sitting</div>
       <div class="fact"><strong>80% pass mark</strong>See below</div>
-      <div class="fact"><strong>No feedback</strong>Until submission</div>
       <div class="fact"><strong>Unlimited attempts</strong>Review and retry</div>
     </div>
 
@@ -433,6 +433,24 @@ const questions = [
   },
   {
     type:"single",
+    title:"Nearly complete",
+    scenario:`Three weeks before the next migration cycle, the team reports that customer mapping is "nearly complete." Nobody in the room can say how many mappings have actually been signed off, or against what total.`,
+    prompt:"Which side of the DML Control Triangle is genuinely weak here?",
+    options:[
+      {text:"Scope \u2014 the mapping requirements themselves haven't been properly defined.",
+       feedback:"The requirements aren't in question here \u2014 what's missing is proof of progress against them, not a definition of what's being mapped."},
+      {text:"Evidence \u2014 \u201cnearly complete\u201d has no denominator or source behind it.",
+       feedback:"Correct. A status without a number, a definition of complete, and a source anyone could check isn't evidence \u2014 it's an assertion dressed up as progress."},
+      {text:"Delivery \u2014 the cycle date is already at risk.",
+       feedback:"Nothing here confirms the date is actually at risk yet \u2014 that would be jumping ahead of what's actually known, which is exactly the kind of unproven claim this side of the triangle exists to catch."},
+      {text:"All three equally \u2014 this is a fully controlled position regardless.",
+       feedback:"This isn't a controlled position at all. An unproven status claim, three weeks out, with nobody able to confirm it, is precisely the gap the Control Triangle is designed to surface early."}
+    ],
+    correctIndex:1,
+    mentorTip:"Scope, Evidence, Delivery. A status with no denominator, no definition and no source is not evidence \u2014 whatever else looks fine."
+  },
+  {
+    type:"single",
     title:"A scope conversation, six weeks in",
     scenario:`A business stakeholder asks, informally, whether "the historical claims data" is included in the migration. It has never been explicitly named as in-scope or out-of-scope in any document.`,
     prompt:"What is the most appropriate response?",
@@ -509,6 +527,7 @@ const questions = [
     prompt:"Use the arrows to place the following steps of a well-structured migration meeting in the correct order.",
     items:["Declare the meeting's single purpose (status, decision, or problem-solving)","Review the standing decision log first, before discussing anything new","Work through the agenda items relevant to that declared purpose","Log any new decisions made, with owner and date, before the meeting closes"],
     correctOrder:[0,1,2,3],
+    shuffledStart:[2,0,3,1],
     feedback:"A cadence that holds starts by confirming the past (the decision log) before debating the future, stays disciplined about what kind of meeting this actually is, and closes by capturing new decisions properly \u2014 rather than letting them evaporate the moment the call ends.",
     mentorTip:"Confirm the past before debating the future \u2014 that's what a standing decision log, reviewed first, actually buys you."
   },
@@ -576,7 +595,7 @@ function renderQuestion(){
   if(answers[current]===null){
     if(q.type==="multi") answers[current] = [];
     else if(q.type==="matching") answers[current] = Array(q.situations.length).fill(null);
-    else if(q.type==="ordering") answers[current] = q.items.map((_,i)=>i);
+    else if(q.type==="ordering") answers[current] = q.shuffledStart ? [...q.shuffledStart] : q.items.map((_,i)=>i);
   }
 
   let bodyHtml = "";
