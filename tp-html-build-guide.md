@@ -12,6 +12,26 @@ kit-based lessons described in §1-9 — no shared kit, no `LESSON_CONFIG`,
 a hand-rolled quiz engine of their own. Read §10 before assuming anything
 else in this guide applies to them.
 
+A second thing worth knowing up front, and the more important of the two:
+**technically correct is not the bar. A lesson is not done when it
+renders without errors — it is done when it is a real teaching tool that
+holds up against the classroom test** (see the Turner Page alignment
+document for the full version of that test). Concretely, that means:
+whatever a block's own framing text tells the learner they are about to
+do — build something, decide something, work it out — the block's actual
+mechanism has to genuinely require that, not just describe it while the
+learner clicks through pre-written content. DML1 Lesson 1's original
+block 5 is the case that made this concrete: it told the learner to
+"build the evidence picture," but was built as `guidedSteps`, a
+click-through reveal with nothing actually asked of the learner at any
+point. It rendered without a single error, passed every mechanical
+check, and still was not a real exercise — which is exactly why "it
+works" and "it's good" are different questions, and why §11's QA
+checklist now checks for this specifically, not just for it as a general
+principle to remember. See §3 for the block-type judgement calls this
+implies, and `tp-lesson-playbook.md` for the instructional-design
+reasoning behind them.
+
 ---
 
 ## 1. File structure
@@ -527,6 +547,15 @@ hand-edits easy to get wrong across dozens of copies:
 
 ## 11. QA before shipping any lesson
 
+- **Construction check (do this one by hand, first):** for every block
+  whose framing text tells the learner they're building, deciding, or
+  working something out, reread its actual `type` and confirm the
+  mechanism genuinely requires that before revealing anything. A
+  `guidedSteps` block whose intro says "build the picture yourself" is a
+  fail even if every mechanical check below passes — this is a content
+  and instructional-design judgement, not something the linter or a
+  click-through script can catch on its own. See the note at the top of
+  this guide and `tp-lesson-playbook.md` for the reasoning.
 - **Lint**: `node lint-lesson.js path/to/lessonN.html --cast persona-cast.json`
   — checks answer-position rotation/bias, distractor-length symmetry,
   persona-cast collisions, relative-path mistakes, div balance.
@@ -545,6 +574,9 @@ hand-edits easy to get wrong across dozens of copies:
   Confirms zero console/page errors end to end. This needs the *real*
   `turner-page-kit.css` (a placeholder stylesheet is fine for functional
   testing but won't catch visual issues like the `.flow` misuse in §4).
+  Note this only confirms the lesson *works* — it says nothing about
+  whether it's a real exercise, which is what the construction check
+  above is for.
 - Screenshot spot-checks of anything visually novel in that lesson (a new
   grid layout, a bespoke diagram) — not every block, just what's new.
 
