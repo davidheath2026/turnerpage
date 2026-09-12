@@ -1,0 +1,13 @@
+{
+  "Zoe": { "project": "Manufacturing ERP", "group": "DML" },
+  "Isabel": { "project": "Retail ERP", "group": "DML" },
+  "Darren": { "project": "Distribution ERP", "group": "DML" },
+  "Raj": { "project": "Food & Beverage ERP", "group": "DML" },
+  "Priya": { "project": "Healthcare ERP", "group": "Consultant" },
+  "Marcus": { "project": "Logistics ERP", "group": "Consultant" },
+  "Sam": { "project": "Energy ERP", "group": "Consultant" },
+  "Farah": { "project": "Telecoms ERP", "group": "Consultant" },
+  "Owen": { "project": "Insurance ERP", "group": "Consultant" },
+  "Nadia": { "project": "Public Sector ERP", "group": "Consultant" },
+  "Elena": { "project": "Utilities ERP", "group": "Consultant" }
+}
