@@ -21,6 +21,9 @@
     10. From-the-field audio component
     11. Buttons, actions, footer
     12. Responsive breakpoints
+    13. DMC content components (data table, code block, download
+        card, defect card) — promoted from DMC1 Lesson 1's
+        lesson-scoped draft once approved
 ============================================================ */
 
 /* 1. Design tokens ------------------------------------------------ */
@@ -247,4 +250,50 @@ textarea{width:100%;min-height:180px;padding:16px;border:1px solid var(--line);b
   .status-grid,.ownership-grid,.framework-grid{grid-template-columns:1fr}
   .promise-lines{grid-template-columns:1fr 1fr}
   h1{font-size:36px}
+}
+
+/* 13. DMC content components (data table, code block, download card,
+   defect card) --------------------------------------------------------
+   Promoted from DMC1 Lesson 1's lesson-scoped draft — was a one-off
+   <style> block there, now shared so every DMC lesson pulls from one
+   definition instead of repeating it. Palette reuses the existing
+   --ink/--deep/--teal/--aqua/--line/--good/--warn/--paper/--shadow
+   tokens from section 1 — DMC should feel like the same product in a
+   more working-tool register, not a different product. The
+   copy-to-clipboard behaviour for .tp-code-copy still needs the same
+   promotion into shared/turner-page-kit.js — not done here, this file
+   only covers styling. */
+.tp-table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.tp-table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--paper)}
+.tp-table caption{text-align:left;padding:14px 18px 0;font-weight:800;color:var(--deep);font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.tp-table th{background:linear-gradient(180deg,#0b7f8e,#0a6f7c);color:#fff;text-align:left;padding:12px 16px;font-weight:700;white-space:nowrap;position:sticky;top:0}
+.tp-table td{padding:11px 16px;border-top:1px solid var(--line);vertical-align:top}
+.tp-table tbody tr:nth-child(even){background:#f7fbfb}
+.tp-table tbody tr:hover{background:#edfafa}
+.tp-table--mono td{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13.5px}
+.tp-tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.01em}
+.tp-tag--good{background:#e4f5ee;color:var(--good)}
+.tp-tag--warn{background:#fdf1dc;color:var(--warn)}
+.tp-tag--bad{background:#fbe7e7;color:#a5312c}
+
+.tp-code{margin:20px 0;border-radius:16px;overflow:hidden;background:#0c2b30;box-shadow:var(--shadow);border:1px solid #0a2226}
+.tp-code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;background:#0a2226;border-bottom:1px solid #123a41}
+.tp-code-lang{color:#7dd8d8;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.tp-code-copy{background:transparent;border:1px solid #2a5a61;color:#cfeeee;font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;cursor:pointer}
+.tp-code-copy:hover{background:#123a41}
+.tp-code pre{margin:0;padding:16px 18px;overflow-x:auto}
+.tp-code code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13.5px;line-height:1.62;color:#eaf7f7;white-space:pre}
+
+.tp-download{display:flex;align-items:center;gap:16px;border:1px solid var(--line);border-radius:18px;background:#fbfefe;padding:16px 18px;margin:14px 0}
+.tp-download-icon{flex:none;width:42px;height:42px;border-radius:12px;background:#e6f5f5;color:var(--deep);display:grid;place-items:center;font-size:19px;font-weight:900}
+.tp-download-body{flex:1}
+.tp-download-body strong{display:block;color:var(--deep);font-size:14.5px}
+.tp-download .btn{flex:none}
+
+.tp-defect{border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin:10px 0;background:#fbfefe}
+.tp-defect.selected{border-color:var(--teal);background:#edfafa}
+
+@media(max-width:640px){
+  .tp-table th,.tp-table td{padding:9px 12px;font-size:13.5px}
+  .tp-code pre{padding:13px 14px}
 }

@@ -14,6 +14,10 @@
      1. Small helpers (icons, fromField, promiseCard, mic wiring)
      2. Block-type renderers
      3. mount() — builds chrome and drives the render loop
+     4. DMC content component behaviour (copy-to-clipboard for
+        .tp-code blocks — promoted from DMC1 Lesson 1's lesson-
+        scoped draft; see shared/turner-page-kit.css §13 for the
+        paired styling)
 ============================================================ */
 (function(){
 
@@ -664,6 +668,28 @@ function mount(root, config){
   renderNav();
   render();
 }
+
+/* ---------- 4. DMC content component behaviour -----------------------
+   Copy-to-clipboard for .tp-code blocks (styling in
+   shared/turner-page-kit.css §13). Promoted from DMC1 Lesson 1, which
+   had this as a lesson-scoped listener repeated per file — moved here
+   so every DMC lesson gets it for free. Delegated on `document` rather
+   than bound to a specific button, so it keeps working across
+   TPKit.mount()'s innerHTML re-renders, and costs nothing on a page
+   that never renders a .tp-code-copy button (every Core/DML lesson
+   included) — the closest() check just returns null and the handler
+   exits immediately.
+------------------------------------------------------------------------ */
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".tp-code-copy");
+  if(!btn) return;
+  const code = btn.closest(".tp-code").querySelector("code");
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    const original = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+});
 
 window.TPKit = { mount, icons, fromField, promiseCard, recordProgress, getProgress };
 
