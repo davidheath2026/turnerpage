@@ -48,7 +48,7 @@ if (!contentScript) {
 const capturedPersonas = [];
 const sandbox = {
   window: {},
-  document: { getElementById: () => ({}) },
+  document: { getElementById: () => ({}), addEventListener: () => {} },
   TPKit: {
     promiseCard: () => "",
     fromField: (cfg) => {
