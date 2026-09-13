@@ -159,7 +159,7 @@ Customers_CYCLE_02_20260906T081500.csv</code></pre></div>
  <p>For Bramwell, established examples include: UK \u2192 GB, NOR \u2192 NO, BEL \u2192 BE and GER \u2192 DE through the approved country cross-reference; ZZZ remains unresolved and must not silently become a target country; 45E remains unresolved and must not silently become NET30 or NET45; and 27 customer names exceed the 60-character target limit \u2014 the pipeline may identify them, but it must not invent truncation approval.</p>
  <p>In SSIS this may use Lookup, Derived Column, Conditional Split, Data Conversion and destinations. The exact components are secondary to the behaviour: approved values continue, unresolved values remain visible, and the original source evidence can still be traced.</p>
  <h4>A row-level exception is not automatically a package failure</h4>
- <p>Imagine a lab run with 1,000 synthetic customer rows. 986 are load-ready and 14 contain unresolved business values. Those numbers are training data, not new Bramwell facts.</p>
+ <p>Imagine a lab run with 1,000 synthetic customer rows. 986 are load-ready and 14 contain unresolved business values.</p>
  <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Condition</th><th>Possible treatment</th><th>Reason</th></tr></thead><tbody>
  <tr><td>Known business exception with approved routing</td><td>Route row to exception output; pipeline may continue</td><td>The process is behaving as designed</td></tr>
  <tr><td>Unexpected transformation component error</td><td>Fail affected data flow/package unless controlled recovery exists</td><td>Technical execution is not trustworthy</td></tr>
@@ -388,7 +388,7 @@ const blocks=[
 },
 {
  id:"b8",nav:"Do it yourself",title:"Do it yourself \u2014 Supplier pipeline challenge",type:"reflection",
- html:`<p class="lead">You now inherit a synthetic supplier migration flow: a raw supplier extract, approved reference tables, a transformation query and a target-shaped output specification. The business rules are training material and do not add new Bramwell canon. The current process is manual: load extract, run three SQL scripts, inspect rejects, export CSV.</p>
+ html:`<p class="lead">You now inherit a supplier migration flow: a raw supplier extract, approved reference tables, a transformation query and a target-shaped output specification. The current process is manual: load extract, run three SQL scripts, inspect rejects, export CSV.</p>
  <h3>Your task</h3>
  <ol class="framework-checks">
    <li>Draw the supplier pipeline from pre-flight to completion. Show every stage and dependency.</li>

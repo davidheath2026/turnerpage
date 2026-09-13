@@ -33,8 +33,12 @@
    Source: DMC1_Lesson2_Working_with_SQL_and_Staging_Data_v3.docx.
    All Bramwell facts (18,530 earlier / 18,612 later population;
    UK/NOR/BEL/GER approved country codes; ZZZ and 45E unresolved;
-   27 overlength names; the 214 payment-term exception figure) are
-   taken directly from that manuscript and stay unresolved here as
+   27 overlength names; the 214 payment-term exception figure;
+   14,380 active fixed-asset records with 126 unresolved
+   depreciation-category exceptions, including named asset
+   FA-009871/DEP-07 at site UK01, used in the "Do it yourself"
+   exercise for entity variety) are taken directly from that
+   manuscript and the story bible, and stay unresolved here as
    instructed. The staging table/query examples are training
    implementation patterns, not new Bramwell business facts, per the
    manuscript's own note.
@@ -399,19 +403,19 @@ WHERE c.CycleId = @CycleId;</code></pre></div>
  <div class="principle"><strong>Consultant skill</strong><br>Be able to read SQL well enough to understand population behaviour. You do not need to be a database engineer to notice that a join has changed the grain or silently removed source rows.</div>`
 },
 {
- id:"b7",nav:"Do it yourself",title:"Do it yourself \u2014 Build the Bramwell staging control pack",type:"reflection",
- html:`<p class="lead">Using the staging patterns from this lesson, produce a small staging control pack against a synthetic subset of Bramwell customer rows.</p>
+ id:"b7",nav:"Do it yourself",title:"Do it yourself \u2014 Build the Bramwell fixed-asset staging control pack",type:"reflection",
+ html:`<p class="lead">Using the staging patterns from this lesson, produce a small staging control pack against Bramwell's fixed-asset population. 14,380 active fixed-asset records are in scope; 126 of them carry a legacy depreciation-category value with no approved target treatment, including the established example FA-009871 at site UK01, depreciation category DEP-07. A synthetic "previous cycle" extract is supplied so you can practise cycle comparison.</p>
  <ol class="framework-checks">
-   <li>Load the supplied current and previous customer extracts into a raw layer without changing source values.</li>
+   <li>Load the current and synthetic previous fixed-asset extracts into a raw layer without changing source values.</li>
    <li>Record CycleId, RunId and source-file identity.</li>
-   <li>Prove row count, distinct CustNo count and blank-key count for both cycles.</li>
+   <li>Prove row count, distinct AssetNo count and blank-key count for both cycles.</li>
    <li>Return any duplicate-key rows.</li>
-   <li>Produce lists of new keys and missing keys between cycles. Do not infer the composition from the net difference.</li>
-   <li>Compare Terms, Country and Status for customers present in both cycles.</li>
-   <li>Join Country to the approved country reference while preserving unmatched values such as ZZZ.</li>
-   <li>Create an exception query for unresolved country values.</li>
-   <li>Create a separate query that exposes customer names longer than 60 characters without truncating them.</li>
-   <li>Demonstrate that 45E remains unresolved rather than defaulting it.</li>
+   <li>Produce lists of new keys and missing keys between the two cycles. Do not infer the composition from the net difference.</li>
+   <li>Compare DepreciationCategory, Site and Status for assets present in both cycles.</li>
+   <li>Join DepreciationCategory to the approved depreciation-category reference while preserving unmatched values such as DEP-07.</li>
+   <li>Create an exception query for unresolved depreciation-category values, and confirm FA-009871 appears in it.</li>
+   <li>Create a separate query that preserves each exception record's Site, since depreciation-category meaning can depend on where an asset is held.</li>
+   <li>Demonstrate that FA-009871's DEP-07 value remains visibly unresolved rather than defaulted to a plausible-looking category.</li>
    <li>Produce a control summary showing raw, load-ready, exception and approved-exclusion populations at the correct grain.</li>
    <li>Write a short handover note explaining what the staging flow proves, what remains unresolved and which query the next consultant should run first on the next extract.</li>
  </ol>
@@ -440,12 +444,12 @@ WHERE c.CycleId = @CycleId;</code></pre></div>
  checks:[
    { test:/raw|preserve|evidence|overwrit/i, strength:"You addressed preserving raw evidence rather than overwriting it.", gap:"State explicitly that raw values are preserved untouched, with transformed values kept separately." },
    { test:/key|duplicate|grain/i, strength:"You addressed key-level proof rather than just row counts.", gap:"Name what you'd check to prove the business key and grain, not just the row count." },
-   { test:/45e|zzz|unresolved/i, strength:"You named a specific unresolved item (45E or ZZZ) and kept it visible rather than defaulted.", gap:"Name a specific unresolved value, like 45E or ZZZ, and confirm it stays visible rather than being defaulted away." },
+   { test:/dep-07|fa-009871|unresolved/i, strength:"You named the specific unresolved item (DEP-07 / FA-009871) and kept it visible rather than defaulted.", gap:"Name the specific unresolved value, DEP-07 on asset FA-009871, and confirm it stays visible rather than being defaulted away." },
    { test:/reconcil|control total|grain/i, strength:"You addressed reconciliation at the correct grain.", gap:"State how raw, load-ready, exception and exclusion populations reconcile, and at what grain." },
    { test:/rerun|next|handover|another consultant/i, strength:"You wrote this as a genuine handover, telling the next consultant what to run first.", gap:"Say what the very next consultant to touch this should do first, not just what you did." }
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
- <div class="quote">Raw customer rows for both cycles are preserved untouched, tagged with CycleId, RunId and source file. Row count, distinct key count and blank-key count are proven for both cycles; the current extract's five repeated keys are returned as rows, not just a count. New and missing keys between cycles are listed directly from a key comparison, not inferred from the net +82. Country resolves through the approved cross-reference with ZZZ left visible as an unresolved exception; 45E remains unresolved rather than defaulted to NET30. Load-ready, exception and exclusion populations reconcile against the raw count at the customer-key grain. Next consultant: rerun 01_RawPopulation.sql first against the new extract before touching anything else.</div>`,
+ <div class="quote">Raw fixed-asset rows for both cycles are preserved untouched, tagged with CycleId, RunId and source file. Row count, distinct key count and blank-key count are proven for both cycles; any repeated AssetNo keys are returned as rows, not just a count. New and missing keys between cycles are listed directly from a key comparison, not inferred from the net movement. DepreciationCategory resolves through the approved reference with DEP-07 left visible as an unresolved exception on FA-009871, Site UK01 preserved alongside it. Load-ready, exception and exclusion populations reconcile against the raw count at the asset-key grain. Next consultant: rerun 01_RawPopulation.sql first against the new extract before touching anything else.</div>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine handover note, not a status report \u2014 exactly what the next consultant on this project would need.":"You have the right structure. Make sure every unresolved item stays visibly unresolved in your note, and that the next consultant would know exactly which query to run first."}</div>`
 },
 {

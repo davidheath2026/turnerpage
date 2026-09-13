@@ -72,7 +72,7 @@ OutputRoot: \\\\migration\\outbound\\cycle02
 ReferenceVersion: REF_CYCLE02_APPROVED
 BuildVersion: CUST_1.8
 MaxAllowedRuntimeMin: 75</code></pre></div>
- <p class="small">These are training implementation values, not new Bramwell facts.</p>
+ <p class="small">These are illustrative configuration values you'd adapt per project.</p>
  <div class="principle"><strong>Configuration is evidence too</strong><br>Record the configuration baseline used by the run. If two executions produce different results, you need to know whether code, input, reference data or configuration changed.</div>
  <div class="callout misconception"><div class="callout-label">Avoid configuration sprawl</div><p>Externalising every literal can make a process harder to understand. Externalise values that legitimately vary by environment, cycle or controlled business baseline. Keep stable transformation logic in the controlled build.</p></div>`},
 {html:`<h4>Lab part 2 \u2014 Know exactly what you deployed</h4>
@@ -241,7 +241,7 @@ const blocks=[
 {
  id:"b5",nav:"Performance lab",title:"Performance lab \u2014 Runtime is a migration requirement",type:"content",
  html:`<p class="lead">Bramwell's earlier Core case recorded customer transformation times of 42 minutes in Cycle 1 and 31 minutes in Cycle 2. Those established figures show why runtime should be measured across cycles rather than guessed.</p>
- <p>For this lab, the production-readiness team sets a training requirement: the customer transformation stage should complete within 35 minutes in the test environment. That 35-minute threshold is a lab assumption, not Bramwell canon.</p>
+ <p>The production-readiness team sets a requirement: the customer transformation stage should complete within 35 minutes in the test environment.</p>
  <p>A new build takes 54 minutes.</p>
  <div class="principle"><strong>Your job</strong><br>Do not start optimising random components. Establish where the additional time is being spent and whether the change is caused by data volume, transformation design, reference access, blocking operations, destination behaviour, environment or another factor.</div>
  <h3>Establish a performance baseline</h3>
@@ -397,7 +397,7 @@ WHERE a.RunId = @RunA
 },
 {
  id:"b12",nav:"Do it yourself",title:"Do it yourself \u2014 Make a migration process production-ready",type:"reflection",
- html:`<p class="lead">The independent lab supplies a synthetic product migration process that currently works only on its developer's laptop. Product volume may use a training subset; do not treat lab counts as Bramwell canon. The process has these deliberate weaknesses:</p>
+ html:`<p class="lead">You inherit a product migration process that currently works only on its developer's laptop. It has these deliberate weaknesses:</p>
  <ul class="framework-checks">
    <li>Hard-coded development connection and local input/output paths.</li>
    <li>No build version in execution evidence.</li>

@@ -85,7 +85,7 @@ WHERE c.CycleId = @CycleId;</code></pre></div>
  </tbody></table></div>
  <div class="callout misconception"><div class="callout-label">Failure-path test</div><p>A lookup has not been properly tested because four known codes mapped successfully. You must deliberately test no-match and multi-match behaviour.</p></div>`},
 {html:`<h4>Payment terms: do not turn uncertainty into a default</h4>
- <p>The source customer C10482, Harrison Trade Supplies Ltd, has Terms = 45E. The current Bramwell canon deliberately does not provide an approved target equivalent for 45E. NET30 was an earlier wrong staging value, not an approved treatment.</p>
+ <p>The source customer C10482, Harrison Trade Supplies Ltd, has Terms = 45E. No approved target equivalent exists for 45E. NET30 was an earlier wrong staging value, not an approved treatment.</p>
  <p>A robust transformation therefore has a simple responsibility: expose 45E as unresolved until an authorised decision changes the reference or rule.</p>
  <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: expose, don't default</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CASE
   WHEN p.TargetPaymentTerm IS NOT NULL THEN p.TargetPaymentTerm
@@ -407,7 +407,7 @@ LEFT JOIN ref.CountryCrossRef x ON x.SourceCountryCode=c.Country;</code></pre></
 },
 {
  id:"b11",nav:"Do it yourself",title:"Do it yourself \u2014 Supplier transformation lab",type:"reflection",
- html:`<p class="lead">You are given a synthetic supplier dataset and a controlled lab rule pack. These are training artefacts, not new Bramwell facts. Your task is to build a robust transformation layer, not merely a CSV that passes target validation.</p>
+ html:`<p class="lead">You are given a synthetic supplier dataset and a controlled lab rule pack. Your task is to build a robust transformation layer, not merely a CSV that passes target validation.</p>
  <h3>Lab rules</h3>
  <ul class="framework-checks">
    <li><strong>VEN-001</strong> \u2014 VendorNumber is sourced directly from VendorNo; blank key is blocking.</li>
