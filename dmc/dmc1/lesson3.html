@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building an ETL pipeline</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 1 — LESSON 3 — "Building an ETL pipeline".
+   Built to the Teach → Design → Lab → Diagnose it → Do it yourself
+   → Consultant situations → Reflection → Summary standard
+   established for DMC in Lessons 1-2.
+
+   Source: DMC1_Lesson3_Building_an_ETL_Pipeline_v3.docx. SSIS is
+   the worked implementation throughout, per the manuscript, with
+   the controls kept deliberately transferable to other orchestration
+   tools (ADF, Fabric, Talend, Informatica, Python etc.) — every
+   teaching block says so explicitly rather than assuming SSIS
+   knowledge is the point.
+
+   All Bramwell facts (UK/NOR/BEL/GER approved country codes; ZZZ
+   and 45E unresolved; 27 overlength names) are taken directly from
+   that manuscript and stay unresolved here as instructed. The
+   1,000-row lab figures (986 ready / 14 exceptions / 19 exception
+   events) are explicitly synthetic training data per the manuscript,
+   not new Bramwell facts. The supplier pipeline challenge in the
+   "Do it yourself" block is likewise synthetic, per its own
+   instruction not to create new Bramwell supplier canon.
+
+   Section 3's dependency design is built as an expandableList rather
+   than a true drag/reorder exercise — the shared kit has no
+   drag-reorder block type yet. Worth flagging if that becomes a
+   priority; noted here rather than silently working around it with
+   something that isn't actually equivalent.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with Lessons 1-2.
+============================================================== */
+
+const pipelineStages = [
+ { title:"00 Initialise run",
+   short:"Create RunId; read CycleId/config; set run status Started.",
+   detail:"Can the next stage run if this fails? No. Nothing downstream should start without a valid RunId and run context in place.",
+   ask:"What would a pre-flight check even mean without a RunId already established?" },
+ { title:"10 Pre-flight input",
+   short:"Confirm expected input, identity, accessibility and cycle.",
+   detail:"Can the next stage run if this fails? No. Landing raw data before you've confirmed the input is the intended one is exactly the stale-file trap this lesson warns about.",
+   ask:"What's the difference between a file existing and a file being the right file?" },
+ { title:"20 Land raw customer data",
+   short:"Preserve received source rows with run metadata.",
+   detail:"Can the next stage run if this fails? No. Validation needs something to validate, and it needs to be the untouched received evidence, not a partial or failed landing.",
+   ask:"What would you need to check to prove the raw landing genuinely captured every row the source sent?" },
+ { title:"30 Validate raw population",
+   short:"Check row and key controls and critical input conditions.",
+   detail:"Can the next stage run if this fails? Depends on agreed thresholds; a critical failure stops the run. Not every validation finding is equally serious.",
+   ask:"Who should decide which validation failures are critical enough to stop the run, and which aren't?" },
+ { title:"40 Transform customer data",
+   short:"Apply approved mapping and reference logic.",
+   detail:"Can the next stage run if this fails? No, if a prerequisite failed. Transformation logic should never run against data that hasn't cleared the stages before it.",
+   ask:"What would it mean for this stage to \u201csucceed\u201d while still producing an untrustworthy result?" },
+ { title:"50 Route exceptions",
+   short:"Persist unresolved or invalid evidence.",
+   detail:"Can the next stage run if this fails? This must complete successfully. An exception that fails to be recorded is worse than no exception handling at all \u2014 the problem still exists, but now nobody can see it.",
+   ask:"What's the risk if this stage is allowed to silently skip rather than fail loudly?" },
+ { title:"60 Reconcile transformed population",
+   short:"Prove the source population is accounted for.",
+   detail:"Can the next stage run if this fails? No, if reconciliation fails. This is the gate between \u201cthe pipeline ran\u201d and \u201cthe pipeline can be trusted.\u201d",
+   ask:"Why does reconciliation belong here, before output, rather than as a check performed after the fact?" },
+ { title:"70 Produce load-ready output",
+   short:"Create the approved target-shaped population.",
+   detail:"Can the next stage run if this fails? No. There's nothing meaningful to mark complete if the output itself was never produced.",
+   ask:"What would make an output stage fail safely rather than partially, silently?" },
+ { title:"80 Post-run controls",
+   short:"Record counts, status and output identity.",
+   detail:"Can the next stage run if this fails? Completion must be recorded deliberately, not assumed. A run with no closing record is a run nobody can later prove happened, or didn't.",
+   ask:"If this stage were skipped, what would the next consultant looking at this pipeline in a month actually be missing?" }
+];
+
+const pipelineLabSteps = [
+{html:`<h4>Lab part 1 \u2014 Scaffold the SSIS package</h4>
+ <p>Create a package called <code>10_Customers.dtsx</code>. The package name is illustrative. The important point is that another consultant can understand its scope without opening every task.</p>
+ <p>In Control Flow, create sequence containers or clearly grouped tasks for:</p>
+ <ol class="framework-checks">
+   <li>[00 Initialise]</li>
+   <li>[10 Pre-flight]</li>
+   <li>[20 Land raw]</li>
+   <li>[30 Transform and route]</li>
+   <li>[40 Reconcile]</li>
+   <li>[50 Output]</li>
+   <li>[90 Complete]</li>
+ </ol>
+ <p>Inside <code>[30 Transform and route]</code>, add a Data Flow Task. The data flow should read the controlled raw/staging source from Lesson 2, apply the approved transformation logic and produce clean and exception paths.</p>
+ <div class="callout misconception"><div class="callout-label">Do not over-engineer the first package</div><p>The objective is a readable execution skeleton with real controls. A package with 70 tiny tasks is not automatically more professional than one with seven well-defined stages.</p></div>
+ <h4>Naming that helps during a failed run</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak name</th><th>Better name</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Execute SQL Task 1</td><td>SQL \u2014 Create run record</td><td>Failure message immediately has meaning</td></tr>
+ <tr><td>Data Flow Task</td><td>DFT \u2014 Transform customers</td><td>Identifies entity and purpose</td></tr>
+ <tr><td>Script Task 3</td><td>SCR \u2014 Validate input filename</td><td>Makes custom-code purpose visible</td></tr>
+ <tr><td>Sequence Container 2</td><td>SC \u2014 Transform and route</td><td>Shows logical execution boundary</td></tr>
+ <tr><td>File System Task</td><td>FST \u2014 Archive completed input</td><td>Explains operational effect</td></tr>
+ </tbody></table></div>`},
+{html:`<h4>Lab part 2 \u2014 Parameterise the execution</h4>
+ <p>A package that only works after somebody edits filenames, SQL filters and output paths is not truly repeatable.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Parameter / configuration</th><th>Example</th><th>Why it varies</th></tr></thead><tbody>
+ <tr><td>CycleId</td><td>CYCLE_02</td><td>Migration rehearsal / cycle</td></tr>
+ <tr><td>RunId</td><td>generated at execution</td><td>Distinguishes technical executions</td></tr>
+ <tr><td>InputPath</td><td>controlled inbound location</td><td>Environment / cycle</td></tr>
+ <tr><td>OutputPath</td><td>controlled outbound location</td><td>Environment / cycle</td></tr>
+ <tr><td>ReferenceVersion</td><td>approved reference baseline</td><td>Business decision baseline</td></tr>
+ <tr><td>Environment</td><td>DEV / TEST / PROD-like</td><td>Connections and destinations</td></tr>
+ <tr><td>EntityEnabled</td><td>true / false where required</td><td>Controlled execution scope</td></tr>
+ </tbody></table></div>
+ <p>In SSIS, project or package parameters, variables and expressions can provide these values. Do not hard-code a cycle identifier into five tasks and hope somebody remembers to change all five.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example output naming pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Customers_&lt;CycleId&gt;_&lt;RunId&gt;.csv
+
+Example:
+Customers_CYCLE_02_20260906T081500.csv</code></pre></div>
+ <div class="principle"><strong>Why RunId in output identity?</strong><br>It helps distinguish reruns. Whether the final business handoff filename retains RunId depends on the project, but the execution evidence should always identify which run created the file.</div>`},
+{html:`<h4>Lab part 3 \u2014 Add pre-flight controls before moving rows</h4>
+ <p>A common weak pipeline starts moving data as soon as a file exists. A stronger pipeline asks whether the input is the one it expected.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Pre-flight control</th><th>Example evidence</th><th>Failure behaviour</th></tr></thead><tbody>
+ <tr><td>Input exists</td><td>File or object present</td><td>Stop if mandatory input absent</td></tr>
+ <tr><td>Input identity</td><td>Expected entity, cycle, file pattern</td><td>Stop on wrong or ambiguous input</td></tr>
+ <tr><td>Input freshness / version</td><td>Timestamp / extract identifier</td><td>Stop or escalate stale input</td></tr>
+ <tr><td>Required configuration</td><td>Connections, reference version, output path</td><td>Stop before data movement</td></tr>
+ <tr><td>Previous run state</td><td>No conflicting active execution</td><td>Prevent overlapping runs unless designed for it</td></tr>
+ <tr><td>Destination readiness</td><td>Staging or output location available</td><td>Stop before partial processing</td></tr>
+ </tbody></table></div>
+ <p>The exact controls vary by source. A database extract will not have the same checks as a CSV file, but the principle is the same: validate prerequisites before consuming the data.</p>
+ <div class="callout misconception"><div class="callout-label">The stale-file failure</div><p>Suppose the expected filename is always <code>Customers.csv</code>. Yesterday's file is still in the inbound folder. A file-exists check passes. File existence proves almost nothing about identity. Add evidence that distinguishes the intended extract: cycle/extract ID, timestamp, checksum, manifest, source control record or another project-appropriate mechanism.</p></div>`},
+{html:`<h4>Lab part 4 \u2014 Build the data flow and preserve both outcomes</h4>
+ <p>The transformation layer from Lessons 1 and 2 now becomes a controlled data flow.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Conceptual data flow</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Raw customer source
+  -> Standardise approved syntax
+  -> Approved lookups / derivations
+  -> Validation / rule checks
+  -> Conditional routing
+       -> Load-ready
+       -> Exception evidence</code></pre></div>
+ <p>For Bramwell, established examples include: UK \u2192 GB, NOR \u2192 NO, BEL \u2192 BE and GER \u2192 DE through the approved country cross-reference; ZZZ remains unresolved and must not silently become a target country; 45E remains unresolved and must not silently become NET30 or NET45; and 27 customer names exceed the 60-character target limit \u2014 the pipeline may identify them, but it must not invent truncation approval.</p>
+ <p>In SSIS this may use Lookup, Derived Column, Conditional Split, Data Conversion and destinations. The exact components are secondary to the behaviour: approved values continue, unresolved values remain visible, and the original source evidence can still be traced.</p>
+ <h4>A row-level exception is not automatically a package failure</h4>
+ <p>Imagine a lab run with 1,000 synthetic customer rows. 986 are load-ready and 14 contain unresolved business values. Those numbers are training data, not new Bramwell facts.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Condition</th><th>Possible treatment</th><th>Reason</th></tr></thead><tbody>
+ <tr><td>Known business exception with approved routing</td><td>Route row to exception output; pipeline may continue</td><td>The process is behaving as designed</td></tr>
+ <tr><td>Unexpected transformation component error</td><td>Fail affected data flow/package unless controlled recovery exists</td><td>Technical execution is not trustworthy</td></tr>
+ <tr><td>Reference table unavailable</td><td>Stop transformation</td><td>Required prerequisite missing</td></tr>
+ <tr><td>Reconciliation does not balance</td><td>Stop output generation</td><td>Population cannot be proven</td></tr>
+ <tr><td>Output destination inaccessible</td><td>Fail output stage and run</td><td>Required deliverable not produced</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Separate two questions</strong><br>Did the pipeline execute correctly? Did the data meet migration readiness rules? A technically successful run can legitimately expose business exceptions. A technically failed run cannot be declared successful because some rows happened to transform.</div>`},
+{html:`<h4>Lab part 5 \u2014 Capture counts at control points</h4>
+ <p>Do not wait until the end and record only \u201c18,xxx rows output.\u201d Capture enough counts to explain population movement through the pipeline.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control point</th><th>Useful count</th></tr></thead><tbody>
+ <tr><td>Raw landed</td><td>Rows received; distinct business keys</td></tr>
+ <tr><td>Transformation input</td><td>Rows presented to transformation</td></tr>
+ <tr><td>Clean path</td><td>Distinct records currently load-ready</td></tr>
+ <tr><td>Exception path</td><td>Distinct affected records and number of exception events</td></tr>
+ <tr><td>Approved exclusions</td><td>Distinct records deliberately outside load population</td></tr>
+ <tr><td>Output</td><td>Rows/keys written to load-ready artefact</td></tr>
+ <tr><td>Final reconciliation</td><td>Accounted vs unaccounted source population</td></tr>
+ </tbody></table></div>
+ <p>If one customer can have three rule failures, exception-event count and exception-customer count are different controls. Lesson 2 established this grain issue; the pipeline must preserve it.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example run evidence (illustrative)</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RunId: 20260906T081500
+CycleId: CYCLE_02
+RawRows: 1000
+ReadyKeys: 986
+ExceptionKeys: 14
+ExceptionEvents: 19
+Exclusions: 0
+UnaccountedKeys: 0
+RunStatus: CompletedWithBusinessExceptions</code></pre></div>
+ <p class="small">The status vocabulary should be defined by the project. The example demonstrates that a run can be technically complete while business exceptions remain.</p>`},
+{html:`<h4>Lab part 6 \u2014 Make precedence constraints express intent</h4>
+ <p>In SSIS, precedence constraints determine whether downstream work executes on Success, Failure or Completion, optionally with expressions. Use them to express real migration conditions.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dependency</th><th>Good rule</th></tr></thead><tbody>
+ <tr><td>Pre-flight \u2192 Land raw</td><td>Success only</td></tr>
+ <tr><td>Land raw \u2192 Validate raw</td><td>Success only</td></tr>
+ <tr><td>Validate raw \u2192 Transform</td><td>Success plus any required validation expression/flag</td></tr>
+ <tr><td>Transform \u2192 Reconcile</td><td>Success only, including successful exception persistence</td></tr>
+ <tr><td>Reconcile \u2192 Output</td><td>Success only when reconciliation control passes</td></tr>
+ <tr><td>Output \u2192 Complete</td><td>Success only</td></tr>
+ <tr><td>Any critical stage \u2192 Mark failed</td><td>Failure path or central error handling</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Completion is not success</div><p>A task that has finished may have failed. A yellow/completion path can be useful for cleanup or logging, but it is dangerous if used where successful data processing is required.</p></div>
+ <h4>Conditional execution</h4>
+ <p>Sometimes execution depends on a control value as well as technical success. For example, output generation may require <code>ReconciliationPassed = TRUE</code>. In SSIS this can be expressed through precedence-constraint expressions; other tools provide equivalent conditional branches.</p>
+ <p class="small">Keep conditions visible and explainable. A hidden expression buried in a task property can be as hard to operate as a manual instruction if nobody knows it exists.</p>`}
+];
+
+const unsafePipelineRisks = [
+ "Input path is hard-coded, so the package can consume a stale or wrong file with no identity check",
+ "Every value that varies by cycle is hard-coded, so another cycle requires editing the package itself",
+ "The country lookup uses an INNER JOIN, so unmatched rows can silently disappear before anyone sees them",
+ "Lookup no-match rows are never captured, so there is no exception evidence anywhere",
+ "Completion constraints are used between every task, so downstream work can run after an upstream failure",
+ "There is no RunId, so two executions of this package cannot be distinguished from each other",
+ "There is no reconciliation step, so nobody can prove the output population balances against the input",
+ "A rerun overwrites the existing output file, so prior evidence can be silently destroyed",
+ "A completion email is sent regardless of task outcome, so a failed run can still be reported as finished"
+];
+const unsafePipelineCoaching = [
+ "<strong>Real risk.</strong><br>A hard-coded input path with no identity check is exactly the stale-file trap from Lab part 3 \u2014 file existence proves almost nothing about whether it's the right file.",
+ "<strong>Real risk.</strong><br>Scattering cycle-specific literals through the package is precisely what parameterisation in Lab part 2 exists to prevent.",
+ "<strong>Real risk.</strong><br>An INNER JOIN to a reference table removes unmatched rows from the result entirely \u2014 the same trap Lesson 2's diagnostic query demonstrated.",
+ "<strong>Real risk.</strong><br>Uncaptured no-match rows mean an unresolved country code like ZZZ can vanish with nothing to show it ever existed.",
+ "<strong>Real risk.</strong><br>Completion fires regardless of success or failure. Using it everywhere means a failed upstream task doesn't actually stop anything downstream.",
+ "<strong>Real risk.</strong><br>Without a RunId, two executions \u2014 including an original run and its rerun \u2014 are indistinguishable in any evidence this package leaves behind.",
+ "<strong>Real risk.</strong><br>With no reconciliation gate, a technically completed run tells you nothing about whether the population is actually accounted for.",
+ "<strong>Real risk.</strong><br>Overwriting output on rerun destroys the previous run's evidence, exactly what a rerun design is supposed to protect.",
+ "<strong>Real risk.</strong><br>An unconditional completion email can report success after a failure, which is arguably worse than no notification at all."
+];
+
+const pipelineSituations = [
+ { title:"Situation 1: 214 payment-term exceptions",
+   question:"A run routes 214 customer records with unresolved payment-term conditions to exceptions and completes technically. What's the right response?",
+   options:[
+     {label:"Since the pipeline completed without a technical error, the data can safely be reported as ready for load right away.", correct:false, feedback:"Technical completion and business readiness are two different questions. 214 unresolved records means the data is not ready, whatever the pipeline's execution status says."},
+     {label:"214 exceptions means the pipeline itself has failed outright and needs to be rebuilt before anything else happens.", correct:false, feedback:"The pipeline correctly exposed business exceptions instead of hiding them. That's the pipeline working as designed, not a technical failure."},
+     {label:"Quietly route the 214 records into the load-ready output so the readiness numbers look stronger for the next status update.", correct:false, feedback:"That manufactures a false readiness picture by hiding exactly the unresolved conditions the exception routing exists to surface."},
+     {label:"Do not declare the data ready. Equally, do not call the pipeline broken merely because it correctly exposed business exceptions. Report both execution status and readiness status.", correct:true, feedback:"Correct. Do not declare the data ready. Equally, do not call the pipeline broken merely because it correctly exposed business exceptions. Report both execution status and readiness status."}
+   ]
+ },
+ { title:"Situation 2: Yesterday's file has today's filename",
+   question:"The source team replaced the filename but accidentally copied yesterday's content. What's the right response?",
+   options:[
+     {label:"Since the filename matches what the pipeline expects, the pre-flight check has done its job and processing can continue.", correct:false, feedback:"This is exactly the stale-file trap: a filename match proves the name is right, not that the content is current."},
+     {label:"Filename validation alone is insufficient. Use stronger extract identity or freshness evidence and stop if you cannot prove the intended input.", correct:true, feedback:"Correct. Filename validation alone is insufficient. Use stronger extract identity or freshness evidence and stop if you cannot prove the intended input."},
+     {label:"This is the source team's mistake to fix, so the pipeline doesn't need any additional check for it.", correct:false, feedback:"Whoever's mistake caused it, the pipeline is what will actually process the wrong data if nothing catches it. That's a control gap worth closing regardless of fault."},
+     {label:"Add a check that the file extension is correct, since that's the most likely thing to go wrong with a filename.", correct:false, feedback:"A file extension check wouldn't have caught this at all \u2014 the filename here is entirely correct. The content is what's stale."}
+   ]
+ },
+ { title:"Situation 3: Parallelise everything",
+   question:"A colleague removes dependencies so customer, address and sales-order pipelines can run simultaneously. Test runtime falls sharply. What's the right response?",
+   options:[
+     {label:"A sharply lower runtime is a good sign that the colleague's change should be adopted straight away, across every pipeline.", correct:false, feedback:"Runtime improvement says nothing about whether the removed dependencies were safe to remove."},
+     {label:"Dependencies exist mainly to slow down testing, so removing them for a performance win is a reasonable trade.", correct:false, feedback:"Dependencies express real prerequisites, like reconciliation before output. They aren't incidental friction to optimise away."},
+     {label:"Performance is irrelevant if dependency assumptions are broken. Parallelise only work that is genuinely independent and whose shared resources or control behaviour are understood.", correct:true, feedback:"Correct. Performance is irrelevant if dependency assumptions are broken. Parallelise only work that is genuinely independent and whose shared resources or control behaviour are understood."},
+     {label:"Runtime is the main measure of a pipeline's quality, so a change like this should be treated as a clear, straightforward improvement.", correct:false, feedback:"A pipeline's quality is measured by whether it's correct and safe to operate, not primarily by how fast it runs."}
+   ]
+ },
+ { title:"Situation 4: Transformation succeeded, output failed",
+   question:"The clean stage and reconciliation are proven, but the file destination is unavailable. What's the right instinct?",
+   options:[
+     {label:"Do not automatically rerun extraction and transformation. Determine whether controlled restart from the proven state is safe.", correct:true, feedback:"Correct. Do not automatically rerun extraction and transformation. Determine whether controlled restart from the proven state is safe."},
+     {label:"Treat any output failure as proof the whole run needs to be discarded and restarted from the beginning.", correct:false, feedback:"That throws away transformation and reconciliation work that's already proven valid for this RunId."},
+     {label:"Since transformation already succeeded, assume the output step will succeed on a second identical attempt without checking anything first.", correct:false, feedback:"That skips checking whether the upstream evidence is still valid before restarting, which is exactly the check a controlled restart needs."},
+     {label:"Escalate the output failure to infrastructure and take no further action until it's resolved.", correct:false, feedback:"Escalating the underlying cause is reasonable, but it doesn't answer the actual pipeline question: what should happen to this run's proven state in the meantime."}
+   ]
+ },
+ { title:"Situation 5: The hard one \u2014 run completes but reconciliation flag was never evaluated",
+   question:"Every task is green, but the expression intended to block output on reconciliation failure references the wrong variable. What's the right takeaway?",
+   options:[
+     {label:"Since every task shows green, the run can be trusted as fully successful.", correct:false, feedback:"This is exactly what the scenario is warning against: green boxes reflect that tasks finished, not that the conditions between them actually worked."},
+     {label:"Green boxes are not evidence by themselves. Test failure paths deliberately. A pipeline is only as safe as the conditions you have actually exercised.", correct:true, feedback:"Correct. Green boxes are not evidence by themselves. Test failure paths deliberately. A pipeline is only as safe as the conditions you have actually exercised."},
+     {label:"A reconciliation expression referencing the wrong variable is a cosmetic bug that can be fixed whenever convenient.", correct:false, feedback:"This isn't cosmetic \u2014 it means the one gate meant to stop bad output from being produced was never actually active."},
+     {label:"This kind of mistake would have been caught automatically the first time the pipeline ran for real.", correct:false, feedback:"That's exactly backwards. The whole point of the scenario is that it wasn't caught automatically \u2014 every task still reported success."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"The scripts work. The migration process does not.",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Your Bramwell customer staging work from Lesson 2 is sound. You can land the extract, run the transformation, expose unresolved values and produce a load-ready population. But you are still running the pieces manually.</p>
+ <p>Cycle 2 starts tomorrow. Another consultant may have to run the customer process. The sequence currently exists in your head and in a text file: check customer file, load raw table, run transformation SQL, run exception queries, check counts, create output, tell team it is finished.</p>
+ </div>
+ <div class="quote">\u201cIf you are unavailable tomorrow, can somebody else run this safely?\u201d \u2014 the Project Manager, 08:10</div>
+ <h3>What is the strongest response?</h3>`,
+ options:[
+   {label:"Yes. I will send the scripts with numbered filenames.", correct:false, feedback:"Numbered filenames may help an experienced operator follow the sequence, but they don't define validation, failure behaviour or run evidence. It's a hint, not a control."},
+   {label:"Yes. I will combine all the SQL into one stored procedure so there is only one button.", correct:false, feedback:"One button doesn't mean one controlled process. A single stored procedure can still hide missing pre-flight checks, silent failures and no rerun path behind its simplicity."},
+   {label:"Not yet. I need to turn the steps into a controlled pipeline with explicit inputs, dependencies, validation, failure behaviour, run evidence and a defined rerun path.", correct:true, feedback:"Correct. Numbered scripts may help an experienced operator, and a stored procedure may be part of the implementation, but neither alone defines a controlled migration execution. A pipeline must make the required sequence, checks, failure behaviour and evidence explicit."},
+   {label:"No. Migration pipelines should only be automated after the final rehearsal.", correct:false, feedback:"Waiting until the final rehearsal to build controls means every earlier cycle runs on manual steps and hidden knowledge \u2014 exactly the risk the Project Manager is asking about right now."}
+ ]
+},
+{
+ id:"b2",nav:"A pipeline controls work",title:"Teach \u2014 A pipeline controls work, not just data",type:"content",
+ html:`<p class="lead">ETL is often expanded as Extract, Transform, Load. On a migration project, that description is incomplete. The consultant also has to control what happens before, between and after those data movements.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Concern</th><th>Data-flow question</th><th>Control-flow question</th></tr></thead><tbody>
+ <tr><td>Input</td><td>How do rows enter the process?</td><td>Is this the correct file/extract/cycle before we start?</td></tr>
+ <tr><td>Transformation</td><td>How are fields converted, looked up or derived?</td><td>Should transformation run if landing or prerequisite validation failed?</td></tr>
+ <tr><td>Exceptions</td><td>Where do rejected rows go?</td><td>Can business exceptions coexist with a technically successful run?</td></tr>
+ <tr><td>Validation</td><td>What values/counts are checked?</td><td>Which validation failure must stop output generation?</td></tr>
+ <tr><td>Output</td><td>How is target-shaped data produced?</td><td>How do we prevent duplicate or stale output?</td></tr>
+ <tr><td>Evidence</td><td>What row-level evidence is retained?</td><td>How do we know which run completed, failed or was rerun?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Core principle</strong><br>A migration pipeline is a controlled execution path. The transformations matter, but the pipeline is what makes them repeatable, observable and safe to operate.</div>
+ <h3>Data flow and control flow</h3>
+ <p>Most ETL and orchestration technologies separate these ideas even when the product terminology differs.</p>
+ <ul class="framework-checks">
+   <li><strong>Data flow</strong> \u2014 movement and row-level transformation. SSIS: Data Flow Task. Elsewhere: copy/dataflow/notebook/query activity.</li>
+   <li><strong>Control flow</strong> \u2014 order and conditions between units of work. SSIS: Control Flow + precedence constraints. Elsewhere: pipeline activities + dependencies.</li>
+   <li><strong>Container/group</strong> \u2014 a logical execution boundary. SSIS: Sequence Container. Elsewhere: activity group/sub-pipeline/job.</li>
+   <li><strong>Configuration</strong> \u2014 values that vary by environment or run. SSIS: parameters, variables, expressions. Elsewhere: parameters/config/secrets.</li>
+   <li><strong>Event/failure path</strong> \u2014 what happens when execution fails. SSIS: OnError / failure precedence. Elsewhere: failure branch/handler/exception path.</li>
+ </ul>
+ <p class="small">The DMC skill is not memorising product vocabulary. It is being able to look at any orchestration technology and ask the same control questions.</p>`
+},
+{
+ id:"b3",nav:"Design the dependency map",title:"Design before you drag tasks onto a canvas",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Before opening SSIS, draw the Bramwell customer process as a dependency model. Explore each stage below and ask yourself the design test: for every arrow between stages, can you say why the next stage is allowed to run?</p>`,
+ items: pipelineStages,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The design test</div><p>For every arrow between stages, be able to say why the next stage is allowed to run. \u201cBecause the previous box finished\u201d is not always enough.</p></div></div>
+ <p class="small">This is deliberately simpler than a full production architecture. Logging, restart checkpoints and performance controls deepen in Lessons 5 and 6. Here the goal is to make the basic execution dependable.</p>`
+},
+{
+ id:"b4",nav:"Build the pipeline",title:"The lab \u2014 Build the Bramwell customer pipeline",type:"guidedSteps",
+ html:`<p class="lead">Work through all six lab parts in order. Each one adds a real control to the pipeline you're assembling \u2014 don't skip ahead.</p>`,
+ steps: pipelineLabSteps,
+ firstLabel:"Walk through Lab part 1",
+ closingHtml:`<div class="principle"><strong>What you've actually built</strong><br>Not a finished production pipeline \u2014 Lessons 5 and 6 go deeper into logging, restartability and performance. What you have now is a readable execution skeleton where every stage's purpose, dependency and failure behaviour is explicit rather than implied.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Pipeline-Diagram-Template.xlsx</strong><p class="small">Stages, dependencies and failure/exception paths, ready to fill in for a new pipeline.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Pipeline-Diagram-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Parameter-Sheet-Template.xlsx</strong><p class="small">Cycle, run, environment, input, output and reference controls, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Parameter-Sheet-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Diagnose it",title:"Diagnose it \u2014 A pipeline that looks automated but is unsafe",type:"selectAll",
+ html:`<p class="lead">A colleague proposes this customer package: Load Customers.csv \u2192 Transform Customers \u2192 Write Customers.csv \u2192 Send completion email.</p>
+ <ul class="framework-checks">
+   <li>Input path hard-coded to <code>C:\\Migration\\Cycle2\\Customers.csv</code></li>
+   <li>Output path hard-coded to <code>C:\\Migration\\Cycle2\\Output\\Customers.csv</code></li>
+   <li>Country lookup uses INNER JOIN</li>
+   <li>Lookup no-match rows are not captured</li>
+   <li>Package uses Completion constraints between all tasks</li>
+   <li>No RunId</li>
+   <li>No pre-flight extract identity check</li>
+   <li>No reconciliation step</li>
+   <li>Rerun overwrites the existing output file</li>
+ </ul>
+ <p>Select every operational risk you can find before reading the mentor review.</p>`,
+ options: unsafePipelineRisks,
+ coaching: unsafePipelineCoaching,
+ hint:"Explore every risk before continuing.",
+ closingHtml:`<div class="principle"><strong>Mentor review, in full</strong><br>The package can consume a stale or wrong file; requires code edits for another cycle; can silently drop unmatched country rows; has no exception evidence; allows downstream work after failed tasks because Completion is used indiscriminately; cannot distinguish executions; does not prove population balance; can overwrite prior evidence; may send a completion email after a failed upstream task; and has no explicit rerun strategy.</div>`
+},
+{
+ id:"b6",nav:"Design for reruns",title:"Reruns \u2014 Design the second execution before the first",type:"content",
+ html:`<p class="lead">Migration pipelines are repeated by design. A rehearsal, defect fix or infrastructure failure can all require another execution. The time to decide what a rerun means is before the first failure.</p>
+ <ul class="framework-checks">
+   <li><strong>Can raw landing be repeated safely?</strong> Avoid duplicate source rows or mixed RunIds.</li>
+   <li><strong>Can transformation be repeated for one RunId?</strong> Avoid duplicate staged or output records.</li>
+   <li><strong>Does output overwrite, version or reject duplicates?</strong> Protect prior evidence and handoff integrity.</li>
+   <li><strong>Which completed stages can be reused?</strong> Avoid unnecessary re-extraction or reprocessing.</li>
+   <li><strong>What must be invalidated after a mapping or reference change?</strong> Prevent stale transformed results.</li>
+   <li><strong>Can one failed entity be rerun without all entities?</strong> Supports controlled recovery at scale.</li>
+   <li><strong>How is rerun status recorded?</strong> Distinguishes original failure from recovery execution.</li>
+ </ul>
+ <div class="principle"><strong>Idempotence in plain English</strong><br>If a step is run twice with the same intended input, does it leave a correct controlled result rather than duplicating or corrupting it? Not every migration step can be perfectly idempotent, but you should know the answer before relying on reruns.</div>
+ <p class="small">Lesson 5 goes much deeper into logging, errors and restartability. Here you only need to design enough state and separation that a targeted recovery is possible rather than accidental.</p>`
+},
+{
+ id:"b7",nav:"Failure drill",title:"Failure drill \u2014 Transformation succeeded, output failed",type:"mcq",
+ _correctIndex:0,
+ html:`<div class="callout experience">
+ <div class="callout-label">The scenario</div>
+ <p>The customer transformation succeeds. Output creation fails because the outbound location is unavailable. The raw and transformed data are still valid for the same RunId.</p>
+ </div>
+ <h3>What's the strongest recovery?</h3>`,
+ options:[
+   {label:"Confirm the raw and transformed evidence for this RunId is still valid, then attempt a controlled restart from the proven transformed state rather than re-running extraction and transformation.", correct:true, feedback:"Correct. Do not automatically rerun extraction and transformation. Determine whether controlled restart from the proven state is safe, then use it."},
+   {label:"Delete all output from this run and restart the entire pipeline from the beginning to be safe.", correct:false, feedback:"That throws away proven, valid work. A weak recovery deletes everything and starts again; a stronger design restarts from the last proven state."},
+   {label:"Mark the run as failed and wait for someone to manually recreate the output file outside the pipeline.", correct:false, feedback:"That reintroduces manual, unrecorded work into what should be a controlled pipeline, exactly the hidden-knowledge problem this lesson is built to remove."},
+   {label:"Retry the output step repeatedly on a timer until the destination becomes available, without checking whether the upstream state is still valid.", correct:false, feedback:"Retrying blindly without checking whether the upstream evidence is still valid risks producing output against stale or changed data."}
+ ]
+},
+{
+ id:"b8",nav:"Do it yourself",title:"Do it yourself \u2014 Supplier pipeline challenge",type:"reflection",
+ html:`<p class="lead">You now inherit a synthetic supplier migration flow: a raw supplier extract, approved reference tables, a transformation query and a target-shaped output specification. The business rules are training material and do not add new Bramwell canon. The current process is manual: load extract, run three SQL scripts, inspect rejects, export CSV.</p>
+ <h3>Your task</h3>
+ <ol class="framework-checks">
+   <li>Draw the supplier pipeline from pre-flight to completion. Show every stage and dependency.</li>
+   <li>Choose which values are parameters or configuration rather than hard-coded values.</li>
+   <li>Define the minimum pre-flight checks.</li>
+   <li>Place the supplied transformation SQL inside an appropriate pipeline stage.</li>
+   <li>Route clean and exception populations deliberately.</li>
+   <li>Define at least five row/control counts and their grain.</li>
+   <li>Define which conditions are business exceptions and which are process failures.</li>
+   <li>Add a reconciliation gate before output creation.</li>
+   <li>Define what happens if output creation fails after transformation succeeds.</li>
+   <li>Define how a rerun is identified and how duplicate output is prevented.</li>
+   <li>Write the operator handover: how to start the run, how to tell whether it completed, and what not to rerun blindly.</li>
+ </ol>
+ <h3>Benchmark</h3>
+ <ul class="framework-checks">
+   <li>No downstream output is produced after a failed critical prerequisite or failed reconciliation.</li>
+   <li>Unmatched or invalid business values remain visible rather than disappearing through joins or defaults.</li>
+   <li>Run-specific values are configuration, not scattered literals.</li>
+   <li>The pipeline distinguishes technical execution status from business-data readiness.</li>
+   <li>Every execution leaves enough evidence to identify its input, counts, output and status.</li>
+   <li>The rerun design protects prior evidence and avoids duplicate output.</li>
+   <li>The design is understandable without knowing SSIS-specific jargon.</li>
+ </ul>
+ <p class="lead">Write your operator handover below.</p>
+ <textarea id="reflection" placeholder="To run the supplier pipeline..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Control-Total-Matrix-Template.xlsx</strong><p class="small">Count, grain, source and pass/fail purpose, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Control-Total-Matrix-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Rerun-Decision-Sheet-Template.xlsx</strong><p class="small">What can restart, from where, under which evidence.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Rerun-Decision-Sheet-Template.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/parameter|config|hard-?cod/i, strength:"You addressed which values are parameters rather than hard-coded.", gap:"Name a specific value, like CycleId or a file path, that should be configuration rather than hard-coded." },
+   { test:/pre-?flight|identity|before.*(load|process|start)/i, strength:"You addressed a pre-flight check before data moves.", gap:"State a specific pre-flight check you'd run before the pipeline touches any supplier data." },
+   { test:/exception|failure|business.*(exception|failure)/i, strength:"You distinguished business exceptions from process failures.", gap:"State one example of a business exception and one example of a process failure, and how the pipeline should treat each differently." },
+   { test:/reconcil/i, strength:"You addressed a reconciliation gate before output.", gap:"State what reconciliation gate sits between transformation and output creation." },
+   { test:/rerun|duplicate|restart/i, strength:"You addressed how a rerun is identified and duplicate output prevented.", gap:"State how the pipeline would recognise a rerun and stop it from producing duplicate output." },
+   { test:/handover|start the run|how to tell|operator/i, strength:"You wrote this as an operator handover, not just a design note.", gap:"Write this so a different consultant could actually start and monitor the run from your note alone." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">To run the supplier pipeline: confirm CycleId, RunId and the input path are set as parameters, not edited by hand. Pre-flight checks confirm the extract file exists, matches the expected supplier identity and cycle, and that the output location is reachable before anything loads. Raw supplier rows land unchanged; the supplied transformation runs inside the Transform stage and routes unresolved reference values to a visible exception output rather than defaulting them. A reconciliation gate confirms load-ready plus exception plus approved exclusions equals the raw input count before output is created; if it doesn't balance, output is blocked. If output creation fails after transformation succeeds, do not re-run extraction: check the proven transformed state is still valid for this RunId and restart from there. A rerun is identified by RunId, and output is versioned by RunId rather than overwritten, so no prior evidence is lost. To start a run: trigger with the correct CycleId; to confirm completion, check the RunStatus and reconciliation flag, not just that every task shows green.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine operator handover \u2014 another consultant could actually run this without needing to ask you anything first.":"You have the right structure. Make sure a different consultant could actually execute your handover as written, not just understand your design in principle."}</div>`
+},
+{
+ id:"b9",nav:"Consultant situations",title:"Consultant situations \u2014 Pipeline judgement under pressure",type:"situations",
+ html:`<p class="lead">Five moments where a pipeline's behaviour needs a judgement call, not just a glance at the run log.</p>`,
+ items: pipelineSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Package Only One Person Could Run", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/PackageOnlyOnePersonCouldRun-Sam.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>
+ <div class="principle"><strong>Field lesson</strong><br>A migration pipeline is controlled when the required sequence and failure behaviour are explicit, not when it merely contains automated tasks.</div>`
+},
+{
+ id:"b10",nav:"Reflection",title:"Reflection \u2014 What would you automate first?",type:"reflection",
+ html:`<p class="lead">Think of a multi-step technical process you have run manually. Identify the two places where another consultant could most easily use the wrong input, run the wrong sequence, miss a failure or create duplicate output.</p>
+ <p>Write which controls you would automate first and what evidence the automated process should leave behind.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers prioritise risk and repeatability, not automation for its own sake. The best first control may be a pre-flight validation or reconciliation gate rather than another transformation component.</p></div></div>
+ <textarea id="reflection" placeholder="The two places most likely to go wrong are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/wrong input|identity|pre-?flight/i, strength:"You identified a specific risk around using the wrong input.", gap:"Name a specific point where the wrong input could get used without anyone noticing." },
+   { test:/sequence|order|dependency/i, strength:"You identified a specific risk around running steps in the wrong order.", gap:"Name a specific step that depends on another finishing first, and what would happen if that order broke." },
+   { test:/evidence|log|record|prove/i, strength:"You named specific evidence the automated process should leave behind.", gap:"State exactly what evidence an automated version of this control should record, not just that it should be automated." },
+   { test:/first|priorit/i, strength:"You made an explicit priority call about what to automate first.", gap:"Say clearly which control you'd build first, and why it beats the alternatives." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The two riskiest points are: starting the process against whichever file happens to be sitting in the folder, and running the reconciliation check manually, if at all, so a mismatch is easy to miss under time pressure. I'd automate the input identity check first, before any transformation logic, since a wrong input poisons everything downstream. It should leave behind the file identity it checked, what it expected, and a clear pass/fail, not just proceed silently. The reconciliation gate would come second.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This prioritises exactly right: catching a bad input early beats adding more transformation sophistication.":"You have good instincts. Make sure you're picking the control that reduces the most risk first, not just the one that's easiest to automate."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Summary \u2014 From working scripts to a controlled migration execution",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Design the execution path before building tool-specific tasks.</li>
+   <li>Separate data flow from control flow.</li>
+   <li>Make prerequisites and dependencies explicit.</li>
+   <li>Parameterise cycle, run, environment, input, output and reference context.</li>
+   <li>Validate input identity before consuming data.</li>
+   <li>Preserve clean and exception outcomes deliberately.</li>
+   <li>Capture counts at meaningful control points and at the correct grain.</li>
+   <li>Distinguish business exceptions from process failures.</li>
+   <li>Use success, failure and completion paths intentionally.</li>
+   <li>Put reconciliation before output release.</li>
+   <li>Design rerun behaviour before the first failure.</li>
+   <li>Leave enough run evidence that another consultant can operate and challenge the process.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A migration pipeline is not successful because all the boxes ran. It is successful when the correct input was processed in the correct sequence, every population is accounted for, failures behaved as designed and the execution can be proved afterwards.</div>`
+},
+{
+ id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building an ETL pipeline.</strong></p>
+ <p>You can now turn controlled staging logic into a repeatable migration pipeline: define stages and dependencies, parameterise a run, orchestrate data movement, capture control totals, route row-level exceptions, stop on process failures and design a rerun path before the first cycle is executed.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building robust transformations</strong></p>
+ <p>You will go deeper into lookup behaviour, conditional logic, derived values, type conversion and transformation designs that fail visibly rather than manufacture plausible data.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone asks whether somebody else could run your process safely.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 1",
+  moduleTitle: "Building Migration Solutions",
+  lessonLabel: "Lesson 3: Building an ETL pipeline",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Turning controlled staging logic into a repeatable, safe migration pipeline",
+  storageKey: "tp_dmc1_lesson3_v1",
+  lessonId: "dmc1-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4.html",
+  finalButtonLabel: "Finish Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
