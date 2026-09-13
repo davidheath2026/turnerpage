@@ -42,7 +42,13 @@ an optional extra.
   etc.) inside an `html:` string. That reasoning belongs only in the
   file's header `/* */` comment, for whoever authors the next lesson —
   never in learner-facing text. Grep for this before calling a block done
-  (see §3 checklist).
+  (see §3 checklist). **Refined after catching a subtler case in DMC3
+  L1:** the word "canon"/"canonical" itself is a tell, even outside the
+  exact "not new Bramwell facts" phrasing — e.g. "do not invent a larger
+  canonical number" reads as an instruction to the *author*, not the
+  learner. If a callout needs to teach "don't assume a bigger number than
+  you've proven," write it as direct investigative advice to the learner
+  instead, with no reference to canon/authoring status at all.
 - Every hands-on/independent-lab exercise is checked against the entity
   ledger (§2) before drafting — don't default to Customer just because
   that's the module's main teaching entity.
@@ -75,19 +81,31 @@ Nadia, Elena — never the DML Lead cast)
 
 | Lesson # | DMC1 | DMC2 | DMC3 | DMC4 | DMC5 |
 |---|---|---|---|---|---|
-| 1 | Priya (Healthcare ERP) | Priya (Healthcare ERP) | | | |
-| 2 | Marcus (Logistics ERP) | Marcus (Logistics ERP) | | | |
-| 3 | Sam (Energy ERP) | Sam (Energy ERP) | | | |
-| 4 | Farah (Telecoms ERP) | Farah (Telecoms ERP) | | | |
-| 5 | Owen (Insurance ERP) | Owen (Insurance ERP) | | | |
-| 6 | Nadia (Public Sector ERP) | Nadia (Public Sector ERP) | | | |
+| 1 | Priya (Healthcare ERP) | Priya (Healthcare ERP) | Sam (Energy ERP) | | |
+| 2 | Marcus (Logistics ERP) | Marcus (Logistics ERP) | Priya (Healthcare ERP) | | |
+| 3 | Sam (Energy ERP) | Sam (Energy ERP) | Marcus (Logistics ERP) | | |
+| 4 | Farah (Telecoms ERP) | Farah (Telecoms ERP) | Elena (Utilities ERP) | | |
+| 5 | Owen (Insurance ERP) | Owen (Insurance ERP) | Nadia (Public Sector ERP) | | |
+| 6 | Nadia (Public Sector ERP) | Nadia (Public Sector ERP) | Owen (Insurance ERP) | | |
+
+**DMC3 complete.** Rotation for DMC3: Sam, Priya, Marcus, Elena, Nadia,
+Owen — a fully different order from DMC1/DMC2's identical
+Priya-Marcus-Sam-Farah-Owen-Nadia pattern. Farah is the only Consultant
+persona not used anywhere in DMC3; worth bringing in early for DMC4.
+
+**Correction from earlier:** persona is manuscript-specified, not an
+authoring choice — every DMC3 Lesson 1 manuscript's own "From the Field"
+section names Sam directly. The DMC1/DMC2 identical rotation likely
+reflects the manuscript authors' own pattern, not something I chose or
+can freely vary. This ledger is for tracking what's used, not a lever I
+control — only exercise discretion on the rare case a manuscript leaves
+the persona unspecified.
 
 **Flag:** DMC1 and DMC2 used an identical persona-to-lesson-number
-mapping. Not wrong (project field stays consistent per persona each
-time), but deliberately vary this for DMC3 onward — pick a different
-starting persona or a different order, rather than defaulting to the same
-sequence a third time. Elena (Utilities ERP) has not been used yet in any
-DMC module — a candidate to bring in.
+mapping. DMC3 Lesson 1 breaks it immediately (Sam at L1, not L3). Keep
+watching whether DMC3 continues Priya→Marcus→Sam→Farah→Owen→Nadia in a
+shifted order or something else entirely — record as it's confirmed
+lesson by lesson, don't assume.
 
 ### Entity-per-hands-on-exercise (main teaching content is Customer/
 Bramwell throughout — this ledger is only for the "Do it yourself" /
@@ -95,20 +113,17 @@ Bramwell throughout — this ledger is only for the "Do it yourself" /
 
 | Lesson # | DMC1 | DMC2 | DMC3 | DMC4 | DMC5 |
 |---|---|---|---|---|---|
-| 1 | Supplier | Supplier (Vendor_Extract_A) | | | |
-| 2 | Fixed Assets (FA-009871/DEP-07) | Product | | | |
-| 3 | Supplier | Supplier | | | |
-| 4 | Supplier | Supplier (S20418 classification conflict) | | | |
-| 5 | generic/abstract (no named entity) | Supplier | | | |
-| 6 | Product | Fixed Assets (opening scenario) + generic rounds | | | |
+| 1 | Supplier | Supplier (Vendor_Extract_A) | Sales Orders (open orders, disappearing-orders case) | | |
+| 2 | Fixed Assets (FA-009871/DEP-07) | Product | Supplier (312 rejected suppliers) | | |
+| 3 | Supplier | Supplier | Product (185,000 products, 97 defects) | | |
+| 4 | Supplier | Supplier (S20418 classification conflict) | Sales Orders/multi-entity graph (customers, addresses, products, sites, warehouses, orders) | | |
+| 5 | generic/abstract (no named entity) | Supplier | Product (four-cycle RCA case) | | |
+| 6 | Product | Fixed Assets (opening scenario) + generic rounds | Supplier (recovery: draft mapping, tax field, 74 partial commits) | | |
 
-**Flag:** DMC1 Lesson 5's hands-on exercise has no named entity (it's a
-generic "failed-run evidence pack"). Consider whether a future revision
-should ground it in a specific entity, though this is lower priority than
-getting DMC3 built with variety from the start. Supplier is
-overrepresented relative to Product/Fixed Assets across both modules so
-far — lean towards Product or Fixed Assets for DMC3's hands-on exercises
-unless the lesson content specifically calls for Supplier.
+**DMC3 complete.** Entity spread across DMC3: Sales Orders x2, Supplier
+x2, Product x2 — genuinely balanced, no entity dominates. Zero position
+violations across all six DMC3 lessons after L2's one slip; the
+inline-annotation discipline held for L3 through L6 without exception.
 
 ---
 
@@ -162,29 +177,73 @@ optional even with a better upfront process):**
       the entity-variety expectation, the DMC-shared CSS/JS components)
       — flag it here even if the actual doc edit happens later.
 
+### DMC3 module-boundary review — completed
+
+- [x] Ledgers re-read: persona rotation genuinely varied from DMC1/DMC2
+      (Sam, Priya, Marcus, Elena, Nadia, Owen — a different order, and
+      Elena's first DMC appearance); entity spread balanced (Sales
+      Orders x2, Supplier x2, Product x2, no single entity dominating).
+- [x] Lesson 6 completion page confirmed as the module-final variant,
+      linking to `assessment.html`.
+- [x] Alignment document (`Turner_Page_Core_DMC_DML_Alignment.docx`)
+      updated directly, not just noted here: a new "Decided" bullet
+      records the DMC3 title-conflict lesson; a new "Done" bullet
+      summarises the full DMC1-3 build (18 lessons, 18 completion pages,
+      the register-leak fixes, the entity-variety gaps found and fixed,
+      DMC3's cross-lesson continuity thread, and the fact that no module
+      has `assessment.html` yet). Validated (423→425 paragraphs, all
+      checks passed) and visually confirmed via rendered PDF. The
+      "Not started" bullet was also corrected: it previously read "DMC
+      Modules 2–5", which was stale the moment DMC2 was finished — now
+      reads "DMC Modules 4–5".
+- [ ] `tp-lesson-playbook.md` / `tp-html-build-guide.md` — NOT yet
+      edited directly. Candidates to promote, carried in §5 below:
+      the entity-variety ledger discipline, the register-leak grep
+      list (canon/training-data/Story Bible), and the inline
+      position-annotation practice for graded-item sequences.
+
+**The DMC3 title catch, in full:** all six DMC3 lessons initially used
+the manuscripts' own module title ("Troubleshooting Data Migration
+Issues") instead of the alignment doc's "Diagnosing & Fixing Defects".
+This wasn't caught lesson-by-lesson — each lesson's own build checklist
+included a title check, but it was checked against *memory* of the
+alignment doc, not by re-opening the actual file. It was only caught by
+literally re-reading the alignment doc's module-title table during this
+review. **Standing rule going forward:** the per-lesson checklist's
+title check must mean actually reading the alignment doc's title for
+that module in this session, not recalling it — cheap to do, and this
+is exactly the failure mode it exists to prevent.
+
 ---
 
 ## 5. Open items (flat list, not prose)
 
-- No `assessment.html` for DMC1 or DMC2 yet.
+- No `assessment.html` for DMC1, DMC2 or DMC3 yet.
 - No browser/click-through testing has ever been performed on any lesson
   — all verification so far is static (linter, tag balance, JS syntax,
   em-dash sweep).
 - DMC2 Lesson 1's dependency-map exercise uses `expandableList` as a
   substitute for a true drag/reorder interaction — kit has no
-  drag/reorder block type.
+  drag/reorder block type. DMC3 Lesson 4's "dependency maze" hit the
+  same underlying gap (the manuscript wanted true node-connecting
+  interactivity) and used `selectAll` as its substitute instead —
+  a different workaround, same root cause: no graph/node-linking block
+  type exists in the kit.
 - No lesson has a 9a-style ungraded knowledge check — kit's gating logic
   (`ready = b.type === "content"`) can't support a non-blocking quiz yet.
 - Dozens of downloadable template files (`.xlsx`/`.sql`/`.docx`)
-  referenced via `tp-download` components across both modules are
+  referenced via `tp-download` components across all three modules are
   placeholder links — none of the actual files have been built.
-- Alignment document's "Where things stand" section has not been updated
-  to reflect DMC1/DMC2 completion.
 - `tp-lesson-playbook.md` and `tp-html-build-guide.md` don't yet document
-  the entity-variety expectation or the DMC-specific shared components
-  as standing rules.
+  as standing rules: the entity-variety expectation, the DMC-specific
+  shared components, the register-leak grep list (canon/training-data/
+  Story Bible), or the inline position-annotation practice for graded
+  sequences. The alignment doc itself has been updated directly (see §4
+  above) — these two files haven't been touched yet.
 - Existence of `/assets/turner-page-logo.png` and
   `/assets/turner-page-monogram.png` in the real deployed repo has never
   been confirmed — every lesson references both repeatedly.
 - DMC1 Lesson 5's hands-on exercise has no named entity (generic
   "failed-run evidence pack") — lower-priority cleanup candidate.
+- DMC4 and DMC5 manuscripts have not been uploaded yet — needed before
+  either module can start.
