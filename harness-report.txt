@@ -74,10 +74,9 @@ C. INTERACTIVITY  -  20 lessons flagged
   dmc4/lesson5      7 content blocks in a row
   dmc4/lesson6      7 content blocks in a row; 2 block(s) promise construction but only reveal text (b11, b12)
 
-D. ONLY VISIBLE ACROSS LESSONS  -  2
+D. ONLY VISIBLE ACROSS LESSONS  -  0
 --------------------------------------------------------------------------
-  ! "payment-term exception": 214 in 3 lessons, but 5 in dmc2/lesson6
-  ! "CustomerGroup 99": 18 in 7 lessons, but 27 in dmc2/lesson6
+  nothing flagged
 
 LESSON SHAPE TABLE
 --------------------------------------------------------------------------
@@ -117,6 +116,6 @@ PERSONA USE
   Sam      4x  dmc1/lesson3, dmc2/lesson3, dmc3/lesson1, dmc4/lesson4
 
 ==========================================================================
-  A: 10 questions   B: 6 phrase types   C: 20 lessons   D: 2 items
+  A: 10 questions   B: 6 phrase types   C: 20 lessons   D: 0 items
 ==========================================================================
 

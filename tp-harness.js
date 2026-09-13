@@ -58,6 +58,15 @@ const broken = lessons.filter(l => l.error);
 const lab = f => f.replace(/\\/g, "/").split("/").slice(-2).join("/").replace(".html", "");
 const mod = f => lab(f).split("/")[0];
 const strip = h => String(h || "").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
+// Same, but marks block-level boundaries with | so a fact check cannot read a
+// number out of one table cell and a noun out of the next. This was a real
+// false-positive source: "Approved exclusions 5 | payment-term exceptions 214"
+// scanned as "5 payment-term exceptions".
+const stripCells = h => String(h || "")
+  .replace(/<\/(td|th|tr|li|p|div|h[1-6]|caption|section)>/gi, " | ")
+  .replace(/<(br|hr)\s*\/?>/gi, " | ")
+  .replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ")
+  .replace(/\s+/g, " ").trim();
 const GATING = new Set(["mcq","situations","expandableList","guidedSteps","reflection","valuable","selectN","selectAll","tradeoffTriangle"]);
 
 function questions(blocks) {
@@ -205,12 +214,14 @@ for (const tok of TOKENS) {
   const re = new RegExp("(\\d[\\d,]{0,8})\\s+(?:[a-z]+\\s)?" + esc + "s?\\b", "gi");
   const vals = new Map();
   for (const L of ok) {
-    const text = L.blocks.flatMap(learnerStrings).map(strip).join("  ");
-    for (const m of text.matchAll(re)) {
-      const v = m[1].replace(/,$/, "");
-      if (!/^\d/.test(v) || v.length > 8) continue;
-      if (!vals.has(v)) vals.set(v, new Set());
-      vals.get(v).add(lab(L.file));
+    const segments = L.blocks.flatMap(learnerStrings).map(stripCells).join(" | ").split("|");
+    for (const seg of segments) {
+      for (const m of seg.matchAll(re)) {
+        const v = m[1].replace(/,$/, "");
+        if (!/^\d/.test(v) || v.length > 8) continue;
+        if (!vals.has(v)) vals.set(v, new Set());
+        vals.get(v).add(lab(L.file));
+      }
     }
   }
   if (vals.size < 2) continue;
