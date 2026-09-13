@@ -12,6 +12,47 @@ an optional extra.
 
 ---
 
+## 0. Files this session needs re-uploaded — nothing here persists
+
+None of the actual working files (built HTML, the story bible, my working
+copy of the alignment doc, unzipped manuscripts) live anywhere permanent.
+They exist only inside this conversation's container and are gone the
+moment it ends. This file, on its own, is a process document — it is
+*not* a substitute for having the source material back in front of the
+next session. Re-upload, at minimum:
+
+- **This file** (`STATE.md`) — always.
+- **`Turner_Page_Core_DMC_DML_Alignment.docx`** — the alignment doc;
+  §1 depends on it being checked directly, not recalled from memory.
+- **`Turner_Page_Story_Bible_v3_Bramwell_Company_Profile.docx`** — the
+  authoritative source for every recurring Bramwell fact (S20418,
+  DEP-07/FA-009871, CustomerGroup 99, the delivery-address defect
+  chain, the 18,530/18,573/18,612 population figures, and everything
+  else reused across modules). Nothing in this file summarises that
+  content — it's the source of record, not duplicated here.
+- **`tp-lesson-playbook.md`** and **`tp-html-build-guide.md`** — the
+  standing authoring rules; not yet updated with several of this
+  module's lessons (see §5), so still incomplete even once re-read.
+- **The already-built lesson HTML** (DMC1.zip / DMC2.zip / DMC3.zip,
+  or equivalent) — needed only if the next module has to cross-
+  reference exact prior wording (DMC3 does this constantly — Lessons
+  1, 4, 5 and 6 all reuse the same address-defect evidence verbatim).
+  If DMC4/5 don't need that level of continuity, this is optional; if
+  they do and it's missing, expect me to either re-derive facts from
+  memory (risky) or ask for the specific file back.
+- **`shared/turner-page-kit.css`** and **`shared/turner-page-kit.js`**
+  — only needed if a change to shared components is expected; not
+  needed just to keep building new lessons against them.
+- **Any new manuscripts** for the module about to be built (DMC4/DMC5
+  not yet uploaded as of this note).
+
+If only STATE.md and the alignment doc come back, a new session can
+still follow *process* correctly, but will be working from memory (mine
+or restated in chat) for every specific Bramwell fact — exactly the
+kind of thing this whole file exists to stop relying on memory for.
+
+---
+
 ## 1. Settled decisions (one line each, no re-litigating)
 
 - Alignment doc overrules the manuscript wherever they conflict (e.g.
