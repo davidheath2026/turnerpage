@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Validating your migration execution</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 4 - "Validating your migration execution".
+   Built as a forensic validation exercise per the manuscript's own
+   authoring notes: it opens on a green execution console and the
+   learner discovers the 42-record semantic defect through layered
+   checks rather than being told about it.
+
+   Source: DMC5_Lesson4_Validating_Your_Migration_Execution_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc, not the manuscript header.
+
+   INTERACTIVITY TARGET, continued: 50% content, 10 gating. This
+   is the shortest manuscript in the module (2,270 words against
+   DMC4's 4,272 average), so the risk here was the opposite of
+   DMC4's - not enough substance per block rather than too much.
+   Several short manuscript sections are combined into single
+   content blocks instead of being padded out individually.
+
+   DELIBERATE guidedSteps USE (b3). The eight validation layers
+   are the lesson's core discovery mechanism: layers 1 to 3 pass,
+   layer 4 finds the 42. Revealing them in order is the teaching
+   point, because a learner who sees the semantic result first can
+   never experience why the earlier green layers were misleading.
+   The construction exercise is b16, a reflection.
+
+   CANONICAL FIGURES, per the authoring notes, unchanged: 18,612
+   total = 34 approved pre-load exceptions + 5 approved exclusions
+   + 18,573 submitted and accepted, 0 rejects. The 42 UK customers
+   in the Belgian legal entity are canonical and their root cause
+   is NOT established and NOT invented anywhere in this lesson.
+
+   45E remains unresolved, with NET30 an incorrect historical
+   fallback rather than an approved mapping. CustomerGroup 99
+   remains unresolved. Neither is resolved here.
+
+   Enterprise transfer block retained per the authoring notes,
+   including the established open-payables source control total of
+   GBP 6,284,913.72, for which no target result has been
+   established - stated that way rather than implying a
+   reconciliation exists.
+
+   Persona: Marcus, Data Migration Consultant, Logistics ERP,
+   title "The Count That Passed", specified by the manuscript's
+   authoring notes.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=3, b8=1, b15 items
+   A-E = 0,2,3,1,0. Full sequence 3,1,0,2,3,1,0 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const validationLayers = [
+{html:`<h4>Layers 1 and 2 \u2013 Population and key set</h4>
+ <p><strong>Layer 1, population.</strong> The source-cycle equation holds: 18,612 equals 18,573 submitted plus 34 approved pre-load exceptions plus 5 approved exclusions. No records disappeared between source, exception handling, submission and target.</p>
+ <p><strong>Layer 2, key set.</strong> Equal counts can hide substitutions, so compare the actual business-key sets rather than totals. Which submitted keys are absent from target? Which target keys were not in submitted scope? How many expected keys match exactly? Did exclusions or exceptions leak into the target?</p>
+ <div class="callout experience"><div class="callout-label">Result</div><p>Both layers pass. Every submitted key is present, no unexpected keys appeared, and no exclusion leaked through.</p></div>`},
+{html:`<h4>Layers 3 and 4 \u2013 Uniqueness, then field semantics</h4>
+ <p><strong>Layer 3, uniqueness.</strong> One accepted source record can still create duplicate target representations if the target context or joins are wrong. Test the target grain explicitly rather than trusting the accepted count. This passes too.</p>
+ <p><strong>Layer 4, field semantics.</strong> Compare the meaning of transformed fields, not merely whether they are populated.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Validation</th></tr></thead><tbody>
+ <tr><td>Country</td><td>UK source expectation becomes approved target GB</td></tr>
+ <tr><td>CustomerGroup</td><td>Approved source-to-target treatment by context</td></tr>
+ <tr><td>Payment terms</td><td>No unapproved fallback for 45E</td></tr>
+ <tr><td>Legal entity</td><td>Expected UK customer remains in UK target context</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Result</div><p>The last row fails. 42 UK customers have landed in the Belgian legal entity. The total target count still matches 18,573 exactly.</p></div>`},
+{html:`<h4>Layers 5 and 6 \u2013 Relationships and negative controls</h4>
+ <p><strong>Layer 5, relationships.</strong> Validate the links that make migrated records usable. A customer can exist while its required delivery address or downstream order relationship is broken, and nothing in the load result would say so.</p>
+ <p><strong>Layer 6, negative validation.</strong> Prove that the things which must not happen did not happen.</p>
+ <ul class="framework-checks">
+   <li>No unapproved 45E to NET30 fallback.</li>
+   <li>No CustomerGroup 99 defaulted to STANDARD without approval.</li>
+   <li>No BILLING_ONLY addresses where excluded.</li>
+   <li>No UK customers silently routed to Belgium.</li>
+   <li>No duplicate target keys at the intended grain.</li>
+ </ul>
+ <p class="small">Notice the fourth negative control. It would have caught the 42 as a named, expected-to-be-zero check, rather than as a surprise during a semantic comparison.</p>`},
+{html:`<h4>Layers 7 and 8 \u2013 Regression and business-critical invariants</h4>
+ <p><strong>Layer 7, known-defect regression.</strong> After a fix, prove the original mechanism is corrected, prove the full affected population is corrected, and prove the change did not damage unaffected populations. For the delivery-address defect that means positive DELIVERY_PRIMARY, positive DELIVERY_SECONDARY, negative BILLING_ONLY, the full mechanism-based recovery population, and no unexplained changes outside it.</p>
+ <p><strong>Layer 8, business-critical invariants.</strong> The handful of statements that must be true for the migration to be usable at all, tested as absolutes rather than sampled.</p>
+ <div class="principle"><strong>What the eight layers just demonstrated</strong><br>Three layers of perfect results, then a material defect at layer 4. Counts can reconcile exactly while business meaning is wrong, and stopping after layer 3 is how that reaches production.</div>`}
+];
+
+const differenceClasses = [
+ "Expected transformation",
+ "Approved exception",
+ "Target-generated value",
+ "Timing difference",
+ "Unexplained difference",
+ "Validation defect"
+];
+const differenceCoaching = [
+ "<strong>Treatment:</strong> pass, if the transformation is approved. Source UK becoming target GB is a difference by design, and flagging it as a defect trains people to ignore your report.",
+ "<strong>Treatment:</strong> controlled, not a defect. An approved pre-load exception appearing as absent from target is the control working. It needs to reconcile, not to be investigated.",
+ "<strong>Treatment:</strong> validate according to the agreed rule. Target-generated identifiers and derived fields have their own expected behaviour, which is rarely the same as source equivalence.",
+ "<strong>Treatment:</strong> explain it and retest if required. A difference caused by comparing snapshots taken at different moments is real and is not a migration defect.",
+ "<strong>Treatment:</strong> investigate. This is the only class that carries no conclusion yet, and the one most often reclassified prematurely to get a report green.",
+ "<strong>Treatment:</strong> correct the validation and rerun the proof. A control pointed at the wrong entity, database, run or snapshot produces confident nonsense in either direction."
+];
+
+const triageStatuses = [
+ "PASS",
+ "APPROVED DIFFERENCE",
+ "DEFECT",
+ "INVESTIGATE",
+ "DECISION REQUIRED",
+ "VALIDATION ISSUE"
+];
+const triageCoaching = [
+ "<strong>Meaning:</strong> expected equals actual under the approved rule. Worth recording explicitly rather than by absence, so a control that silently stopped running is distinguishable from one that passed.",
+ "<strong>Meaning:</strong> the difference is understood and authorised. The authorisation matters as much as the understanding; without it this is really an INVESTIGATE wearing a friendlier label.",
+ "<strong>Meaning:</strong> incorrect migration behaviour is proven. Proven is the operative word. A strong suspicion belongs one row down.",
+ "<strong>Meaning:</strong> the difference is real and its cause or status is not yet established. The 42 legal-entity mismatches sit here until the mechanism is traced, not under DEFECT and certainly not under PASS.",
+ "<strong>Meaning:</strong> the business treatment is unresolved. 45E and CustomerGroup 99 belong here. They are not validation failures, and they are not acceptable to default away either.",
+ "<strong>Meaning:</strong> the control or query is itself wrong or incomplete. Keeping this separate stops a broken check being counted among real defects, and stops a real defect being dismissed as a broken check."
+];
+
+const acceptanceOptions = [
+ { title:"ACCEPTED",
+   short:"The defined scope passes required validation.",
+   detail:"All eight layers pass for the stated scope, with the evidence tied to the specific cycle, run, source snapshot, reference version, build and target context. Note the phrase \u201cdefined scope\u201d: acceptance is always for something, and an acceptance statement without a scope attached will be read as covering more than you meant.",
+   ask:"Is the scope of your acceptance stated, or assumed?" },
+ { title:"ACCEPTED WITH CONTROLLED EXCEPTIONS",
+   short:"Known differences are explicit, approved and bounded.",
+   detail:"The population passes apart from a named set whose keys, status, approval and permitted treatment are all recorded. This is honest and it is not a place to put things you have not investigated. An unexplained difference is not a controlled exception, however small it is, and calling it one is the most common way a validation pack quietly becomes untrue.",
+   ask:"Are the exceptions approved and bounded by key, or just described?" },
+ { title:"NOT YET ACCEPTED",
+   short:"Material unexplained or incorrect outcomes remain.",
+   detail:"For the Bramwell cycle this is the honest answer. A technically green 18,573 with zero rejects cannot be accepted as semantically complete while the 42 UK-to-Belgian records remain an unresolved incorrect outcome. Note the wording: not yet. It states a condition rather than a verdict, and it tells the reader what would change it.",
+   ask:"Does your statement say what would have to change for this to become acceptance?" }
+];
+
+const validationSituations = [
+ { title:"A. The report is nearly green",
+   question:"Your validation pack has one failing control. A colleague suggests adjusting its threshold so the pack reports green, since the difference is small. What do you do?",
+   options:[
+     {label:"Leave the control as it is and report the failure, because a valid control that fails should not be suppressed to produce a green status.", correct:true, feedback:"Correct. Do not negotiate the evidence. Reclassify only when there is evidence and appropriate approval, and a wish for a green report is neither."},
+     {label:"Adjust the threshold and note the change in the pack, so the report is green while the adjustment remains visible to anyone reviewing it.", correct:false, feedback:"A footnote under a green headline is read by almost nobody. The adjustment is the finding, and burying it under the result inverts their importance."},
+     {label:"Keep the control failing but move it into a separate appendix, so the main pack reflects the overall position accurately.", correct:false, feedback:"Relocating a failure is suppression with extra steps. The main pack would then misrepresent the position it claims to summarise."},
+     {label:"Ask the Data Migration Lead whether the threshold should be adjusted, so that the decision sits with the appropriate authority.", correct:false, feedback:"Escalating gives the change a signature without giving it evidence. The Lead would be approving a threshold move on the same basis you would."}
+   ]
+ },
+ { title:"B. A beautifully written query",
+   question:"A validation query returns a clean result across all 18,573 records. What should you check before trusting it?",
+   options:[
+     {label:"That the logic correctly implements the approved business rule, since a clean result from correct logic is the strongest evidence available.", correct:false, feedback:"Correct logic is necessary and it is the half people always check. The half they skip is what the query was pointed at."},
+     {label:"That the result is consistent with the previous cycle's equivalent check, since a sudden change in outcome would indicate a problem.", correct:false, feedback:"Consistency across cycles is weak evidence, and a query pointed at the wrong place will be reassuringly consistent every time you run it."},
+     {label:"That it is pointed at the right legal entity, database, run and snapshot, because a well-written query aimed at the wrong context is not evidence.", correct:true, feedback:"Correct. Validate the validator. Every validation result should be tied to the cycle, run, source snapshot, reference version, build and target context it claims to validate."},
+     {label:"That the record count returned matches the expected submitted population, confirming the query covered the full scope.", correct:false, feedback:"A matching count confirms coverage of something. It does not confirm that the something is this run, in this environment, from this snapshot."}
+   ]
+ },
+ { title:"C. \u201cWe sampled 200 records and they were fine\u201d",
+   question:"A colleague reports that a 200-record sample of legal-entity routing came back correct. How do you use that?",
+   options:[
+     {label:"Accept it as sufficient evidence for routing, since 200 records is a statistically meaningful sample of a population this size.", correct:false, feedback:"Statistical adequacy is not the issue. The 42 misrouted records are roughly 0.2 percent of the population, and a 200-record sample would very likely miss all of them."},
+     {label:"Ask for a larger sample, since the risk here warrants deeper coverage than 200 records across an 18,573-record population.", correct:false, feedback:"Increasing the sample chases the problem rather than solving it. Routing is systematically testable, so sampling is the wrong instrument at any size."},
+     {label:"Treat it as useful qualitative context, and run a population-level routing control, because legal-entity routing can be tested systematically across every record.", correct:true, feedback:"Correct. Samples help humans understand the data. Population-level controls are still required for risks that can be tested systematically, and routing is exactly that kind of risk."},
+     {label:"Discard it, since a sample that cannot prove population correctness adds nothing to a validation pack and risks creating false confidence.", correct:false, feedback:"Too dismissive. Sampling has genuine uses for qualitative checks and document review, provided the method and its limitation are stated."}
+   ]
+ },
+ { title:"D. Tracing the 42",
+   question:"You have isolated the 42 UK customers now sitting in the Belgian legal entity. What is the correct next step?",
+   options:[
+     {label:"Determine which configuration or routing rule assigned them to Belgium, so the root cause can be stated in the validation pack.", correct:false, feedback:"That is where the trace ends, not where it starts, and naming a cause before tracing the divergence is how an unproven explanation enters a pack."},
+     {label:"Reproduce the difference by key, confirm expected state and source evidence, confirm actual target state, then trace backwards through load input, transformation and staging to the first divergence.", correct:true, feedback:"Correct. Find the first point where expected and actual diverge, then bound the mechanism-based population. Only state root cause once the evidence establishes it."},
+     {label:"Establish whether the 42 share a common attribute such as country, postcode or source system, which will indicate the mechanism.", correct:false, feedback:"A reasonable analytical step and it identifies a correlation, not a divergence point. Shared attributes suggest where to look rather than proving what happened."},
+     {label:"Check whether other customers in the Belgian entity were also misrouted, to establish whether the affected population is larger than 42.", correct:false, feedback:"Population bounding matters and it comes after the mechanism. Without knowing the divergence point you cannot define what \u201cexposed\u201d means."}
+   ]
+ },
+ { title:"E. The acceptance recommendation",
+   question:"Population, keys and uniqueness all pass. Semantic validation found the 42. Root cause is not established. What do you recommend?",
+   options:[
+     {label:"NOT YET ACCEPTED for the customer scope, citing the 42 as an unresolved incorrect outcome, with the passing layers stated so the position is not read as a wholesale failure.", correct:true, feedback:"Correct. A technically green result cannot be accepted as semantically complete while a material incorrect outcome remains unresolved. Reporting what passed alongside it keeps the recommendation proportionate and useful."},
+     {label:"ACCEPTED WITH CONTROLLED EXCEPTIONS, treating the 42 as a bounded exception population pending investigation.", correct:false, feedback:"An unexplained difference is not a controlled exception. Controlled means approved and bounded, and the 42 are neither: you do not yet know whether they are the full affected population."},
+     {label:"ACCEPTED for the population excluding the 42, since the remaining 18,531 records passed every validation layer applied to them.", correct:false, feedback:"You cannot yet prove the other 18,531 are unaffected, because the mechanism that misrouted 42 is unknown. Carving them out assumes the answer to the open question."},
+     {label:"Defer the recommendation until root cause is established, since any acceptance status stated now would have to be revised once the mechanism is understood.", correct:false, feedback:"Not yet accepted is a legitimate and stable status. Declining to give one leaves the project without the clear signal it needs to hold dependent work."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The green screen",title:"The dangerous green screen",type:"mcq",
+ _correctIndex:3,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Execution finishes. The target loader reports 18,573 accepted records and zero rejects. Everyone wants to move on.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Technical evidence</th><th>The migration question it does not answer</th></tr></thead><tbody>
+ <tr><td>18,573 accepted</td><td>Were they the correct 18,573 keys?</td></tr>
+ <tr><td>Zero rejects</td><td>Were the values semantically correct?</td></tr>
+ <tr><td>Job completed</td><td>Did relationships and target context match expectation?</td></tr>
+ <tr><td>Target rows exist</td><td>Are there duplicates, omissions or unintended extras?</td></tr>
+ </tbody></table></div>
+ <h3>What exactly has the loader proven?</h3>`,
+ options:[
+   {label:"That the migration completed successfully for the submitted population, with the remaining validation work being confirmatory rather than investigative.", correct:false, feedback:"Treating validation as confirmation of a conclusion you have already drawn is the attitude this lesson exists to dismantle. You would find only what you went looking for."},
+   {label:"That the transformation logic executed correctly, since values that failed transformation would have been rejected by the target on load.", correct:false, feedback:"Targets reject values that are technically invalid. A wrong value that is well-formed passes cleanly, which covers most semantic defects."},
+   {label:"That the submitted population reached the target intact, leaving only relationship integrity and business context still to be proven.", correct:false, feedback:"Even that is more than it proved. Accepted means the platform took what it was given, without establishing that the right keys were given or that their values are right."},
+   {label:"Only that the platform accepted the submitted records. Not that the right records were submitted, the values transformed correctly, relationships survived, or records landed in the right business context.", correct:true, feedback:"Correct. Target acceptance is one layer. A successful load is an event; a validated migration is an evidenced conclusion, and the distance between those two is the whole of this lesson."}
+ ]
+},
+{
+ id:"b2",nav:"Start from expected",title:"Validation starts from the expected state",type:"content",
+ html:`<p class="lead">Before the load, the controlled customer population was 18,612.</p>
+ <div class="principle"><strong>The equation you are proving against</strong><br>18,612 = 18,573 submitted + 34 approved pre-load exceptions + 5 approved exclusions. That equation is the starting point for post-execution proof, not something to reconstruct afterwards.</div>
+ <p>Strong migration validation then moves outward in layers, from population control into identity, semantic correctness, relationships and business-critical invariants.</p>
+ <ol class="framework-checks">
+   <li>Population</li>
+   <li>Key set</li>
+   <li>Uniqueness</li>
+   <li>Field semantics</li>
+   <li>Relationships</li>
+   <li>Negative controls</li>
+   <li>Known-defect regression</li>
+   <li>Business-critical invariants</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Writing the expected result after looking at the target result. Do it in that order and it becomes very easy to rationalise whatever the system produced, because every actual value arrives already looking like an answer.</p></div>`
+},
+{
+ id:"b3",nav:"The eight layers",title:"Working through the layers on a green load",type:"guidedSteps",
+ html:`<p class="lead">Run the eight layers against the load that just reported zero rejects. Take them in order: the order is the point, because what each layer proves depends on the ones before it.</p>`,
+ steps: validationLayers,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Validation_Control_Pack.xlsx</strong><p class="small">All eight layers with the controls for each, so a cycle's validation is designed rather than improvised.</p></div><a class="btn secondary" href="/assets/downloads/Validation_Control_Pack.xlsx" download>Download</a></div>`
+},
+{
+ id:"b4",nav:"The 42",title:"The 42-record surprise, and what it does not prove",type:"content",
+ html:`<p class="lead">Post-load validation finds 42 UK customers assigned to the Belgian legal entity. The total target count still matches 18,573. The load is technically green and semantically wrong.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The critical lesson</div><p>Counts can reconcile perfectly while business meaning is wrong. Nothing in any count-based control would ever have surfaced this, because no record was lost, duplicated or rejected. They simply went to the wrong place.</p></div></div>
+ <div class="callout misconception"><div class="callout-label">Never assert a cause you have not traced</div><p>The validation evidence proves the wrong target context for 42 records. It does not, by itself, prove why. Root cause requires tracing the divergence through source, transformation, reference and configuration, and target execution. Until that is done, the finding is real and its explanation is not.</p></div>`
+},
+{
+ id:"b5",nav:"Key-level dataset",title:"Build a key-level validation dataset",type:"content",
+ html:`<p class="lead">Create a comparison view with one row per expected business key and the fields needed to compare expected against actual. This turns validation into analysable evidence rather than screenshots.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Column</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>BusinessKey</td><td>Trace identity</td></tr>
+ <tr><td>ExpectedEntity and ActualEntity</td><td>Routing comparison</td></tr>
+ <tr><td>ExpectedGroup and ActualGroup</td><td>Reference mapping comparison</td></tr>
+ <tr><td>ExpectedCountry and ActualCountry</td><td>Transformation comparison</td></tr>
+ <tr><td>ExpectedStatus and ActualStatus</td><td>Semantic comparison</td></tr>
+ <tr><td>DifferenceSignature</td><td>Groups repeatable defects</td></tr>
+ <tr><td>Cycle and Run ID</td><td>Evidence lineage</td></tr>
+ </tbody></table></div>
+ <p class="small">The DifferenceSignature column does more work than it looks. Forty-two individually reported mismatches are a pile; forty-two sharing one signature are a mechanism.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Key_Level_Comparison.sql</strong><p class="small">One row per expected key, with expected and actual pairs and a difference signature.</p></div><a class="btn secondary" href="/assets/downloads/Key_Level_Comparison.sql" download>Download</a></div>`
+},
+{
+ id:"b6",nav:"Classify differences",title:"Not every difference is a defect",type:"selectAll",
+ html:`<p class="lead">Six classes of difference. Treating them as one undifferentiated pile is how a validation report becomes something people stop reading. Explore each.</p>`,
+ options: differenceClasses,
+ coaching: differenceCoaching,
+ hint:"Explore every class before continuing.",
+ closingHtml:`<div class="principle"><strong>Classification protects the real findings</strong><br>If approved transformations and timing artefacts sit alongside genuine defects, the defects lose their weight. Separating the six is what lets a red result stay legible.</div>`
+},
+{
+ id:"b7",nav:"Where to spend effort",title:"Spend validation effort where meaning can change silently",type:"content",
+ html:`<p class="lead">Not every field deserves equal attention. Concentrate on the logic that can change meaning without producing an error.</p>
+ <ul class="framework-checks">
+   <li>Reference mappings.</li>
+   <li>Conditional transformations.</li>
+   <li>Legal-entity routing.</li>
+   <li>Eligibility filters.</li>
+   <li>Defaults and derived fields.</li>
+ </ul>
+ <p>Every item on that list can produce a well-formed, plausible, entirely wrong target value. None of them will reject.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Sampling is good for</th><th>Sampling cannot prove</th></tr></thead><tbody>
+ <tr><td>Qualitative checks</td><td>Population correctness for systematically testable risks</td></tr>
+ <tr><td>Document and image review</td><td>Absence of a low-frequency systematic defect</td></tr>
+ <tr><td>Complex presentation</td><td>That routing, defaults or eligibility behaved correctly throughout</td></tr>
+ <tr><td>Areas where exhaustive automated comparison is impractical</td><td>That relationships survived across the whole population</td></tr>
+ </tbody></table></div>
+ <p class="small">Where you do sample, make the method and its limitation explicit in the pack. An unqualified sample result reads as a population result.</p>`
+},
+{
+ id:"b8",nav:"Sample or population",title:"200 records came back clean",type:"mcq",
+ _correctIndex:1,
+ html:`<p class="lead">The 42 misrouted customers are roughly 0.2 percent of the population. A colleague has checked 200 records by hand and found no routing problems.</p>
+ <h3>What does that result actually establish?</h3>`,
+ options:[
+   {label:"That routing is broadly reliable, with any remaining defects likely to be isolated cases rather than a systematic problem.", correct:false, feedback:"A defect affecting 0.2 percent is very likely to be systematic and very unlikely to appear in 200 records. The sample is compatible with both conclusions, so it supports neither."},
+   {label:"Very little about routing correctness, because a defect at this frequency would almost certainly be absent from a 200-record sample.", correct:true, feedback:"Correct. Population-level controls are required for risks that can be tested systematically. Routing is one of them, so the sample is qualitative context rather than proof."},
+   {label:"That the transformation logic for routing is correct, since a systematic logic error would have produced visible failures within the sample.", correct:false, feedback:"A systematic error affecting a small conditional subset produces no visible failures in most samples. Systematic does not mean frequent."},
+   {label:"That routing is correct for the sampled population, which can be extended by sampling further batches until adequate coverage is reached.", correct:false, feedback:"Sampling towards full coverage is a slower, less reliable version of the population control you could have run once."}
+ ]
+},
+{
+ id:"b9",nav:"Movements and regression",title:"Reconcile movements, and validate corrected defects specifically",type:"content",
+ html:`<p class="lead">If a metric changes between cycles, explain the movement rather than reporting the endpoint.</p>
+ <div class="callout experience"><div class="callout-label">The Bramwell example</div><p>Payment-term exceptions fell from 760 to 214, and 23 of the 214 were new. A lower total does not mean every earlier problem was fixed cleanly, and the headline improvement conceals a cohort that arrived during it.</p></div>
+ <h3>After a fix, prove three things rather than one</h3>
+ <div class="principle"><strong>Regression rule</strong><br>Prove the defect is fixed. Prove the full affected population is corrected. Prove the fix did not create unexplained changes elsewhere.</div>
+ <p>For the delivery-address defect that means a positive DELIVERY_PRIMARY case, a positive DELIVERY_SECONDARY case, a negative BILLING_ONLY case, the full mechanism-based recovery population, and a check for unexplained changes outside that population.</p>
+ <p class="small">Most regression packs prove the first of the three. The second is where the unreported records live, and the third is where a fix that broke something else would show up.</p>`
+},
+{
+ id:"b10",nav:"Identity and unresolved",title:"Evidence needs identity, and unresolved must stay visible",type:"content",
+ html:`<p class="lead">Every validation result should be tied to what it actually validates.</p>
+ <ul class="framework-checks">
+   <li>Cycle ID and Run ID.</li>
+   <li>Source snapshot.</li>
+   <li>Reference and mapping version.</li>
+   <li>Package and build.</li>
+   <li>Target environment and context.</li>
+   <li>Validation query and its version.</li>
+   <li>Execution timestamp.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">A failed validation query creates false confidence</div><p>A beautifully written query pointed at the wrong legal entity, database, run or snapshot is not evidence. Validate the validator, every time, before you trust a clean result from it.</p></div>
+ <h3>Unresolved values must survive validation</h3>
+ <p>An unresolved source value should not disappear from reporting merely because the target accepted a fallback. Payment term 45E has no approved target equivalent, and CustomerGroup 99 remains unresolved. If either stops appearing in your validation output, that is a finding in itself: something has quietly resolved them without approval.</p>`
+},
+{
+ id:"b11",nav:"Investigate",title:"Investigate unexplained differences properly",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">The temptation</div><p>Adjusting the validation report until it turns green. It is quick, it is defensible sentence by sentence, and it produces a pack that proves nothing.</p></div>
+ <ol class="framework-checks">
+   <li>Reproduce the difference by key.</li>
+   <li>Confirm expected state and source evidence.</li>
+   <li>Confirm actual target state.</li>
+   <li>Trace backwards through target load input, transformation and staging.</li>
+   <li>Find the first divergence.</li>
+   <li>Bound the mechanism-based population.</li>
+   <li>Only then state root cause, and only if it is proven.</li>
+ </ol>
+ <p class="small">Step 6 before step 7 is the ordering that matters. A root cause stated before the population is bounded tends to define the population to fit itself.</p>`
+},
+{
+ id:"b12",nav:"Triage board",title:"The validation triage board",type:"selectAll",
+ html:`<p class="lead">Six statuses that keep a red result from becoming an undifferentiated problem pile. Explore each one and where it belongs.</p>`,
+ options: triageStatuses,
+ coaching: triageCoaching,
+ hint:"Explore every status before continuing.",
+ closingHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Difference_Triage.xlsx</strong><p class="small">Difference signature, affected keys, status, owner and the evidence that supports the classification.</p></div><a class="btn secondary" href="/assets/downloads/Difference_Triage.xlsx" download>Download</a></div>`
+},
+{
+ id:"b13",nav:"Under pressure",title:"Scope, pressure, and not negotiating the evidence",type:"content",
+ html:`<h3>Does this defect invalidate wider acceptance?</h3>
+ <p>Assess the mechanism, the affected population, the business impact, the dependencies, and whether unaffected populations can be proven independently. That last one is the deciding question, and with an unknown mechanism the answer is usually no.</p>
+ <h3>When the deadline approaches</h3>
+ <div class="principle"><strong>Reduce noise, not proof</strong><br>Focus on the controls that establish population, critical semantics, relationships and known high-risk rules. Cutting the number of controls you report is reasonable. Cutting the controls that would have found something is not.</div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Do not negotiate the evidence</div><p>If a valid control fails, do not suppress it because the team wants green status. Reclassify only when there is evidence and appropriate approval. The pressure to do otherwise is rarely stated openly, which is exactly what makes it effective.</p></div></div>`
+},
+{
+ id:"b14",nav:"Acceptance",title:"Three acceptance recommendations",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">A validation pack ends in one of three statements. Explore each, and answer the test underneath it against the pack you would write today.</p>`,
+ items: acceptanceOptions,
+ takeawayHtml:`<div class="principle"><strong>Acceptance status follows evidence, not schedule pressure</strong><br>The recommendation is yours to make on the evidence. What the project then does with it, including accepting a risk you have named, is a decision that belongs elsewhere.</div>`
+},
+{
+ id:"b15",nav:"Validation decisions",title:"Consultant situations \u2013 Five validation decisions",type:"situations",
+ html:`<p class="lead">Five moments in a validation exercise where the quick answer is available and the evidence does not support it.</p>`,
+ items: validationSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Count That Passed", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/lesson4-fromfield-marcus.mp3",
+   reflection:"In your last acceptance pack, was technical acceptance reported separately from business-semantic validation?"
+ })}</div>`
+},
+{
+ id:"b16",nav:"Acceptance pack",title:"Build it \u2013 The acceptance evidence pack",type:"reflection",
+ html:`<p class="lead">Write the acceptance summary for the Bramwell customer cycle. Another competent person should be able to understand what was executed, what was expected, what actually happened, what differs, what remains unresolved, and what recommendation follows.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>What the pack contains</caption><thead><tr><th>Section</th><th>Section</th></tr></thead><tbody>
+ <tr><td>Population reconciliation</td><td>Negative controls</td></tr>
+ <tr><td>Key-set comparison</td><td>Known-defect regression</td></tr>
+ <tr><td>Duplicate control</td><td>Unresolved and approved exception register</td></tr>
+ <tr><td>Semantic comparison summary</td><td>Difference investigation evidence</td></tr>
+ <tr><td>Relationship checks</td><td>Acceptance recommendation</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The trap in this one</div><p>Everything except the semantic layer passes. A pack that leads with the passing layers, and reaches the 42 in its ninth paragraph, is accurate and misleading. Lead with the fact that changes what happens next.</p></div></div>
+ <p class="lead">Write the summary and the recommendation below.</p>
+ <textarea id="reflection" placeholder="HEADLINE: ...&#10;POPULATION AND KEYS: ...&#10;SEMANTIC FINDINGS: ...&#10;UNRESOLVED: ...&#10;EVIDENCE LINEAGE: ...&#10;RECOMMENDATION: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Acceptance_Evidence_Summary.docx</strong><p class="small">The ten sections above, structured so the recommendation sits on top of its evidence.</p></div><a class="btn secondary" href="/assets/downloads/Acceptance_Evidence_Summary.docx" download>Download</a></div>`,
+ minLength:70,
+ checks:[
+   { test:/42|legal entity|Belgi/i, strength:"You led with or clearly stated the semantic finding rather than burying it.", gap:"State the 42 legal-entity mismatches prominently. A pack that reaches them late is accurate and misleading." },
+   { test:/18,?612|18,?573|34|reconcil/i, strength:"You reported the population reconciliation against the control equation.", gap:"Reconcile the population explicitly: 18,612 total, 18,573 submitted, 34 approved exceptions, 5 approved exclusions." },
+   { test:/not yet accepted|NOT YET/i, strength:"Your recommendation is not yet accepted, which is the honest status for this evidence.", gap:"Choose a recommendation. A green result with an unresolved incorrect outcome is not yet accepted, not accepted with exceptions." },
+   { test:/root cause .*(not|unknown|unestablish)|not (yet )?established|do not know/i, strength:"You reported the finding without asserting a cause you have not proven.", gap:"Say that root cause is not yet established rather than proposing one, and what you are doing to trace it." },
+   { test:/45E|CustomerGroup 99|unresolved/i, strength:"Unresolved business treatments still appear in your pack rather than having quietly vanished.", gap:"Include 45E and CustomerGroup 99 as unresolved. If they stopped appearing, something resolved them without approval." },
+   { test:/run|snapshot|reference version|build|cycle|lineage/i, strength:"Your evidence is tied to the specific run and baselines it validates.", gap:"Tie the validation to its cycle, run, source snapshot, reference version, build and target context." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Headline.</strong> The customer cycle is NOT YET ACCEPTED. The load was technically clean and semantic validation found 42 UK customers in the Belgian legal entity, which is a material incorrect outcome and is not yet explained.</div>
+ <div class="quote"><strong>Population, keys and uniqueness.</strong> All three reconcile. The source-cycle population of 18,612 resolves to 18,573 submitted, 34 approved pre-load exceptions and 5 approved exclusions. The submitted key set matches the accepted key set exactly, with no unexpected target keys and no exception or exclusion keys leaking into the target. Target grain shows no unexplained duplicates. The load reported 18,573 accepted and zero rejects, which is consistent with all of the above and proves none of what follows.</div>
+ <div class="quote"><strong>Semantic findings.</strong> 42 UK customers have landed in the Belgian legal entity while the total count still matches. Root cause is not established: the evidence proves the wrong target context for those records, not why. We are reproducing the difference by key, confirming source expectation and actual target state, and tracing backwards through load input, transformation and staging to the first divergence. Until the mechanism is bounded, the 42 are recorded as INVESTIGATE rather than as a defect with a known population, and I cannot yet prove the other records were unaffected by the same mechanism.</div>
+ <div class="quote"><strong>Unresolved and lineage.</strong> Payment term 45E has no approved target equivalent and CustomerGroup 99 remains unresolved; both appear in the exception register and neither has been defaulted. All validation results are tied to the cycle and run identity, source snapshot, reference version, package build and target context, and the queries were confirmed to be pointed at that context before the results were relied on. Recommendation: not yet accepted for the customer scope. This becomes acceptance, or acceptance with controlled exceptions, once the 42 are explained, their full affected population is bounded, and the unaffected population can be proven independently.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The sentence that makes this pack strong is the one admitting you cannot yet prove the other records were unaffected. It is uncomfortable, it is true, and it is what stops somebody carving out an acceptance you have not evidenced.":"Check your recommendation and your ordering. Not yet accepted is the honest status here, and the 42 should be in your first paragraph rather than your last."}</div>`
+},
+{
+ id:"b17",nav:"Checklist",title:"The validation checklist, and the same discipline elsewhere",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Area</th><th>Proof</th></tr></thead><tbody>
+ <tr><td>Population</td><td>Source, submitted, exception, exclusion and target outcomes reconcile</td></tr>
+ <tr><td>Identity</td><td>Expected and actual key sets match</td></tr>
+ <tr><td>Uniqueness</td><td>Target grain has no unexplained duplicates</td></tr>
+ <tr><td>Semantics</td><td>Critical fields match approved expected outcomes</td></tr>
+ <tr><td>Relationships</td><td>Required links survive migration</td></tr>
+ <tr><td>Negative controls</td><td>Forbidden defaults, exclusions and routing do not occur</td></tr>
+ <tr><td>Regression</td><td>Known fixes are proven across the full affected mechanism</td></tr>
+ <tr><td>Evidence lineage</td><td>Validation tied to the exact cycle, run and baselines</td></tr>
+ <tr><td>Differences</td><td>Every material mismatch classified and owned</td></tr>
+ <tr><td>Recommendation</td><td>Acceptance status follows evidence, not schedule pressure</td></tr>
+ </tbody></table></div>
+ <h3>Beyond the customer example</h3>
+ <p>The same layered proof applies across Bramwell's other domains. Supplier validation must preserve the unresolved classification conflict rather than silently normalising it. Product-site validation must identify the 286 relationships outside the approved reference set. Fixed-asset validation must keep the 126 depreciation-category exceptions visible. For Finance, reconciliation has to distinguish what is actually proven from what is still unknown: the established open-payables source control total is &pound;6,284,913.72, and no target result has been established against it.</p>
+ <p class="small">In none of those cases does validation mean making the exception population disappear.</p>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2013 Which result would worry you more?",type:"reflection",
+ html:`<p class="lead">Which validation result would worry you more: 100 technical rejects, or zero rejects with no semantic comparison? Explain what each result does and does not tell you.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Most people arrive at the second and it is worth working out why. One hundred rejects come with keys, a signature and a boundary. Zero rejects with no semantic comparison come with a number that feels like proof and is not evidence about anything except the interface.</p></div></div>
+ <textarea id="reflection" placeholder="The result that would worry me more..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/key|signature|bounded|visible|known/i, strength:"You recognised that rejects come with evidence attached: keys, signature, a boundary.", gap:"Say what 100 rejects give you that zero rejects do not: identifiable records and a failure signature to work from." },
+   { test:/nothing|does not (tell|prove)|only|interface|platform accepted/i, strength:"You were precise about what zero rejects actually establishes.", gap:"Say what zero rejects proves. It is a fact about the interface, not about whether the data is right." },
+   { test:/false confidence|reassur|stop looking|move on|complacen/i, strength:"You identified the real risk: a green number stops people investigating.", gap:"Consider the behavioural effect. A green result ends the investigation, which is why an undetected defect behind one is worse than a visible failure." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Zero rejects with no semantic comparison, without much hesitation. A hundred rejects is a bad afternoon with everything I need in it: the failing keys, an error signature to group them by, a clear boundary between what worked and what did not, and a team that knows there is a problem. Zero rejects tells me one thing only, that the platform accepted what it was given, and it tells me nothing about whether the right records were given or whether their values mean what they should. The real damage is behavioural. A hundred rejects starts an investigation; zero rejects ends one. Everybody moves on, the dependent loads start, and whatever is wrong gets discovered later by somebody in the business who cannot find their customers.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The behavioural half is what makes this answer useful rather than merely correct: a green number does not just fail to detect the defect, it actively stops the search that would have.":"Push past what each result proves, to what each result causes. One of them starts an investigation and the other ends one, and that difference matters more than the numbers."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2013 A validated migration is an evidenced conclusion",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Treat technical acceptance as one layer, not as the result.</li>
+   <li>Start validation from the expected state, written beforehand.</li>
+   <li>Reconcile population, then key sets, then uniqueness.</li>
+   <li>Compare field meaning, not merely whether fields are populated.</li>
+   <li>Validate the relationships that make records usable.</li>
+   <li>Run negative controls for defaults, exclusions and routing.</li>
+   <li>Prove corrected defects across the full affected mechanism.</li>
+   <li>Build a key-level comparison dataset with a difference signature.</li>
+   <li>Classify differences rather than treating them as one pile.</li>
+   <li>Spend effort where logic can silently change meaning.</li>
+   <li>Use sampling for qualitative checks, never as population proof.</li>
+   <li>Explain movements between cycles, not only endpoints.</li>
+   <li>Keep unresolved values visible in validation output.</li>
+   <li>Tie every result to its cycle, run, snapshot, reference and build.</li>
+   <li>Validate the validator before trusting a clean result.</li>
+   <li>Trace unexplained differences to the first divergence.</li>
+   <li>Bound the population before stating a root cause.</li>
+   <li>Reduce noise under pressure, never proof.</li>
+   <li>Do not suppress a valid failing control to produce green status.</li>
+   <li>Let the acceptance recommendation follow the evidence.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A successful load is an event. A validated migration is an evidenced conclusion: the intended population arrived in the intended state, with the intended meaning and relationships, and every unexplained difference is controlled.</div>`
+},
+{
+ id:"b20",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Validating your migration execution.</strong></p>
+ <p>You can now prove whether a migration execution produced the intended target state: reconciling populations, validating keys and relationships, testing semantic correctness, investigating unexplained differences, distinguishing technical acceptance from migration acceptance, building evidence that survives challenge, and recommending acceptance, conditional acceptance or further recovery work.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Preparing your migration for cutover</strong></p>
+ <p>You will move into cutover readiness: final baselines, timing, dependencies, runbook rehearsal, access, support, rollback and recovery evidence, and the handover into the cutover window itself.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a loader reports zero rejects and the room starts packing up.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 4: Validating your migration execution",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "A successful load is an event. A validated migration is an evidenced conclusion",
+  storageKey: "tp_dmc5_lesson4_v1",
+  lessonId: "dmc5-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

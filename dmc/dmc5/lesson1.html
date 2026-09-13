@@ -1,1 +1,681 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Preparing for a migration cycle</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
 
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 1 - "Preparing for a migration cycle".
+   Built as a readiness inspection rather than a checklist lesson,
+   per the manuscript's own authoring notes: the learner receives
+   an apparently executable but poorly controlled cycle folder and
+   progressively discovers why it is not yet safe to run.
+
+   Source: DMC5_Lesson1_Preparing_for_a_Migration_Cycle_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc's module-title table, read directly this session. The
+   manuscript's own header instead says "Migration Execution &
+   Technical Readiness" - the same conflict shape as DMC3's and
+   DMC4's, resolved the same way: alignment doc wins. Third
+   occurrence; recorded in STATE.md.
+
+   INTERACTIVITY TARGET. DMC1-4 drifted from 48% to around 70%
+   content blocks, which the estate harness surfaced. This lesson
+   is built to 50% content with 12 gating blocks, by converting
+   the manuscript's table-heavy sections (reference risks, weak
+   versus testable gates, stop conditions) into selectAll clinics
+   rather than more prose.
+
+   DELIBERATE guidedSteps USE (b16). The 14-step operational
+   sequence is the case the playbook reserves guidedSteps for:
+   each step only makes sense having seen the one before, and the
+   teaching point is the order itself. The construction exercise
+   in this lesson is b20, a reflection.
+
+   Bramwell facts used, canonical per the authoring notes and
+   reconciling exactly: cycle population 18,612 = 34 approved
+   pre-load exceptions + 5 approved exclusions + 18,573 submitted.
+   Also: payment-term exceptions 760 -> 214 with 23 new; 18 German
+   CustomerGroup 99 records with no approved final mapping; payment
+   term 45E with no approved target equivalent and NET30 an
+   unapproved fallback; the SO-78452 dependency chain (C10482,
+   C10482-DEL-02, PRD-44781, UK01, WH-BRI, GBP, STDROAD); the 42
+   UK-to-Belgian defect, used only to motivate semantic validation,
+   with its root cause NOT invented; and, in the enterprise
+   transfer block, the 73 supplier classification conflicts
+   including unresolved S20418, the 286 product-site relationships
+   outside the approved target reference set, and the 126
+   depreciation-category exceptions including unresolved DEP-07.
+
+   Nothing here approves 45E, CustomerGroup 99, STD or DEP-07.
+
+   Sections 24 to 31's readiness lab is synthetic training
+   material built from the canonical population.
+
+   Persona: Priya, Data Migration Consultant, Healthcare ERP,
+   title "The File That Changed at 07:12", is specified directly
+   by this manuscript's own authoring notes, which also require it
+   to stay distinct from other Turner Page field stories.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=2, b4=0, b14=3,
+   b19 items A-E = 1,3,0,2,1. Full sequence 2,0,3,1,3,0,2,1 -
+   four positions used twice each, no run of three.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const baselinesToFreeze = [
+ { title:"Source baseline",
+   short:"Which extract actually supplies the records, provably.",
+   detail:"A file arrives at 06:00. At 09:30 somebody replaces it with a corrected extract under the same filename. Profiling evidence, exception counts and transformation output may now describe different source populations while the filename looks unchanged. The control is a stable snapshot identity plus enough metadata to prove what entered the cycle: snapshot ID, controlled timestamp, exact artefact identity, row count, distinct key count, expected schema, origin and owner.",
+   ask:"If somebody replaced the file an hour ago, would anything in your evidence show it?" },
+ { title:"Rule baseline",
+   short:"Which approved mapping and transformation version applies.",
+   detail:"A cycle should not quietly assemble rules from whatever files happen to be current. Each rule artefact needs its readiness check: the mapping needs an approved version, transformation logic needs a build or commit identity, cleansing rules need to be approved treatments only, the decision register needs to be reflected in the implementation, exception rules need current reasons and approval status, and reference mappings need a version and context. If a rule changes after readiness is established, assess the affected population and either re-establish readiness or control the change explicitly.",
+   ask:"Could you name the approved version of every rule this cycle will apply?" },
+ { title:"Reference baseline",
+   short:"Reference data is executable logic, not just data.",
+   detail:"A cross-reference table looks like data and behaves like code: changing it changes migration behaviour. Two active matches for one source and context will multiply rows. Old and new versions mixed together will produce results nobody can explain. Context missing from the key will map the wrong grain. A reference changed after package generation makes the package and its evidence describe different runs. Know which version executed, what changed, and what population the change affects.",
+   ask:"Was the reference version chosen because it is approved, or because it is newest?" },
+ { title:"Build baseline",
+   short:"Which executable will run, in which environment, with which parameters.",
+   detail:"The package ran successfully yesterday and a transformation fix has been deployed since. Identify the exact build that will run, confirm the expected environment, confirm required parameters and connection targets, confirm reference and configuration versions, run smoke checks on high-risk logic, confirm logging and run identity, confirm the output location is clean or versioned, and make sure a previous run's output cannot be mistaken for today's. Production-ready means another competent consultant could identify and execute the same build with the same controlled inputs.",
+   ask:"Could somebody else run exactly what you are about to run, without asking you which one?" }
+];
+
+const referenceRisks = [
+ "Two active matches for one source and context",
+ "Old and new reference versions mixed",
+ "Context missing from the mapping key",
+ "A new source value with no approved treatment",
+ "Reference changed after the package was generated",
+ "A manual edit made straight into the workbook"
+];
+const referenceRiskCoaching = [
+ "<strong>Control:</strong> a zero, one or more-than-one match check on every lookup. This is the risk that silently multiplies rows, and a row count that grows without explanation is one of the harder defects to trace backwards.",
+ "<strong>Control:</strong> an effective-date or version filter, applied consistently. Mixed versions produce results that are individually defensible and collectively wrong.",
+ "<strong>Control:</strong> mapping-grain validation. If the business meaning varies by country, entity or date, the context belongs in the key rather than being flattened into a single column.",
+ "<strong>Control:</strong> an unmapped-value report that runs before the cycle rather than after it. A new source value discovered during execution is a stop condition, not a footnote.",
+ "<strong>Control:</strong> tie reference identity to the run, so the package and the evidence describe the same thing. This is the mismatch that makes a green result unprovable afterwards.",
+ "<strong>Control:</strong> controlled publication and versioning. An edit made directly in the workbook has no approval trail, and will be indistinguishable from an approved change in a week's time."
+];
+
+const weakGates = [
+ "\u201cMapping complete\u201d",
+ "\u201cData looks good\u201d",
+ "\u201cPackage ready\u201d",
+ "\u201cBusiness signed off\u201d",
+ "\u201cValidation ready\u201d",
+ "\u201cDependencies ready\u201d"
+];
+const weakGateCoaching = [
+ "<strong>Testable version:</strong> every in-scope source value has either an approved treatment or an explicit controlled exception. Complete is a feeling; coverage is a query you can run.",
+ "<strong>Testable version:</strong> the population reconciles and the critical profiling thresholds and known exceptions are controlled. \u201cLooks good\u201d cannot fail, which is exactly why it is useless as a gate.",
+ "<strong>Testable version:</strong> a named build passes smoke checks with the required logging and parameters. Ready without a build identity means nobody can say afterwards what ran.",
+ "<strong>Testable version:</strong> specific decisions and exception treatments have recorded approval. A general sense that the business is content is not an approval anybody can point to later.",
+ "<strong>Testable version:</strong> the queries point at the current cycle and the expected results are defined. Validation inherited unchanged from the previous cycle is the single most common version of this failure.",
+ "<strong>Testable version:</strong> the required parent, reference and configuration objects are confirmed present in the target. Assumed prerequisites are discovered during execution, which is the worst possible moment."
+];
+
+const stopConditions = [
+ "Source count or key set differs unexpectedly",
+ "Reference version not approved or not identifiable",
+ "The 0/1/>1 mapping control finds ambiguous matches",
+ "Expected submitted population does not reconcile",
+ "Package build differs from the readiness evidence",
+ "A target prerequisite is missing",
+ "Validation query points at the wrong cycle or context"
+];
+const stopConditionCoaching = [
+ "<strong>Response:</strong> stop and reconcile before transformation. Carrying on means every downstream number describes a population you have not agreed.",
+ "<strong>Response:</strong> stop the release. An unidentifiable reference version makes the entire run unprovable, however clean the result looks.",
+ "<strong>Response:</strong> hold the affected population or correct the reference. Do not let an ambiguous match resolve itself by first-match behaviour nobody chose.",
+ "<strong>Response:</strong> do not generate or load the package. A population that will not reconcile before the run will not reconcile after it either, and by then it is in the target.",
+ "<strong>Response:</strong> re-establish readiness. The evidence you gathered describes a different executable, so it is not evidence about this run.",
+ "<strong>Response:</strong> do not load the dependent records. The unaffected population may still be able to proceed, which is a separate and legitimate decision.",
+ "<strong>Response:</strong> correct it before accepting the result. Validation pointed at the previous cycle will pass, and it will prove nothing about this one."
+];
+
+const runSequence = [
+{html:`<h4>Steps 1 to 4 \u2013 Before anything is transformed</h4>
+ <ol class="framework-checks">
+   <li>Confirm the readiness gate and the run manifest.</li>
+   <li>Confirm the environment and target prerequisites.</li>
+   <li>Freeze and confirm the source and reference inputs.</li>
+   <li>Execute extraction and staging, if they are in scope for this cycle.</li>
+ </ol>
+ <p class="small">Nothing here is glamorous and all of it is cheap. Every one of these four steps is an hour's work now or a day's investigation later.</p>`},
+{html:`<h4>Steps 5 to 8 \u2013 Transform, then prove before you package</h4>
+ <ol class="framework-checks" start="5">
+   <li>Run transformations.</li>
+   <li>Reconcile transformation outcomes.</li>
+   <li>Generate the controlled load package.</li>
+   <li>Perform pre-load package checks.</li>
+ </ol>
+ <p>Notice step 6. Reconciling before the package is generated is what stops a population problem becoming a target problem. Once the package exists, the temptation to load it is considerable.</p>`},
+{html:`<h4>Steps 9 to 11 \u2013 Load, then find out what actually happened</h4>
+ <ol class="framework-checks" start="9">
+   <li>Execute the target load.</li>
+   <li>Capture technical outcomes.</li>
+   <li>Run post-load reconciliation and semantic validation.</li>
+ </ol>
+ <p>Step 10 and step 11 are different activities and it matters. Technical outcomes tell you what the target accepted. Semantic validation tells you whether what it accepted is right, and only one of those two is reported by the load itself.</p>`},
+{html:`<h4>Steps 12 to 14 \u2013 Classify, decide, publish</h4>
+ <ol class="framework-checks" start="12">
+   <li>Classify defects and exceptions.</li>
+   <li>Decide whether rerun or recovery is required.</li>
+   <li>Publish the cycle evidence and status.</li>
+ </ol>
+ <div class="principle"><strong>A sequence exposes missing dependencies</strong><br>If a step has no owner, no input, no expected output or no control, the rehearsal has just found a readiness gap. That is the point of writing the run in operational order rather than conceptual order.</div>`}
+];
+
+const labSituations = [
+ { title:"A. The population will not reconcile",
+   question:"Your source extract has 18,612 rows. The exception file has 34 keys, the exclusion file has 5, and the candidate submitted file has 18,573. The arithmetic works. What do you check next?",
+   options:[
+     {label:"Accept the reconciliation, since the four figures balance exactly against the agreed cycle population of 18,612.", correct:false, feedback:"The counts balancing is necessary and nowhere near sufficient. Two files can both contain 18,573 rows and contain different customers."},
+     {label:"Compare the key sets: whether the three statuses overlap, whether their union equals the source population, and whether any source key appears in none of them or in more than one.", correct:true, feedback:"Correct. Reconcile by key as well as by count. The pass condition is that every source-cycle key has exactly one controlled pre-execution status and the intended submitted key set is explicit."},
+     {label:"Check the distinct customer-number count in the source extract, which will confirm whether the 18,612 contains any duplicate keys.", correct:false, feedback:"A genuine check and only part of one. Duplicate detection within the source says nothing about whether the three status files carve it up cleanly."},
+     {label:"Compare this cycle's figures against the previous cycle's, since a matching shape across cycles is good evidence the population is stable.", correct:false, feedback:"Matching last cycle's counts proves very little. The population may have changed entirely while the totals stayed the same."}
+   ]
+ },
+ { title:"B. \u201cUse the newer reference, it has the fix\u201d",
+   question:"A Teams message tells you to switch to a newer reference file. The timestamp is indeed later. What do you do?",
+   options:[
+     {label:"Adopt it, since a later reference containing a known fix is plainly better than knowingly running with a version that lacks it.", correct:false, feedback:"Newer is not the same as correct for this cycle. You have adopted an unapproved change through chat, and the package may never have been tested against it."},
+     {label:"Reject it and run with the reference version already recorded in the manifest, then raise the discrepancy separately after the cycle.", correct:false, feedback:"Running with a reference somebody has told you is wrong, without establishing whether they are right, is not control either. The question deserves an answer before the run."},
+     {label:"Ask the sender to confirm the instruction in writing, so the reference change has an owner attached to it before you act.", correct:false, feedback:"A named sender is not an approval, and a written instruction to make an unassessed change is still an unassessed change."},
+     {label:"Establish what changed, who approved it, which source values and population it affects, whether the package was tested against it, and whether readiness evidence must be regenerated.", correct:true, feedback:"Correct. Do not adopt a reference change through chat alone. The fix may well be real; the point is that adopting it silently makes your readiness evidence describe a different run."}
+   ]
+ },
+ { title:"C. The address dependency is not reconciled",
+   question:"The address report shows delivery-address readiness has not been fully reconciled. Does the customer cycle stop?",
+   options:[
+     {label:"Not necessarily: confirm whether customer execution can proceed independently, identify which downstream activity cannot, record the dependency and control point, and escalate only the material sequence decision.", correct:true, feedback:"Correct. Not every unresolved item stops the whole cycle. Customer records may be executable while a dependent activity is not, and separating those two is the consultant's job."},
+     {label:"Yes. Address data is a prerequisite for the customer records, so the cycle cannot safely proceed until the reconciliation is complete.", correct:false, feedback:"Addresses are a dependency for some downstream activity, not necessarily for customer execution itself. Stopping everything wastes a cycle that could have proceeded."},
+     {label:"Yes, and the whole question should go to the Data Migration Lead, since a dependency gap of this kind is a release decision rather than a technical one.", correct:false, feedback:"Escalating before you have established what is genuinely blocked hands the Lead your analysis rather than your recommendation."},
+     {label:"No. Proceed with the full cycle and handle any address-dependent failures through the exception process once they appear.", correct:false, feedback:"Discovering a known dependency gap through failures during execution is precisely the outcome readiness work exists to prevent."}
+   ]
+ },
+ { title:"D. \u201cIt ran fine last cycle\u201d",
+   question:"A colleague argues the package is clearly ready, since the identical build ran cleanly last cycle with no rejects. How do you respond?",
+   options:[
+     {label:"Agree for the technical build specifically, while noting that the business decisions behind the mapping still require separate confirmation.", correct:false, feedback:"This concedes the wrong half. The build itself is one of the things that may have changed, and a clean previous run does not evidence today's inputs either."},
+     {label:"Point out that no rejects last cycle proves nothing, because technical acceptance has never been a measure of semantic correctness in any cycle.", correct:false, feedback:"True, and it answers a different argument. The immediate problem is that last cycle's evidence describes last cycle's inputs, whatever it measured."},
+     {label:"Say that it worked last time is useful history rather than proof, and that today's cycle needs its own controlled source, reference, build and expected-result evidence.", correct:true, feedback:"Correct. Technical readiness is evidence about this run. A previous success tells you the code is capable, not that today's inputs, references and expectations are controlled."},
+     {label:"Ask them to rerun the previous cycle's validation pack against the current data, so the comparison rests on something measurable.", correct:false, feedback:"Reusing the previous cycle's validation unchanged is itself a listed readiness anti-pattern. It will very likely pass and prove nothing."}
+   ]
+ },
+ { title:"E. The go-to-execution recommendation",
+   question:"Population reconciles by key. Baselines are fixed and identified. Validation is current-cycle and includes negative tests. 18 CustomerGroup 99 records and the 45E population remain unresolved but explicitly classified. What do you recommend?",
+   options:[
+     {label:"NOT READY TO EXECUTE, because unresolved business treatments remain within the cycle population and their target values are not yet approved.", correct:false, feedback:"Readiness does not mean forcing unresolved populations to zero. It means knowing their keys, status, authority and permitted treatment before execution, which you do."},
+     {label:"READY WITH CONTROLLED EXCEPTIONS, citing the specific evidence that passed and naming the unresolved populations and the exception controls they sit under.", correct:true, feedback:"Correct. Execution can proceed for the explicit ready population under agreed exception controls. The recommendation must cite the exact evidence, and it remains a technical-readiness recommendation rather than the programme's Go or No-Go authority."},
+     {label:"READY TO EXECUTE, since every defined readiness gate passes and the unresolved records are already outside the submitted population.", correct:false, feedback:"Ready to execute means all gates pass for the stated scope with nothing carved out. Using it here hides the controlled exceptions inside a green word."},
+     {label:"READY WITH CONTROLLED EXCEPTIONS, with the unresolved records defaulted to their closest approved values so the submitted population stays complete.", correct:false, feedback:"Defaulting unresolved values to make a count look complete is the exact readiness anti-pattern this lesson warns against, and the label does not make it controlled."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Before Run",title:"The load has not started, but the migration can already be wrong",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The Bramwell customer package is technically executable. Press Run and it will do something. Here is everything else that is true this morning.</p>
+ </div>
+ <ul class="framework-checks">
+   <li>The source extract was refreshed after profiling.</li>
+   <li>The mapping workbook has two versions called FINAL.</li>
+   <li>The reference file was updated this morning.</li>
+   <li>The exception list does not identify the source snapshot.</li>
+   <li>Nobody has written down the expected submitted population.</li>
+   <li>The validation query still points at the previous cycle.</li>
+   <li>A dependent address package has not been confirmed ready.</li>
+ </ul>
+ <h3>What is your assessment?</h3>`,
+ options:[
+   {label:"The cycle can proceed, since none of these prevents the package from executing and each can be documented properly afterwards.", correct:false, feedback:"They do not prevent execution. That is exactly the difficulty: the run will complete and the result will be almost impossible to interpret or defend."},
+   {label:"The validation query and the missing expected population must be fixed first, and the remaining items can be resolved during the run itself.", correct:false, feedback:"Those two are real and they are not separable from the rest. A refreshed extract and an unidentified reference make the validation fix meaningless anyway."},
+   {label:"The cycle is not ready. Execution should consume a controlled set of inputs, rules, references, packages and expectations, and none of those is currently fixed or identifiable.", correct:true, feedback:"Correct. A migration cycle begins long before anybody presses Run. If those things are not fixed and identifiable beforehand, a green load may prove very little."},
+   {label:"The cycle is not ready, because seven separate control gaps in one handover indicate a process problem that needs addressing before any further cycles are attempted.", correct:false, feedback:"The process point may be fair and it is not the reason to stop today. The reason is that this specific run would produce a result nobody could interpret."}
+ ]
+},
+{
+ id:"b2",nav:"What a cycle needs",title:"What a migration cycle actually needs",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Readiness area</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Population</td><td>Exactly which records are intended to migrate?</td></tr>
+ <tr><td>Source baseline</td><td>Which extract or snapshot supplies them?</td></tr>
+ <tr><td>Rules</td><td>Which approved mapping or transformation version applies?</td></tr>
+ <tr><td>Reference data</td><td>Which cross-reference or configuration baseline applies?</td></tr>
+ <tr><td>Technical build</td><td>Which code or package version will execute?</td></tr>
+ <tr><td>Exceptions</td><td>Which records are intentionally not submitted, and why?</td></tr>
+ <tr><td>Dependencies</td><td>What must exist before this entity can run?</td></tr>
+ <tr><td>Reconciliation</td><td>What counts should balance before and after execution?</td></tr>
+ <tr><td>Validation</td><td>How will we prove the target result is correct?</td></tr>
+ <tr><td>Recovery</td><td>What evidence will allow a safe rerun if something fails?</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Technical readiness is evidence</div><p>\u201cIt worked last time\u201d is useful history. It is not proof that today's cycle is ready, because it describes last cycle's inputs, references and expectations rather than this one's.</p></div></div>`
+},
+{
+ id:"b3",nav:"The control equation",title:"Start with the cycle population",type:"content",
+ html:`<p class="lead">For the Bramwell customer cycle, the agreed population is 18,612.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Population status</th><th>Count</th></tr></thead><tbody>
+ <tr><td>Approved pre-load exceptions</td><td>34</td></tr>
+ <tr><td>Approved exclusions</td><td>5</td></tr>
+ <tr><td>Submitted population</td><td>18,573</td></tr>
+ <tr><td><strong>Total</strong></td><td><strong>18,612</strong></td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The control equation</strong><br>18,612 = 34 approved pre-load exceptions + 5 approved exclusions + 18,573 submitted records. Before execution, you should be able to produce the keys behind every term in that equation.</div>`
+},
+{
+ id:"b4",nav:"Keys, not counts",title:"Two files, 18,573 rows each",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">You have two candidate submitted files. Both contain exactly 18,573 rows. Both reconcile against the control equation.</p>
+ <h3>What does that tell you?</h3>`,
+ options:[
+   {label:"Almost nothing on its own. Two files can both contain 18,573 rows and contain different customers, so the key sets have to be compared, not just the totals.", correct:true, feedback:"Correct. Store the business keys for the intended submitted, exception and exclusion populations, and reconcile by key as well as by count. A count catches gross differences and nothing else."},
+   {label:"That both files were produced from the same source population, since an identical row count after filtering is very unlikely to occur by chance.", correct:false, feedback:"It is not chance. Both were built to hit the same target figure, which is precisely why the figure cannot distinguish them."},
+   {label:"That at least one of the two is correct, so the next step is identifying which was generated by the approved build.", correct:false, feedback:"Build identity matters and it is a separate question. Neither file is validated by its row count, whichever build produced it."},
+   {label:"That the population is stable, and the remaining risk sits in the transformation rather than in the submitted population itself.", correct:false, feedback:"Equal counts are compatible with wholesale substitution of records. The population is exactly what has not been established."}
+ ]
+},
+{
+ id:"b5",nav:"Source drift",title:"Freeze the source baseline, then check it drifted anyway",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><caption>Source baseline record</caption><thead><tr><th>Field</th><th>Example content</th></tr></thead><tbody>
+ <tr><td>Snapshot ID</td><td>SRC-CUST-C3-0600</td></tr>
+ <tr><td>Received or extracted</td><td>Controlled timestamp</td></tr>
+ <tr><td>File or object identity</td><td>Exact controlled artefact</td></tr>
+ <tr><td>Rows</td><td>18,612</td></tr>
+ <tr><td>Distinct CustomerNumber</td><td>Expected distinct-key count</td></tr>
+ <tr><td>Schema</td><td>Expected column list, types or schema version</td></tr>
+ <tr><td>Origin</td><td>Legacy ERP customer extract</td></tr>
+ <tr><td>Owner</td><td>Named technical or source owner</td></tr>
+ </tbody></table></div>
+ <h3>Then compare the cycle source against the baseline used for profiling</h3>
+ <ul class="framework-checks">
+   <li>New keys, missing keys, changed critical fields.</li>
+   <li>New unmapped reference values.</li>
+   <li>Schema changes and unexpected null-rate changes.</li>
+   <li>Duplicate-key changes.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A headline count that improves means the source population is stable. At Bramwell, payment-term exceptions improved from 760 to 214, and 23 of those 214 are new. The direction of travel was genuinely good and the population underneath it had moved.</p></div>`
+},
+{
+ id:"b6",nav:"Four baselines",title:"The four things a cycle has to freeze",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Source, rules, reference and build. Explore each one, and answer the test underneath it honestly about your own last cycle.</p>`,
+ items: baselinesToFreeze,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Each of these four is usually fine. The failure mode is that any one of them can move quietly, after readiness was established, without anybody deciding to change it. That is why the control is identity rather than vigilance.</p></div></div>`
+},
+{
+ id:"b7",nav:"Unresolved stays visible",title:"Unresolved values must remain visible",type:"content",
+ html:`<p class="lead">Bramwell still carries unresolved business treatments into this cycle.</p>
+ <ul class="framework-checks">
+   <li>18 German CustomerGroup 99 records have no approved final mapping.</li>
+   <li>Payment term 45E has no approved target equivalent.</li>
+ </ul>
+ <div class="principle"><strong>Readiness rule</strong><br>Do not make a cycle look ready by converting unresolved values into plausible defaults. Either obtain an approved treatment, or classify the affected records transparently under the cycle's agreed exception controls.</div>
+ <p class="small">Readiness does not mean forcing these populations to zero. It means knowing their keys, their status, who has authority over them and what treatment is permitted, before execution begins.</p>`
+},
+{
+ id:"b8",nav:"Reference risks",title:"Reference data is executable logic",type:"selectAll",
+ html:`<p class="lead">A cross-reference table looks like data and behaves like code. Six ways it breaks a cycle. Explore each one and its control.</p>`,
+ options: referenceRisks,
+ coaching: referenceRiskCoaching,
+ hint:"Explore every risk before continuing.",
+ closingHtml:`<div class="principle"><strong>Treat reference data like code</strong><br>Know which version executed, what changed, and what population the change affects. Those three questions are the whole discipline.</div>`
+},
+{
+ id:"b9",nav:"Run manifest",title:"Bind the cycle together with a run manifest",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Manifest field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Cycle ID</td><td>Identifies the migration event</td></tr>
+ <tr><td>Entity or work package</td><td>Defines scope</td></tr>
+ <tr><td>Source snapshot</td><td>Fixes the input population</td></tr>
+ <tr><td>Mapping or rule version</td><td>Fixes the approved logic</td></tr>
+ <tr><td>Reference version</td><td>Fixes the lookup baseline</td></tr>
+ <tr><td>Package or build</td><td>Fixes the executable code</td></tr>
+ <tr><td>Environment</td><td>Fixes the execution location</td></tr>
+ <tr><td>Expected submitted count</td><td>Pre-run control</td></tr>
+ <tr><td>Exception and exclusion sets</td><td>Explains the non-submitted population</td></tr>
+ <tr><td>Dependencies</td><td>Defines prerequisites</td></tr>
+ <tr><td>Validation pack</td><td>Defines proof</td></tr>
+ <tr><td>Run owner and support</td><td>Defines operational responsibility</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>One page, twelve fields</strong><br>A run manifest stops the cycle existing only as scattered filenames, chat messages and somebody's memory.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Cycle_Run_Manifest.xlsx</strong><p class="small">The twelve fields above, ready to complete before a cycle starts.</p></div><a class="btn secondary" href="/assets/downloads/Cycle_Run_Manifest.xlsx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Readiness gates",title:"A useful gate is testable",type:"selectAll",
+ html:`<p class="lead">Six gates that appear on readiness trackers everywhere. Every one of them can be ticked without evidence. Explore each to see what it should say instead.</p>`,
+ options: weakGates,
+ coaching: weakGateCoaching,
+ hint:"Explore every gate before continuing.",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The test for a gate</div><p>Ask whether the gate could fail. If there is no result that would make you tick it red, it is not a gate, it is a heading.</p></div></div>`
+},
+{
+ id:"b11",nav:"Dependencies",title:"Dependency readiness is data readiness",type:"content",
+ html:`<p class="lead">Customer records may be ready in isolation and not executable in sequence.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dependency</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Legal entity or company context</td><td>Does the target context exist and match expected routing?</td></tr>
+ <tr><td>Payment terms</td><td>Do approved target values and configuration exist?</td></tr>
+ <tr><td>Customer groups</td><td>Are approved references present?</td></tr>
+ <tr><td>Addresses</td><td>Will the required delivery addresses be available?</td></tr>
+ <tr><td>Sales owners or users</td><td>Are referenced identities available?</td></tr>
+ <tr><td>Sites and warehouses</td><td>Are required target values and configurations loaded?</td></tr>
+ </tbody></table></div>
+ <div class="callout experience"><div class="callout-label">SO-78452, as a reminder</div><p>The open order for customer C10482 depends on the customer record, delivery address C10482-DEL-02, product PRD-44781, site UK01, warehouse WH-BRI, currency GBP, a payment-term treatment and delivery method STDROAD. Eight things, one order. Readiness is relational.</p></div>`
+},
+{
+ id:"b12",nav:"Expected results",title:"Write the expected result before you can see the actual one",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Expected result</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Submitted population</td><td>18,573 customer records</td></tr>
+ <tr><td>Technical rejects</td><td>Expected zero for the controlled ready population, subject to actual execution</td></tr>
+ <tr><td>Non-submitted reconciliation</td><td>34 approved exceptions plus 5 exclusions</td></tr>
+ <tr><td>Target uniqueness</td><td>One expected customer per business key and context</td></tr>
+ <tr><td>Reference semantics</td><td>Expected CustomerGroup and other controlled values</td></tr>
+ <tr><td>Legal entity</td><td>Customer appears in the intended target context</td></tr>
+ <tr><td>Relationships</td><td>Required address and dependency links survive</td></tr>
+ <tr><td>No unexplained extras</td><td>Target delta contains only the intended population</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Expected results are part of readiness</strong><br>Validation becomes far stronger when the expected state is written before the target result is visible. Afterwards, what you find has a way of becoming what you expected.</div>`
+},
+{
+ id:"b13",nav:"Negative tests",title:"Prepare the tests for what must not happen",type:"content",
+ html:`<p class="lead">For each material rule, define how you will prove it.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Rule or risk</th><th>Validation</th></tr></thead><tbody>
+ <tr><td>Country UK to GB</td><td>Source-to-target semantic comparison by key</td></tr>
+ <tr><td>CustomerGroup mapping</td><td>Expected versus actual target value by key and context</td></tr>
+ <tr><td>Address eligibility</td><td>Positive DELIVERY_PRIMARY and DELIVERY_SECONDARY, negative BILLING_ONLY</td></tr>
+ <tr><td>Legal entity routing</td><td>Expected entity versus actual entity invariant</td></tr>
+ <tr><td>Duplicate prevention</td><td>Distinct key count and duplicate query</td></tr>
+ <tr><td>Exception handling</td><td>Every non-ready key has a controlled reason and status</td></tr>
+ </tbody></table></div>
+ <h3>Then the negative tests</h3>
+ <ul class="framework-checks">
+   <li>BILLING_ONLY addresses must not appear where excluded.</li>
+   <li>Unapproved 45E must not silently become NET30.</li>
+   <li>Unmapped CustomerGroup values must not default to STANDARD.</li>
+   <li>One source key must not multiply through a reference join.</li>
+   <li>Records assigned to UK context must not silently land in Belgium.</li>
+   <li>Approved exclusions must not re-enter through another path.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Validating what is easy to count. Many dangerous migration defects produce no technical rejects at all. The 42 UK customers that later appeared under the Belgian legal entity are the case in point: every count matched.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Validation_Pack.sql</strong><p class="small">Count, key-set, duplicate, semantic and negative controls, parameterised by cycle.</p></div><a class="btn secondary" href="/assets/downloads/Validation_Pack.sql" download>Download</a></div>`
+},
+{
+ id:"b14",nav:"Six filenames",title:"The readiness pack that looks complete",type:"mcq",
+ _correctIndex:3,
+ html:`<p class="lead">A handover arrives. Six files, and nothing else.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Cycle folder</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Customer_Final.csv
+Mapping_FINAL_v2.xlsx
+Reference_latest.xlsx
+LoadPackage.zip
+Validation.sql
+Exceptions.xlsx</code></pre></div>
+ <h3>Before executing anything, what is the useful thing to do with this?</h3>`,
+ options:[
+   {label:"Open each file and inspect its contents, since the filenames are uninformative but the data inside them will establish what the cycle actually contains.", correct:false, feedback:"Inspection helps and it cannot recover identity. Opening Reference_latest.xlsx tells you what is in it, not whether it is the approved version for this cycle."},
+   {label:"Ask the person who handed it over to walk you through what each file is and where it came from.", correct:false, feedback:"Worth doing, and it produces recollection rather than evidence. What you need has to survive that person being unavailable next week."},
+   {label:"Rename the files to include dates and versions, so that the cycle has a controlled naming convention before anything is executed.", correct:false, feedback:"Renaming applies labels you cannot substantiate. A date in a filename you added yourself is not a source identity."},
+   {label:"Write down the eight questions the filenames cannot answer: source snapshot, approved decisions, expected reference version, build, environment, exception population, expected count and dependencies.", correct:true, feedback:"Correct. The gap is not information, it is identity. Naming what cannot be proven from the handover is what turns a vague unease into a list somebody can close."}
+ ]
+},
+{
+ id:"b15",nav:"Exceptions and logging",title:"Design exception handling and logging before the run",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Readiness answer</th></tr></thead><tbody>
+ <tr><td>Where do rejected or unready records go?</td><td>A controlled exception output or table</td></tr>
+ <tr><td>What identifies them?</td><td>Business key plus run and cycle identity</td></tr>
+ <tr><td>How are reasons classified?</td><td>A stable reason or signature</td></tr>
+ <tr><td>Can they be rerun independently?</td><td>A defined recovery mechanism</td></tr>
+ <tr><td>Can they disappear silently?</td><td>Reconciliation prevents it</td></tr>
+ <tr><td>Who reviews business exceptions?</td><td>A defined owner and process</td></tr>
+ <tr><td>What happens to approved exclusions?</td><td>Separate controlled status, never mixed with defects</td></tr>
+ </tbody></table></div>
+ <h3>And the log that makes a restart possible</h3>
+ <p>Cycle and run ID, step name, start and end timestamps, input, output and reject counts, source, reference and build identities, status, error signature, checkpoint or restart state, and operator context where relevant.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The operational question</div><p>If the run stops after transformation, can you prove what completed, which output belongs to that run, and where a safe restart could begin? Design exception handling now, because the alternative is designing it at 02:00 while people wait.</p></div></div>`
+},
+{
+ id:"b16",nav:"The sequence",title:"Rehearse the run in operational order",type:"guidedSteps",
+ html:`<p class="lead">Fourteen steps, written the way the cycle will actually happen rather than the way it is usually described. Work forward through them one group at a time.</p>`,
+ steps: runSequence,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Cycle_Runbook.docx</strong><p class="small">The fourteen steps with owner, input, expected output, control and stop condition per step.</p></div><a class="btn secondary" href="/assets/downloads/Cycle_Runbook.docx" download>Download</a></div>`
+},
+{
+ id:"b17",nav:"Stop conditions",title:"A runbook needs brakes",type:"selectAll",
+ html:`<p class="lead">Seven conditions that should stop a cycle. Explore each one to see what the response actually is, because \u201ckeep going and see what happens\u201d is not a migration control.</p>`,
+ options: stopConditions,
+ coaching: stopConditionCoaching,
+ hint:"Explore every condition before continuing.",
+ closingHtml:`<div class="principle"><strong>Decide these before the run</strong><br>A stop condition discovered during execution is not a stop condition. It is an argument, held under time pressure, in front of people who want to continue.</div>`
+},
+{
+ id:"b18",nav:"Partial readiness",title:"What can continue when one area is not ready",type:"content",
+ html:`<p class="lead">Not every unresolved item has to stop the whole cycle.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Situation</th><th>Possible controlled treatment</th></tr></thead><tbody>
+ <tr><td>Small explicit unresolved population</td><td>Isolate under the approved exception process, if cycle rules permit</td></tr>
+ <tr><td>Dependency absent for one subset</td><td>Hold the dependent subset; continue the unaffected population if safe</td></tr>
+ <tr><td>Reference ambiguity affects all records</td><td>Likely blocks entity release until resolved</td></tr>
+ <tr><td>Validation pack incomplete</td><td>Execution may be technically possible, but acceptance is not controlled</td></tr>
+ <tr><td>Source baseline changed after preparation</td><td>Reassess the population and the impacted readiness evidence</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Consultant recommendation, project decision</strong><br>You provide evidence and safe options. Wider release and scope decisions may belong to the Data Migration Lead or project leadership, and saying so in the recommendation is part of making it usable.</div>
+ <h3>What a readiness review sounds like</h3>
+ <div class="quote">\u201cCustomer cycle population reconciles to 18,612: 18,573 intended for submission, 34 approved pre-load exceptions and 5 approved exclusions. Source, reference and package identities are fixed in the run manifest. High-risk transformation and negative controls pass. Remaining decision-dependent records are not silently defaulted. Validation is prepared for count, key-set, CustomerGroup, legal entity and address dependencies. One open dependency remains.\u201d</div>
+ <p class="small">Lead with what is ready, what is not, and what evidence supports the statement. Do not read the checklist aloud.</p>`
+},
+{
+ id:"b19",nav:"The readiness lab",title:"Consultant situations \u2013 Five moments in the lab",type:"situations",
+ html:`<p class="lead">You have a practice cycle folder: a source extract with 18,612 rows, exception and exclusion files, a candidate submitted file, mapping and reference files with conflicting timestamps, a run manifest with fields missing, validation SQL copied from the previous cycle, an address dependency report, and a Teams message. Execution is possible throughout. That is the difficulty.</p>`,
+ items: labSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The File That Changed at 07:12", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/lesson1-fromfield-priya.mp3",
+   reflection:"When an input changed late on your last cycle, did anything in your evidence record that it had?"
+ })}</div>`
+},
+{
+ id:"b20",nav:"Build the pack",title:"Build it \u2013 The pre-execution evidence summary",type:"reflection",
+ html:`<p class="lead">Produce the summary you would hand to the Data Migration Lead, and the recommendation that goes at the bottom of it.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>The three available recommendations</caption><thead><tr><th>Recommendation</th><th>Meaning</th></tr></thead><tbody>
+ <tr><td>READY TO EXECUTE</td><td>All defined readiness gates pass for the stated scope</td></tr>
+ <tr><td>READY WITH CONTROLLED EXCEPTIONS</td><td>Execution can proceed for the explicit ready population under agreed exception controls</td></tr>
+ <tr><td>NOT READY TO EXECUTE</td><td>A material baseline, population, dependency or validation gap makes execution unsafe or unprovable</td></tr>
+ </tbody></table></div>
+ <h3>Your summary should cover</h3>
+ <ol class="framework-checks">
+   <li>Cycle and scope.</li>
+   <li>Population, with the control equation reconciled by key.</li>
+   <li>Source, mapping, reference and build identities.</li>
+   <li>Dependencies checked, and any that remain open.</li>
+   <li>Validation prepared, including negative controls.</li>
+   <li>Unresolved treatments, stated rather than defaulted.</li>
+   <li>The recommendation, with the exact evidence it rests on.</li>
+   <li>What belongs to you, and what belongs to the Lead.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">No green by instinct</div><p>The recommendation must cite the specific evidence that passed and failed. It is a technical-readiness recommendation, not the programme's Go or No-Go authority, and the sentence should make that boundary audible.</p></div>
+ <textarea id="reflection" placeholder="Cycle: ...&#10;Population: ...&#10;Baselines: ...&#10;Dependencies: ...&#10;Validation: ...&#10;Unresolved: ...&#10;Recommendation: ...&#10;What belongs to the Lead: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Pre_Execution_Evidence_Summary.docx</strong><p class="small">The eight-section summary, short at the front because the evidence pack sits underneath it.</p></div><a class="btn secondary" href="/assets/downloads/Pre_Execution_Evidence_Summary.docx" download>Download</a></div>`,
+ minLength:70,
+ checks:[
+   { test:/18,?612|18,?573|34|control equation/i, strength:"You reconciled the population against the control equation rather than quoting a single total.", gap:"State the population as the equation: source cycle population, approved exceptions, approved exclusions and submitted records." },
+   { test:/key|key.set|by key/i, strength:"You reconciled by key rather than by count alone.", gap:"Say that the reconciliation is by key set, not just by count. Two files of 18,573 rows can hold different customers." },
+   { test:/snapshot|version|build|identit|manifest/i, strength:"You named the baseline identities rather than describing the files.", gap:"Name the source snapshot, mapping version, reference version and build identity. Identity is what makes the run reproducible." },
+   { test:/negative|must not|semantic|invariant/i, strength:"Your validation includes semantic or negative controls, not just counts.", gap:"Include at least one negative control: what must not happen, such as unapproved 45E silently becoming NET30." },
+   { test:/unresolved|not defaulted|no default|explicit|exception control/i, strength:"You kept unresolved treatments visible rather than defaulting them.", gap:"State that unresolved values remain explicit and are not defaulted to make the count complete." },
+   { test:/belongs|Lead|leadership|not mine|recommendation.*(not|rather than).*(go|authority)/i, strength:"You marked the boundary between your recommendation and the programme's decision.", gap:"Say what is yours to recommend and what remains the Lead's or the programme's decision." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Cycle and population.</strong> Customer cycle C3. The source-cycle population is 18,612 and it reconciles by key, not only by count: 18,573 keys intended for submission, 34 approved pre-load exceptions and 5 approved exclusions. Every source key carries exactly one controlled pre-execution status, there are no overlaps between the three sets, and no key is unclassified.</div>
+ <div class="quote"><strong>Baselines and dependencies.</strong> The source snapshot is fixed and identified rather than selected by filename. The approved mapping version, reference version and package build are recorded in the run manifest, and the reference was chosen because it is the approved version for this cycle rather than because it is the newest file present. Dependencies are checked for the stated customer scope; the delivery-address reconciliation is not complete, so the dependent downstream activity is held while customer execution itself proceeds.</div>
+ <div class="quote"><strong>Validation and unresolved treatments.</strong> Validation points at this cycle rather than the previous one, and covers count, key set, duplicates, CustomerGroup semantics and legal-entity routing, with negative controls: BILLING_ONLY addresses must not appear, 45E must not silently become NET30, unmapped CustomerGroup values must not default to STANDARD. The 18 CustomerGroup 99 records and the 45E population remain unresolved and explicitly classified. Nothing has been defaulted to make the submitted count look complete.</div>
+ <div class="quote"><strong>Recommendation.</strong> READY WITH CONTROLLED EXCEPTIONS for the stated customer scope, on the evidence above. The open address dependency and the held downstream activity are the two things that could change that. This is a technical-readiness recommendation; the release decision and any change to cycle sequence remain with the Data Migration Lead and project leadership, and I can supply the affected populations and impact for either.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The marker of a strong summary here is that it is short at the front and specific underneath. If a reader could tell from your first paragraph what would have to change for your recommendation to move, it is doing its job.":"Check two things. Did you reconcile by key rather than by count, and does your recommendation cite the evidence it rests on rather than asserting a colour? Both are where these summaries usually thin out."}</div>`
+},
+{
+ id:"b21",nav:"What readiness is not",title:"What readiness is not, and the anti-patterns that imitate it",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Not enough</th><th>Why</th></tr></thead><tbody>
+ <tr><td>\u201cThe package executes on my machine.\u201d</td><td>Does not prove controlled inputs or the target environment</td></tr>
+ <tr><td>\u201cCounts match last cycle.\u201d</td><td>The population may have changed entirely</td></tr>
+ <tr><td>\u201cThe business knows about the exceptions.\u201d</td><td>Does not prove approved treatment or status</td></tr>
+ <tr><td>\u201cThe mapping workbook is complete.\u201d</td><td>Does not prove implementation or reference version</td></tr>
+ <tr><td>\u201cNo rejects in test.\u201d</td><td>Does not prove semantic correctness</td></tr>
+ <tr><td>\u201cWe have a rollback plan.\u201d</td><td>Does not make an unready run ready</td></tr>
+ <tr><td>\u201cEveryone is comfortable.\u201d</td><td>Confidence is not evidence</td></tr>
+ </tbody></table></div>
+ <h3>Ten readiness anti-patterns</h3>
+ <ul class="framework-checks">
+   <li>Selecting files by \u201clatest\u201d.</li>
+   <li>Changing mappings after validation without impact analysis.</li>
+   <li>Treating exception counts without keys as reconciliation.</li>
+   <li>Reusing last cycle's validation unchanged.</li>
+   <li>Allowing unresolved values to default so counts stay complete.</li>
+   <li>Assuming target prerequisites exist.</li>
+   <li>Running before expected results are defined.</li>
+   <li>Mixing approved exclusions with defects.</li>
+   <li>Not recording source, reference and build identities.</li>
+   <li>Discovering stop conditions during execution.</li>
+ </ul>
+ <h3>The same discipline, beyond the customer package</h3>
+ <p>A Bramwell supplier cycle would need the 73 classification conflicts to remain visible, including unresolved S20418. A product-site cycle would need the 286 relationships outside the approved target reference set explicitly controlled. A fixed-asset cycle would need the 126 depreciation-category exceptions, including unresolved DEP-07, represented in its expected-result model. In none of those cases does readiness mean forcing the population to zero.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Technical_Readiness_Checklist.xlsx</strong><p class="small">Fourteen areas with the evidence each one requires, from scope through to communication.</p></div><a class="btn secondary" href="/assets/downloads/Technical_Readiness_Checklist.xlsx" download>Download</a></div>`
+},
+{
+ id:"b22",nav:"Reflection",title:"Reflection \u2013 Would you press Run?",type:"reflection",
+ html:`<p class="lead">What is the smallest missing piece of readiness evidence that would make you refuse to execute a migration package, even when you were confident the package itself would run successfully? Name it, and explain why that particular gap is the one you would not accept.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The interesting answers are usually small: an unidentifiable reference version, an expected result nobody wrote down, a source file that might have been replaced. Each is trivial to fix beforehand and close to unrecoverable afterwards, which is what makes them worth refusing over.</p></div></div>
+ <textarea id="reflection" placeholder="The smallest thing I would refuse to run without..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/identit|version|snapshot|which (file|reference|build)/i, strength:"You picked a gap about identity, which is the category that becomes unrecoverable once the run has happened.", gap:"Consider whether your chosen gap is about identity: which source, which reference, which build actually executed." },
+   { test:/afterward|later|cannot|unprovable|reproduce|prove/i, strength:"You explained the consequence in terms of what could not be proven afterwards.", gap:"Say what specifically becomes impossible after the run if that evidence is missing." },
+   { test:/small|minor|trivial|cheap|five minutes|quick/i, strength:"You noticed the asymmetry: cheap to fix beforehand, expensive afterwards.", gap:"Note how long the gap would take to close before the run, against what it costs after it." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">An unidentifiable reference version. It sounds like the smallest thing on the list and it is the one I would not run without, because every other gap can be reconstructed afterwards and this one cannot. If the run completes and I cannot say which reference baseline executed, then every value it produced is unexplainable: I cannot tell an approved mapping from an accidental one, I cannot tell whether a change was applied, and I cannot reproduce the result to check. Fixing it before the run is ten minutes of recording an identity. Fixing it afterwards is not possible at all, only rerunning is, and by then the output has usually gone somewhere.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The strongest answers name something that costs minutes beforehand and cannot be recovered afterwards. That asymmetry is the whole argument for readiness work, and it is more persuasive than any checklist.":"Push on the consequence. Not just what is missing, but what you would be unable to prove once the run has happened and the output has moved on."}</div>`
+},
+{
+ id:"b23",nav:"Summary",title:"Summary \u2013 Control the run before it starts",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Define the exact cycle population before execution.</li>
+   <li>Reconcile by key, not only by count.</li>
+   <li>Freeze and identify the source baseline.</li>
+   <li>Detect source drift against your preparation evidence.</li>
+   <li>Fix the mapping, transformation and reference baselines.</li>
+   <li>Keep unresolved business values visible.</li>
+   <li>Treat reference data as executable logic.</li>
+   <li>Identify the exact technical build and environment.</li>
+   <li>Use a run manifest to bind the cycle together.</li>
+   <li>Make readiness gates testable.</li>
+   <li>Check relational dependencies.</li>
+   <li>Write expected results before seeing actual results.</li>
+   <li>Prepare semantic and negative validation, not only counts.</li>
+   <li>Design exception handling and logging before the run.</li>
+   <li>Rehearse the operational sequence.</li>
+   <li>Define stop conditions in advance.</li>
+   <li>Separate what can continue from what genuinely blocks execution.</li>
+   <li>Base the readiness recommendation on evidence.</li>
+   <li>Do not confuse technical executability with migration readiness.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A controlled migration cycle should be explainable before it starts: these are the records, this is the source, these are the approved rules and references, this is the build, these are the exceptions, this is what we expect to happen, and this is how we will know whether it did.</div>`
+},
+{
+ id:"b24",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Preparing for a migration cycle.</strong></p>
+ <p>You can now prepare an entity or work package for a controlled test or production cycle: defining the population and reconciling it by key, freezing and identifying inputs, verifying mappings and reference data, proving technical readiness, establishing expected reconciliation, preparing validation and exception controls, checking dependencies, rehearsing execution steps, and producing a readiness pack another consultant could use to run the cycle.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Executing a controlled migration</strong></p>
+ <p>You will move from preparation into the live run: sequencing steps, capturing evidence, responding to deviations, controlling handoffs and keeping the cycle reproducible while execution is underway.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time somebody asks you to run a package built from a file called \u201clatest\u201d.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 1: Preparing for a migration cycle",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Making a cycle explainable before anybody presses Run",
+  storageKey: "tp_dmc5_lesson1_v1",
+  lessonId: "dmc5-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

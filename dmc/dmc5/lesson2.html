@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Executing a controlled migration</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 2 - "Executing a controlled migration".
+   Built as a live execution console per the manuscript's own
+   authoring notes: timed event cards, checkpoint decisions and
+   changing status, so it feels operational rather than like
+   reading a runbook.
+
+   Source: DMC5_Lesson2_Executing_a_Controlled_Migration_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc, not the manuscript's own "Migration Execution & Technical
+   Readiness" header. Third occurrence of that conflict across
+   DMC3/4/5; recorded in STATE.md.
+
+   INTERACTIVITY TARGET, continued from Lesson 1: 52% content
+   with 11 gating blocks, against the DMC1-4 drift to around 70%
+   that the estate harness surfaced. Achieved by merging the
+   manuscript's shorter table sections rather than giving each one
+   its own content block.
+
+   DELIBERATE guidedSteps USE (b17). The 08:00 to 11:00 execution
+   timeline is genuinely sequential: the 08:40 correction only
+   makes sense having seen the 08:25 discrepancy, and the whole
+   teaching point is that a new run identity becomes necessary
+   partway through. The construction exercise is b19, a reflection.
+
+   CANONICAL BOUNDARY, flagged because it is easy to breach. The
+   manuscript is explicit that the simulation's timings and events
+   are training-only and must NOT replace canonical Bramwell cycle
+   outcomes. So: the b12 payment-term rejection cluster and the
+   08:25 duplicate-key event are training overlays and are
+   labelled as such in the learner text. The canonical later
+   customer cycle remains 18,573 submitted and accepted with zero
+   rejects, followed by the 42 UK-to-Belgian semantic finding,
+   whose root cause is NOT invented anywhere here.
+
+   Canonical Core M4 timings are used only as historical
+   comparison evidence, exactly as the notes require: extract
+   18m/17m, transform 42m/31m, validation 24m/22m, load 58m/49m.
+
+   Other Bramwell facts: cycle population 18,612 = 34 approved
+   pre-load exceptions + 5 approved exclusions + 18,573 submitted;
+   18 CustomerGroup 99 records unresolved; SO-78452 depending on
+   C10482 and C10482-DEL-02.
+
+   Persona: Sam, Data Migration Consultant, Energy ERP, title
+   "The Run That Looked Stuck", specified by the manuscript's own
+   authoring notes and required to stay distinct from other
+   Turner Page field stories.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=1, b3=2, b12=0,
+   b18 items A-E = 3,1,2,0,3. Full sequence 1,2,0,3,1,2,0,3 -
+   four positions used twice each, no run of three.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const variationOrDeviation = [
+ "34 approved exceptions appear",
+ "A new payment-term exception appears",
+ "Transformation time changes moderately",
+ "18 CustomerGroup 99 records remain unresolved",
+ "A source key disappears with no status",
+ "42 records move target context unexpectedly"
+];
+const variationCoaching = [
+ "<strong>Expected</strong>, but only if they match the controlled exception key set. Thirty-four exceptions that are a different thirty-four is a deviation wearing the right number.",
+ "<strong>Deviation requiring investigation</strong>, even when the total exception count looks similar. A stable headline with new members underneath it is the pattern that hides source drift.",
+ "<strong>Potentially normal.</strong> Assess against workload, environment and evidence rather than against the clock alone. Elapsed time is a prompt to investigate, not a diagnosis.",
+ "<strong>A known unresolved condition</strong>, not a new technical defect. But known is not the same as acceptable: these still need the agreed treatment for this cycle rather than a shrug.",
+ "<strong>Control failure.</strong> Every source-cycle key should carry exactly one controlled status. A key with none means the partition is not trustworthy, whatever the totals say.",
+ "<strong>Semantic deviation.</strong> Nothing about this shows up in a count, which is exactly why it is the most dangerous entry on this list."
+];
+
+const continueOrStop = [
+ "Known approved exclusion set reconciles",
+ "A cosmetic logging display field is wrong, underlying evidence intact",
+ "Unexplained source-to-stage key loss",
+ "A new unmapped value enters the ready population via a default",
+ "Performance slower but stable, within the operational window",
+ "The package is writing to an unexpected target context"
+];
+const continueCoaching = [
+ "<strong>Continue.</strong> This is the control working. An exclusion set that reconciles is evidence, not an anomaly, and stopping for it teaches the team that your stops mean nothing.",
+ "<strong>Record the issue and continue</strong>, if it is genuinely non-material. Check that word genuinely: if the display field is how somebody downstream identifies the run, it is not cosmetic.",
+ "<strong>Hold.</strong> A record that left the population without a status means the partition cannot be trusted. Classify the difference before transformation, however small the number.",
+ "<strong>Stop and correct the affected logic.</strong> A default that quietly makes an unresolved value look valid is the defect that produces no rejects and survives into the target.",
+ "<strong>Continue while monitoring.</strong> Slow and progressing is different from stalled. Set a specific next checkpoint rather than reacting to the clock.",
+ "<strong>Stop.</strong> Wrong target context corrupts the thing you would need in order to recover cleanly, and every minute of continuation makes the recovery boundary harder to establish."
+];
+
+const executionStatuses = [
+ { title:"TECHNICALLY COMPLETE",
+   short:"Execution finished and technical outcomes are captured.",
+   detail:"The loader has stopped and you can say what it accepted, rejected and left pending. This status says nothing about whether the records are semantically correct, which is why it is a separate word from accepted. Use it when execution has finished and validation has not.",
+   ask:"Have you said what the target accepted, without implying it is right?" },
+ { title:"VALIDATION IN PROGRESS",
+   short:"Do not treat this as an accepted dependency unless controls explicitly permit it.",
+   detail:"The most commonly skipped status, and the one that prevents the most damage. Another consultant wanting to start open sales orders needs to know that customer records exist in the target and have not yet been semantically validated. SO-78452 depends on customer C10482 and delivery address C10482-DEL-02; a technically loaded customer is not automatically a safe dependency.",
+   ask:"Does anybody downstream currently believe this is finished?" },
+ { title:"ACCEPTED",
+   short:"The defined validation and acceptance controls have passed.",
+   detail:"Count, key, duplicate, semantic and relationship checks have run against this run identity and passed. This is the status that releases downstream work. It should be rarer and later than people expect, and it should never be reached by a loader reporting zero rejects.",
+   ask:"Which controls passed, and against which run identity?" },
+ { title:"ACCEPTED WITH CONTROLLED EXCEPTIONS",
+   short:"Exceptions are explicitly bounded and approved under project rules.",
+   detail:"The population is accepted apart from a named set whose keys, status and permitted treatment are recorded. This is honest and useful. It becomes dishonest the moment the exceptions are described in general terms rather than by key, because then nobody downstream can tell whether their records are in the accepted part.",
+   ask:"Can a downstream consumer tell whether their specific records are inside the exception set?" },
+ { title:"HOLD",
+   short:"A material issue prevents downstream release.",
+   detail:"Not a failure and not a stop: a deliberate gate. Use it when the technical execution completed but something material makes release unsafe, such as an unexplained semantic finding under investigation. Hold with a named reason and a next checkpoint, otherwise it reads as indecision and people route around it.",
+   ask:"Have you given the hold a reason and a next checkpoint, or just a colour?" }
+];
+
+const executionTimeline = [
+{html:`<h4>08:00 to 08:12 \u2013 Pre-flight catches a build mismatch</h4>
+ <p>The package build differs from the one in the readiness manifest. A developer explains it is a small lookup fix affecting one mapping.</p>
+ <p>By 08:12 the build is confirmed and accepted, but only after establishing exactly what changed, which source population it affects, whether the change is approved, which readiness tests it invalidates, and retesting the affected controls. The manifest is then updated to record the accepted build.</p>
+ <div class="principle"><strong>A last-minute change may be sensible. It is still a change.</strong><br>Controlled execution begins by protecting the baseline, not by being difficult about it.</div>`},
+{html:`<h4>08:25 to 08:40 \u2013 The count matches and the keys do not</h4>
+ <p>Source-to-stage row count matches at 18,612. Distinct keys are one lower.</p>
+ <p>One record has duplicated and another is missing. The headline count is green while the population is wrong, which is the single most quoted lesson of this module and the easiest one to walk past at 08:25 on a busy morning. By 08:40 the duplicate key is identified and the source baseline issue is corrected.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The consequence people resist</div><p>The correction means the first attempt is abandoned and a new run identity begins. Not relabelled, not edited: abandoned, with its evidence retained. A rerun is a new execution event, not a correction to history.</p></div></div>`},
+{html:`<h4>09:10 to 09:40 \u2013 Transformation reconciles, package hands off</h4>
+ <p>Transformation partitions the population cleanly: 18,573 ready, 34 approved pre-load exceptions, 5 approved exclusions, totalling 18,612. No unexplained disappearance and no unexplained multiplication.</p>
+ <p>The load package handoff is prepared at 09:25 and the target load starts at 09:40. The handoff states the run identity, the ready population by key, the reconciliation status, the package identity, and that known unresolved treatments are not present as silent defaults.</p>
+ <p class="small">The load operator should never have to infer whether this is the correct package.</p>`},
+{html:`<h4>10:05 to 10:45 \u2013 Slower than last time, and fine</h4>
+ <p>At 10:05 throughput is slower than the previous cycle but progressing steadily, with no concentrated rejection signature. The run continues under observation with a specific next checkpoint, rather than being killed because of the clock.</p>
+ <p>Technical load completes at 10:35. Count and key reconciliation passes at 10:45.</p>
+ <div class="principle"><strong>Technical completion is a checkpoint, not acceptance</strong><br>What you know: the target accepted the submitted population. What you do not yet know: whether every record landed in the correct semantic state, context and relationships.</div>`},
+{html:`<h4>11:00 \u2013 The green run turns amber</h4>
+ <p>Semantic validation identifies a legal-entity mismatch population. Counts are perfect and 42 UK customers are in Belgium.</p>
+ <ol class="framework-checks">
+   <li>Freeze the acceptance claim.</li>
+   <li>Capture the 42 keys with expected versus actual context.</li>
+   <li>Establish whether the divergence is source, transformed output, package routing or target behaviour.</li>
+   <li>Check whether other populations share the mechanism.</li>
+   <li>Identify downstream dependencies.</li>
+   <li>Communicate technical acceptance separately from semantic acceptance.</li>
+ </ol>
+ <div class="quote">\u201cThe load accepted 18,573 with zero rejects. Semantic validation has identified 42 legal-entity mismatches. Customer migration is not yet accepted.\u201d</div>
+ <p class="small">Root cause is not established at this point, and nothing in that message pretends otherwise.</p>`}
+];
+
+const consoleSituations = [
+ { title:"A. 08:25, and the keys are one lower",
+   question:"Source-to-stage row count matches at 18,612 but distinct keys are 18,611. One record. What do you do?",
+   options:[
+     {label:"Continue, since a single record out of 18,612 is immaterial and will surface in the exception process downstream if it matters.", correct:false, feedback:"Materiality is about meaning and dependency, not percentage. That one record may be a key customer, and the duplicate that accompanies it is a second problem you have not looked at."},
+     {label:"Continue to transformation and reconcile there, since the transformation partition will expose any key that has genuinely gone missing.", correct:false, feedback:"Transformation will partition whatever it receives. Carrying an unexplained discrepancy forward means the partition reconciles against an already-wrong population."},
+     {label:"Stop the cycle and restart it from the source extract, since a key discrepancy at staging means the input cannot be trusted.", correct:false, feedback:"A full restart before classifying the difference is expensive and premature. The discrepancy might be expected by design, and you do not yet know."},
+     {label:"Identify the missing and duplicated keys, check the extraction and staging logs, establish whether the loss is expected by design, then correct or explicitly control it before transformation.", correct:true, feedback:"Correct. Do not continue simply because the difference is one record. Classify it first: a key that belongs to exception logic later in the process is a different situation from one that vanished during staging."}
+   ]
+ },
+ { title:"B. \u201cIs it done?\u201d",
+   question:"The loader reports 18,573 accepted and zero rejects. The project manager asks whether customer migration is done. What is your answer?",
+   options:[
+     {label:"Yes, with the caveat that semantic validation is still to run and may identify issues requiring follow-up work.", correct:false, feedback:"A yes with a caveat attached is heard as a yes. The caveat is the whole content of the answer, so it should not be trailing behind a green word."},
+     {label:"The target accepted the full submitted population, which is technically complete. Validation is in progress, so it is not yet accepted and should not be treated as a dependency.", correct:true, feedback:"Correct. \u201cDone\u201d can mean execution finished, validation finished, business accepted or simply that your part stopped. Use controlled status language and the ambiguity disappears."},
+     {label:"Not yet, and it would be better to wait until validation has finished before giving any status on the customer load at all.", correct:false, feedback:"Withholding a real result is not control. Technical completion is genuine information that other people can plan around, provided it is labelled accurately."},
+     {label:"Yes for the customer entity itself, though dependent entities such as open sales orders should wait until the address dependencies have been separately confirmed.", correct:false, feedback:"This treats the customer load as accepted and scopes the caution to dependants. The customer records themselves have not been semantically validated yet."}
+   ]
+ },
+ { title:"C. Another consultant wants to start sales orders",
+   question:"Customer validation is still running. A colleague asks whether they can begin loading open sales orders. What do you say?",
+   options:[
+     {label:"Yes, since the customer records physically exist in the target and the order load will fail visibly if any referenced customer is genuinely absent.", correct:false, feedback:"Failing visibly is exactly what will not happen. A customer sitting in the wrong legal entity resolves successfully and produces an order in the wrong place."},
+     {label:"No, and the order load should wait until the full customer entity reaches ACCEPTED regardless of which specific orders are affected.", correct:false, feedback:"Defensible and blunt. If a subset of orders demonstrably depends on nothing under investigation, holding all of them wastes a window for no evidence-based reason."},
+     {label:"Ask whether the order population depends on customer and address states that are not yet semantically accepted, and hold the dependent subset on that basis.", correct:true, feedback:"Correct. SO-78452 depends on customer C10482 and delivery address C10482-DEL-02 among other references. A technically loaded customer is not automatically a safe dependency, and the question is which orders touch what."},
+     {label:"Yes, provided they record the dependency in the deviation log so the sequence risk is visible if a problem later emerges.", correct:false, feedback:"Logging a known risk is not controlling it. The record would document precisely why the orders should not have started."}
+   ]
+ },
+ { title:"D. \u201cLet us just move the 42\u201d",
+   question:"Someone suggests manually moving the 42 misplaced customers into the UK entity so the cycle can be closed. What is your response?",
+   options:[
+     {label:"Decline, because repairing during diagnosis may hide the mechanism, leave other affected records undiscovered, and create a target state the migration process cannot reproduce.", correct:true, feedback:"Correct. The first objective is finding the earliest point where expected and actual state diverge, then establishing the full mechanism-based population and a controlled correction."},
+     {label:"Agree, provided the 42 keys are recorded first so the manual intervention is traceable and can be reviewed afterwards.", correct:false, feedback:"Traceability of the repair does not recover the mechanism. Once the visible 42 are fixed, the motivation to find the other affected records disappears with them."},
+     {label:"Decline for now and revisit once root cause is confirmed, at which point a manual correction may be the fastest route to closure.", correct:false, feedback:"Closer, and it leaves the door open to a target state that did not come from the migration process. Once the mechanism is known, the correction should come through the process."},
+     {label:"Agree for the 42 while simultaneously investigating the mechanism, so that the schedule is protected and the diagnosis continues in parallel.", correct:false, feedback:"Repairing in parallel with diagnosing destroys the evidence the diagnosis depends on. You would be investigating a target state you have been altering."}
+   ]
+ },
+ { title:"E. The runbook control is not enough",
+   question:"The runbook says: if source count matches expected, continue. You have just seen why that is insufficient. What should a consultant do?",
+   options:[
+     {label:"Follow the runbook as written during this execution, and raise the weakness afterwards so the control can be improved for the next cycle.", correct:false, feedback:"Following a control you know to be insufficient, while executing, is not compliance. The next cycle improvement does nothing for the population currently moving."},
+     {label:"Apply your own stronger check instead, since the key-set comparison is plainly the better control and the outcome is what matters.", correct:false, feedback:"Silently substituting your own control leaves the run unreproducible by anybody reading the runbook, which is a different kind of uncontrolled."},
+     {label:"Propose replacing it with a control that also checks distinct key count and key-set reconciliation, because an equal row count can conceal substitution or duplication.", correct:true, feedback:"Correct. A consultant should follow controlled execution instructions and also recognise when a control is insufficient. Naming the replacement, rather than just the weakness, is what makes it actionable."},
+     {label:"Escalate to the Data Migration Lead that the runbook is unsafe and should not be used until its controls have been reviewed.", correct:false, feedback:"Escalating the whole runbook over one weak control is disproportionate, and it hands over a problem you could have specified a fix for in one sentence."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Not pressing Run",title:"Execution is not pressing Run",type:"mcq",
+ _correctIndex:1,
+ html:`<p class="lead">Preparation established what should happen. Execution is where you prove what actually happened, one controlled step at a time.</p>
+ <div class="callout experience"><div class="callout-label">Before you begin</div><p>Think about the worst migration run you have seen or heard about.</p></div>
+ <h3>Which run is genuinely the dangerous one?</h3>`,
+ options:[
+   {label:"The run that fails loudly and late, because a failure discovered near the end of the window leaves the least time to recover before the migration event.", correct:false, feedback:"Late failures are painful and they are at least unambiguous. You know what happened, when, and what is invalid, which is most of what recovery needs."},
+   {label:"The run that continues while nobody is certain which inputs, outputs or decisions are now valid, because the result cannot be interpreted whatever it says.", correct:true, feedback:"Correct. A controlled run always has an identity, a known state, an expected next state and evidence showing whether the transition succeeded. Without those, a green result proves nothing and an amber one cannot be diagnosed."},
+   {label:"The run that stops repeatedly for minor anomalies, because a team that stops constantly loses the window and stops trusting its own controls.", correct:false, feedback:"A real cost, and it is the lesser one. Over-stopping is annoying and recoverable; an ambiguous run may have to be repeated entirely."},
+   {label:"The run that produces technical rejects in significant volume, because a large rejected population signals a systemic defect in the transformation logic.", correct:false, feedback:"Visible rejects are among the most tractable outcomes. They come with keys, a signature and a clear boundary between what worked and what did not."}
+ ]
+},
+{
+ id:"b2",nav:"Console and identity",title:"The execution console, and establishing run identity",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>What you need live</th></tr></thead><tbody>
+ <tr><td>Cycle</td><td>Which migration event is this?</td></tr>
+ <tr><td>Run ID</td><td>Which attempt generated these outputs?</td></tr>
+ <tr><td>Current step</td><td>What is executing or awaiting control?</td></tr>
+ <tr><td>Expected input</td><td>What population or artefact should enter?</td></tr>
+ <tr><td>Actual outcome</td><td>Counts, status, timing, exceptions</td></tr>
+ <tr><td>Checkpoint</td><td>What must pass before continuing?</td></tr>
+ <tr><td>Dependency</td><td>Who or what is waiting next?</td></tr>
+ <tr><td>Evidence</td><td>Where is the log, reconciliation or output?</td></tr>
+ <tr><td>Decision</td><td>Continue, hold, investigate, rerun or escalate</td></tr>
+ </tbody></table></div>
+ <p class="small">The console can be a controlled workbook, a dashboard, a run log or an orchestration view. The form matters far less than being able to reconstruct the run afterwards.</p>
+ <h3>Identity, established before the first executable step</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Identity</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Cycle ID</td><td>CUST-C3</td></tr>
+ <tr><td>Run ID</td><td>CUST-C3-R01</td></tr>
+ <tr><td>Source snapshot</td><td>SRC-CUST-C3-0600</td></tr>
+ <tr><td>Reference baseline</td><td>Approved cycle reference version</td></tr>
+ <tr><td>Package or build</td><td>Named controlled build</td></tr>
+ <tr><td>Environment</td><td>Named migration or test environment</td></tr>
+ <tr><td>Expected submitted population</td><td>18,573</td></tr>
+ <tr><td>Operator or automation</td><td>Recorded according to project control</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Identity first, outputs second</strong><br>If run identity is not established before outputs are created, later logs and files become ambiguous, and no amount of care afterwards resolves it.</div>`
+},
+{
+ id:"b3",nav:"Five minutes before",title:"A change five minutes before execution",type:"mcq",
+ _correctIndex:2,
+ html:`<p class="lead">You are about to start. Pre-flight is complete against build B07.</p>
+ <div class="quote">\u201cI made a tiny lookup fix this morning. Use build B08 instead of B07. It only affects one mapping.\u201d</div>
+ <p>The developer is competent, the fix is probably real, and eight people are waiting.</p>
+ <h3>What do you do?</h3>`,
+ options:[
+   {label:"Swap to B08 and start, since a known fix is better than knowingly executing with a build that contains a defect somebody has already corrected.", correct:false, feedback:"You would be executing a build that no readiness evidence describes. The fix may well be good; nothing about this run would be provable afterwards."},
+   {label:"Stay on B07, because the readiness pack was established against it and a change at this point cannot be assessed without losing the execution window.", correct:false, feedback:"Running a build you have been told contains a defect, without establishing whether that is true, is not control either. The question deserves five minutes."},
+   {label:"Establish what changed, which source population it affects, whether it is approved, which readiness tests it invalidates, retest the affected controls, then update the manifest if B08 is accepted.", correct:true, feedback:"Correct. Controlled execution begins by protecting the baseline. A last-minute change may be entirely sensible, and it is still a change, so it gets the same treatment as any other."},
+   {label:"Start on B07 as planned and schedule an immediate second run on B08, so the two results can be compared and the better one carried forward.", correct:false, feedback:"Two runs producing two populations, with the choice made afterwards, is how a cycle ends up with an output nobody can justify having selected."}
+ ]
+},
+{
+ id:"b4",nav:"Pre-flight",title:"Pre-flight is a confirmation, not a second readiness exercise",type:"content",
+ html:`<p class="lead">Readiness has already been established. Pre-flight asks one question: has anything material changed since?</p>
+ <ul class="framework-checks">
+   <li>The manifest still matches the approved execution pack.</li>
+   <li>No controlled source, reference or build has changed since readiness.</li>
+   <li>The target environment is the intended one.</li>
+   <li>Required dependencies remain available.</li>
+   <li>The previous run cannot contaminate current output.</li>
+   <li>Logging and output destinations are ready.</li>
+   <li>The team knows the first stop point and the escalation route.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Repeating the whole readiness review at the console, because it feels rigorous with people watching. It consumes the window and finds nothing, since readiness already passed. The only new information available at pre-flight is what has changed since.</p></div>`
+},
+{
+ id:"b5",nav:"Checkpoint 1",title:"Checkpoint 1 \u2013 Source to staging",type:"content",
+ html:`<p class="lead">The source snapshot contains 18,612 cycle records.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Expected</th></tr></thead><tbody>
+ <tr><td>Source rows</td><td>18,612</td></tr>
+ <tr><td>Source key population</td><td>Controlled cycle key set</td></tr>
+ <tr><td>Staged rows</td><td>18,612, unless an explicitly designed staging rule says otherwise</td></tr>
+ <tr><td>Duplicate business keys</td><td>No unexplained duplicates</td></tr>
+ <tr><td>Schema</td><td>Expected columns and types</td></tr>
+ <tr><td>Run identity</td><td>CUST-C3-R01 carried into stage and log evidence</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not accept a count alone</div><p>If staging contains 18,612 rows but one key is missing and another duplicated, the headline count is green while the population is wrong. This is the same failure as two 18,573-row files holding different customers, arriving one stage earlier.</p></div>`
+},
+{
+ id:"b6",nav:"Checkpoint 2",title:"Checkpoint 2 \u2013 Transformation, and what to capture",type:"content",
+ html:`<p class="lead">Transformation should partition the source-cycle population into controlled outcomes.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Outcome</th><th>Count</th></tr></thead><tbody>
+ <tr><td>Ready for submission</td><td>18,573</td></tr>
+ <tr><td>Approved pre-load exceptions</td><td>34</td></tr>
+ <tr><td>Approved exclusions</td><td>5</td></tr>
+ <tr><td><strong>Total</strong></td><td><strong>18,612</strong></td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Transformation reconciliation</strong><br>Input equals ready plus controlled exception plus controlled exclusion. No unexplained disappearance and no unexplained multiplication.</div>
+ <h3>Capture more than row counts</h3>
+ <ul class="framework-checks">
+   <li>Distinct key count.</li>
+   <li>Unmapped-value counts and their keys.</li>
+   <li>Duplicate or ambiguous reference matches.</li>
+   <li>Rule-specific exception counts.</li>
+   <li>Unexpected nulls and critical field distributions.</li>
+   <li>Legal-entity and context distribution.</li>
+   <li>Address and dependency status where relevant.</li>
+ </ul>
+ <p class="small">The later Bramwell cycle is the reason this list is longer than a row count: equal totals can sit comfortably alongside semantically wrong records.</p>`
+},
+{
+ id:"b7",nav:"Variation or deviation",title:"Expected variation versus material deviation",type:"selectAll",
+ html:`<p class="lead">Six things you might see during a run. Some are the controls working, some are not, and two of them look almost identical. Explore each.</p>`,
+ options: variationOrDeviation,
+ coaching: variationCoaching,
+ hint:"Explore every observation before continuing.",
+ closingHtml:`<div class="principle"><strong>Do not treat \u201cknown\u201d as \u201cacceptable\u201d</strong><br>A known unresolved item still needs the agreed treatment for this cycle. Recognising something is not the same as having decided what to do about it today.</div>`
+},
+{
+ id:"b8",nav:"Checkpoint decision",title:"The checkpoint decision",type:"content",
+ html:`<p class="lead">At every checkpoint, six questions before you choose.</p>
+ <ol class="framework-checks">
+   <li>Does the population reconcile?</li>
+   <li>Do the keys reconcile?</li>
+   <li>Are all deviations understood?</li>
+   <li>Are unresolved items inside the agreed cycle treatment?</li>
+   <li>Are outputs tied to the current run identity?</li>
+   <li>Will continuing make recovery harder if the current issue proves material?</li>
+ </ol>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Then choose</th><th>When</th></tr></thead><tbody>
+ <tr><td>CONTINUE</td><td>All six answered, nothing threatens correctness or recoverability</td></tr>
+ <tr><td>HOLD FOR INVESTIGATION</td><td>Something is not understood, and waiting costs less than proceeding</td></tr>
+ <tr><td>STOP AND CORRECT</td><td>A control has failed and continuing would spread the consequence</td></tr>
+ <tr><td>ESCALATE A MATERIAL DECISION</td><td>The choice affects scope, sequence or release and is not yours</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Question six does most of the work</div><p>The first five establish what is true. The sixth is the one that decides, because a small issue you can still recover from cheaply becomes an expensive one three steps later.</p></div></div>`
+},
+{
+ id:"b9",nav:"Continue or stop",title:"Stopping for the right reasons",type:"selectAll",
+ html:`<p class="lead">Execution control is not about stopping constantly. It is about stopping for the right reasons. Six situations: explore each and see what the anomaly actually threatens.</p>`,
+ options: continueOrStop,
+ coaching: continueCoaching,
+ hint:"Explore every situation before continuing.",
+ closingHtml:`<div class="principle"><strong>The judgement underneath all six</strong><br>Ask what the anomaly threatens: correctness, reproducibility, recoverability, dependency sequence, or only convenience. Only the last one is a reason to carry on without thinking.</div>`
+},
+{
+ id:"b10",nav:"Evidence and handoff",title:"Preserve the evidence, then hand off explicitly",type:"content",
+ html:`<p class="lead">Do not overwrite the evidence from R01 when R02 begins.</p>
+ <ul class="framework-checks">
+   <li>Run-specific logs, reconciliation output and exception population.</li>
+   <li>Run-specific load file or package.</li>
+   <li>Timestamped or versioned validation evidence.</li>
+   <li>Clear invalidation markers for abandoned outputs.</li>
+ </ul>
+ <p class="small">Recovery often depends on comparing the failed attempt with the corrected one. Deleting the first attempt removes the comparison that would have explained the second.</p>
+ <h3>The handoff from transformation to load</h3>
+ <div class="quote">\u201cTransformation complete for CUST-C3-R01. Ready population: 18,573 keys. Approved exceptions: 34. Approved exclusions: 5. Population and key-set reconciliation balanced. Package identity recorded. Reference and build identities match the manifest. Known unresolved treatments are not present as silent defaults. Pre-load validation evidence is in the run folder.\u201d</div>
+ <h3>Then check the package itself before loading</h3>
+ <ol class="framework-checks">
+   <li>Confirm package or file identity.</li>
+   <li>Confirm row and distinct-key counts.</li>
+   <li>Confirm required columns and schema.</li>
+   <li>Confirm target entity and context.</li>
+   <li>Check for stale files in the load location.</li>
+   <li>Confirm parameters and defaults.</li>
+   <li>Confirm dependencies exist.</li>
+   <li>Record the exact package consumed by the load.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Common failure</div><p>A perfectly validated file can still be loaded incorrectly, into the wrong entity, company, parameter set or target context. Validation proves the file. Step 4 proves where it is going.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Package_Handoff.docx</strong><p class="small">The handoff statement above as a template, with the eight package-integrity checks alongside.</p></div><a class="btn secondary" href="/assets/downloads/Package_Handoff.docx" download>Download</a></div>`
+},
+{
+ id:"b11",nav:"Checkpoint 3",title:"Checkpoint 3 \u2013 Target execution starts",type:"content",
+ html:`<p class="lead">The load begins. The execution log should let you answer all seven of these at any moment.</p>
+ <ul class="framework-checks">
+   <li>How many records were submitted?</li>
+   <li>How many have succeeded?</li>
+   <li>How many rejected?</li>
+   <li>How many are still processing?</li>
+   <li>Are failures concentrated in one signature?</li>
+   <li>Is progress continuing?</li>
+   <li>Which run and package is producing these numbers?</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Live numbers need definitions</div><p>\u201c500 failed\u201d is meaningless until you know whether that means rejected records, error events, validation messages or a transient batch state. The four have very different implications and the console rarely distinguishes them for you.</p></div>`
+},
+{
+ id:"b12",nav:"The first incident",title:"Ten minutes in, a cluster of rejections",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">Ten minutes into the run, the console shows a cluster of rejections for payment terms.</p>
+ <div class="quote">\u201cShall we let it finish and sort them afterwards?\u201d</div>
+ <h3>What determines your answer?</h3>`,
+ options:[
+   {label:"Whether the rejections are isolated and recoverable: confirm the values belong to the expected ready population, identify the dominant signature, establish whether it is systemic, and preserve the failing keys and logs.", correct:true, feedback:"Correct. The decision rests on the mechanism and the downstream risk, not on reluctance to stop. If the signature is isolated and the accepted records are independent, continuing may produce better evidence than stopping."},
+   {label:"Whether the rejected volume is material: a small cluster can safely complete, while a large one indicates a systemic defect that warrants stopping immediately.", correct:false, feedback:"Volume is a weak proxy. A small cluster can be the visible edge of a systemic transformation defect, and a large isolated one can be entirely recoverable."},
+   {label:"Whether the migration window allows time to stop, investigate and restart without threatening the dependent activities scheduled behind this load.", correct:false, feedback:"Schedule pressure is real and it is not the criterion. Deciding by the clock is how ambiguous runs get created, and those cost more window than the stop would have."},
+   {label:"Whether the rejections relate to unresolved business treatments such as 45E, in which case they are expected and the load can safely continue.", correct:false, feedback:"Unresolved treatments should not have reached the ready population at all. Rejections on those values are evidence that something upstream let them through."}
+ ]
+},
+{
+ id:"b13",nav:"Continue, or not",title:"When continuing helps, when it is dangerous, and reading the clock",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">When continuing is useful</div>
+ <p>A small, clearly isolated rejection signature affects records already classified as rerunnable exceptions. The accepted records are independent, and no downstream activity will consume the result until validation. Continuing may be reasonable if project controls permit it, and it produces a complete picture rather than a partial one.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">When continuing is dangerous</div>
+ <ul class="framework-checks">
+   <li>Wrong target company or legal entity.</li>
+   <li>Systemic transformation defect, or uncontrolled reference baseline.</li>
+   <li>Row multiplication, or an unknown source snapshot.</li>
+   <li>Failure that corrupts downstream relationships.</li>
+   <li>Logs cannot distinguish successful from unprocessed records.</li>
+   <li>Continuation would overwrite evidence needed for recovery.</li>
+ </ul>
+ <p class="small">A stopped run is inconvenient. An ambiguous run can be far more expensive, because it may have to be repeated in full.</p>
+ </div>
+ <h3>Progress monitoring without dashboard hypnosis</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Signal</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Throughput</td><td>Is work progressing at a plausible rate?</td></tr>
+ <tr><td>Error rate</td><td>Stable, increasing or clustered?</td></tr>
+ <tr><td>Queue or backlog</td><td>Is processing moving or stalled?</td></tr>
+ <tr><td>Database or resource signal</td><td>Does it explain the slowdown without implying data failure?</td></tr>
+ <tr><td>Step duration</td><td>Compared with which previous controlled runs?</td></tr>
+ <tr><td>Dependency readiness</td><td>Will the next step actually be able to start?</td></tr>
+ </tbody></table></div>
+ <p>Bramwell's recorded comparison timings across two cycles: extract 18 and 17 minutes, transform 42 and 31, validation 24 and 22, load 58 and 49. Use them as comparison evidence, not as service levels.</p>
+ <div class="principle"><strong>Do not diagnose from elapsed time alone</strong><br>Check whether the population changed, whether environment or resource conditions differ, whether build or reference logic changed, whether throughput is still progressing, and whether errors are concentrated. Performance evidence should lead to investigation, not to an instant root-cause claim.</div>`
+},
+{
+ id:"b14",nav:"Live status",title:"Live communication, and what technical completion means",type:"content",
+ html:`<div class="quote">\u201cCustomer load CUST-C3-R01 is progressing. 12,400 of 18,573 submitted records are accepted so far; there is no final acceptance statement yet. Throughput is slower than the previous controlled run but continues steadily, with no concentrated rejection signature. We are monitoring to completion and will run population and semantic validation before releasing the result downstream.\u201d</div>
+ <p class="small">State, evidence, next checkpoint. Note what it does not do: it does not call the migration complete while processing and validation are still open.</p>
+ <h3>Then the loader reports 18,573 accepted, 0 rejected</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>What you know</th><th>What you do not yet know</th></tr></thead><tbody>
+ <tr><td>The target execution technically accepted the full submitted population.</td><td>Whether every record landed in the correct semantic state, context and relationships.</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Zero rejects is the most persuasive number in migration and one of the least informative. It is a fact about the interface, not about the business, and the gap between those two is where the expensive defects live.</p></div></div>`
+},
+{
+ id:"b15",nav:"Checkpoints 4 and 5",title:"Post-load reconciliation, then semantic validation",type:"content",
+ html:`<h3>Checkpoint 4 \u2013 Immediate post-load reconciliation</h3>
+ <ol class="framework-checks">
+   <li>Confirm submitted equals accepted plus rejected plus any explicitly defined pending state.</li>
+   <li>Compare the accepted key set with the submitted key set.</li>
+   <li>Check for target duplicate keys.</li>
+   <li>Check for unexpected target additions.</li>
+   <li>Confirm non-submitted exception and exclusion keys did not leak into the target.</li>
+   <li>Record run-specific outcome evidence.</li>
+ </ol>
+ <h3>Checkpoint 5 \u2013 Semantic validation</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Legal entity</td><td>Did each record land in the intended company and context?</td></tr>
+ <tr><td>CustomerGroup</td><td>Does the target value match the approved expected treatment?</td></tr>
+ <tr><td>Country</td><td>Does UK map to GB as expected?</td></tr>
+ <tr><td>Payment terms</td><td>Are only approved treatments present?</td></tr>
+ <tr><td>Addresses</td><td>Are the valid required delivery addresses available?</td></tr>
+ <tr><td>Relationships</td><td>Do dependent references point to the intended target objects?</td></tr>
+ <tr><td>Critical fields</td><td>Do selected high-risk fields match expected transformed values?</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not repair during diagnosis</div><p>When 42 UK customers turn up in the Belgian legal entity, moving them manually is the fastest-looking option and the worst one. It may hide the mechanism, leave other affected records undiscovered, and create a target state the migration process cannot reproduce. Find the earliest point where expected and actual diverge, then establish the full mechanism-based population.</p></div>`
+},
+{
+ id:"b16",nav:"Status language",title:"Five statuses, and what each one releases",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">\u201cDone\u201d can mean execution finished, validation finished, business accepted, or simply that your part stopped. Explore the five controlled statuses and the question each one has to survive.</p>`,
+ items: executionStatuses,
+ takeawayHtml:`<div class="principle"><strong>Precision here is not pedantry</strong><br>Every one of these five is a different instruction to the people downstream. The vague word is the one that gets an order load started against customers nobody has validated.</div>`
+},
+{
+ id:"b17",nav:"The run",title:"CUST-C3, 08:00 to 11:00",type:"guidedSteps",
+ html:`<p class="lead">A full execution, event by event. Work forward through it: each decision only makes sense having seen what came before, which is also true on the day. This timeline is a training scenario rather than a record of the Bramwell cycle itself.</p>`,
+ steps: executionTimeline,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Live_Run_Log.xlsx</strong><p class="small">Run identity, step, expected versus actual, decision and evidence, one row per event.</p></div><a class="btn secondary" href="/assets/downloads/Live_Run_Log.xlsx" download>Download</a></div>`
+},
+{
+ id:"b18",nav:"Console decisions",title:"Consultant situations \u2013 Five decisions at the console",type:"situations",
+ html:`<p class="lead">Five moments during execution where somebody is waiting for an answer and the comfortable one is available immediately.</p>`,
+ items: consoleSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Run That Looked Stuck", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/lesson2-fromfield-sam.mp3",
+   reflection:"When a run last went slower than expected, did you check whether it was progressing, or just watch the clock?"
+ })}</div>`
+},
+{
+ id:"b19",nav:"Build the run log",title:"Build it \u2013 The live run log",type:"reflection",
+ html:`<p class="lead">Produce the execution record for CUST-C3 across the morning you have just worked through. Another consultant should be able to reconstruct the run from it without asking you anything.</p>
+ <h3>What it has to do</h3>
+ <ol class="framework-checks">
+   <li>Assign run IDs to each valid and abandoned attempt.</li>
+   <li>Record the baseline identities consumed by each attempt.</li>
+   <li>At every event, state expected versus actual.</li>
+   <li>Choose CONTINUE, HOLD, STOP AND CORRECT, or ESCALATE.</li>
+   <li>Record the evidence supporting each decision.</li>
+   <li>Identify which outputs become invalid after the restart.</li>
+   <li>Write the handoff into target load.</li>
+   <li>Write the technical-completion update, then the semantic-defect update.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">The part most people skip</div><p>The 08:40 correction means the first attempt is abandoned. Mark it abandoned rather than deleted, retain its evidence, create a new run identity, regenerate downstream outputs rather than relabelling the old ones, and make sure every handoff references only the valid run. A rerun is a new execution event, not an edit to history.</p></div>
+ <p class="lead">Write the run log below, including both attempts, and finish with the two updates.</p>
+ <textarea id="reflection" placeholder="RUN IDENTITIES: ...&#10;&#10;EVENTS (expected vs actual, decision, evidence): ...&#10;&#10;INVALIDATED OUTPUTS: ...&#10;&#10;TECHNICAL COMPLETION UPDATE: ...&#10;&#10;SEMANTIC DEFECT UPDATE: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Deviation_Log.xlsx</strong><p class="small">Time and step, observation, evidence, impact, labelled hypothesis, decision, owner and resolution evidence.</p></div><a class="btn secondary" href="/assets/downloads/Deviation_Log.xlsx" download>Download</a></div>`,
+ minLength:80,
+ checks:[
+   { test:/R0?2|second attempt|new run identit|abandon/i, strength:"You created a second run identity after the correction rather than continuing under the first.", gap:"The 08:40 correction abandons the first attempt. Give the corrected attempt its own run identity and mark the first abandoned, not deleted." },
+   { test:/expected|actual|versus|vs/i, strength:"You recorded expected against actual at each event rather than only what happened.", gap:"At each event, state what you expected as well as what you observed. The gap between them is the finding." },
+   { test:/invalid|superseded|regenerat|do not use/i, strength:"You identified which outputs became invalid after the restart.", gap:"Say which outputs the restart invalidates, and that they are regenerated rather than relabelled." },
+   { test:/technically complete|validation in progress|not yet accepted|semantic/i, strength:"You separated technical completion from semantic acceptance in your updates.", gap:"Your two updates should use controlled status language: technically complete is not accepted." },
+   { test:/42|legal entity|Belgi/i, strength:"Your semantic update reports the legal-entity finding without asserting a cause.", gap:"Report the 42 legal-entity mismatches, and say that root cause is not yet established rather than proposing one." },
+   { test:/key|key.set|distinct/i, strength:"Your reconciliation is by key, not just by count.", gap:"Record key-set reconciliation at each checkpoint, not only row counts. The 08:25 event is the reason." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Run identities.</strong> CUST-C3-R01, abandoned at 08:40 following the source-baseline correction, evidence retained. CUST-C3-R02, the valid attempt, consuming source snapshot SRC-CUST-C3-0600 corrected, the approved cycle reference version, and build B08 as accepted at 08:12 after impact assessment. All handoffs reference R02 only.</div>
+ <div class="quote"><strong>Events.</strong> 08:00, expected build matches manifest, actual B08 differs from B07; decision HOLD pending impact check; evidence: manifest and change description. 08:12, change assessed and approved, affected population identified, affected controls retested; decision CONTINUE, manifest updated. 08:25, expected 18,612 rows and 18,612 distinct keys, actual 18,612 rows and 18,611 distinct keys; decision STOP AND CORRECT; evidence: duplicate key and missing key identified from staging logs. 09:10, transformation reconciles 18,573 ready plus 34 exceptions plus 5 exclusions to 18,612, by key as well as count; decision CONTINUE. 10:05, throughput below the previous controlled run, progressing steadily, no concentrated signature; decision CONTINUE under observation with next checkpoint at completion.</div>
+ <div class="quote"><strong>Invalidated by the restart.</strong> All R01 staging output, its transformation output and any package generated from it. These are marked invalid and retained for comparison; the corrected outputs are regenerated under R02 rather than relabelled.</div>
+ <div class="quote"><strong>Technical completion update.</strong> Customer load CUST-C3-R02 is technically complete: 18,573 submitted, 18,573 accepted, zero rejects. Count and key-set reconciliation passes. Status is VALIDATION IN PROGRESS, so this should not yet be treated as an accepted dependency for sales orders or any other downstream entity.</div>
+ <div class="quote"><strong>Semantic defect update.</strong> Semantic validation has identified 42 UK customers in the Belgian legal entity. The acceptance claim is frozen. The 42 keys are captured with expected versus actual context, and we are establishing whether the divergence originates in source, transformed output, package routing or target behaviour, and whether other populations share the mechanism. Root cause is not established and I am not going to propose one yet. Customer migration is not accepted.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The tell for a strong run log is whether the abandoned attempt appears in it. A log that shows only the successful run is a tidier document and a much less useful one, because recovery usually depends on the comparison.":"Check two things. Does your log include the abandoned R01 and what it invalidated, and do your two updates use controlled status language rather than done? Both are where these logs usually thin out."}</div>`
+},
+{
+ id:"b20",nav:"Anti-patterns",title:"Execution anti-patterns, and the stage-by-stage checklist",type:"content",
+ html:`<ul class="framework-checks">
+   <li>Starting with a different build from the readiness pack.</li>
+   <li>Continuing after unexplained population loss.</li>
+   <li>Using counts without keys.</li>
+   <li>Overwriting failed-run evidence.</li>
+   <li>Calling a load successful before semantic validation.</li>
+   <li>Manually patching visible records before finding the mechanism.</li>
+   <li>Starting dependent entities because the loader is green.</li>
+   <li>Changing reference data mid-run without impact control.</li>
+   <li>Treating every anomaly as either harmless or catastrophic.</li>
+   <li>Communicating \u201cdone\u201d without defining the status.</li>
+   <li>Rerunning under the same identity and losing lineage.</li>
+ </ul>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Consultant execution checklist</caption><thead><tr><th>Stage</th><th>Control</th></tr></thead><tbody>
+ <tr><td>Pre-flight</td><td>Baseline unchanged, or the change explicitly controlled</td></tr>
+ <tr><td>Run start</td><td>Unique run identity established</td></tr>
+ <tr><td>Stage</td><td>Input, output and key reconciliation</td></tr>
+ <tr><td>Transform</td><td>Ready, exception and exclusion partition balances</td></tr>
+ <tr><td>Package</td><td>Exact artefact and target context verified</td></tr>
+ <tr><td>Load</td><td>Submitted, success, reject and pending state monitored</td></tr>
+ <tr><td>Deviation</td><td>Evidence and continue, hold or stop decision recorded</td></tr>
+ <tr><td>Completion</td><td>Technical outcome captured</td></tr>
+ <tr><td>Validation</td><td>Count, key, duplicate, semantic and relationship checks</td></tr>
+ <tr><td>Handoff</td><td>Status and run identity explicit</td></tr>
+ <tr><td>Restart</td><td>Old evidence retained, new run identity used</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Execution_Console.xlsx</strong><p class="small">The nine live controls from the start of this lesson, laid out as a working console for a real run.</p></div><a class="btn secondary" href="/assets/downloads/Execution_Console.xlsx" download>Download</a></div>`
+},
+{
+ id:"b21",nav:"Reflection",title:"Reflection \u2013 When would you stop?",type:"reflection",
+ html:`<p class="lead">Choose one situation in which you would stop a migration run even though stopping threatens the schedule. State the evidence you would need to justify it, what risk continuing creates, and what must be true before you restart.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The third part is the one that separates a stop from a panic. A stop with no stated restart condition is just an unplanned pause, and it tends to end when somebody senior gets impatient rather than when the evidence changes.</p></div></div>
+ <textarea id="reflection" placeholder="The situation I would stop for..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/evidence|log|key|count|query|signature/i, strength:"You named the evidence the stop would rest on rather than an instinct.", gap:"Say what evidence you would point at. A stop you cannot evidence will be overruled by whoever is under most schedule pressure." },
+   { test:/recover|reproduc|overwrit|worse|harder|ambiguous/i, strength:"You framed the risk in terms of what continuing would cost, not just that it is wrong.", gap:"Say what continuing would make harder: recovery, reproducibility, or the ability to tell processed records from unprocessed ones." },
+   { test:/before .*(restart|resume)|restart when|must be true|resume once/i, strength:"You defined the restart condition, which is what makes it a controlled stop.", gap:"State what must be true before you restart. Without that, the stop ends when somebody loses patience rather than when the evidence changes." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would stop when the package turns out to be writing into an unexpected target context, even mid-load with the window closing. The evidence is simple and hard to argue with: the target entity or company recorded in the load parameters does not match the one in the run manifest, and a sample of loaded keys confirms it. Continuing makes every minute worse, because the recovery boundary grows with the number of records placed somewhere they should not be, and eventually I cannot separate what was misplaced by this run from what was already there. Before restarting I need three things: the misplaced population identified by key, confirmation of how the wrong context was selected so it cannot happen again on the retry, and a clean or versioned output location so the corrected run cannot be confused with the abandoned one. Only then does a new run identity get created.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"Naming the restart condition is what turns this from a refusal into a plan, and it is the part that makes a stop survivable in front of people who want to continue.":"Push on the restart condition. A stop without one is an unplanned pause, and it will end for the wrong reason."}</div>`
+},
+{
+ id:"b22",nav:"Summary",title:"Summary \u2013 Execute with evidence",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Give every execution attempt a unique identity.</li>
+   <li>Protect the approved baseline at pre-flight.</li>
+   <li>Reconcile each stage before handing work downstream.</li>
+   <li>Use keys as well as counts.</li>
+   <li>Distinguish expected variation from material deviation.</li>
+   <li>Stop when correctness, reproducibility or recoverability is threatened.</li>
+   <li>Preserve failed-run evidence.</li>
+   <li>Make package handoffs explicit.</li>
+   <li>Monitor progress without diagnosing from a single metric.</li>
+   <li>Communicate live state, evidence and next checkpoint.</li>
+   <li>Treat technical completion as a checkpoint, not acceptance.</li>
+   <li>Run semantic validation after technically green loads.</li>
+   <li>Freeze acceptance when new evidence contradicts it.</li>
+   <li>Do not patch visible records before understanding mechanism and population.</li>
+   <li>Control parallel dependent work.</li>
+   <li>Use precise execution statuses.</li>
+   <li>Treat a restart as a new execution event.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A controlled migration is not defined by whether the package finishes. It is defined by whether you can prove what ran, what happened at each stage, why you continued or stopped, what the target now contains, and which evidence makes the result safe to use.</div>`
+},
+{
+ id:"b23",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Executing a controlled migration.</strong></p>
+ <p>You can now execute a migration work package under controlled conditions: following and challenging a runbook, establishing run identity, capturing evidence at checkpoints, reconciling each stage, distinguishing expected variation from material deviation, stopping when controls fail, managing technical handoffs, communicating live status, and leaving an execution record another consultant can reproduce and investigate.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Managing failures and reruns</strong></p>
+ <p>You will take a failed or partially successful migration and decide what to preserve, what to invalidate, where to restart, which population to rerun, and how to prevent duplicate or stale outcomes.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a loader reports zero rejects and somebody asks whether you are finished.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 2: Executing a controlled migration",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Proving what actually happened, one controlled step at a time",
+  storageKey: "tp_dmc5_lesson2_v1",
+  lessonId: "dmc5-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

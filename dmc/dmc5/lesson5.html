@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Preparing your migration for cutover</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 5 - "Preparing your migration for
+   cutover". Built as a cutover readiness room per the
+   manuscript's own authoring notes: the learner receives a
+   near-complete pack and has to find the operational gaps before
+   Saturday execution.
+
+   Source: DMC5_Lesson5_Preparing_Your_Migration_for_Cutover_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc, not the manuscript header.
+
+   INTERACTIVITY TARGET, continued: 50% content, 10 gating.
+
+   DELIBERATE guidedSteps USE (b13). The tabletop failure
+   rehearsal is genuinely sequential: each question only makes
+   sense having answered the one before it, and the teaching point
+   is the order in which a team should reason about a partial
+   failure. The construction exercise is b16, a reflection.
+
+   CANONICAL BOUNDARIES, all enforced per the authoring notes:
+   1. The cutover scenario time is Saturday 14 November at 18:40,
+      with go-live on Monday. THE YEAR IS NOT ESTABLISHED and is
+      not invented anywhere in this lesson.
+   2. Core M4 timings preserved exactly: customer extract C1 18m
+      and C2 17m; transform 42m and 31m; validation 24m and 22m;
+      load 58m and 49m. Used as planning evidence, never as
+      guaranteed durations.
+   3. Later-cycle population preserved: 18,612 = 18,573 submitted
+      + 34 approved pre-load exceptions + 5 approved exclusions.
+   4. 45E and CustomerGroup 99 are NOT approved here, and the
+      cause of the 42 UK-to-Belgian semantic defect is NOT
+      invented.
+
+   The tabletop failure (transformation stopping after 11,200
+   records) is a rehearsal scenario from the manuscript, labelled
+   as such in learner text, and is not a Bramwell cycle outcome.
+
+   Enterprise transfer block retained per the authoring notes:
+   11,740 open purchase orders across 31,508 lines, depending on
+   valid supplier, product, organisational and reference
+   relationships.
+
+   Persona: Nadia, Data Migration Consultant, Public Sector ERP,
+   title "The Password We Tested Too Late", specified by the
+   manuscript's authoring notes. Nadia's first DMC5 appearance and
+   her first since DMC3; she was the only Consultant persona
+   unused across the whole of DMC4.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=2, b5=0, b15 items
+   A-E = 3,1,2,0,3. Full sequence 2,0,3,1,2,0,3 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const freezePoints = [
+ "Source master data",
+ "Transactions",
+ "Mappings",
+ "References",
+ "Code and package",
+ "Exceptions"
+];
+const freezeCoaching = [
+ "<strong>Control question:</strong> when is the final extract or delta taken? This is usually the first freeze to be agreed and the one most often described in business terms rather than as a technical identity you can point at.",
+ "<strong>Control question:</strong> what changes continue after the freeze, and how are they captured? The business freeze decision may belong elsewhere; the technical treatment of the resulting delta is yours to understand.",
+ "<strong>Control question:</strong> when do approved rules freeze? A mapping change after readiness is established invalidates the evidence built against the previous version, whether or not anyone notices.",
+ "<strong>Control question:</strong> how are emergency corrections controlled? Reference data is the input most likely to be changed late, most likely to be changed informally, and most likely to change thousands of records when it is.",
+ "<strong>Control question:</strong> what is the final promoted build? Not the newest build, the promoted one, and the distinction matters most on the day somebody deploys a small fix at nine in the morning.",
+ "<strong>Control question:</strong> who can approve a late status change? Moving a record between exception, exclusion and submitted populations after the reconciliation is agreed changes the control equation everybody is working to."
+];
+
+const stopConditions = [
+ "Source or delta identity cannot be proven",
+ "Population does not reconcile",
+ "Wrong or unapproved reference or build detected",
+ "Target prerequisite missing",
+ "Unexpected row loss or multiplication",
+ "Validation pack points at the wrong context",
+ "A material semantic control fails"
+];
+const stopCoaching = [
+ "<strong>Why it stops things:</strong> everything downstream describes an input you cannot name. No later evidence can repair that, because every number produced belongs to an unidentified population.",
+ "<strong>Why it stops things:</strong> a population that will not reconcile before the window will not reconcile inside it, and by then the records are in the target rather than in a file.",
+ "<strong>Why it stops things:</strong> the executed logic is not the approved logic. The result may even be correct, and you would have no way to demonstrate it.",
+ "<strong>Why it stops things:</strong> dependent records cannot land correctly without it. This is the condition most often discovered during execution rather than before it, which is exactly why it belongs on a pre-agreed list.",
+ "<strong>Why it stops things:</strong> the population changed without a rule that says it should. Row loss and multiplication are the two failures that reconciliation exists to catch, so catching one means continuing blind.",
+ "<strong>Why it stops things:</strong> your proof is about something else. A validation pack aimed at the previous cycle will pass cleanly and tell you nothing about this one.",
+ "<strong>Why it stops things:</strong> the records are wrong in a way that produces no rejects. Continuing spreads a defect that nothing downstream will flag for you."
+];
+
+const supportModel = [
+ { title:"Source extract problems",
+   short:"Source-system owner or technical support.",
+   detail:"The extract fails, arrives short, or arrives with a schema that does not match. You need somebody who can re-run the extraction on the source side and confirm what population it should contain. Know in advance whether that person is available on a Saturday evening, because the answer is often different from the weekday answer.",
+   ask:"Do you have a name and a route, or a team inbox?" },
+ { title:"ETL or package failure",
+   short:"Migration developer or consultant.",
+   detail:"The package errors, stalls or produces output that fails reconciliation. This is usually the team's own capability, which makes it the one people assume is covered. Check who is actually on call and whether they have the access to do more than look at logs.",
+   ask:"Can that person deploy a corrected build, or only diagnose one?" },
+ { title:"Target rejection or configuration",
+   short:"Target functional or technical specialist.",
+   detail:"Records reject for reasons that sit in target configuration, or a required prerequisite turns out to be missing. This capability is frequently outside the migration team and frequently the longest to reach. It is also the issue type most likely to stop the load entirely rather than slow it.",
+   ask:"How long would it take to reach them at 20:00 on a Saturday?" },
+ { title:"Access or environment",
+   short:"Platform or security support.",
+   detail:"The service account cannot read the final source, write staging, execute the package or query the target. Almost always avoidable by testing the real execution route beforehand, and almost always expensive when it is not, because security changes rarely happen quickly out of hours.",
+   ask:"Has the actual cutover execution route been tested end to end?" },
+ { title:"Business meaning",
+   short:"An authorised SME.",
+   detail:"An unresolved treatment surfaces, or a value appears that nobody expected. The consultant's job is to surface the consequence to the correct decision owner, not to select a treatment because the window is closing. Know who has authority, not just who knows the answer.",
+   ask:"Is that person authorised to decide, or only able to explain?" },
+ { title:"Priority or release conflict",
+   short:"Data Migration Lead or the appropriate project lead.",
+   detail:"Two workstreams want the same window, or a decision is needed about whether dependent activity proceeds. You supply evidence, execution constraints, recovery options and impact. The decision itself is not yours, and being clear about that in advance makes it faster on the night.",
+   ask:"Have you agreed in advance who arbitrates this, and how you reach them?" }
+];
+
+const tabletopRehearsal = [
+{html:`<h4>The scenario</h4>
+ <p>Customer transformation stops after producing 11,200 records. A partial output exists. Staging completed successfully. No target load has begun.</p>
+ <p>This is a rehearsal scenario rather than a Bramwell cycle outcome. The point of running it before the window is that every question below takes minutes now and much longer under pressure.</p>
+ <div class="callout experience"><div class="callout-label">First question</div><p>Is staging still valid?</p></div>
+ <p>Probably yes, and \u201cprobably\u201d is not the answer you want on the night. Staging completed and its controls passed, so the evidence supports treating it as a valid boundary. That is a different statement from assuming it, and the difference is whether anybody checked.</p>`},
+{html:`<h4>Is the partial transformed output usable?</h4>
+ <p>No, unless the transformation was explicitly designed to be restartable at a checkpoint and that design has been tested.</p>
+ <div class="callout misconception"><div class="callout-label">The tempting move</div><p>Reusing the 11,200 records because they exist and appear complete. Under time pressure this looks like saving forty minutes. It means loading output from a run that failed, with no evidence about where in the population the failure fell or whether the last records written were complete.</p></div>
+ <p>Do not reuse partial transformed output merely because it exists.</p>`},
+{html:`<h4>What proves the failure boundary, and what must be invalidated?</h4>
+ <p>The log and checkpoint evidence establish which step failed and what had completed when it did. Without that, you cannot distinguish records that transformed correctly from records that were mid-write.</p>
+ <ul class="framework-checks">
+   <li>Preserve the failed run's evidence rather than clearing it.</li>
+   <li>Invalidate the incomplete transformed output and any dependent output generated from it.</li>
+   <li>Establish whether the transformation design supports a safe restart, or requires a full rerun from staging.</li>
+ </ul>`},
+{html:`<h4>Can transformation restart safely, and what must be regenerated?</h4>
+ <p>Restart from the proven safe boundary, which the evidence here suggests is staging, under a new run identity. Everything generated after that boundary is regenerated rather than reused or relabelled.</p>
+ <div class="principle"><strong>What the rehearsal actually produced</strong><br>Not a plan for this specific failure, which may never happen. A team that has already argued about restartability, evidence preservation and reuse of partial output, in a room, with nobody waiting. That argument is much cheaper on a Tuesday.</div>`}
+];
+
+const cutoverSituations = [
+ { title:"A. The runbook step says \u201cRun customer transformation\u201d",
+   question:"You are reviewing the cutover runbook on Saturday evening. That is the whole step. What is wrong with it?",
+   options:[
+     {label:"It does not name the person executing it, so on the night it is unclear whether the migration developer or the consultant owns that step.", correct:false, feedback:"Ownership does need to be explicit and it is one field among several. Adding a name to an instruction that cannot be checked still leaves the step unverifiable."},
+     {label:"It does not state the expected duration, so the cutover plan cannot identify whether the step is on the critical path.", correct:false, feedback:"Duration matters for planning and its absence is not what makes the step unsafe to execute."},
+     {label:"It does not name the input baseline, so the executor could use the wrong source, reference or build without the runbook catching it.", correct:false, feedback:"A real gap, and only half of one. Even with the right input named, nothing here says when the step is complete."},
+     {label:"The step is not complete until the expected output and reconciliation have been checked. As written, running the package counts as completion.", correct:true, feedback:"Correct. A better step names the cutover build and reference baseline, confirms input equals transformed plus excluded plus exception, verifies no ambiguous reference matches, saves reconciliation under the run ID, then releases the output to package generation."}
+   ]
+ },
+ { title:"B. Access was confirmed on Thursday",
+   question:"A colleague confirms cutover access is fine: they logged in on Thursday and could see everything. Is that sufficient?",
+   options:[
+     {label:"Yes, provided the same account will be used during the window, since the permissions are the same regardless of when the check was made.", correct:false, feedback:"Seeing everything is not doing anything. Read access to a target does not prove the account can execute an import function or write to staging."},
+     {label:"No. Personal developer access does not prove the cutover service account can perform the required action through the real execution route.", correct:true, feedback:"Correct. Prove access by executing a harmless real step through the exact route you intend to use, rather than confirming somebody could log in."},
+     {label:"No, because access should be reconfirmed immediately before the window in case permissions have changed in the intervening days.", correct:false, feedback:"Timing is a secondary concern. Reconfirming the wrong kind of check closer to the window proves the same insufficient thing."},
+     {label:"Yes for the source and staging layers, though target import functions should be verified separately given their higher permission requirements.", correct:false, feedback:"Splitting it this way still accepts a login as proof for two of the layers, when execution is what needs proving at every one."}
+   ]
+ },
+ { title:"C. Planning from the timing evidence",
+   question:"Customer transform took 42 minutes in C1 and 31 in C2. What duration goes in the cutover runbook?",
+   options:[
+     {label:"31 minutes, since the most recent cycle reflects the current build and is the best available evidence of how the step now performs.", correct:false, feedback:"Planning from the best number is the specific error. The improvement may reflect environment conditions rather than a permanently faster step."},
+     {label:"The average of the two, at around 36 minutes, since a mean of the observed runs is the most defensible single estimate.", correct:false, feedback:"An average conceals the thing worth noticing. An eleven-minute spread on a forty-minute step is material variation, and the average hides the question of why."},
+     {label:"A conservative duration based on the slower observation, with the variation investigated and checkpoint and handoff time added on top.", correct:true, feedback:"Correct. Use repeated evidence, understand the variation, and include time for checkpoints and handoffs rather than machine runtime alone."},
+     {label:"31 minutes with a contingency buffer applied across the whole cutover plan, rather than padding individual step durations.", correct:false, feedback:"Plan-level contingency is reasonable and does not repair a step estimate built on the fastest observation. The two are separate problems."}
+   ]
+ },
+ { title:"D. \u201cThe newer reference workbook has the fix\u201d",
+   question:"At 18:40 on Saturday, a message says a newer CustomerGroup reference workbook contains an important correction. What must be proven before it enters the cutover baseline?",
+   options:[
+     {label:"What changed, who approved it, which source values and population it affects, how many records, whether the build was tested with it, and what evidence must be regenerated.", correct:true, feedback:"Correct. Reference data is executable logic. A correction can change thousands of transformed records, so its impact is calculated before it is accepted rather than after."},
+     {label:"That the correction addresses a genuine defect and has been reviewed by the person who identified the original problem.", correct:false, feedback:"Reviewing the fix on its own terms says nothing about how many records it moves or whether the build has ever run against it."},
+     {label:"That the workbook is the approved published version rather than somebody's working copy, and that its version identity is recorded.", correct:false, feedback:"Necessary and not sufficient. A properly published, properly versioned reference can still change thousands of records in ways nobody has assessed."},
+     {label:"That the change has been tested in a lower environment and the cutover build can read the newer workbook without errors.", correct:false, feedback:"Reading without errors proves compatibility, not correctness. The question is which records it changes, and that is not answered by a clean run."}
+   ]
+ },
+ { title:"E. The technical cutover recommendation",
+   question:"Baselines are fixed, the population reconciles by key, the runbook is timed and rehearsed, recovery boundaries are defined. Target import access for the service account was never tested end to end. What do you recommend?",
+   options:[
+     {label:"READY WITH CONTROLLED TECHNICAL CONDITIONS, listing the untested access route as a condition to be resolved before the load step begins.", correct:false, feedback:"A condition is something bounded and controlled. An untested execution route is an unknown: you do not know whether it takes five minutes or blocks the window entirely."},
+     {label:"TECHNICALLY READY, since every readiness gate passes and access can be verified as the first action of the cutover sequence itself.", correct:false, feedback:"Verifying access inside the window turns a readiness check into an execution risk, at the point where there is least time to resolve it."},
+     {label:"NOT TECHNICALLY READY until the real execution route is proven, since an untested access path is a readiness defect rather than an execution surprise.", correct:true, feedback:"Correct. Record missing or unproven access as a readiness defect. It is also the cheapest of all these gaps to close beforehand and among the most expensive to hit on the night."},
+     {label:"NOT TECHNICALLY READY, and escalate the decision to the Data Migration Lead since an access gap this close to the window is a programme-level risk.", correct:false, feedback:"The status is right and the escalation is premature. Test the route first; it may take ten minutes, and escalating an unresolved unknown gives the Lead nothing to decide with."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Test is not cutover",title:"Test success does not equal cutover readiness",type:"mcq",
+ _correctIndex:2,
+ html:`<p class="lead">The process has worked in repeated test cycles. That is necessary evidence. It is not the same thing as being ready.</p>
+ <div class="callout experience"><div class="callout-label">What changes at cutover</div><p>The data is final or near-final. Time matters. Downstream teams are waiting. Recovery choices become more expensive. Every undocumented dependency becomes visible.</p></div>
+ <h3>What is cutover preparation actually for?</h3>`,
+ options:[
+   {label:"Proving the migration process works, by running it once more under conditions as close to production as the project can arrange.", correct:false, feedback:"The test cycles already established that the process works. Repeating them proves the same thing again and leaves the new conditions unaddressed."},
+   {label:"Building enough contingency into the plan that the window can absorb the problems the test cycles did not reveal.", correct:false, feedback:"Contingency helps when something goes wrong. It does nothing about the decisions that should already have been made before anyone arrives."},
+   {label:"Removing ambiguity, so that by the time execution begins nobody is deciding which source, reference, package, query or sequence was intended.", correct:true, feedback:"Correct. Those choices should already be controlled. Cutover-ready means the migration can be executed, checked and recovered by design, not by remembering what worked last time."},
+   {label:"Documenting the process in enough detail that the cutover can be audited afterwards and the evidence survives review.", correct:false, feedback:"Auditability is a useful by-product. Documentation written to be read afterwards is a different artefact from a runbook written to be executed under pressure."}
+ ]
+},
+{
+ id:"b2",nav:"The baseline",title:"The cutover technical baseline",type:"content",
+ html:`<p class="lead">One identifiable baseline that binds everything together.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Baseline item</th><th>Evidence</th></tr></thead><tbody>
+ <tr><td>Source or delta</td><td>Named snapshot or controlled extraction method</td></tr>
+ <tr><td>Rules</td><td>Approved mapping and transformation version</td></tr>
+ <tr><td>References</td><td>Approved context and version</td></tr>
+ <tr><td>Build</td><td>Package or code identity</td></tr>
+ <tr><td>Population</td><td>Submitted, exceptions and exclusions</td></tr>
+ <tr><td>Environment</td><td>Exact target and staging context</td></tr>
+ <tr><td>Validation</td><td>Final-environment validation pack</td></tr>
+ <tr><td>Runbook</td><td>Controlled cutover version</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A cutover folder containing FINAL, FINAL2 and latest. That is not a control, it is a set of guesses with filenames attached. Use stable identities and keep controlled outputs separate from scratch work.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Cutover_Baseline_Manifest.xlsx</strong><p class="small">The eight baseline items, each with the identity that proves it.</p></div><a class="btn secondary" href="/assets/downloads/Cutover_Baseline_Manifest.xlsx" download>Download</a></div>`
+},
+{
+ id:"b3",nav:"Freeze points",title:"Know what is final and what can still change",type:"selectAll",
+ html:`<p class="lead">Not every input freezes at the same time. Six inputs, each needing its own freeze point and its own process for authorised changes afterwards. Explore each.</p>`,
+ options: freezePoints,
+ coaching: freezeCoaching,
+ hint:"Explore every input before continuing.",
+ closingHtml:`<div class="principle"><strong>Record the freeze point per input</strong><br>The failure mode is not that something changed. It is that something changed and nobody could tell, because no freeze point existed to change from.</div>`
+},
+{
+ id:"b4",nav:"Timings",title:"Reconcile the population, then plan from timing evidence",type:"content",
+ html:`<p class="lead">Do not enter cutover with an unexplained difference between expected source population, approved exceptions and exclusions, and the intended submitted population.</p>
+ <div class="principle"><strong>The control that must hold</strong><br>18,612 = 18,573 submitted + 34 approved pre-load exceptions + 5 approved exclusions, reconciled by key rather than by count.</div>
+ <h3>Bramwell customer timing evidence</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Activity</th><th>Cycle 1</th><th>Cycle 2</th><th>Planning implication</th></tr></thead><tbody>
+ <tr><td>Extract</td><td>18m</td><td>17m</td><td>Stable evidence, still allow operational variance</td></tr>
+ <tr><td>Transform</td><td>42m</td><td>31m</td><td>Material variation: investigate the cause and plan conservatively</td></tr>
+ <tr><td>Validation</td><td>24m</td><td>22m</td><td>Relatively stable</td></tr>
+ <tr><td>Load</td><td>58m</td><td>49m</td><td>Largest observed activity; target performance matters</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Do not plan from the best number</div><p>These observations support planning and guarantee nothing. Use repeated evidence, understand the variation, and include the time required for checkpoints and handoffs rather than machine runtime alone.</p></div></div>`
+},
+{
+ id:"b5",nav:"Which number",title:"Eleven minutes of variation",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">Transform took 42 minutes in the first cycle and 31 in the second. Nobody has established why.</p>
+ <h3>What is the most useful thing about that pair of numbers?</h3>`,
+ options:[
+   {label:"The unexplained eleven-minute spread itself, which is a prompt to investigate before the window rather than a range to plan around.", correct:true, feedback:"Correct. Material variation on a single step is evidence that something not yet understood affects its duration, and understanding it beforehand is worth more than any estimate derived from it."},
+   {label:"That the step is getting faster, which suggests the build or environment has improved and the trend can reasonably be extended.", correct:false, feedback:"Two observations are not a trend, and an unexplained improvement is as likely to reverse as to continue."},
+   {label:"That the range is now known, so the runbook can plan the step at between 31 and 42 minutes with the uncertainty made explicit.", correct:false, feedback:"Stating the range is honest and it accepts the uncertainty rather than reducing it. The cause may be something you could control."},
+   {label:"That transform is not the largest activity, since load takes 58 and 49 minutes, so the variation matters less to the critical path.", correct:false, feedback:"Relative size is a planning consideration and it does not make an unexplained variation safe. The same unknown cause may affect load too."}
+ ]
+},
+{
+ id:"b6",nav:"The runbook",title:"Turn the runbook into an executable document",type:"content",
+ html:`<p class="lead">A cutover runbook should tell a competent consultant exactly what to do, what input to use, what evidence to capture, what output to expect and when to stop.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Runbook field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Step ID</td><td>Unambiguous sequence and reference</td></tr>
+ <tr><td>Owner</td><td>Who executes</td></tr>
+ <tr><td>Prerequisite</td><td>What must already be true</td></tr>
+ <tr><td>Input identity</td><td>Exact artefact or baseline</td></tr>
+ <tr><td>Action</td><td>Executable instruction</td></tr>
+ <tr><td>Expected output</td><td>What should be produced</td></tr>
+ <tr><td>Control</td><td>How completion is proven</td></tr>
+ <tr><td>Evidence location</td><td>Where the result is stored</td></tr>
+ <tr><td>Duration</td><td>Evidence-based plan</td></tr>
+ <tr><td>Stop condition</td><td>When not to continue</td></tr>
+ <tr><td>Next dependency</td><td>What this releases</td></tr>
+ </tbody></table></div>
+ <h3>Every step needs an acceptance check</h3>
+ <div class="callout misconception"><div class="callout-label">Incomplete</div><p>\u201cRun customer transformation.\u201d The step is not complete until the expected output and reconciliation have been checked.</p></div>
+ <div class="quote">Transform the customer population using the named cutover build and reference baseline. Confirm input equals transformed plus excluded plus exception. Verify no ambiguous reference matches. Save the reconciliation under the run ID, then release the controlled output to package generation.</div>
+ <p class="small">Make evidence capture an explicit output of each important step. Do not rely on somebody remembering to save counts, logs and validation outputs after the event, because under pressure they will not.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Cutover_Runbook.xlsx</strong><p class="small">The eleven fields above, one row per step, with sequential and parallel activity marked.</p></div><a class="btn secondary" href="/assets/downloads/Cutover_Runbook.xlsx" download>Download</a></div>`
+},
+{
+ id:"b7",nav:"Stop conditions",title:"Define stop conditions before the pressure arrives",type:"selectAll",
+ html:`<p class="lead">Seven conditions where a technical activity should pause. Agreeing them now means nobody has to win an argument about them at 22:00. Explore each.</p>`,
+ options: stopConditions,
+ coaching: stopCoaching,
+ hint:"Explore every condition before continuing.",
+ closingHtml:`<div class="principle"><strong>Agreed in advance, or not agreed at all</strong><br>A stop condition first raised during execution is a proposal. The same condition agreed a week earlier is a control, and the difference is entirely in the timing.</div>`
+},
+{
+ id:"b8",nav:"Checkpoints",title:"Technical checkpoints and restart boundaries",type:"content",
+ html:`<p class="lead">A checkpoint is a deliberate point where evidence is reviewed before dependent execution continues.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Checkpoint</th><th>Evidence before release</th></tr></thead><tbody>
+ <tr><td>Source accepted</td><td>Snapshot, schema and population controls</td></tr>
+ <tr><td>Transformation accepted</td><td>Reconciliation plus high-risk rule checks</td></tr>
+ <tr><td>Package accepted</td><td>Expected submitted key set and build identity</td></tr>
+ <tr><td>Load technically complete</td><td>Accepted and rejected counts, plus logs</td></tr>
+ <tr><td>Migration validated</td><td>Key, semantic, relationship and negative controls</td></tr>
+ <tr><td>Recovery complete</td><td>Corrected population, regression and downstream proof</td></tr>
+ </tbody></table></div>
+ <h3>And know your restart boundaries in advance</h3>
+ <p>Which completed outputs remain valid after a failure, and which must be invalidated? This is a technical evidence question, not a matter of convenience, and answering it beforehand removes the single most contested decision of a failed cutover.</p>
+ <h3>Make the critical path explicit</h3>
+ <p>Some activities can run in parallel. Others cannot start until a parent, reference, environment or validation checkpoint is complete. A dependency chain that exists only in somebody's head is not a plan.</p>`
+},
+{
+ id:"b9",nav:"Access",title:"Prove the environment, the access route and the prerequisites",type:"content",
+ html:`<p class="lead">A correct runbook is useless if the execution account cannot do what the runbook says.</p>
+ <ul class="framework-checks">
+   <li>Source location and staging database.</li>
+   <li>ETL or orchestration tool.</li>
+   <li>Controlled reference location.</li>
+   <li>Target import or load function.</li>
+   <li>Target validation access.</li>
+   <li>Logs, monitoring and the evidence repository.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Test with the real execution route</div><p>Personal developer access does not prove that the cutover service account, production role or operational account can perform the required action. Prove it by executing a harmless real step through the exact route you intend to use, not by confirming somebody could log in.</p></div></div>
+ <p>Then confirm target prerequisites: the reference, configuration and master data the migration depends on must exist in the intended target context before dependent records execute.</p>`
+},
+{
+ id:"b10",nav:"Validation and exceptions",title:"Prepare validation, negative controls and exception handling",type:"content",
+ html:`<p class="lead">Remove test-cycle hard coding, confirm target context and permissions, and make expected results explicit before the cutover load.</p>
+ <h3>Cutover validation still has to prove what did not happen</h3>
+ <ul class="framework-checks">
+   <li>45E must not silently become NET30.</li>
+   <li>CustomerGroup 99 must not silently become STANDARD.</li>
+   <li>BILLING_ONLY must remain excluded where the rule requires it.</li>
+   <li>UK customers must not silently route to the Belgian legal entity.</li>
+   <li>Recovery reruns must not duplicate unaffected target records.</li>
+ </ul>
+ <h3>And decide where exceptions go before they occur</h3>
+ <p>Where will technical rejects and controlled business exceptions be recorded? How will they be identified by run? What evidence is required before any rerun? A cutover window is the worst possible time to design an exception process, and the pressure to skip it entirely is considerable.</p>
+ <div class="callout misconception"><div class="callout-label">What pressure does not change</div><p>Cutover pressure does not authorise a consultant to invent a target treatment. Payment term 45E has no approved target equivalent. CustomerGroup 99 remains unresolved for 18 German records. Keep the population explicit and surface the consequence to the correct decision owner.</p></div>`
+},
+{
+ id:"b11",nav:"Support model",title:"Six issue types, six capabilities",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">When a failure occurs you should not spend twenty minutes finding the right person. Explore each issue type, and answer the test underneath it about your own next cutover.</p>`,
+ items: supportModel,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Support_and_Escalation_Matrix.xlsx</strong><p class="small">Issue type, capability needed, named contact, route and expected response time, pre-built rather than assembled on the night.</p></div><a class="btn secondary" href="/assets/downloads/Support_and_Escalation_Matrix.xlsx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"Rehearsal",title:"Rehearse the handoffs, and rehearse with a stranger",type:"content",
+ html:`<p class="lead">If one consultant extracts, another transforms and another loads, rehearse exactly what is handed over and how the recipient proves it is the correct artefact.</p>
+ <div class="principle"><strong>The handoff minimum</strong><br>Cycle and run ID, the exact artefact, population and count, source, reference and build identities, controls passed, known exceptions, and the recipient's next action.</div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The best runbook test</div><p>Whether another competent consultant can execute or walk through it without relying on the author's memory. Rehearsing it yourself proves that you remember your own process, which was never in doubt.</p></div></div>`
+},
+{
+ id:"b13",nav:"Tabletop",title:"Run a tabletop failure rehearsal",type:"guidedSteps",
+ html:`<p class="lead">Introduce a realistic failure and make the team state what stops, what remains valid, what evidence is needed and who must be involved. Work through it in order.</p>`,
+ steps: tabletopRehearsal,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Cutover_Evidence_Index.xlsx</strong><p class="small">What evidence each step produces and where it lives, so a failure rehearsal can point at it rather than describe it.</p></div><a class="btn secondary" href="/assets/downloads/Cutover_Evidence_Index.xlsx" download>Download</a></div>`
+},
+{
+ id:"b14",nav:"Late changes",title:"Prepare for the late change that arrives anyway",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">A late source change</div>
+ <p>If the final source population changes after readiness, identify the delta, profile the affected fields and values, rerun the relevant controls and regenerate the dependent outputs. The population you reconciled is no longer the population you have.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">A late reference change</div>
+ <p>A reference-data correction can change thousands of transformed records. Treat it as executable logic and calculate the impact before accepting it into the cutover baseline.</p>
+ <ul class="framework-checks">
+   <li>What changed?</li>
+   <li>Who approved it?</li>
+   <li>Which source and context values match it?</li>
+   <li>How many records are affected?</li>
+   <li>Was the executable build tested with it?</li>
+   <li>Which transformation and validation evidence must be regenerated?</li>
+ </ul>
+ </div>
+ <p class="small">Six questions, and none of them is \u201cis the fix correct?\u201d. The fix may well be correct. The question is what accepting it does to everything already proven.</p>`
+},
+{
+ id:"b15",nav:"18:40 Saturday",title:"Consultant situations \u2013 Saturday, 18:40",type:"situations",
+ html:`<p class="lead">It is Saturday 14 November at 18:40. Go-live is Monday. You have the customer migration work package and you are deciding whether it is technically ready to enter its execution sequence. Five things need an answer.</p>`,
+ items: cutoverSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Password We Tested Too Late", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/lesson5-fromfield-nadia.mp3",
+   reflection:"On your last cutover, was access proven by executing a real step through the real route, or by somebody confirming they could log in?"
+ })}</div>`
+},
+{
+ id:"b16",nav:"The recommendation",title:"Build it \u2013 The technical cutover recommendation",type:"reflection",
+ html:`<p class="lead">Produce the readiness statement you would give at 18:40, and the recommendation that closes it.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Recommendation</th><th>Meaning</th></tr></thead><tbody>
+ <tr><td>TECHNICALLY READY</td><td>Defined technical readiness gates pass</td></tr>
+ <tr><td>READY WITH CONTROLLED TECHNICAL CONDITIONS</td><td>Explicit bounded conditions remain and are controlled for the stated scope</td></tr>
+ <tr><td>NOT TECHNICALLY READY</td><td>A material baseline, access, dependency, population, runbook, recovery or validation gap remains</td></tr>
+ </tbody></table></div>
+ <h3>The readiness review is short, with evidence underneath</h3>
+ <div class="quote">\u201cThe customer migration technical baseline is fixed: source and delta, approved rules and reference, build, environment and validation pack are all identified. Population reconciles to the controlled cutover scope. The timed runbook has been rehearsed with checkpoints and stop conditions. Access and target prerequisites are proven. Recovery boundaries and support contacts are prepared. The remaining technical conditions are...\u201d</div>
+ <h3>And one boundary to state plainly</h3>
+ <p>You provide technical readiness evidence, execution constraints, recovery options and impact. Programme Go or No-Go authority, business risk acceptance and executive cutover command belong at the appropriate leadership level.</p>
+ <textarea id="reflection" placeholder="BASELINE: ...&#10;POPULATION: ...&#10;RUNBOOK AND TIMINGS: ...&#10;ACCESS AND PREREQUISITES: ...&#10;RECOVERY AND SUPPORT: ...&#10;REMAINING CONDITIONS: ...&#10;RECOMMENDATION: ...&#10;WHAT IS NOT MINE TO DECIDE: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Technical_Cutover_Readiness.xlsx</strong><p class="small">The twelve readiness areas with the evidence each requires, as a final personal challenge before the window.</p></div><a class="btn secondary" href="/assets/downloads/Technical_Cutover_Readiness.xlsx" download>Download</a></div>`,
+ minLength:70,
+ checks:[
+   { test:/snapshot|version|build|identit|baseline/i, strength:"You named the baseline identities rather than describing the inputs.", gap:"Name the source or delta identity, approved rule and reference versions, and the build. Identity is what removes the ambiguity." },
+   { test:/18,?612|18,?573|reconcil|by key/i, strength:"Your population reconciles against the control equation by key.", gap:"State the population reconciliation: 18,612 total, 18,573 submitted, 34 approved exceptions, 5 approved exclusions, by key." },
+   { test:/access|execution route|service account|prerequisite/i, strength:"You addressed whether access was proven through the real execution route.", gap:"Say whether access was proven by executing a real step through the intended route, not by a login check." },
+   { test:/stop condition|checkpoint|restart|recovery boundar/i, strength:"You included stop conditions and recovery boundaries rather than only the happy path.", gap:"Include the stop conditions and the restart boundaries. A runbook without brakes is a sequence, not a control." },
+   { test:/45E|CustomerGroup 99|unresolved|not approved/i, strength:"Unresolved business treatments remain visible in your statement.", gap:"Keep 45E and CustomerGroup 99 explicit. Cutover pressure does not change their status." },
+   { test:/not mine|belongs|Lead|leadership|go.?\/?no.?go|authority/i, strength:"You marked the boundary between your technical recommendation and programme authority.", gap:"State what is not yours to decide: programme Go or No-Go, business risk acceptance and cutover command." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Baseline and population.</strong> The technical baseline is fixed and identifiable: named source snapshot and delta method, approved mapping and reference versions, a single promoted build, the exact target and staging context, and a validation pack rebuilt for the final environment. The population reconciles by key, not only by count: 18,612 source-cycle records resolving to 18,573 submitted, 34 approved pre-load exceptions and 5 approved exclusions, with every key carrying exactly one status.</div>
+ <div class="quote"><strong>Runbook, timings and recovery.</strong> The runbook is executable rather than descriptive: every step names its input identity, its control and its evidence output, and no step counts as complete until its reconciliation has been checked. Durations are planned from the slower of the two observed cycles rather than the faster, with checkpoint and handoff time added, and the unexplained eleven-minute transform variation is flagged for investigation rather than averaged away. Stop conditions, checkpoints and restart boundaries are agreed in advance, and the tabletop failure rehearsal has been run with somebody who did not write the process.</div>
+ <div class="quote"><strong>Access and remaining conditions.</strong> Target import access for the cutover service account has not been proven end to end through the real execution route. A login check is not sufficient evidence for this, and it is a readiness defect rather than an execution surprise. That is the one remaining condition, and it is also the cheapest on the list to close: a harmless real step executed through the intended route.</div>
+ <div class="quote"><strong>Recommendation and boundary.</strong> NOT TECHNICALLY READY until that route is proven. Everything else passes and I would expect this to move to technically ready within the hour once the access step is executed. Unresolved treatments stay visible and unchanged: 45E has no approved target equivalent and CustomerGroup 99 remains unresolved for 18 German records, and cutover pressure does not alter either. This is a technical readiness recommendation. Programme Go or No-Go, business risk acceptance and cutover command sit with the Data Migration Lead and project leadership, and I can supply evidence, constraints, recovery options and impact for any of those decisions.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The useful move in a statement like this is pairing the gap with how quickly it closes. Not technically ready, closable within the hour, is a far more actionable sentence than either half on its own.":"Check two things. Is your population reconciled by key rather than by count, and did you name what is not yours to decide? Both are where these statements tend to go vague."}</div>`
+},
+{
+ id:"b17",nav:"Checklist",title:"The cutover-ready checklist, and the dependencies beyond customers",type:"content",
+ html:`<p class="lead">A final personal challenge before entering the execution window.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Area</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Baseline</td><td>Can I identify every input, rule, reference and build?</td></tr>
+ <tr><td>Population</td><td>Does the final scope reconcile by key?</td></tr>
+ <tr><td>Delta and freeze</td><td>Do I know how late changes are handled?</td></tr>
+ <tr><td>Timing</td><td>Are durations evidence-based and dependency-aware?</td></tr>
+ <tr><td>Runbook</td><td>Can another consultant execute it?</td></tr>
+ <tr><td>Access</td><td>Has the actual execution route been proven?</td></tr>
+ <tr><td>Dependencies</td><td>Are target prerequisites confirmed?</td></tr>
+ <tr><td>Validation</td><td>Is final-environment proof ready?</td></tr>
+ <tr><td>Recovery</td><td>Are safe restart and rerun boundaries understood?</td></tr>
+ <tr><td>Support</td><td>Do I know who resolves each issue type?</td></tr>
+ <tr><td>Stops</td><td>Are technical stop conditions explicit?</td></tr>
+ <tr><td>Evidence</td><td>Is capture built into every material step?</td></tr>
+ </tbody></table></div>
+ <h3>Cross-domain dependencies belong in the runbook too</h3>
+ <p>Bramwell's 11,740 open purchase orders across 31,508 lines depend on valid supplier, product, organisational and reference relationships. A technically accepted purchase order can still be unusable if supplier or payment setup is incomplete, or a product-site relationship is unresolved. The cutover plan therefore needs release checks at dependency boundaries, not just successful package completion.</p>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2013 The activity that looks like admin",
+ type:"reflection",
+ html:`<p class="lead">Which cutover preparation activity is easiest to dismiss as administration, and most likely to save time during a failure? Name it, and explain why the saving arrives at exactly the moment you need it.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The strongest candidates share a shape: half an hour of unglamorous work beforehand that removes an argument, a search or a reconstruction from the worst hour of the window. Recording identities, pre-building escalation routes and agreeing restart boundaries all qualify.</p></div></div>
+ <textarea id="reflection" placeholder="The activity I would name..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/identit|escalat|restart|boundar|evidence|contact|manifest/i, strength:"You named a specific preparation activity rather than a general principle.", gap:"Name one concrete activity: recording identities, pre-building escalation routes, agreeing restart boundaries, indexing evidence." },
+   { test:/under pressure|at (2|02|20|22|midnight)|during|failure|window|worst/i, strength:"You located the saving at the moment of failure rather than in general.", gap:"Say when the saving arrives. The argument for this work is entirely about the hour you would otherwise lose." },
+   { test:/argument|search|find|reconstruct|guess|debate|work out/i, strength:"You identified what the preparation removes: a search, an argument or a reconstruction.", gap:"Name what it removes. These activities save time by deleting a task from the worst hour, not by making anything faster." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Agreeing the restart boundaries in advance. It looks like paperwork, because on a good night you never open the document, and it is the thing I would least want to be without. When a transformation stops half way, the argument that follows is always the same: somebody wants to reuse the partial output because it exists, somebody else wants to re-extract everything, and both positions sound reasonable at 22:00 to a tired room. If the boundaries were agreed a week earlier, that argument simply does not happen. The saving is not that the recovery runs faster. It is that forty minutes of debate, conducted by people who want to go home, has been deleted from the window entirely, and the decision was made by people who were thinking clearly.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The insight worth keeping is that these activities do not make anything faster. They remove a task, usually a decision, from the hour when decisions are worst.":"Push on what the activity removes rather than what it provides. The value is in the argument, search or reconstruction that never has to happen."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2013 Arrive at cutover with the decisions already made",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Bind the final technical baseline together.</li>
+   <li>Control freeze and delta handling per input.</li>
+   <li>Reconcile the final population by key.</li>
+   <li>Plan timings from evidence, not optimism.</li>
+   <li>Make the critical path and dependencies explicit.</li>
+   <li>Turn the runbook into executable instructions.</li>
+   <li>Build controls and evidence capture into each step.</li>
+   <li>Define checkpoints and stop conditions in advance.</li>
+   <li>Prove access using the real execution route.</li>
+   <li>Confirm target prerequisites.</li>
+   <li>Prepare final-environment validation and negative controls.</li>
+   <li>Design exception and recovery handling before execution.</li>
+   <li>Pre-build support and escalation routes.</li>
+   <li>Rehearse handoffs and failure scenarios.</li>
+   <li>Impact-assess late source and reference changes.</li>
+   <li>Keep unresolved business treatments visible.</li>
+   <li>Provide technical readiness evidence without taking programme Go or No-Go authority.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>Cutover-ready means the migration can be executed, checked and recovered by design, not by remembering what worked last time.</div>`
+},
+{
+ id:"b20",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Preparing your migration for cutover.</strong></p>
+ <p>You can now convert a migration process that worked in test into a cutover-ready technical work package: establishing final baselines, calculating realistic timings, rehearsing the runbook, proving access and dependencies, defining freeze and delta handling, preparing validation and recovery evidence, organising operational support, and identifying the technical conditions that should prevent execution from entering the cutover window.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Executing cutover and supporting stabilisation</strong></p>
+ <p>The DMC5 capstone, and the end of the module. You will run the window itself: live evidence, controlled deviations, handover, early-life validation and closure.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time somebody tells you access has been confirmed.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 5: Preparing your migration for cutover",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Executable, checkable and recoverable by design, not by memory",
+  storageKey: "tp_dmc5_lesson5_v1",
+  lessonId: "dmc5-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

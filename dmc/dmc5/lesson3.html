@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Managing failures and reruns</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 3 - "Managing failures and reruns".
+   Built as a recovery case with evidence revealed in stages, per
+   the manuscript's own authoring notes, rather than presenting
+   all diagnostic facts up front.
+
+   Source: DMC5_Lesson3_Managing_Failures_and_Reruns_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc, not the manuscript header. Third module running.
+
+   INTERACTIVITY TARGET, continued: 52% content, 11 gating.
+
+   DELIBERATE guidedSteps USE (b14). The twelve-step recovery
+   execution is genuinely sequential - the rerun key set at step 5
+   cannot be built before the baselines are fixed at step 3, and
+   the whole teaching point is that recovery is a new controlled
+   execution rather than a second press of the same button. The
+   construction exercise is b19, a reflection.
+
+   CANONICAL BOUNDARIES, all three enforced per the authoring
+   notes:
+   1. The seven-address defect demonstrates mechanism-based
+      recovery. Nothing here implies seven is the complete
+      affected population - every mention says the opposite.
+   2. The 18,573 accepted / zero rejects and the 42 UK-to-Belgian
+      semantic defect illustrate technical versus semantic
+      failure. The 42-record root cause is NOT invented.
+   3. The 18,573 / 12,006 / 11,982 partial-run lab is explicitly
+      synthetic training data, labelled as such in learner text,
+      and must not merge into Bramwell canon. The 37-record
+      reference lab is likewise training material.
+
+   Other Bramwell facts: the address rule (approved intent
+   excludes BILLING_ONLY, implemented predicate retained
+   DELIVERY_PRIMARY only, C10482-DEL-02 present raw and absent
+   transformed with no exception recorded); PKG-CUST-R3-B07 as
+   the build identity that must not be overwritten; SO-78452
+   depending on C10482, C10482-DEL-02, PRD-44781, UK01, WH-BRI,
+   GBP, a payment-term treatment and STDROAD; 45E and
+   CustomerGroup 99 still unresolved.
+
+   Persona: Elena, Data Migration Consultant, Utilities ERP,
+   title "The Rerun That Needed a Boundary", specified by the
+   manuscript's authoring notes.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=1, b6=3, b16=0,
+   b18 items A-E = 2,0,3,1,2. Full sequence 1,3,0,2,0,3,1,2 -
+   four positions used twice each, no run of three.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const failureClasses = [
+ "Record-level rejection",
+ "Batch or package failure",
+ "Transformation defect",
+ "Reference or configuration defect",
+ "Dependency failure",
+ "Semantic defect",
+ "Infrastructure or transient failure"
+];
+const failureClassCoaching = [
+ "<strong>Evidence:</strong> specific keys rejected, the remainder accepted. <strong>Recovery implication:</strong> you may be able to isolate and rerun the corrected failed population, provided the mechanism really is record-specific rather than the visible edge of something wider.",
+ "<strong>Evidence:</strong> execution stops part-way. <strong>Recovery implication:</strong> you must establish committed versus uncommitted target state before anything else. This is the class where the log tells you least about what actually landed.",
+ "<strong>Evidence:</strong> wrong or missing output produced upstream. <strong>Recovery implication:</strong> regenerate the affected downstream outputs, including ones that did not themselves fail. A correct-looking package built from faulty input is still faulty.",
+ "<strong>Evidence:</strong> lookup or routing behaviour is wrong. <strong>Recovery implication:</strong> identify the full population exposed to the faulty baseline. Not the records that visibly misbehaved, everything that consumed that reference version.",
+ "<strong>Evidence:</strong> a parent or configuration object is unavailable. <strong>Recovery implication:</strong> the sequence or the prerequisite has to be corrected, and rerunning the dependent entity before that changes nothing.",
+ "<strong>Evidence:</strong> the load accepted the records and the target meaning is wrong. <strong>Recovery implication:</strong> technical success cannot be accepted, and the affected target population needs controlled correction. This is the class with no rejects to count.",
+ "<strong>Evidence:</strong> a connection or service interruption. <strong>Recovery implication:</strong> a rerun may well be possible, but only after proving the target's transaction and checkpoint behaviour. Transient does not mean nothing committed."
+];
+
+const idempotencyBehaviours = [
+ "Insert-only",
+ "Upsert by stable key",
+ "Delete-and-reload scope",
+ "Replace the entire entity",
+ "API with request identity",
+ "Custom package"
+];
+const idempotencyCoaching = [
+ "<strong>Risk:</strong> duplicate or key-violation on replay. The friendliest version of this failure is a hard error. The unfriendly version is a duplicate that loads cleanly.",
+ "<strong>Risk:</strong> may be rerunnable, and changed values or references can alter the result. An upsert executed against a different reference version quietly rewrites records that were previously correct.",
+ "<strong>Risk:</strong> safe only if the deletion scope is exact and dependencies are controlled. A delete scope one degree too wide removes records the rerun will not restore.",
+ "<strong>Risk:</strong> a large blast radius with dependency implications. It is the most certain way to reach a known state and the most expensive way to discover a dependency you had forgotten.",
+ "<strong>Risk:</strong> may suppress duplicates, and the behaviour has to be proven rather than assumed from the documentation. Request-identity handling varies between target versions.",
+ "<strong>Risk:</strong> you have to inspect the actual implementation. There is no general answer, and the person who wrote it may not remember what it does on replay."
+];
+
+const rerunPopulationLogic = [
+ { title:"Target technical rejects only, transformation proven correct",
+   short:"Correct and rerun the controlled rejected keys.",
+   detail:"This is the narrowest legitimate case, and it depends on the mechanism genuinely being record-specific. If each rejection has its own cause sitting in that record's own data, the rejected key set is the affected population. Prove the transformation is correct first, rather than assuming it because the other records passed.",
+   ask:"Is the cause inside each failing record, or in logic that touched all of them?" },
+ { title:"A transformation rule is wrong",
+   short:"Every record exposed to the faulty rule, not the ones that visibly broke.",
+   detail:"The Bramwell address defect is the example. Seven key accounts revealed it, and the population is every record the faulty eligibility predicate processed. Some of those may look correct by coincidence, because they had no DELIVERY_SECONDARY row to lose. They still went through faulty logic and still need to be covered by the recovery.",
+   ask:"Are you using the defect ticket's examples as your population?" },
+ { title:"A reference table had duplicate active mappings",
+   short:"All keys using the affected mapping grain and context.",
+   detail:"The ambiguity affects everything that hit that lookup, whether or not the ambiguity resolved wrongly for a given record. First-match behaviour can produce a correct answer by luck, and you cannot tell which records were lucky without redoing them under the corrected reference.",
+   ask:"Could a record have got the right answer for the wrong reason?" },
+ { title:"Target service outage after a known checkpoint",
+   short:"Uncommitted and not-attempted keys, subject to target transaction proof.",
+   detail:"The narrowest case in principle and the one that most often goes wrong in practice, because the process log and the target state disagree. Prove commit state by querying the target rather than reading the log, then rerun only what is genuinely uncommitted or never attempted.",
+   ask:"Have you proven commit state, or inferred it from the process?" },
+ { title:"A semantic routing defect",
+   short:"All keys exposed to the routing mechanism, not just the sampled wrong records.",
+   detail:"The 42 UK customers found in the Belgian legal entity are the ones validation happened to check. The affected population is everything the routing mechanism handled. Until the mechanism is understood, you cannot even define that set, which is why containment comes before recovery scope here.",
+   ask:"Do you know the mechanism well enough to define the population yet?" }
+];
+
+const recoverySteps = [
+{html:`<h4>Steps 1 to 4 \u2013 Approve, identify, fix, invalidate</h4>
+ <ol class="framework-checks">
+   <li>Approve or confirm the correction and the recovery scope.</li>
+   <li>Create a new rerun ID and manifest.</li>
+   <li>Fix the source, reference and build baselines.</li>
+   <li>Invalidate the stale affected outputs.</li>
+ </ol>
+ <p>Step 4 is the one people leave until later and then forget. The corrected transform produces a new file while the failed run's output sits in the same outbound folder, and something downstream picks by timestamp.</p>
+ <div class="principle"><strong>A corrected build needs a new identity</strong><br>Do not overwrite PKG-CUST-R3-B07 and keep calling it B07. Publish the corrected executable under a new build identity and tie the rerun manifest to it. The same applies to changed references, mapping baselines and output files.</div>`},
+{html:`<h4>Steps 5 to 8 \u2013 Generate the population, execute, reconcile</h4>
+ <ol class="framework-checks" start="5">
+   <li>Generate the controlled rerun key set.</li>
+   <li>Execute from the proven recovery boundary.</li>
+   <li>Capture step counts and errors.</li>
+   <li>Reconcile rerun input to outcomes.</li>
+ </ol>
+ <p>Step 5 comes after step 3 for a reason. A rerun population built before the baselines are fixed describes records under logic that is about to change.</p>
+ <p class="small">A rerun population should be a controlled key set, not a WHERE clause improvised under pressure. You should be able to explain why every rerun key is included and why every non-rerun key is excluded.</p>`},
+{html:`<h4>Steps 9 to 12 \u2013 Prove it, then close it</h4>
+ <ol class="framework-checks" start="9">
+   <li>Run semantic and regression validation.</li>
+   <li>Compare corrected versus original outcomes.</li>
+   <li>Confirm no unintended changes outside scope.</li>
+   <li>Close only when the evidence pack is complete.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Step 11 is the one that gets skipped</div><p>A green rerun proves the intended records changed. It says nothing about whether anything else moved. The strongest recovery evidence shows both the intended change and the absence of unexplained change, and only the second half requires an unaffected control population.</p></div></div>`}
+];
+
+const recoverySituations = [
+ { title:"A. 12,006 processed, 11,982 in the target",
+   question:"A training run intending 18,573 records terminates after a connection failure. Logs show 12,006 processed messages; the target count has risen by 11,982. What is your first move?",
+   options:[
+     {label:"Rerun the remaining 6,567 records by subtracting the processed count from the intended population, since those are the ones that never reached the target.", correct:false, feedback:"Recovery by subtraction is the trap this lab exists for. It assumes processed means committed, and the 24-record gap is direct evidence that it does not."},
+     {label:"Investigate the 24-record discrepancy first, since the difference between the two figures is the clearest signal that something is being counted inconsistently.", correct:false, feedback:"The discrepancy does need investigating and it is not first. Freezing the evidence comes before analysis, or the state you are analysing may change underneath you."},
+     {label:"Freeze the run evidence, query the target for keys attributable to this run, and classify every expected key as committed, rejected, not attempted or unknown.", correct:true, feedback:"Correct. Never infer target state from process state. A failed process can leave partial successful data behind, so query the target and reconcile actual committed keys before deciding anything."},
+     {label:"Establish the target's replay behaviour first, because whether a rerun would insert, update or duplicate determines every subsequent recovery decision.", correct:false, feedback:"Idempotency matters and it is step five of this lab, not step one. You cannot decide what to replay before you know what is already there."}
+   ]
+ },
+ { title:"B. One rejection, thirty-seven exposed",
+   question:"One record rejects because a target reference value is missing. Investigation shows 37 records use the same source value, but 36 have not yet reached the load step. Is the rerun population 1 or 37?",
+   options:[
+     {label:"Thirty-seven, because the missing target reference affects all of them, though the recovery actions differ between the one rejected record and the 36 not yet attempted.", correct:true, feedback:"Correct. The control population reflects the full exposed set, even though the recovery action is not identical across it. One record needs correcting and rerunning; 36 need the reference in place before they are attempted."},
+     {label:"One, because only that record has actually failed, and the other 36 will process correctly once the missing reference value is created in the target.", correct:false, feedback:"They will indeed process correctly afterwards, which is exactly why they belong in the controlled population. Leaving them out means nobody is tracking whether the prerequisite landed before they ran."},
+     {label:"One initially, with the other 36 monitored as they reach the load step so that any further rejections can be handled individually as they appear.", correct:false, feedback:"Handling a known exposure record by record as it fails is not control, it is waiting. You already know which 36 are affected."},
+     {label:"Thirty-seven, and all 37 should receive identical recovery treatment so the population is handled consistently and can be proven as a single set.", correct:false, feedback:"The population is 37 and the treatment is not uniform. Forcing identical handling would mean rerunning 36 records that were never attempted."}
+   ]
+ },
+ { title:"C. The stale file",
+   question:"A corrected transform produces Customer_Rerun.csv. The outbound folder still holds Customer_Final.csv from the failed run. Automation selects the newest modified file, and a manual copy has just changed timestamps. What do you do?",
+   options:[
+     {label:"Delete the stale Customer_Final.csv so the automation can only find the corrected output, removing the ambiguity at source.", correct:false, feedback:"Deleting removes the failed run's evidence, which you may need to compare against. Invalidate or segregate it rather than destroying it."},
+     {label:"Re-copy the corrected file so its timestamp becomes the newest again, restoring the automation's intended selection behaviour.", correct:false, feedback:"This fixes today and leaves the mechanism intact. The next manual copy reintroduces exactly the same risk."},
+     {label:"Rename the corrected file to match what the automation expects, so the load step consumes it without any change to the existing process.", correct:false, feedback:"Naming a file to satisfy a selection rule is how the wrong artefact gets loaded with complete confidence."},
+     {label:"Invalidate or segregate the stale output, bind the load step to an explicit run artefact rather than a timestamp, add output identity to the manifest, and propose a control preventing recurrence.", correct:true, feedback:"Correct. Filename and timestamp selection is unsafe because both can be changed by operations that have nothing to do with correctness. Bind to identity, not to recency."}
+   ]
+ },
+ { title:"D. \u201cCan we rerun the failures now and investigate tomorrow?\u201d",
+   question:"A stakeholder wants the failed records rerun immediately, with diagnosis deferred. How do you answer?",
+   options:[
+     {label:"Explain that recovery cannot begin until root cause is formally established, and that diagnosis must complete before any rerun is attempted.", correct:false, feedback:"Too absolute. You can sometimes rerun safely before full root cause, if the four conditions below are provable. Refusing on principle overstates the rule."},
+     {label:"Say it is possible only if you can prove the failures are the complete affected population, the correction is valid, target replay behaviour is safe and the rerun will not combine with stale outputs.", correct:true, feedback:"Correct. Name the four conditions, say which are currently unproven, and offer containment while the recovery boundary is established. That is an answer the stakeholder can work with rather than a refusal."},
+     {label:"Agree, on the basis that rerunning only the visibly failed records is inherently low-risk and can be reversed if the investigation later widens the population.", correct:false, feedback:"Reversing a rerun is rarely simple, and a rerun through unproven replay behaviour can duplicate records that were already correct."},
+     {label:"Agree to rerun a small sample of the failures now, so the correction is validated in the live target before the full population is attempted.", correct:false, feedback:"Do not discover whether the fix works by applying it to the live recovery population. That is what regression testing is for."}
+   ]
+ },
+ { title:"E. The rerun fails again",
+   question:"Your controlled recovery run fails. What is the right response?",
+   options:[
+     {label:"Compare the failure signature with the original, then continue the recovery under the existing diagnosis since the two failures occurred in the same process.", correct:false, feedback:"Comparing signatures is right and the conclusion is not. Do not force the second failure into the original diagnosis merely because it happened during recovery."},
+     {label:"Retry once more before investigating, since a second failure may be transient and a third attempt will distinguish a persistent defect from a one-off.", correct:false, feedback:"Stacking another uncontrolled retry is the first thing on the anti-pattern list, and it makes the execution state harder to reconcile with every attempt."},
+     {label:"Treat it as new evidence: compare signatures, establish whether the correction failed or a new issue appeared, preserve both run identities, recalculate execution state and reassess the boundary.", correct:true, feedback:"Correct. A second failure is new evidence, not a continuation of the first. Check whether reference, source or configuration changed between the two attempts, which is a common and easily missed cause."},
+     {label:"Roll back to the pre-recovery target state and restart the whole recovery process from the original failure point with a fresh diagnosis.", correct:false, feedback:"A full rollback discards a recovery that may have partly succeeded, and restarting diagnosis from scratch throws away what the first attempt established."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Not an instruction",title:"A failure is not a rerun instruction",type:"mcq",
+ _correctIndex:1,
+ html:`<p class="lead">The customer load reports a problem. The fastest response looks obvious: fix it and run the package again.</p>
+ <div class="callout experience"><div class="callout-label">Before you begin</div><p>Four things are all true at once on a failed migration, and each one breaks a different assumption behind \u201cjust run it again\u201d.</p></div>
+ <ul class="framework-checks">
+   <li>A record can fail while the rest of the run remains valid.</li>
+   <li>A run can complete technically while its outputs are semantically invalid.</li>
+   <li>A correction can require regeneration of downstream outputs that did not themselves fail.</li>
+   <li>A rerun can create duplicates or overwrite good data if idempotency is not understood.</li>
+ </ul>
+ <h3>What has to be true before a rerun is a plan rather than a reflex?</h3>`,
+ options:[
+   {label:"The defect has been corrected and the correction has been tested, so the second execution will behave differently from the first.", correct:false, feedback:"Necessary and nowhere near sufficient. A correct fix applied to the wrong population, or replayed against an unknown target state, still produces an unrecoverable result."},
+   {label:"You know what succeeded, what failed, what target state already exists, where the defect entered the process, and what a second execution would do to records already processed.", correct:true, feedback:"Correct. \u201cRun it again\u201d is not a recovery plan. Each of those five is a question whose answer changes the recovery, and none of them is answered by the fact that the package failed."},
+   {label:"The failed run has been fully diagnosed to root cause, so that the rerun addresses the underlying mechanism rather than its visible symptoms.", correct:false, feedback:"Root cause is important and it is not a precondition for every safe action. You can often contain a problem before you can explain it, which is a later section of this lesson."},
+   {label:"The affected population has been identified and the stakeholders have agreed the recovery window, so the rerun can complete without further interruption.", correct:false, feedback:"Population matters and scheduling is not a control. Neither tells you what the target already contains or what replay would do to it."}
+ ]
+},
+{
+ id:"b2",nav:"Stabilise",title:"First response: stabilise the situation",type:"content",
+ html:`<ol class="framework-checks">
+   <li>Stop uncontrolled retries.</li>
+   <li>Capture the cycle and run identity.</li>
+   <li>Record the exact failure time and step.</li>
+   <li>Preserve logs, rejected populations and intermediate outputs.</li>
+   <li>Establish what completed successfully.</li>
+   <li>Establish what is still running or queued.</li>
+   <li>Protect the target from duplicate or conflicting execution.</li>
+   <li>Tell affected people what is known and when the next evidence point will be.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Do not clean up too early</div><p>The failed state is evidence. Deleting staging rows, regenerating files or overwriting logs before diagnosis destroys the fastest route to root cause, and the instinct to tidy is strongest exactly when the pressure is highest.</p></div>`
+},
+{
+ id:"b3",nav:"Failure classes",title:"Classify the failure before choosing recovery",type:"selectAll",
+ html:`<p class="lead">Seven classes of migration failure. Each one implies a different recovery, and the first two are the ones most often confused. Explore each.</p>`,
+ options: failureClasses,
+ coaching: failureClassCoaching,
+ hint:"Explore every class before continuing.",
+ closingHtml:`<div class="principle"><strong>The class decides the boundary</strong><br>Recovery scope is not a judgement about how serious the failure feels. It follows from which of these seven you are actually dealing with, which is why classification comes before planning.</div>`
+},
+{
+ id:"b4",nav:"Symptom and mechanism",title:"Separate symptom, mechanism and population",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>The Bramwell address defect</th></tr></thead><tbody>
+ <tr><td>Symptom</td><td>Seven delivery addresses are missing from target.</td></tr>
+ <tr><td>Mechanism</td><td>The transformation retains DELIVERY_PRIMARY instead of excluding BILLING_ONLY, so valid DELIVERY_SECONDARY rows can be lost.</td></tr>
+ <tr><td>Population</td><td>All records exposed to that faulty eligibility rule, not merely the seven keys that happened to reveal it.</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Where the seven came from</div><p>Somebody noticed them. That is the only thing the number seven tells you. The recovery population should be derived from the failure mechanism, not from the examples in the defect ticket, and the two are almost never the same size.</p></div></div>`
+},
+{
+ id:"b5",nav:"Freeze and bound",title:"Freeze the failed run, then find the last known-good boundary",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence to freeze</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Source snapshot</td><td>Proves the input population</td></tr>
+ <tr><td>Reference version</td><td>Proves lookup behaviour</td></tr>
+ <tr><td>Build and package identity</td><td>Proves the executed logic</td></tr>
+ <tr><td>Run ID and timestamps</td><td>Links logs and outputs</td></tr>
+ <tr><td>Input, output and reject counts</td><td>Defines execution state</td></tr>
+ <tr><td>Intermediate datasets</td><td>Shows the first divergence</td></tr>
+ <tr><td>Target results already committed</td><td>Prevents duplicate recovery</td></tr>
+ <tr><td>Exception and rejection keys</td><td>Defines the observed failures</td></tr>
+ <tr><td>Validation evidence</td><td>Shows what was already checked</td></tr>
+ </tbody></table></div>
+ <h3>Then trace C10482-DEL-02 through the layers</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>C10482-DEL-02</th><th>Conclusion</th></tr></thead><tbody>
+ <tr><td>Source and raw stage</td><td>Present</td><td>Source contains the address</td></tr>
+ <tr><td>Transformed output</td><td>Absent</td><td>Divergence has occurred</td></tr>
+ <tr><td>Exception output</td><td>Absent</td><td>Silently lost, not controlled as an exception</td></tr>
+ <tr><td>Target</td><td>Absent</td><td>Target reflects the faulty transformed output</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The recovery boundary</strong><br>Because raw staging is valid and the defect is introduced in transformation, a full source re-extract is not automatically required. The corrected transformation and all dependent outputs after that boundary must be regenerated and revalidated.</div>`
+},
+{
+ id:"b6",nav:"How far back",title:"Too wide, too narrow, or controlled?",type:"mcq",
+ _correctIndex:3,
+ html:`<p class="lead">Raw staging is proven valid. The defect enters at transformation. Seven addresses are visibly missing and the full exposed population has not yet been calculated.</p>
+ <h3>Where should the recovery restart?</h3>`,
+ options:[
+   {label:"Re-extract from source and rerun everything, since a complete rebuild removes any doubt about which stage carries the defect.", correct:false, feedback:"Re-extracting by habit increases time and introduces unrelated source-change risk. Your own evidence already proves raw staging is valid, so this discards a known-good boundary."},
+   {label:"Patch the seven visible target records directly, since they are the only records proven to be wrong and the correction is immediate.", correct:false, feedback:"This leaves unknown affected records behind, and creates a target state the migration process cannot reproduce. The seven are the ones somebody noticed."},
+   {label:"Restart from transformation for the seven affected keys, which is the narrowest scope consistent with the proven boundary.", correct:false, feedback:"Right boundary, wrong population. Restarting at transformation is correct; restricting it to the seven reintroduces the defect-ticket-examples problem at a different layer."},
+   {label:"Restart from transformation, the last proven-good boundary, for the full mechanism-based affected population rather than the seven reported examples.", correct:true, feedback:"Correct. Choose the narrowest boundary you can prove safe, not the smallest boundary that is convenient. Narrow is not automatically better: it is better only when the evidence supports it."}
+ ]
+},
+{
+ id:"b7",nav:"What committed",title:"Determine what already committed",type:"content",
+ html:`<p class="lead">A package fails after processing 12,000 of 18,573 intended records. The log says failed. That alone tells you nothing about the target state.</p>
+ <ul class="framework-checks">
+   <li>Did the target commit each record independently?</li>
+   <li>Was the operation transactional by batch?</li>
+   <li>Did a checkpoint persist?</li>
+   <li>Were any child records created?</li>
+   <li>Would replay update, ignore or duplicate existing keys?</li>
+   <li>Did the integration layer acknowledge records before the failure?</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Never infer target state from process state</div><p>A failed process can leave partial successful data behind. Query the target and reconcile actual committed keys. The process log describes what the process believed it was doing, which is a different thing.</p></div>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Execution-state reconciliation</caption><thead><tr><th>State</th><th>Meaning</th></tr></thead><tbody>
+ <tr><td>Expected input</td><td>Population intended for this run</td></tr>
+ <tr><td>Committed success</td><td>Keys proven present and accepted in target from this run</td></tr>
+ <tr><td>Controlled rejection</td><td>Keys explicitly rejected with a reason</td></tr>
+ <tr><td>Not attempted</td><td>Keys never submitted or processed</td></tr>
+ <tr><td>Unknown</td><td>Keys whose state cannot yet be proven</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The control equation</strong><br>Every expected key must resolve to exactly one execution state. Unknown is a diagnostic status, not a number to hide, and a recovery planned while keys remain unknown is a recovery planned in the dark.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Failure_State_Reconciliation.xlsx</strong><p class="small">Five states, one row per expected key, with the control equation built in.</p></div><a class="btn secondary" href="/assets/downloads/Failure_State_Reconciliation.xlsx" download>Download</a></div>`
+},
+{
+ id:"b8",nav:"Idempotency",title:"What happens if the same record runs twice?",type:"selectAll",
+ html:`<p class="lead">Six replay behaviours. The answer determines whether a rerun repairs the population or damages it. Explore each and its risk.</p>`,
+ options: idempotencyBehaviours,
+ coaching: idempotencyCoaching,
+ hint:"Explore every behaviour before continuing.",
+ closingHtml:`<div class="principle"><strong>Do not assume idempotency</strong><br>Test it or document it. \u201cIt should update\u201d is not enough for a production recovery decision, and the word \u201cshould\u201d is doing all the work in that sentence.</div>`
+},
+{
+ id:"b9",nav:"Stale outputs",title:"Stale outputs are a recovery defect",type:"content",
+ html:`<p class="lead">You correct the transformation and regenerate the customer file. The downstream address package from the failed run is still sitting in the outbound folder.</p>
+ <div class="callout misconception"><div class="callout-label">The risk</div><p>The team combines corrected and stale artefacts from different logical runs, and the result looks entirely normal. Nothing errors, nothing rejects, and the output is a blend of two executions nobody intended to merge.</p></div>
+ <ol class="framework-checks">
+   <li>Invalidate the affected downstream artefacts.</li>
+   <li>Generate new outputs under a new run and build identity.</li>
+   <li>Prevent old files from being selected by \u201clatest\u201d.</li>
+   <li>Tie validation to the corrected run identity.</li>
+   <li>Record which prior artefacts are superseded.</li>
+ </ol>
+ <p class="small">Step 3 is the one that needs a mechanism rather than a note. Timestamps change for reasons that have nothing to do with correctness, including somebody copying a folder.</p>`
+},
+{
+ id:"b10",nav:"Rerun population",title:"Construct the rerun population explicitly",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Business key</td><td>Identifies the record</td></tr>
+ <tr><td>Original run ID</td><td>Links the failed execution</td></tr>
+ <tr><td>Failure mechanism or reason</td><td>Explains inclusion</td></tr>
+ <tr><td>Recovery action</td><td>Transform, load or revalidate</td></tr>
+ <tr><td>Dependency scope</td><td>Identifies child and downstream regeneration</td></tr>
+ <tr><td>Corrected build and reference</td><td>Defines the recovery baseline</td></tr>
+ <tr><td>Rerun ID</td><td>Links the new execution</td></tr>
+ <tr><td>Expected result</td><td>Defines the proof</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Population principle</strong><br>You should be able to explain why every rerun key is included and why every non-rerun key is excluded. A rerun population is a controlled key set, not a WHERE clause improvised under pressure.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Rerun_Population.xlsx</strong><p class="small">The eight fields above, one row per recovery key.</p></div><a class="btn secondary" href="/assets/downloads/Rerun_Population.xlsx" download>Download</a></div>`
+},
+{
+ id:"b11",nav:"Fix the mechanism",title:"Fix the mechanism, then test before you rerun",type:"content",
+ html:`<p class="lead">For the address defect, the correct change is not \u201cinclude C10482-DEL-02\u201d.</p>
+ <div class="quote">Implement the approved business rule: exclude BILLING_ONLY. Then test DELIVERY_PRIMARY, DELIVERY_SECONDARY and BILLING_ONLY behaviour across the population.</div>
+ <div class="callout misconception"><div class="callout-label">Regression danger</div><p>A fix that restores the seven examples but changes another address class is not a successful correction. It is a second defect, introduced during recovery, and it will be harder to find because everyone has stopped looking.</p></div>
+ <h3>Re-test before the operational rerun</h3>
+ <ul class="framework-checks">
+   <li>A positive case that previously failed.</li>
+   <li>A positive case that already worked.</li>
+   <li>A negative case that must remain excluded.</li>
+   <li>Boundary, NULL and unknown values where relevant.</li>
+   <li>Population-level count and key reconciliation.</li>
+   <li>Reference zero, one and more-than-one behaviour.</li>
+   <li>Downstream dependency expectations.</li>
+ </ul>
+ <p class="small">The second item matters as much as the first. Do not discover whether the fix works by applying it directly to the live recovery population.</p>`
+},
+{
+ id:"b12",nav:"Which population",title:"Failed records, or the affected population?",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Five observed situations, five different answers to the same question. Explore each, and answer the test underneath before you move on.</p>`,
+ items: rerunPopulationLogic,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Only the first and fourth of these five ever justify a narrow population, and both depend on proving something rather than assuming it. The other three are the cases where the visible failures are a sample.</p></div></div>`
+},
+{
+ id:"b13",nav:"Dependencies and limits",title:"Dependencies widen recovery, and a rerun cannot manufacture approval",type:"content",
+ html:`<p class="lead">Correcting a customer or an address may invalidate downstream entities.</p>
+ <div class="callout experience"><div class="callout-label">SO-78452</div><p>The order depends on customer C10482, delivery address C10482-DEL-02, product PRD-44781, site UK01, warehouse WH-BRI, currency GBP, a payment-term treatment and delivery method STDROAD. If an upstream dependency changes, establish whether the dependent order output, load or validation must be regenerated.</p></div>
+ <h3>And one thing a rerun cannot do</h3>
+ <ul class="framework-checks">
+   <li>45E still has no approved target equivalent.</li>
+   <li>CustomerGroup 99 remains unresolved for 18 German records.</li>
+ </ul>
+ <div class="principle"><strong>Recovery rule</strong><br>A rerun can correct technical execution. It cannot manufacture business approval. Keep unresolved records controlled according to the agreed exception and release treatment, however convenient it would be for the recovery to close them.</div>`
+},
+{
+ id:"b14",nav:"The recovery run",title:"Run the recovery as a new controlled execution",type:"guidedSteps",
+ html:`<p class="lead">Twelve steps, in order. The ordering is the content here: several of these are commonly done in the wrong sequence, and each time it produces a recovery nobody can prove. Work forward through them.</p>`,
+ steps: recoverySteps,
+ takeawayHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Recovery_Run_Manifest.xlsx</strong><p class="small">Inputs, corrected build, recovery scope, dependencies and expected result for a rerun execution.</p></div><a class="btn secondary" href="/assets/downloads/Recovery_Run_Manifest.xlsx" download>Download</a></div>`
+},
+{
+ id:"b15",nav:"Prove what changed",title:"Prove what changed, and what did not",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Comparison</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Before versus after, affected keys</td><td>Did the intended records change as expected?</td></tr>
+ <tr><td>Unaffected control population</td><td>Did anything outside scope change?</td></tr>
+ <tr><td>Counts and key sets</td><td>Are records missing, duplicated or substituted?</td></tr>
+ <tr><td>Semantic values</td><td>Are the target values now correct?</td></tr>
+ <tr><td>Dependencies</td><td>Are child and related outcomes still valid?</td></tr>
+ <tr><td>Exceptions</td><td>Did unresolved records remain explicit?</td></tr>
+ <tr><td>Run identities</td><td>Can every result be traced to the corrected execution?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Delta proof</strong><br>The strongest recovery evidence shows both the intended change and the absence of unexplained change. Most recovery packs contain only the first half.</div>
+ <h3>The zero-reject trap, one more time</h3>
+ <p>Bramwell later records 18,573 submitted and accepted with zero rejects, and validation then finds 42 UK customers in the Belgian legal entity. A technically clean run can still require controlled correction and rerun. Recovery is driven by correctness, not by loader status, and the root cause of that 42-record issue is not established in the case study.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Before_After_Delta.sql</strong><p class="small">Affected-key comparison plus an unaffected control population, so the pack can prove both halves.</p></div><a class="btn secondary" href="/assets/downloads/Before_After_Delta.sql" download>Download</a></div>`
+},
+{
+ id:"b16",nav:"Cause unknown",title:"You can contain a problem before you can explain it",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">A semantic defect has appeared. Root cause is genuinely unknown and will stay unknown for some hours. People want to know what you are doing in the meantime.</p>
+ <h3>What can you legitimately do right now?</h3>`,
+ options:[
+   {label:"Freeze the affected outputs, identify the observed wrong keys, compare expected against actual routing, prevent dependent release, and collect source, transformed and target evidence.", correct:true, feedback:"Correct. Containment protects the project while diagnosis continues. Every item on that list is provable now and none of them commits you to an explanation you cannot yet support."},
+   {label:"Declare a working root cause so the team has a shared hypothesis to organise around, clearly labelled as provisional until the evidence confirms it.", correct:false, feedback:"A provisional root cause becomes the root cause by lunchtime. Label the hypothesis in your own notes; do not declare it as the project's working answer."},
+   {label:"Treat the observed wrong keys as the affected population, so that containment has a defined scope while the investigation continues.", correct:false, feedback:"The observed keys are what validation happened to check. Assuming they are the full population is the specific error this whole lesson is built around."},
+   {label:"Patch the visibly affected target records so the immediate business impact is removed, then close the defect once the mechanism is understood.", correct:false, feedback:"Patching before the mechanism is known may hide it, leaves other affected records undiscovered, and creates target state the migration process cannot reproduce."}
+ ]
+},
+{
+ id:"b17",nav:"Second failure",title:"When a rerun fails again, and what closure requires",type:"content",
+ html:`<ol class="framework-checks">
+   <li>Do not stack another uncontrolled retry.</li>
+   <li>Compare the failure signature with the original.</li>
+   <li>Determine whether the correction failed or a new issue appeared.</li>
+   <li>Preserve both run identities and outputs.</li>
+   <li>Recalculate the execution-state reconciliation.</li>
+   <li>Check whether reference, source or configuration changed between attempts.</li>
+   <li>Reassess the recovery boundary.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Forcing the second failure into the original diagnosis because it happened during recovery. A second failure is new evidence. It may share nothing with the first except its timing.</p></div>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>The recovery evidence pack</caption><thead><tr><th>Artefact</th><th>Content</th></tr></thead><tbody>
+ <tr><td>Failure record</td><td>Observed event, impact, run ID</td></tr>
+ <tr><td>Frozen evidence</td><td>Logs, outputs, source, reference and build identities</td></tr>
+ <tr><td>Root-cause evidence</td><td>First divergence and mechanism</td></tr>
+ <tr><td>Affected-population output</td><td>Mechanism-based key set</td></tr>
+ <tr><td>Correction record</td><td>Approved technical change</td></tr>
+ <tr><td>Regression tests</td><td>Positive, negative and population controls</td></tr>
+ <tr><td>Rerun manifest</td><td>Inputs, build, scope, dependencies</td></tr>
+ <tr><td>Rerun reconciliation</td><td>Input, success, reject and unknown states</td></tr>
+ <tr><td>Before and after delta</td><td>Intended and unintended changes</td></tr>
+ <tr><td>Closure evidence</td><td>Semantic validation and downstream confirmation</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b18",nav:"Recovery decisions",title:"Consultant situations \u2013 Five recovery decisions",type:"situations",
+ html:`<p class="lead">Five moments in a recovery, each with a tempting shortcut that would create duplicate, stale or unprovable target data. The first two use training scenarios rather than the Bramwell cycle itself.</p>`,
+ items: recoverySituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Rerun That Needed a Boundary", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/lesson3-fromfield-elena.mp3",
+   reflection:"After your last failed run, how did you decide what to rerun? Was the boundary proven, or assumed?"
+ })}</div>`
+},
+{
+ id:"b19",nav:"Write the recommendation",title:"Build it \u2013 The recovery recommendation",type:"reflection",
+ html:`<p class="lead">Write the recovery recommendation for the address defect, in the structure a reviewer will expect.</p>
+ <ol class="framework-checks">
+   <li>Failure and impact.</li>
+   <li>What is proven.</li>
+   <li>First divergence and mechanism.</li>
+   <li>Full affected population, and how it was derived.</li>
+   <li>Target execution state.</li>
+   <li>The correction.</li>
+   <li>Recovery boundary.</li>
+   <li>Rerun population.</li>
+   <li>Dependencies.</li>
+   <li>Validation and proof.</li>
+   <li>Remaining uncertainty.</li>
+   <li>Recommendation.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">What it is judged on</div><p>Not length. Whether another consultant could reconstruct the recovery from it, and whether the population came from the mechanism rather than the defect ticket.</p></div></div>
+ <textarea id="reflection" placeholder="FAILURE AND IMPACT: ...&#10;WHAT IS PROVEN: ...&#10;MECHANISM: ...&#10;AFFECTED POPULATION: ...&#10;RECOVERY BOUNDARY: ...&#10;VALIDATION: ...&#10;REMAINING UNCERTAINTY: ...&#10;RECOMMENDATION: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Recovery_Evidence_Pack.docx</strong><p class="small">The twelve-section structure above, with the ten evidence artefacts listed against it.</p></div><a class="btn secondary" href="/assets/downloads/Recovery_Evidence_Pack.docx" download>Download</a></div>`,
+ minLength:80,
+ checks:[
+   { test:/mechanism|predicate|eligibility|BILLING_ONLY|DELIVERY_SECONDARY/i, strength:"You named the mechanism rather than the symptom.", gap:"State the mechanism: the eligibility predicate retains DELIVERY_PRIMARY instead of excluding BILLING_ONLY." },
+   { test:/not (just|merely|only) the seven|full affected|derived from the mechanism|exposed to/i, strength:"Your population is derived from the mechanism, not from the seven reported examples.", gap:"Say explicitly that the affected population comes from the faulty mechanism rather than the seven reported keys." },
+   { test:/raw stag|staging is valid|transformation|boundary/i, strength:"You justified the recovery boundary from proven evidence rather than defaulting to a full re-extract.", gap:"Justify the boundary: raw staging is valid, the defect enters at transformation, so recovery restarts there." },
+   { test:/regression|positive|negative|primary.*secondary|test/i, strength:"Your correction includes regression coverage across address classes, not just the failing case.", gap:"Include regression tests covering primary, secondary and billing-only behaviour, so the fix cannot break another class." },
+   { test:/invalidat|supersed|new (build|run) identit|regenerat/i, strength:"You invalidated the stale downstream outputs and used a new identity for the corrected run.", gap:"Say that affected downstream outputs are invalidated and the recovery runs under a new build and run identity." },
+   { test:/unchanged|outside (the )?(recovery )?(scope|population)|no unexplained|control population/i, strength:"Your closure proves the absence of unintended change, not just the intended one.", gap:"Closure needs proof that nothing outside the recovery population changed. Add the unaffected control comparison." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Mechanism and population.</strong> The missing-address defect is introduced in transformation by an eligibility predicate that retains DELIVERY_PRIMARY rather than excluding BILLING_ONLY, so valid DELIVERY_SECONDARY rows are silently dropped. C10482-DEL-02 is present in raw staging, absent from transformed output and absent from the exception output, which is what proves the loss is silent rather than controlled. The full affected population has been derived from the faulty mechanism rather than from the seven reported examples, and is larger than those seven.</div>
+ <div class="quote"><strong>Boundary and correction.</strong> Raw staging is valid, so a source re-extract is not required and would introduce unrelated change risk. Recovery restarts from transformation, the last proven-good boundary, under a new build identity rather than overwriting the existing one. The corrected rule implements the approved intent: exclude BILLING_ONLY. Regression tests cover a previously failing secondary address, a primary address that already worked, and a billing-only address that must remain excluded, so the fix cannot repair one class by breaking another.</div>
+ <div class="quote"><strong>Dependencies and stale outputs.</strong> Affected downstream outputs from the failed run are invalidated rather than deleted, and regenerated under the corrected run identity so nothing can combine artefacts from two logical runs. Dependent order outputs that reference the corrected addresses are reassessed for regeneration, since an upstream address change can invalidate a dependent load that did not itself fail.</div>
+ <div class="quote"><strong>Proof and remaining uncertainty.</strong> Closure requires key reconciliation across the recovery population, semantic address validation, and proof that nothing changed outside the recovery scope, using an unaffected control population. Unresolved business treatments stay controlled: the rerun corrects technical execution and cannot manufacture approval for 45E or CustomerGroup 99. Recommendation: proceed with the mechanism-based recovery from the transformation boundary, and do not close until the delta shows both the intended change and the absence of unexplained change.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The two things that separate a strong recovery pack from a plausible one are both present here: the population comes from the mechanism, and closure proves what did not change as well as what did.":"Check the population and the closure. If your population is the seven reported keys, or your closure only proves the intended records changed, the pack has the two most common gaps."}</div>`
+},
+{
+ id:"b20",nav:"Anti-patterns",title:"Recovery anti-patterns and the consultant checklist",type:"content",
+ html:`<ul class="framework-checks">
+   <li>Rerun immediately because the package failed.</li>
+   <li>Use the visible rejected keys as the whole affected population.</li>
+   <li>Patch target records without correcting the source logic.</li>
+   <li>Overwrite failed-run evidence.</li>
+   <li>Assume \u201cprocessed\u201d means committed.</li>
+   <li>Assume the package is idempotent.</li>
+   <li>Mix stale and corrected outputs.</li>
+   <li>Reuse the same build or run identity after correction.</li>
+   <li>Rerun through unresolved business mappings.</li>
+   <li>Validate only that the rerun completed.</li>
+   <li>Close the incident without proving unaffected data stayed unchanged.</li>
+ </ul>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Consultant recovery checklist</caption><thead><tr><th>Area</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Containment</td><td>Have uncontrolled retries and downstream use stopped?</td></tr>
+ <tr><td>Evidence</td><td>Is the failed run reproducible from preserved identities and logs?</td></tr>
+ <tr><td>State</td><td>What actually committed to target?</td></tr>
+ <tr><td>Mechanism</td><td>Where is the first proven divergence?</td></tr>
+ <tr><td>Population</td><td>Which records are exposed to that mechanism?</td></tr>
+ <tr><td>Correction</td><td>Does the fix address the rule rather than the examples?</td></tr>
+ <tr><td>Regression</td><td>Have positive, negative and population tests passed?</td></tr>
+ <tr><td>Boundary</td><td>What is the last known-good restart point?</td></tr>
+ <tr><td>Idempotency</td><td>What happens to already-processed records?</td></tr>
+ <tr><td>Outputs</td><td>Are stale downstream artefacts invalidated?</td></tr>
+ <tr><td>Dependencies</td><td>What else must be regenerated or revalidated?</td></tr>
+ <tr><td>Rerun</td><td>Is the recovery population explicit and versioned?</td></tr>
+ <tr><td>Proof</td><td>Did intended records change and unaffected records stay stable?</td></tr>
+ <tr><td>Closure</td><td>Could another consultant reconstruct the recovery?</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Recovery_Checklist.xlsx</strong><p class="small">The fourteen areas above, with space for the evidence that answers each question.</p></div><a class="btn secondary" href="/assets/downloads/Recovery_Checklist.xlsx" download>Download</a></div>`
+},
+{
+ id:"b21",nav:"Reflection",title:"Reflection \u2013 How narrow is too narrow?",type:"reflection",
+ html:`<p class="lead">Think of a defect where only five records visibly fail. What evidence would you need before agreeing to rerun only those five? What would make you widen the recovery population, or move the restart boundary further back?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The useful version of this answer names the evidence that would justify the narrow scope, not just the instinct to be cautious. Narrow is often correct. It is correct when proven, and dangerous when merely convenient.</p></div></div>
+ <textarea id="reflection" placeholder="I would rerun only those five if..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/mechanism|cause|record.specific|inside (the|each)/i, strength:"You tied the narrow scope to the mechanism being genuinely record-specific.", gap:"Say what would have to be true about the mechanism for five to be the whole population." },
+   { test:/widen|broaden|more|exposed|shared|same (rule|reference|logic)/i, strength:"You named what would make you widen the population.", gap:"Name a specific finding that would widen it: a shared rule, a shared reference version, a shared routing path." },
+   { test:/prove|evidence|query|test|confirm/i, strength:"You framed the decision around provable evidence rather than caution.", gap:"Say what evidence you would produce. Narrow is correct when proven, not when it feels proportionate." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I would rerun only the five if I could show the cause sits inside each of those records rather than in logic that touched others: each one failing for a reason present in its own data, with the transformation proven correct against a control sample that passed. The evidence would be a query listing every record that went through the same rule, reference version and routing path, showing that only those five meet the failing condition. What would make me widen it is any of three findings: that the other records shared the faulty reference version even though they happened to resolve correctly, that the rule itself was wrong rather than the data, or that some of the population had not yet reached the failing step, in which case they are exposed rather than passing. The last of those is the one I would most easily miss, because those records look fine by virtue of not having been tried yet.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The strongest answers include the records that have not reached the failing step yet. They look healthy for the worst possible reason, and they are the most commonly omitted part of a recovery population.":"Push on what would widen it. A record that got the right answer for the wrong reason, or one that has not been attempted yet, both belong in the exposed set even though neither has failed."}</div>`
+},
+{
+ id:"b22",nav:"Summary",title:"Summary \u2013 Recovery is controlled change",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Stabilise before retrying.</li>
+   <li>Preserve the failed state as evidence.</li>
+   <li>Classify the failure before choosing recovery.</li>
+   <li>Separate symptom, mechanism and affected population.</li>
+   <li>Find the last known-good boundary.</li>
+   <li>Prove target commit state rather than inferring it from logs.</li>
+   <li>Understand idempotency before replay.</li>
+   <li>Invalidate stale downstream outputs.</li>
+   <li>Construct an explicit rerun key set.</li>
+   <li>Fix the mechanism, not the examples.</li>
+   <li>Regression-test before the operational rerun.</li>
+   <li>Use new identities for corrected builds and runs.</li>
+   <li>Let the mechanism determine the population.</li>
+   <li>Reassess dependencies that widen recovery.</li>
+   <li>Do not use reruns to bypass unresolved business decisions.</li>
+   <li>Prove intended change and the absence of unintended change.</li>
+   <li>Treat zero rejects as technical evidence, not semantic proof.</li>
+   <li>Contain safely when root cause is still unknown.</li>
+   <li>If recovery fails again, treat it as new evidence.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A rerun is a new controlled migration execution, not a second press of the same button. You should know exactly why each record is being rerun, from which proven boundary, under which corrected baseline, what target state already exists, and what evidence will prove recovery.</div>`
+},
+{
+ id:"b23",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Managing failures and reruns.</strong></p>
+ <p>You can now control a migration failure from first detection through diagnosis, containment, correction, rerun and proof: distinguishing failed records from an invalid run, determining the safest recovery boundary, preventing duplicate or stale outcomes, constructing a rerun population, preserving evidence, and demonstrating that recovery corrected the intended records without changing anything else.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Validating your migration execution</strong></p>
+ <p>You will build the evidence that distinguishes \u201cthe process ran\u201d from \u201cthe migration result is correct\u201d.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time somebody suggests just rerunning the failures.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 3: Managing failures and reruns",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "A rerun is a new controlled execution, not a second press of the same button",
+  storageKey: "tp_dmc5_lesson3_v1",
+  lessonId: "dmc5-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

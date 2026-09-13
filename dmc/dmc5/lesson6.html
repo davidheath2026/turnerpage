@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Executing cutover and supporting stabilisation</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 5 - LESSON 6 - "Executing cutover and supporting
+   stabilisation". The DMC5 capstone, and the final lesson of the
+   30-lesson DMC programme.
+
+   Built as a live cutover simulation with a clock and evidence
+   arriving progressively, per the manuscript's own authoring
+   notes, and deliberately different in feel from Lesson 5's
+   readiness tabletop: Lesson 5 inspects a pack before the window,
+   this one runs inside it.
+
+   Source: DMC5_Lesson6_Executing_Cutover_and_Supporting_
+   Stabilisation_v3.docx.
+
+   moduleTitle: "Executing Cycles & Cutover" per the alignment
+   doc, not the manuscript header. Third module running.
+
+   INTERACTIVITY TARGET, continued: 50% content, 10 gating.
+
+   DELIBERATE guidedSteps USE (b3). The cutover timeline is the
+   capstone's core mechanism and the one place in this lesson
+   where progressive reveal is the teaching point: the learner
+   cannot judge the 22:00 semantic finding without having lived
+   through the clean technical load that preceded it. The
+   construction exercise is b16, a reflection.
+
+   CANONICAL BOUNDARIES, all enforced per the authoring notes:
+   1. Scenario time is Saturday 14 November at 18:40, go-live
+      Monday. THE YEAR IS NOT ESTABLISHED and is not invented.
+   2. Core M4 timings appear only as prior test evidence: extract
+      18m/17m, transform 42m/31m, validation 24m/22m, load
+      58m/49m.
+   3. Population: 18,612 = 34 approved pre-load exceptions + 5
+      approved exclusions + 18,573 submitted and accepted, with
+      zero rejects.
+   4. The 42 UK-to-Belgian semantic defect is canonical; its root
+      cause is NOT established and is NOT invented anywhere here.
+      Every mention says so explicitly.
+   5. 45E remains unresolved with NET30 unapproved. CustomerGroup
+      99 remains unresolved for 18 German records.
+
+   The cutover clock times attached to each stage of the b3
+   timeline are scenario pacing derived from the 18:40 start and
+   the prior-cycle durations. They are not presented as recorded
+   Bramwell outcomes, and the lesson says so.
+
+   Enterprise stabilisation block retained per the authoring
+   notes: 73 supplier classification conflicts, 286 product-site
+   relationship exceptions, 126 fixed-asset depreciation-category
+   exceptions, 1,126 LegacyDocs files with unresolved business-
+   record links - all framed as controlled populations rather than
+   post-go-live cleanup.
+
+   PROGRAMME ENDING. This completes DMC5 and the 30-lesson DMC
+   programme. The closing block recognises programme completion
+   and points toward assessment and certification rather than
+   inventing another DMC module. The completion page for this
+   lesson is the module-final variant and points at
+   assessment.html, which does not yet exist for any DMC module.
+
+   Persona: Owen, Data Migration Consultant, Insurance ERP, title
+   "The Monday Morning Shortcut", specified by the manuscript's
+   authoring notes.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=2, b8=0, b15 items
+   A-E = 1,3,2,0,1. Full sequence 2,0,1,3,2,0,1 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-4. None built yet.
+============================================================== */
+
+const cutoverTimeline = [
+{html:`<h4>18:40 \u2013 Before the first executable step</h4>
+ <p>You take control of the customer migration work package. Go-live is Monday. Nothing has run yet, and the only useful thing to do in the next five minutes is prove you are about to run what everybody agreed you would run.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Confirm</th><th>Evidence</th></tr></thead><tbody>
+ <tr><td>Run</td><td>Cycle and run ID</td></tr>
+ <tr><td>Source</td><td>Final snapshot or delta identity</td></tr>
+ <tr><td>Rules</td><td>Approved mapping and transformation</td></tr>
+ <tr><td>References</td><td>Approved version and context</td></tr>
+ <tr><td>Build</td><td>Exact package or code</td></tr>
+ <tr><td>Target</td><td>Correct environment and legal context</td></tr>
+ <tr><td>Population</td><td>Expected submitted, exceptions and exclusions</td></tr>
+ <tr><td>Runbook</td><td>Controlled cutover version</td></tr>
+ </tbody></table></div>
+ <p class="small">The clock times through this timeline are scenario pacing, not recorded outcomes. The prior-cycle durations are the real evidence: transform took 42 minutes in the first test cycle and 31 in the second.</p>`},
+{html:`<h4>Transformation is running slower than the faster test</h4>
+ <p>Runtime has passed the 31 minutes of the second test cycle and is heading past the 42 of the first. People start asking whether it should be killed.</p>
+ <p>Timing variance is information. It can threaten the critical path, and it can also indicate a technical condition worth investigating. What it is not, on its own, is a failure.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>What to inspect</th><th>What it distinguishes</th></tr></thead><tbody>
+ <tr><td>Row progress and throughput</td><td>Progressing slowly versus stalled</td></tr>
+ <tr><td>Logs and error or retry signatures</td><td>Degrading versus steady</td></tr>
+ <tr><td>Resource and blocking state</td><td>Environment versus logic</td></tr>
+ <tr><td>Comparison with prior run behaviour</td><td>Unusual versus merely slower</td></tr>
+ </tbody></table></div>
+ <div class="quote">\u201cTransformation is still progressing. Runtime has exceeded the faster test cycle, but rows continue to process and no blocking error is present. I am checking throughput and resource and log evidence now. Next update at the validation checkpoint, or earlier if the state changes.\u201d</div>
+ <p class="small">The current fact, the impact, the response and the next control point. No unsupported reassurance and no speculation about cause.</p>`},
+{html:`<h4>The load completes: 18,573 accepted, zero rejects</h4>
+ <p>The controlled population reaches the target and the loader reports a clean result. The room relaxes. This is the most dangerous moment in the window.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Known</th><th>Not yet proven</th></tr></thead><tbody>
+ <tr><td>18,573 submitted</td><td>Correct semantic values</td></tr>
+ <tr><td>18,573 accepted</td><td>Correct legal-entity routing</td></tr>
+ <tr><td>Zero technical rejects</td><td>Correct relationships</td></tr>
+ <tr><td>Target load completed</td><td>Absence of silent defects</td></tr>
+ </tbody></table></div>
+ <p>Technical acceptance is complete for the submitted population. Migration acceptance remains subject to post-load reconciliation and semantic and relationship validation. Those are two different statements and only one of them has been earned.</p>`},
+{html:`<h4>Semantic validation finds 42 UK customers in the Belgian legal entity</h4>
+ <p>The total count still matches 18,573 exactly. Nothing was lost, duplicated or rejected. Forty-two records simply went somewhere they should not have.</p>
+ <ol class="framework-checks">
+   <li>Freeze the evidence and the key list.</li>
+   <li>Confirm the expected UK context from controlled source and rule evidence.</li>
+   <li>Confirm the actual Belgian target context.</li>
+   <li>Check whether the 42 share a repeatable signature.</li>
+   <li>Trace to the first divergence.</li>
+   <li>Calculate the mechanism-based population where possible.</li>
+   <li>Only then state a root cause, and only if it is proven.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">The shortcut not to take</div><p>Describing the 42 as minor because 18,531 other records appear unaffected. Appear is doing the work in that sentence. Until the mechanism is known, you cannot demonstrate that the rest were untouched by it.</p></div>`},
+{html:`<h4>Monday morning \u2013 a user reports a problem</h4>
+ <p>Go-live has happened. A user says a customer record is wrong. Your job has shifted from executing a runbook to watching live data for migration-related defects and supporting rapid diagnosis.</p>
+ <ol class="framework-checks">
+   <li>Capture the business key and the exact symptom.</li>
+   <li>Establish the expected state.</li>
+   <li>Query the actual target state.</li>
+   <li>Trace the migrated source and output evidence.</li>
+   <li>Check whether similar keys share the condition.</li>
+   <li>Classify only when the evidence supports a migration, application or business-data origin.</li>
+   <li>Route or recover with a clean handoff.</li>
+ </ol>
+ <div class="principle"><strong>Do not fix the reported row first</strong><br>One user report may be the first visible example of a population-level defect. Establish the mechanism and the scope before choosing a correction, exactly as you would have done on Saturday night.</div>`}
+];
+
+const stoppingDeviations = [
+ "Wrong source, reference or build",
+ "Population no longer reconciles",
+ "Partial output cannot be distinguished from complete output",
+ "Ambiguous reference matches",
+ "Target prerequisite missing",
+ "Material semantic validation failure",
+ "Recovery would overwrite valid evidence"
+];
+const stoppingCoaching = [
+ "<strong>Why it stops the sequence:</strong> the executed logic is not the agreed logic, so nothing downstream can be proven even if it looks correct. This is the deviation most likely to be waved through, because a build number rarely feels urgent.",
+ "<strong>Why it stops the sequence:</strong> the population you are carrying forward is not the one anybody approved. Every later control would then be measuring an unagreed set.",
+ "<strong>Why it stops the sequence:</strong> you cannot tell which records are trustworthy. Continuing means loading a mixture of complete and incomplete output with no way to separate them afterwards.",
+ "<strong>Why it stops the sequence:</strong> records may be resolving by first-match behaviour nobody chose. Some will be right by luck, and luck is not distinguishable from correctness in the result.",
+ "<strong>Why it stops the sequence:</strong> dependent records cannot land correctly. Loading them anyway creates a target state that has to be unpicked rather than corrected.",
+ "<strong>Why it stops the sequence:</strong> the data is wrong in a way that produces no rejects, so nothing downstream will flag it for you. Continuing spreads it into dependent entities.",
+ "<strong>Why it stops the sequence:</strong> the recovery would destroy what you need in order to prove the recovery. This one is worth reading twice, because it is the deviation people create themselves while trying to help."
+];
+
+const earlyLifeSignals = [
+ "High-risk migrated populations",
+ "Known exception areas",
+ "Relationship failures",
+ "Semantic routing",
+ "Duplicate creation",
+ "Repeated user reports sharing a cause"
+];
+const signalCoaching = [
+ "<strong>Why watch it:</strong> the populations you already knew were hardest are where an unnoticed defect is most likely to be sitting. Prior difficulty is the cheapest available risk signal.",
+ "<strong>Why watch it:</strong> approved exceptions can be mistaken for defects by users who never saw the decision, and genuine defects can hide among them. Both need the exception register to hand.",
+ "<strong>Why watch it:</strong> a customer can exist perfectly while its address or order link is broken. Relationship failures are invisible in any single-record view, which is how users find them first.",
+ "<strong>Why watch it:</strong> this is where the 42 came from. Routing defects produce records that are individually plausible and collectively in the wrong place, and they reject nothing.",
+ "<strong>Why watch it:</strong> duplicates created after go-live may come from a recovery rerun rather than the original load. Replay behaviour that was never proven tends to surface here.",
+ "<strong>Why watch it:</strong> three users reporting three unrelated problems may be reporting one mechanism. The pattern is only visible if somebody is looking across reports rather than closing them individually."
+];
+
+const originPatterns = [
+ { title:"Source and expected correct, target migrated wrong",
+   short:"Likely a migration defect.",
+   detail:"The source holds the right value, the approved rule says what the target value should be, and the target holds something else. This is the pattern that belongs to you. Before correcting it, check whether similar keys share the condition, because one reported record may be the visible edge of a population.",
+   ask:"Have you checked whether other keys share this condition?" },
+ { title:"Target migrated as approved, application behaves wrong",
+   short:"Likely an application or configuration issue.",
+   detail:"The migrated value matches the approved treatment exactly, and the application displays or behaves in a way the user does not expect. This is not yours to correct, and correcting it would mean changing correct migrated data in response to the wrong diagnosis. Route it with the evidence that shows the migration did what was agreed.",
+   ask:"Would changing this data make the migration wrong in order to make the screen look right?" },
+ { title:"Source itself contains an unexpected business value",
+   short:"A source or business-data issue requiring ownership.",
+   detail:"The migration faithfully moved what was there, and what was there is not what the business expected. This needs a business owner rather than a technical correction, and it frequently surfaces after go-live because nobody looked at those records in the legacy system either. Migrating it accurately was the correct behaviour.",
+   ask:"Is this a defect, or the first time anybody has looked at this data?" },
+ { title:"No reproducible difference",
+   short:"Investigate before classifying.",
+   detail:"The report cannot be reproduced from the evidence: the record looks correct in source, in the migrated output and in the target. Resist classifying it as user error, and resist classifying it as a defect. Capture what was actually seen, when, and by whom, then look for a condition that makes it reproducible before assigning it anywhere.",
+   ask:"Are you about to classify this as user error because it is inconvenient?" }
+];
+
+const capstoneEvents = [
+ { title:"A. Transformation variance, and the room is watching",
+   question:"Runtime has passed both prior test cycles. Rows are still processing and no blocking error is present. Somebody asks whether to kill it. What do you do?",
+   options:[
+     {label:"Kill the run and restart it, since a step exceeding both prior cycles indicates something has gone wrong and an early restart preserves the window.", correct:false, feedback:"Restarting a run that is progressing discards the work done and proves nothing about why it is slower. You would very likely meet the same condition again with less time left."},
+     {label:"Keep it under observation with a specific next checkpoint, and communicate the current fact, the impact, the response and when you will update.", correct:true, feedback:"Correct. Distinguish a process that is progressing slowly from one that is blocked, repeating, degrading or producing invalid output. Set a checkpoint rather than reacting to the clock."},
+     {label:"Let it continue without further comment, since interrupting to give a status update while investigating would only add to the pressure in the room.", correct:false, feedback:"Silence during a visible variance is how speculation fills the gap. A short factual update costs nothing and stops somebody else inventing an explanation."},
+     {label:"Escalate to the Data Migration Lead for a decision on whether to continue, since the variance may threaten the critical path.", correct:false, feedback:"Escalating before inspecting the evidence hands over a question you can answer yourself in five minutes. Bring the Lead a timing risk once you have one."}
+   ]
+ },
+ { title:"B. The clean load, and the question that follows",
+   question:"18,573 accepted, zero rejects. The project manager asks whether customer migration is done and whether dependent loads can start. What do you say?",
+   options:[
+     {label:"Yes to both, since a zero-reject result on the full submitted population is the strongest technical evidence available at this point in the window.", correct:false, feedback:"It is the strongest technical evidence and it is only technical. Releasing dependent loads on it means building on a result you have not validated."},
+     {label:"Yes to completion, no to dependent loads, since the customer entity is finished but downstream sequencing should follow the agreed plan.", correct:false, feedback:"Describing it as finished is the problem. Dependent loads are held because acceptance has not been established, not because of sequencing."},
+     {label:"No to both, since nothing can be concluded from a loader result until the full validation pack including relationship checks has completed.", correct:false, feedback:"Too absolute, and it discards real information. Technical acceptance for the submitted population is genuinely established and worth reporting as such."},
+     {label:"Technical acceptance is complete for the submitted population; migration acceptance remains subject to post-load reconciliation and semantic and relationship validation, so dependent loads wait.", correct:true, feedback:"Correct. Two precise statements rather than one vague one. The PM gets a real result and an accurate constraint, and nobody has to guess which kind of done you meant."}
+   ]
+ },
+ { title:"C. The 42, and the pressure to size them",
+   question:"Validation has found the 42. A stakeholder observes that 18,531 records are unaffected and asks you to confirm the issue is minor. Do you?",
+   options:[
+     {label:"Yes, since 42 records out of 18,573 is a small proportion and characterising it proportionately helps the room make a sensible decision.", correct:false, feedback:"Proportion is not materiality. These are customers in the wrong legal entity, and the consequences of that do not scale with the record count."},
+     {label:"No, and explain that record counts are never a reliable indicator of migration risk, so the framing should be avoided entirely.", correct:false, feedback:"A general principle, delivered as a correction. The specific reason is stronger and harder to argue with."},
+     {label:"No: the 18,531 only appear unaffected. Until the mechanism is known you cannot demonstrate the same routing behaviour did not touch them, so scope has to be evidenced rather than assumed.", correct:true, feedback:"Correct. The affected population is defined by the mechanism, not by the records validation happened to flag. Saying so plainly is what stops a bounded-sounding issue being closed early."},
+     {label:"No, and propose isolating the 42 for correction while the rest of the population proceeds to acceptance on the evidence already gathered.", correct:false, feedback:"Carving out the 42 and accepting the remainder assumes the answer to the open question: whether the mechanism touched anything else."}
+   ]
+ },
+ { title:"D. Recovery inside the window",
+   question:"A correction route is proposed for the 42. What must your recovery definition contain before anything runs?",
+   options:[
+     {label:"The exact affected keys or mechanism-based scope, the approved correction, a new build and reference identity, the safe restart boundary, the controlled target treatment, the validation set and a separate recovery run identity.", correct:true, feedback:"Correct. All seven, and the separate run identity matters as much as the rest: a corrected execution needs its own identity so the original failure stays part of the audit trail."},
+     {label:"The affected keys, the approved correction and a rerun of the load step for those records, since the transformation itself was not at fault.", correct:false, feedback:"Assuming the transformation is sound is a conclusion, not a given, and the missing pieces here are the boundary, the target treatment and the validation."},
+     {label:"The affected keys, the correction, and confirmation from the Data Migration Lead that recovery may proceed within the remaining window.", correct:false, feedback:"Authorisation is necessary and it is not a recovery definition. Approval to proceed does not tell anybody what will run or how it will be proven."},
+     {label:"The affected keys, a corrected build identity and a regression test set, with the target treatment decided during execution based on what the target permits.", correct:false, feedback:"Deciding the target treatment during execution is how records get updated, deleted or reloaded in ways nobody planned and nobody can reconstruct."}
+   ]
+ },
+ { title:"E. Monday, and the first user report",
+   question:"A user reports that a customer record looks wrong. Source and the approved rule both say one value; the target holds another. What do you do first?",
+   options:[
+     {label:"Correct the record, since the evidence already shows the migration produced a value that does not match the approved treatment.", correct:false, feedback:"The diagnosis is right and the action is premature. One user report may be the first visible example of a population-level defect."},
+     {label:"Check whether similar keys share the same condition, before choosing any correction, so the mechanism and scope are established first.", correct:true, feedback:"Correct. Do not fix the reported row first. Establish mechanism and scope, exactly as you would during the cutover window itself, then choose the correction."},
+     {label:"Log it as a migration defect and route it into the standard defect process, so it is tracked alongside the other open items.", correct:false, feedback:"Tracking it is right and, on its own, slow. The scope question is worth ten minutes now and much more once the correction has already been made."},
+     {label:"Confirm with the user exactly what they expected to see, since the report may reflect unfamiliarity with the new application rather than a data problem.", correct:false, feedback:"Worth doing when the evidence is ambiguous. Here the source and the approved rule already disagree with the target, so the data question is real."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Consequence, not standard",title:"Cutover changes the consequence, not the standard",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">The DMC5 capstone</div>
+ <p>It is Saturday 14 November at 18:40. Go-live is Monday. You are taking control of the technical customer migration work package, and over the next few hours the window will produce a timing variance, a technical deviation and a semantically incorrect result while people wait for answers.</p>
+ </div>
+ <h3>What changes about your standards inside a cutover window?</h3>`,
+ options:[
+   {label:"The evidence threshold rises, because a mistake made during cutover is far more expensive to correct than the same mistake made in a test cycle.", correct:false, feedback:"Raising the bar during the window sounds rigorous and is impractical. If the standard was right in test it is right now, and a higher one cannot be met in the time available."},
+   {label:"The evidence threshold drops slightly, since decisions must be made faster and some proof has to be deferred until after go-live.", correct:false, feedback:"This is the specific failure this lesson guards against. Speed up investigation, communication and decision cadence; do not redefine wrong data as acceptable because time is short."},
+   {label:"Nothing. The same disciplines apply, and cutover compresses the time available while increasing the cost of a poor decision.", correct:true, feedback:"Correct. Controlled inputs, reproducible execution, reconciliation, semantic validation and evidence do not change. What changes is how much a lapse costs and how little time you have to notice it."},
+   {label:"The scope narrows to the critical path, since only the activities that gate go-live can realistically be validated inside the window.", correct:false, feedback:"Reducing noise is reasonable. Reducing proof on non-critical-path work is how a defect reaches production in an entity nobody was watching."}
+ ]
+},
+{
+ id:"b2",nav:"Baseline and actuals",title:"Prove the baseline, then record what actually happens",type:"content",
+ html:`<p class="lead">A cutover runbook is a plan until execution starts. After that it is an operational record.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Step</th><th>Planned</th><th>Actual</th><th>Outcome</th><th>Evidence or deviation</th></tr></thead><tbody>
+ <tr><td>Extract</td><td>Evidence-based plan</td><td>Record live</td><td>Pass or fail</td><td>Counts and log</td></tr>
+ <tr><td>Transform</td><td>Evidence-based plan</td><td>Record live</td><td>Pass or fail</td><td>Reconciliation</td></tr>
+ <tr><td>Load</td><td>Evidence-based plan</td><td>Record live</td><td>Pass or fail</td><td>Accepted and rejected</td></tr>
+ <tr><td>Validation</td><td>Evidence-based plan</td><td>Record live</td><td>Pass or fail</td><td>Semantic proof</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not race the runbook</div><p>Finishing early is useful only if the control evidence is complete. A fast transformation that has not reconciled has not released a safe downstream package, and the time saved is borrowed from the validation you will wish you had done.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Live_Cutover_Run_Record.xlsx</strong><p class="small">Planned against actual, outcome and evidence location, one row per material step.</p></div><a class="btn secondary" href="/assets/downloads/Live_Cutover_Run_Record.xlsx" download>Download</a></div>`
+},
+{
+ id:"b3",nav:"The window",title:"The cutover window, 18:40 to Monday",type:"guidedSteps",
+ html:`<p class="lead">Work forward through the window one stage at a time. Each stage only makes sense having lived through the one before it, which is also true on the night: the clean load reads very differently when you have just spent forty minutes watching a slow transformation.</p>`,
+ steps: cutoverTimeline,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">What the window actually demanded</div><p>Not heroics. Four things: proving the baseline before starting, distinguishing slow from failing, refusing to treat a clean loader result as acceptance, and declining to explain the 42 before the evidence could.</p></div></div>`
+},
+{
+ id:"b4",nav:"Timing and tone",title:"Timing variance is evidence, and so is how you describe it",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><caption>Prior test evidence</caption><thead><tr><th>Activity</th><th>Cycle 1</th><th>Cycle 2</th></tr></thead><tbody>
+ <tr><td>Customer extract</td><td>18m</td><td>17m</td></tr>
+ <tr><td>Transform</td><td>42m</td><td>31m</td></tr>
+ <tr><td>Validation</td><td>24m</td><td>22m</td></tr>
+ <tr><td>Load</td><td>58m</td><td>49m</td></tr>
+ </tbody></table></div>
+ <p>Use these as evidence, not as promises. The variation in transform and load is itself useful planning information, and the right response during the window is to record cutover actuals and explain material variance rather than to panic or to ignore it.</p>
+ <h3>Communicate the state, not the anxiety</h3>
+ <p>Under pressure, stakeholders need four things: the current fact, the impact, the response, and the next control point. They do not need unsupported reassurance, and they very much do not need your speculation about cause, which they will repeat.</p>
+ <div class="principle"><strong>Slower is not failing</strong><br>Distinguish a process that is progressing more slowly from one that is blocked, repeating, degrading or producing invalid output. Only the last four are failures.</div>`
+},
+{
+ id:"b5",nav:"Stopping deviations",title:"Deviations that require a stop",type:"selectAll",
+ html:`<p class="lead">A deviation is any material departure from the agreed baseline, sequence, input, build, timing assumption or expected result. Seven of them should pause the affected sequence. Explore each, and why.</p>`,
+ options: stoppingDeviations,
+ coaching: stoppingCoaching,
+ hint:"Explore every deviation before continuing.",
+ closingHtml:`<div class="tp-table-wrap"><table class="tp-table"><caption>And record every deviation, stopping or not</caption><thead><tr><th>Field</th><th>Record</th></tr></thead><tbody>
+ <tr><td>What changed</td><td>Baseline, sequence or result difference</td></tr>
+ <tr><td>When</td><td>Timestamp and step</td></tr>
+ <tr><td>Impact</td><td>Affected population, dependency or timing</td></tr>
+ <tr><td>Evidence</td><td>Log, count or key set</td></tr>
+ <tr><td>Action</td><td>Pause, continue, investigate or recover</td></tr>
+ <tr><td>Authority</td><td>Who approves a material change where required</td></tr>
+ </tbody></table></div>
+ <p class="small">Record it before it disappears into chat. A busy window produces more small decisions than anybody can reconstruct on Monday.</p>`
+},
+{
+ id:"b6",nav:"Boundaries",title:"Preserve, bound, release",type:"content",
+ html:`<p class="lead">Three disciplines that hold a window together when something goes wrong.</p>
+ <div class="visual-card"><div class="visual-title">Preserve evidence before correcting</div>
+ <p>Logs, partial outputs, failed keys, timestamps and run identities may be essential to prove the failure mechanism and the recovery boundary. A corrected execution gets its own identity; the original failure stays part of the audit trail rather than being overwritten by the thing that fixed it.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">Use boundaries, not instinct</div>
+ <p>Restart from the earliest point required to guarantee valid downstream output, not from the cheapest-looking step.</p>
+ <div class="principle"><strong>The boundary test</strong><br>What is the earliest completed state whose inputs and evidence are still valid after the defect or change? Everything downstream of the first invalid state must be regenerated or independently re-proven.</div>
+ </div>
+ <div class="visual-card"><div class="visual-title">Handoffs become release points</div>
+ <p>When one migration activity feeds another, the handoff states that the preceding checkpoint passed and identifies the exact released artefact.</p>
+ <div class="quote">\u201cCustomer transformed output for RUN-CUST-01 is released to load. Input and output reconciliation passed. Source, reference and build identities match the cutover manifest. Controlled exceptions are unchanged. Evidence is stored in the run folder.\u201d</div>
+ <p class="small">Parallel activity can continue if its inputs and outputs are demonstrably independent of the failed or changed component. Demonstrably is the word carrying the risk.</p>
+ </div>`
+},
+{
+ id:"b7",nav:"Technical is not final",title:"Reconcile live, and keep the two acceptances apart",type:"content",
+ html:`<p class="lead">At each population-changing step, record input, output, exceptions and rejects, and any unexplained difference. Do not postpone reconciliation until Monday.</p>
+ <div class="principle"><strong>The customer equation</strong><br>18,612 = 18,573 submitted + 34 approved pre-load exceptions + 5 approved exclusions.</div>
+ <h3>Technical success is not cutover success</h3>
+ <p>The target can accept every record while migration semantics are wrong. Post-load validation is not a formality to be completed on Monday if there is time; it is the step that decides whether any of this worked.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>A zero-reject result arrives at exactly the moment everyone most wants to hear good news, after hours of tension, late at night. That timing is not incidental to why it gets over-interpreted.</p></div></div>`
+},
+{
+ id:"b8",nav:"The 42 arrive",title:"22:00 \u2013 The semantic defect",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">Validation reports 42 UK customers in the Belgian legal entity. The total count still matches. Go-live is Monday and the room has been here since six.</p>
+ <h3>What is your immediate response?</h3>`,
+ options:[
+   {label:"Isolate the keys, confirm expected against actual context, protect downstream activity that depends on correct routing, and begin evidence-led tracing without stating a cause.", correct:true, feedback:"Correct. The established case does not define the root cause and neither should you. Protecting dependent activity is the part most often forgotten, and it is the part that stops the problem spreading overnight."},
+   {label:"Establish the root cause first, since every subsequent decision including recovery scope depends on understanding the mechanism.", correct:false, feedback:"Root cause does drive recovery scope and it is not the first action. Isolating the keys and protecting dependants happens while tracing proceeds, not after it."},
+   {label:"Report it immediately to the Data Migration Lead so the programme can decide whether go-live remains viable on Monday.", correct:false, feedback:"The Lead does need to know, and they need decision-grade evidence rather than an alarm. Isolate and establish what remains valid first, which takes minutes."},
+   {label:"Correct the 42 records in the target so the customer data is right for Monday, then investigate the mechanism during stabilisation.", correct:false, feedback:"Repairing during diagnosis may hide the mechanism, leave other affected records undiscovered, and create a target state the migration process cannot reproduce."}
+ ]
+},
+{
+ id:"b9",nav:"Scope and pressure",title:"Decide what the finding invalidates, without lowering the threshold",type:"content",
+ html:`<p class="lead">A semantic defect may invalidate only a bounded population, or it may reveal a wider mechanism. Determine the scope from evidence before recommending recovery.</p>
+ <ol class="framework-checks">
+   <li>Freeze the evidence and the key list.</li>
+   <li>Confirm the expected UK context from controlled source and rule evidence.</li>
+   <li>Confirm the actual Belgian target context.</li>
+   <li>Check whether the 42 share a repeatable signature.</li>
+   <li>Trace to the first divergence.</li>
+   <li>Calculate the mechanism-based population where possible.</li>
+   <li>Only then state a root cause, and only if proven.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Do not let the clock lower the proof threshold</div><p>If Monday is approaching, speed up investigation, communication and decision cadence. Speeding up is legitimate. Redefining wrong data as acceptable because time is short is not, and it is remarkably easy to do by accident at midnight.</p></div>`
+},
+{
+ id:"b10",nav:"Evidence and recovery",title:"Give the Lead decision-grade evidence, then control the recovery",type:"content",
+ html:`<div class="quote">\u201cCustomer load is technically complete: 18,573 accepted, zero rejects. Semantic validation has found 42 UK customers in the Belgian legal entity. Those keys are isolated and the exact root cause is not yet proven. I am tracing the first divergence and checking whether the mechanism extends beyond the 42. I recommend holding dependent acceptance for the affected routing scope until that evidence is complete.\u201d</div>
+ <p class="small">Affected population, known impact, current cause status, what remains valid, recovery options, next evidence point. Wider Go or No-Go decisions remain outside your authority, and that boundary is easier to hold when the evidence you supply is good enough to decide with.</p>
+ <h3>If correction is authorised</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Recovery control</th><th>Required evidence</th></tr></thead><tbody>
+ <tr><td>Population</td><td>Exact affected keys or mechanism-based scope</td></tr>
+ <tr><td>Correction</td><td>Approved code, reference or configuration change</td></tr>
+ <tr><td>Baseline</td><td>New build and reference identity</td></tr>
+ <tr><td>Boundary</td><td>Safe restart point</td></tr>
+ <tr><td>Target treatment</td><td>Controlled update, delete or reload method</td></tr>
+ <tr><td>Validation</td><td>Affected, regression and downstream checks</td></tr>
+ <tr><td>Run identity</td><td>A separate recovery run</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Recovery_Run_Pack.xlsx</strong><p class="small">The seven recovery controls with the evidence each one requires, ready to complete inside a window.</p></div><a class="btn secondary" href="/assets/downloads/Recovery_Run_Pack.xlsx" download>Download</a></div>`
+},
+{
+ id:"b11",nav:"Validate twice",title:"Validate the recovery twice, then close the incident",type:"content",
+ html:`<p class="lead">Prove the affected population is corrected, and prove the recovery created no unexplained changes outside its intended scope.</p>
+ <ul class="framework-checks">
+   <li>The affected 42 now match their expected context.</li>
+   <li>No affected key is missing or duplicated.</li>
+   <li>The unaffected comparison population is unchanged except for approved effects.</li>
+   <li>The population still reconciles.</li>
+   <li>Dependent outputs are revalidated where relevant.</li>
+ </ul>
+ <p>If customer context, addresses or other parent data changed during recovery, recheck the dependent migration outputs rather than assuming they remain valid. A correction upstream can invalidate something downstream that never failed.</p>
+ <div class="principle"><strong>Close the incident, not merely the ticket</strong><br>Closure requires corrected data, reconciliation, validation, updated evidence, downstream confirmation where needed, and a recorded control improvement or follow-up. A ticket can be closed in thirty seconds; an incident cannot.</div>`
+},
+{
+ id:"b12",nav:"Into stabilisation",title:"From cutover into stabilisation",type:"content",
+ html:`<p class="lead">Once the planned migration completes, your job shifts from executing a runbook to watching live data for migration-related defects and supporting rapid diagnosis.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>The stabilisation baseline</caption><thead><tr><th>Baseline item</th><th>Record</th></tr></thead><tbody>
+ <tr><td>Final accepted runs</td><td>Run IDs and builds</td></tr>
+ <tr><td>Population</td><td>Accepted, exceptions and exclusions</td></tr>
+ <tr><td>Open items</td><td>Known defects and decisions</td></tr>
+ <tr><td>Validation</td><td>Passed and conditional checks</td></tr>
+ <tr><td>Recovery history</td><td>Corrections and reruns</td></tr>
+ <tr><td>Evidence index</td><td>Where the controlled proof lives</td></tr>
+ </tbody></table></div>
+ <p>This becomes the reference point for every early-life investigation. Without it, each Monday question restarts from nothing and gets answered from memory.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Support without becoming the permanent data helpdesk</div><p>Migration hypercare resolves migration-originated issues, transfers evidence and knowledge, and progressively hands routine ownership to the appropriate operational teams. A hypercare that never ends is usually one that never transferred anything.</p></div></div>`
+},
+{
+ id:"b13",nav:"Whose defect",title:"Migration defect, application issue, or neither?",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">A user problem after go-live is not automatically a migration defect. Four evidence patterns, four different owners. Explore each, and answer the test underneath.</p>`,
+ items: originPatterns,
+ takeawayHtml:`<div class="principle"><strong>Diagnosis before correction, still</strong><br>The discipline does not relax after go-live. Changing correct migrated data in response to the wrong diagnosis is worse than the original report, because now nothing in the target matches what was approved.</div>`
+},
+{
+ id:"b14",nav:"Watch",title:"Watch the right signals",type:"selectAll",
+ html:`<p class="lead">Early-life support is mostly a question of where you are looking. Six signals worth monitoring. Explore each.</p>`,
+ options: earlyLifeSignals,
+ coaching: signalCoaching,
+ hint:"Explore every signal before continuing.",
+ closingHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Stabilisation_Triage.xlsx</strong><p class="small">Business key, expected state, actual state, first divergence, affected population and severity, one row per report.</p></div><a class="btn secondary" href="/assets/downloads/Stabilisation_Triage.xlsx" download>Download</a></div>`
+},
+{
+ id:"b15",nav:"The capstone",title:"Consultant situations \u2013 Five moments from 18:40 to Monday",type:"situations",
+ html:`<p class="lead">Five decisions from the window you have just worked through. In each one somebody is waiting, and in each one the comfortable answer is available immediately.</p>`,
+ items: capstoneEvents,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Monday Morning Shortcut", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/lesson6-fromfield-owen.mp3",
+   reflection:"After your last go-live, how many reported defects turned out to be migration defects?"
+ })}</div>`
+},
+{
+ id:"b16",nav:"Final practical",title:"Build it \u2013 The execution-to-stabilisation evidence pack",type:"reflection",
+ html:`<p class="lead">The final DMC practical. Produce the complete evidence pack for the window you have just run, demonstrating that you can operate the role rather than describe it.</p>
+ <ol class="framework-checks">
+   <li>Completed cutover run record, with planned against actual timings.</li>
+   <li>Deviation log, and one decision-grade update.</li>
+   <li>Population reconciliation.</li>
+   <li>Technical load outcome.</li>
+   <li>Semantic validation summary.</li>
+   <li>The 42-record investigation evidence, without an invented root cause.</li>
+   <li>Controlled recovery plan.</li>
+   <li>Recovery and regression evidence.</li>
+   <li>Stabilisation issue triage.</li>
+   <li>Final migration handover and evidence index.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The pass standard</div><p>Another experienced consultant should be able to understand exactly what ran, what changed, what failed, what was recovered, what remains open, and why the final status is justified. Not whether you were busy. Whether the record stands on its own.</p></div></div>
+ <p class="lead">Write the pack below. Prioritise the decision-grade update, the 42-record evidence and the final handover, which are where these packs usually thin out.</p>
+ <textarea id="reflection" placeholder="RUN RECORD (planned vs actual): ...&#10;DEVIATIONS: ...&#10;RECONCILIATION: ...&#10;TECHNICAL OUTCOME: ...&#10;SEMANTIC VALIDATION: ...&#10;THE 42 - EVIDENCE: ...&#10;RECOVERY PLAN: ...&#10;STABILISATION TRIAGE: ...&#10;HANDOVER AND OPEN ITEMS: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>Final_Migration_Evidence_Index.xlsx</strong><p class="small">Every artefact, its run identity and its location, so the whole pack can be navigated by somebody who was not there.</p></div><a class="btn secondary" href="/assets/downloads/Final_Migration_Evidence_Index.xlsx" download>Download</a></div>`,
+ minLength:90,
+ checks:[
+   { test:/planned|actual|variance|18m|17m|42m|31m/i, strength:"Your run record compares planned against actual rather than only reporting what happened.", gap:"Record planned against actual timings, and explain material variance rather than just noting it." },
+   { test:/18,?612|18,?573|34|reconcil/i, strength:"Your reconciliation uses the control equation rather than a single total.", gap:"Reconcile the population: 18,612 total, 18,573 submitted and accepted, 34 approved exceptions, 5 approved exclusions." },
+   { test:/technically complete|not (yet )?accepted|semantic/i, strength:"You separated technical acceptance from migration acceptance in your outcome statement.", gap:"Keep the two acceptances apart. Technically complete and accepted are different statuses and only one was earned on the night." },
+   { test:/not (yet )?(proven|established|known)|root cause .*(not|unknown)|do not know/i, strength:"Your 42-record evidence reports the finding without asserting a cause.", gap:"State that the root cause is not established, and what tracing you are doing, rather than proposing a mechanism." },
+   { test:/regression|unaffected|outside .*(scope|population)|unchanged/i, strength:"Your recovery evidence proves the absence of unintended change, not only the intended one.", gap:"Prove the recovery twice: the affected population corrected, and the unaffected comparison population unchanged." },
+   { test:/owner|closure condition|next action|open item|hand(ed|over)/i, strength:"Your handover gives open items owners, next actions and closure conditions.", gap:"Every unresolved item needs status, affected population, evidence, owner, next action and closure condition." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Run record and deviations.</strong> Baseline confirmed before the first executable step: run identity, final source snapshot, approved rule and reference versions, promoted build, target environment and runbook version all recorded. Transform ran materially longer than either prior test cycle, at which point row progress, logs, resource state and error signatures were inspected: progressing steadily, no blocking error, no concentrated retry signature. Recorded as a deviation with evidence and a continue decision under observation, with a named next checkpoint rather than a clock-driven judgement.</div>
+ <div class="quote"><strong>Reconciliation and technical outcome.</strong> Population reconciles by key: 18,612 source-cycle records resolving to 18,573 submitted, 34 approved pre-load exceptions and 5 approved exclusions, every key carrying exactly one status. The target accepted 18,573 with zero rejects. That is technical completion for the submitted population. It is not migration acceptance, and the pack says so in those words rather than reporting a green result and leaving the reader to infer the limit.</div>
+ <div class="quote"><strong>The 42.</strong> Semantic validation found 42 UK customers in the Belgian legal entity with the total count still matching. Keys are isolated and frozen, expected UK context confirmed from controlled source and rule evidence, actual Belgian context confirmed in target. We are checking whether the 42 share a repeatable signature and tracing to the first divergence. Root cause is not established and the pack proposes none. Critically, the remaining records are not described as unaffected: until the mechanism is bounded, that cannot be demonstrated. Dependent acceptance for the affected routing scope is held meanwhile.</div>
+ <div class="quote"><strong>Recovery and handover.</strong> Any correction runs as a separate recovery run with its own identity, an explicit mechanism-based population, a new build and reference identity, a proven restart boundary and a controlled target treatment. Recovery is validated twice: the affected population corrected, and an unaffected comparison population unchanged except for approved effects, with dependent outputs revalidated. Open items are handed over with status, affected keys, evidence, owner, next action and closure condition. Unresolved treatments remain unresolved: 45E has no approved target equivalent and CustomerGroup 99 is open for 18 German records, and both are transferred as controlled populations rather than post-go-live cleanup.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is the standard the whole programme has been building toward: a record that stands on its own, explains what was decided and why, and is honest about the one thing still unknown. Nobody reading it has to have been there.":"Check the 42 section and the handover. If the pack describes the other records as unaffected, or hands over open items without closure conditions, those are the two places an experienced reviewer will press first."}</div>`
+},
+{
+ id:"b17",nav:"Handover",title:"Handover, closure, and the populations that are not defects",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><caption>Every unresolved item needs all eight</caption><thead><tr><th>Field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Issue ID</td><td>Traceability</td></tr>
+ <tr><td>Affected keys and count</td><td>Scope</td></tr>
+ <tr><td>Current status</td><td>Known state</td></tr>
+ <tr><td>Evidence</td><td>Reproducible proof</td></tr>
+ <tr><td>Owner</td><td>Who acts next</td></tr>
+ <tr><td>Next action</td><td>Specific work</td></tr>
+ <tr><td>Closure condition</td><td>What proves done</td></tr>
+ <tr><td>Operational impact</td><td>What the support team needs to know</td></tr>
+ </tbody></table></div>
+ <h3>When migration evidence is complete</h3>
+ <p>An entity can move toward closure when the executed population reconciles, required validation passes, controlled exceptions are documented, defects are closed or formally handed over, final run and baseline identities are recorded, and the evidence is accessible and reproducible for authorised project and support teams.</p>
+ <p class="small">Closure does not mean deleting the working trail. Retain the controlled run manifests, reconciliations, validation evidence, exception and defect records, and final baselines according to project requirements.</p>
+ <h3>Watch more than the customer package</h3>
+ <p>Bramwell's known control populations include 73 supplier classification conflicts, 286 product-site relationship exceptions, 126 fixed-asset depreciation-category exceptions, and 1,126 LegacyDocs files with unresolved business-record links. These are not automatically defects to clean up after go-live. They remain controlled populations whose approved treatment and ownership must be respected, and a well-meaning tidy-up is how a controlled exception becomes an unapproved change.</p>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2013 What would make you stop?",type:"reflection",
+ html:`<p class="lead">During a pressured cutover, what evidence would make you personally recommend pausing your migration activity, even with senior stakeholders asking you to continue? State the evidence, the risk continuing creates, and what you would need to prove before restarting.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>This is the last reflection of the programme and it is deliberately the same shape as the first hard question in Lesson 2. The difference should be in how specific your answer is now: named evidence, a named consequence, and a named restart condition.</p></div></div>
+ <textarea id="reflection" placeholder="The evidence that would make me recommend pausing..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/log|key|count|query|signature|identit|reconcil/i, strength:"You named specific evidence rather than a general sense that something is wrong.", gap:"Name the evidence you would point at. A recommendation to pause needs something a stakeholder can look at." },
+   { test:/recover|reproduc|overwrit|spread|worse|harder|unpick|cannot prove/i, strength:"You stated what continuing would cost, in terms of what becomes unprovable or unrecoverable.", gap:"Say what continuing makes worse: what becomes harder to recover, or impossible to prove afterwards." },
+   { test:/before .*(restart|resum|continu)|restart when|must be true|once .* (is|are) prov/i, strength:"You defined the restart condition, which turns a pause into a plan.", gap:"State what must be true before restarting. Without it, the pause ends when the pressure wins rather than when the evidence changes." },
+   { test:/recommend|not mine|Lead|authority|decision/i, strength:"You framed it as a recommendation and kept the decision boundary clear.", gap:"Remember what you own. You recommend pausing and supply the evidence; the wider call belongs at leadership level." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The one I would hold hardest is being unable to distinguish partial output from complete output after a failure. The evidence is specific: the log does not identify where processing stopped, and the output file contains a record count that matches neither the input nor any checkpoint. What continuing costs is the ability to recover at all: load that mixture and I can no longer separate records that transformed correctly from records written mid-process, so the recovery population becomes the whole entity rather than a bounded set. Before restarting I need three things proven: which records completed, a restart boundary whose inputs and evidence are still valid, and a target state I can reconcile against. I would state that as a recommendation with the evidence attached, and be clear that the wider call about the window belongs to the Lead and to project leadership. My part is making sure they are deciding with an accurate picture rather than an optimistic one.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"Naming the restart condition alongside the evidence is what makes a pause survivable in a room full of people who want to continue. It turns an obstruction into a plan with a duration.":"Push on the restart condition and the boundary of your own authority. Both make the recommendation easier to accept, and both are what separate a professional pause from a refusal."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2013 Execute calmly, prove relentlessly",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Confirm the exact baseline before execution.</li>
+   <li>Record actuals and evidence as the run progresses.</li>
+   <li>Do not release downstream work before checkpoints pass.</li>
+   <li>Treat timing variance as evidence, not panic.</li>
+   <li>Record and control deviations.</li>
+   <li>Preserve failed-run evidence.</li>
+   <li>Use proven recovery boundaries.</li>
+   <li>Keep independent work moving only when independence is proven.</li>
+   <li>Reconcile live populations.</li>
+   <li>Separate technical acceptance from migration acceptance.</li>
+   <li>Do not invent root cause under pressure.</li>
+   <li>Give leadership decision-grade evidence without taking their authority.</li>
+   <li>Use separate controlled recovery runs.</li>
+   <li>Validate recovery and regression.</li>
+   <li>Revalidate dependencies after correction.</li>
+   <li>Carry the final accepted baseline into stabilisation.</li>
+   <li>Triage post-go-live issues before classifying them.</li>
+   <li>Hand open items to operational owners deliberately.</li>
+   <li>Close migration work with reproducible evidence, not merely a finished runbook.</li>
+ </ul>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>The DMC5 standard</caption><thead><tr><th>Capability</th><th>You can</th></tr></thead><tbody>
+ <tr><td>Prepare</td><td>Build a controlled cycle and cutover work package</td></tr>
+ <tr><td>Execute</td><td>Run the sequence with evidence and checkpoints</td></tr>
+ <tr><td>Recover</td><td>Manage failures and reruns safely</td></tr>
+ <tr><td>Validate</td><td>Prove the technical and semantic outcome</td></tr>
+ <tr><td>Cut over</td><td>Operate under live timing and dependency pressure</td></tr>
+ <tr><td>Stabilise</td><td>Triage migration-originated issues and hand over cleanly</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The one thing to remember</strong><br>A Data Migration Consultant is not someone who can make data move. They are someone who can make the right data move under control, prove what happened, diagnose what did not, communicate it clearly, and leave the project able to rely on the result.</div>`
+},
+{
+ id:"b20",nav:"Programme complete",title:"Module and programme complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed DMC Module 5: Executing Cycles &amp; Cutover, and with it the Data Migration Consultant programme.</strong></p>
+ <p>In this final lesson you operated through a live cutover window and into early stabilisation: executing against a controlled baseline, recording actual progress and evidence, responding safely to deviations, supporting technical decision-making without overstepping, validating the live result, managing recovery and reruns, handing migration evidence into support, and distinguishing genuine migration closure from simply reaching the end of the runbook.</p>
+ <p>Across five modules and thirty lessons you have moved from mapping and technical build, through profiling, troubleshooting and client work, to live migration execution and cutover.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>What happens next</h3>
+ <p><strong>Module assessment and certification</strong></p>
+ <p>The programme's lesson content is complete. What remains is the assessment and certification route, which is where the capabilities you have built get formally evidenced rather than another module of content.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Thirty lessons, and the standard is the same on the last night as it was on the first: prove what happened.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 5",
+  moduleTitle: "Executing Cycles & Cutover",
+  lessonLabel: "Lesson 6: Executing cutover and supporting stabilisation",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "The DMC5 capstone: the live window, and the Monday that follows",
+  storageKey: "tp_dmc5_lesson6_v1",
+  lessonId: "dmc5-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6-complete.html",
+  finalButtonLabel: "Finish Lesson 6",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
