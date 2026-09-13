@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Profiling data with SQL, Excel and Power Query</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 2 — "Profiling data with SQL, Excel and
+   Power Query". Built as a profiling workshop with three
+   workbenches plus an integration challenge, per the manuscript's
+   own authoring notes — deliberately not the same scenario →
+   seven-steps → situations pattern used elsewhere, and not a
+   repeat of DMC1's build-lab shape either.
+
+   Source: DMC2_Lesson2_Profiling_Data_with_SQL_Excel_and_Power_Query_v3.docx.
+   moduleTitle follows the alignment doc ("Profiling, Cleansing &
+   Reference Data"), not the manuscript's own header text, per the
+   standing rule established on Lesson 1: the alignment doc is the
+   later, canonical source when the two disagree.
+
+   All Bramwell facts (27 overlength names; the CustomerGroup
+   distribution; 20 dates in 1899; CreditLimit=0 for 17,900 active
+   customers meaning "not assumed"; the 760→214 payment-term
+   progression with 23 new exceptions; blank tax 94→91; missing
+   delivery addresses 31→7; unrecognised CustomerGroup 108→18) are
+   taken directly from that manuscript and the story bible.
+   CustomerGroup 99 and 45E stay unresolved, as instructed. The
+   independent product-extract lab in the "independent lab" block is
+   explicitly synthetic per the manuscript, and does not enter the
+   Bramwell Story Bible.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1 and DMC2 Lesson 1.
+============================================================== */
+
+const exceptionSheetSteps = [
+ {html:`<h4>Field 1 of 7: CustomerNumber</h4><p>The business key. Without it, nobody receiving the sheet can trace a row back to the source record.</p>`},
+ {html:`<h4>Field 2 of 7: CustomerName</h4><p>The value the SME actually needs to recognise the record. Not the analytical helper column, the real name.</p>`},
+ {html:`<h4>Field 3 of 7: ObservedLength</h4><p>The measured fact: how long this specific name actually is. This is evidence, not opinion.</p>`},
+ {html:`<h4>Field 4 of 7: TargetMaximumLength = 60</h4><p>The known constraint, stated plainly, so the SME can see exactly how far over the limit each name runs.</p>`},
+ {html:`<h4>Field 5 of 7: Country or other relevant context already present</h4><p>Whatever context you already have that might help the SME spot a pattern \u2014 don't derive anything new for this sheet.</p>`},
+ {html:`<h4>Field 6 of 7: IssueCode</h4><p>A stable identifier for this class of issue, so it can be tracked, filtered and referenced later.</p>`},
+ {html:`<h4>Field 7 of 7: Decision / proposed treatment \u2014 left blank</h4><p>This is the SME's field, not yours. <strong>Do not pre-fill the business answer.</strong> You can propose options and explain impact, but manufacturing an approved truncation rule just to make the sheet look complete defeats the entire purpose of asking.</p>`}
+];
+
+const toolChoiceItems = [
+ { title:"Find all repeated keys across 1.8 million customer records",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"SQL, since it gives exact, repeatable evidence at scale and lets you pull the affected records directly.", correct:true, feedback:"Correct. At this scale, SQL gives exact, repeatable evidence and lets you pull the affected records directly \u2014 exactly what a repeated-key finding needs."},
+     {label:"Excel, since a pivot table can spot duplicate values quickly.", correct:false, feedback:"Excel struggles at this scale, and pivoting 1.8 million rows for an exact duplicate count is neither fast nor reliable."},
+     {label:"Power Query, since it can be refreshed against the same file repeatedly.", correct:false, feedback:"Power Query could technically do this, but at 1.8 million rows it's a much heavier, slower route to the same evidence SQL gives you directly."},
+     {label:"Any of the three, since tool choice doesn't really matter once you know what you're looking for.", correct:false, feedback:"Tool choice isn't arbitrary here \u2014 scale and precision genuinely favour one option over the others."}
+   ]
+ },
+ { title:"Show Finance where payment-term issues are concentrated",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"SQL, since it can calculate the exact concentration figures Finance needs.", correct:false, feedback:"SQL could produce the underlying counts, but handing Finance raw SQL output isn't the fastest route to a concentration picture they can read themselves."},
+     {label:"Power Query, since it can reshape the data into whatever view Finance prefers.", correct:false, feedback:"Power Query is better suited to repeatable ingestion and shaping than to a one-off visual for a business audience."},
+     {label:"Excel, using a pivot table built from controlled output.", correct:true, feedback:"Correct. A pivot table is fast, visual and immediately readable by a finance audience without needing to interpret raw query output."},
+     {label:"Send Finance the raw exception list and let them find the patterns themselves.", correct:false, feedback:"That shifts the analysis work onto Finance instead of doing it yourself \u2014 exactly the kind of unhelpful handover this lesson warns against."}
+   ]
+ },
+ { title:"Refresh the same profile against a new monthly file",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"SQL, with the cycle identifier hard-coded and updated by hand each month.", correct:false, feedback:"SQL can be made repeatable too with parameterised queries, but Power Query's refresh model is the more natural fit for a recurring monthly file."},
+     {label:"Excel, rebuilding the analysis workbook fresh against the new file each time.", correct:false, feedback:"A manually rebuilt Excel analysis each month is exactly the non-repeatable pattern this lesson warns against."},
+     {label:"Rebuild the whole profile from scratch every month, in whichever tool is fastest that day.", correct:false, feedback:"Rebuilding from scratch every month throws away the whole point of a repeatable profile."},
+     {label:"Power Query, since it's built for a repeatable import and shaping process that refreshes cleanly against a new file.", correct:true, feedback:"Correct. Power Query is built for exactly this: a repeatable import and shaping process that refreshes cleanly against a new file without rebuilding anything by hand."}
+   ]
+ },
+ { title:"Compare two cycle populations by business key",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"Excel, using XLOOKUP to compare the two extracts row by row.", correct:false, feedback:"Excel could do this with formulas, but at scale a SQL join gives you exact, precise evidence with far less manual risk."},
+     {label:"SQL, since this needs exact, key-level set comparison.", correct:true, feedback:"Correct. This needs exact, key-level set comparison \u2014 precisely what SQL joins are built for, and precisely what a simple row-count comparison would miss."},
+     {label:"Power Query, merging the two extracts into one combined table.", correct:false, feedback:"Power Query could do this too, but for an exact one-off comparison at scale, SQL is the more direct route."},
+     {label:"Just compare the two total row counts between cycles.", correct:false, feedback:"This is exactly the trap the +82 movement taught in Lesson 1: a net total tells you nothing about which specific keys actually changed."}
+   ]
+ },
+ { title:"Investigate a handful of strange names interactively",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"Excel, since you can open and look at a handful of records directly.", correct:true, feedback:"Correct. For a small number of records you want to look at directly, Excel's fast, visual, interactive inspection beats writing and rerunning a query for each one."},
+     {label:"SQL, writing a targeted query for each strange name in turn.", correct:false, feedback:"SQL is the right tool once you know exactly what you're looking for, but for a handful of records you want to look at directly, it's slower than just opening them in Excel."},
+     {label:"Power Query, building a filtered view of the suspect names.", correct:false, feedback:"Power Query is built for repeatable shaping, not for quickly eyeballing a handful of individual records."},
+     {label:"Write a script to flag and categorise every strange name automatically.", correct:false, feedback:"That's disproportionate effort for a handful of records you could just look at directly."}
+   ]
+ },
+ { title:"Produce a reusable unmatched-country exception table",
+   question:"Which tool is the strongest primary choice, and why?",
+   options:[
+     {label:"A parameterised SQL view against the reference table.", correct:false, feedback:"This is also a genuinely good answer \u2014 not wrong, just marked as the slightly less idiomatic pick for a refreshable, reusable table."},
+     {label:"Excel, with a manual filter on the country column.", correct:false, feedback:"A pivot or manual filter in Excel won't survive being rerun cleanly against next cycle's file the way a query-based view will."},
+     {label:"Power Query, with a left-outer merge to the approved country reference.", correct:true, feedback:"Correct, though a well-built SQL view could do this equally well. Power Query's refreshable shape makes the repeatable left-join coverage especially visible here."},
+     {label:"A one-off manual filter, redone by hand each time it's needed.", correct:false, feedback:"A one-off manual filter is exactly the non-repeatable pattern this lesson is built to move you away from."}
+   ]
+ }
+];
+
+const profilingMistakes = [
+ "Reporting one percentage for the whole file",
+ "Calling COUNT(*) the customer count",
+ "Running SELECT DISTINCT before profiling",
+ "Checking NULL only",
+ "Reporting reference match rate only",
+ "Comparing only the current total, cycle over cycle",
+ "Treating rare as invalid",
+ "Treating parseable as valid",
+ "Making manual corrections in Excel during analysis",
+ "Profiling every field to the same depth"
+];
+const profilingMistakesCoaching = [
+ "<strong>Misleads because:</strong> the wrong denominator can make quality look better or worse than it actually is for the population that matters.",
+ "<strong>Misleads because:</strong> it assumes row grain equals customer grain \u2014 exactly the assumption Lesson 1 taught you to test, not make.",
+ "<strong>Misleads because:</strong> it can erase duplicate evidence before you've understood why the duplicates exist.",
+ "<strong>Misleads because:</strong> it misses empty, whitespace and sentinel values that all look \u201cpopulated\u201d but aren't genuinely useful data.",
+ "<strong>Misleads because:</strong> it misses duplicate or ambiguous mappings \u2014 a 100% match rate can still be wrong if some source values match twice.",
+ "<strong>Misleads because:</strong> it hides new defects and resolved records alike behind one headline number, like the 23 new payment-term exceptions hidden inside 760\u2192214.",
+ "<strong>Misleads because:</strong> it confuses frequency with business validity \u2014 a rare value is a reason to inspect, not a reason to reject.",
+ "<strong>Misleads because:</strong> it confuses technical syntax with business plausibility, exactly like the 1899 creation dates that parse perfectly as dates.",
+ "<strong>Misleads because:</strong> it makes the results non-repeatable the moment a human types over a cell.",
+ "<strong>Misleads because:</strong> profiling everything to the same depth produces noise and wastes investigation time better spent on what actually matters."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The profiling brief",title:"The profiling brief",type:"mcq",
+ _correctIndex:3,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>You have completed the first-pass takeover of the Bramwell customer dataset. You now understand the key questions: grain, scope, population movement, suspicious domains and dependencies. The Data Migration Lead asks for something more useful than a list of observations:</p>
+ </div>
+ <div class="quote">\u201cBy tomorrow afternoon, give me a repeatable profile we can rerun next cycle. I want to know what is wrong, how many records are affected, where the problems are concentrated, and which issues need business decisions.\u201d</div>
+ <p>You have SQL access to the controlled staging copy, Excel and Power Query.</p>
+ <h3>What should determine which tool you use?</h3>`,
+ options:[
+   {label:"Use SQL for everything because migration consultants should work technically.", correct:false, feedback:"Loyalty to one tool isn't the skill here. Using SQL for a task Excel would do faster and more visibly for a business audience doesn't serve the brief."},
+   {label:"Use Excel for everything because SMEs can understand it.", correct:false, feedback:"Excel is genuinely strong for exploration and communication, but it isn't the right choice for exact, scalable, repeatable interrogation of 18,000+ rows."},
+   {label:"Use Power Query for everything because it is repeatable.", correct:false, feedback:"Repeatability matters, but Power Query isn't the fastest route to every kind of evidence \u2014 a one-off exact comparison at scale is often better served by SQL."},
+   {label:"Choose the tool by the question, dataset scale, repeatability need and audience, while keeping one controlled evidence trail.", correct:true, feedback:"Correct. SQL, Excel and Power Query overlap. The consultant skill is not proving loyalty to a tool. It is obtaining reliable evidence quickly, repeatably and in a form that supports the next decision."}
+ ]
+},
+{
+ id:"b2",nav:"What a profile contains",title:"What a useful migration profile actually contains",type:"content",
+ html:`<p class="lead">A profile is not a data dump and not a 200-column statistics report. It is a controlled set of measures chosen because they tell you something about migration readiness.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dimension</th><th>Question</th><th>Typical evidence</th></tr></thead><tbody>
+ <tr><td>Population</td><td>How much data are we dealing with?</td><td>Rows, distinct keys, scope segments</td></tr>
+ <tr><td>Completeness</td><td>Where is required information missing?</td><td>NULL/blank/whitespace counts by applicable population</td></tr>
+ <tr><td>Uniqueness</td><td>Do candidate keys behave as expected?</td><td>Duplicate/repeated-key populations</td></tr>
+ <tr><td>Validity</td><td>Do values conform to known formats, domains or rules?</td><td>Invalid code/date/pattern populations</td></tr>
+ <tr><td>Distribution</td><td>What values dominate or look unusual?</td><td>Frequency and percentage by code/category</td></tr>
+ <tr><td>Length/shape</td><td>Will values fit and parse?</td><td>Min/max length, pattern/type behaviour</td></tr>
+ <tr><td>Reference coverage</td><td>Do coded values resolve?</td><td>Matched, unmatched, ambiguous mappings</td></tr>
+ <tr><td>Relationship coverage</td><td>Do required parent/child links exist?</td><td>Orphan/missing relationship populations</td></tr>
+ <tr><td>Change</td><td>What moved since the previous cycle?</td><td>New/missing/changed keys and quality trends</td></tr>
+ <tr><td>Concentration</td><td>Where is the problem located?</td><td>Country/entity/status/source-owner segmentation</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Profile with a purpose</strong><br>Every measure should answer a migration question. If nobody can say what decision a statistic supports, consider leaving it out.</div>`
+},
+{
+ id:"b3",nav:"Workbench A: SQL",title:"Workbench A \u2014 SQL for scale, precision and repeatability",type:"content",
+ html:`<p class="lead">SQL is strongest when you need exact counts, record-level evidence, segmentation, joins, cycle comparisons or a profile that can be rerun consistently over substantial data.</p>
+ <h3>Start with a population control query</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: population control</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  COUNT(*) AS RowCount,
+  COUNT(DISTINCT CustNo) AS DistinctCustomerKeys,
+  SUM(CASE WHEN CustNo IS NULL
+      OR LTRIM(RTRIM(CustNo)) = ''
+      THEN 1 ELSE 0 END) AS BlankCustomerKeys
+FROM raw.CustomerInvestigation
+WHERE CycleId = @CycleId;</code></pre></div>
+ <p class="small">Do not hide the WHERE clause in a view you have not inspected. The denominator is part of the result.</p>
+ <h3>Profile NULL, blank and whitespace separately</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: separate NULL, empty and whitespace</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  SUM(CASE WHEN Terms IS NULL THEN 1 ELSE 0 END) AS NullTerms,
+  SUM(CASE WHEN Terms = '' THEN 1 ELSE 0 END) AS EmptyTerms,
+  SUM(CASE WHEN Terms <> ''
+      AND LTRIM(RTRIM(Terms)) = ''
+      THEN 1 ELSE 0 END) AS WhitespaceTerms
+FROM raw.CustomerInvestigation
+WHERE CycleId = @CycleId;</code></pre></div>
+ <div class="principle"><strong>Why separate them?</strong><br>They may have different source causes. A NULL from a database, an empty string from a CSV and three spaces entered in a legacy field can all appear "blank" to a human but behave differently in transformations and joins.</div>
+ <h3>Profile a coded domain</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: distribution with share</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CustomerGroup,
+  COUNT(*) AS RecordCount,
+  CAST(100.0 * COUNT(*) /
+    SUM(COUNT(*)) OVER() AS decimal(6,2)) AS Pct
+FROM raw.CustomerInvestigation
+WHERE CycleId = @CycleId
+GROUP BY CustomerGroup
+ORDER BY RecordCount DESC;</code></pre></div>
+ <p>Bramwell's established earlier CustomerGroup distribution includes STANDARD 14,982; KEY 1,936; EXPORT 1,244; INTERNAL 260; STD 61; STANDARD (trailing space) 29; and 99, 18. Those values illustrate why distributions reveal near-duplicates and unexplained codes that a simple NULL check misses.</p>
+ <h3>Profile lengths against a target constraint</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: length profile</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  MAX(LEN(Name)) AS MaxNameLength,
+  SUM(CASE WHEN LEN(Name) > 60 THEN 1 ELSE 0 END) AS Over60,
+  SUM(CASE WHEN Name IS NULL OR LTRIM(RTRIM(Name)) = ''
+      THEN 1 ELSE 0 END) AS BlankName
+FROM raw.CustomerInvestigation
+WHERE CycleId = @CycleId;</code></pre></div>
+ <p>Bramwell has 27 customer names longer than the target 60-character limit. Profiling quantifies the issue. It does not authorise truncation.</p>
+ <h3>Return the affected records</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: return the affected rows</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo, Name, LEN(Name) AS NameLength
+FROM raw.CustomerInvestigation
+WHERE CycleId = @CycleId
+  AND LEN(Name) > 60
+ORDER BY LEN(Name) DESC, CustNo;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">A count without records is only half an analysis</div><p>You need the count for control and the affected population for diagnosis, business review and retesting.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Profile-SQL-Pack.sql</strong><p class="small">The five queries above, ready to adapt to a new dataset.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Profile-SQL-Pack.sql" download>Download</a></div>`
+},
+{
+ id:"b4",nav:"The percentage that lies",title:"SQL challenge \u2014 The percentage that lies",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">The claim</div>
+ <p>A consultant reports: \u201cPayment terms are 98.85% complete.\u201d The query denominator is every row in the file. You discover that the migration rule only requires valid payment terms for active customers in the migration scope.</p>
+ </div>
+ <h3>What should happen before this percentage means anything?</h3>`,
+ options:[
+   {label:"Nothing. 98.85% is already a strong result and can be reported as-is.", correct:false, feedback:"A strong-looking number calculated against the wrong population isn't a strong result \u2014 it just hasn't been checked yet."},
+   {label:"Rewrite the metric conceptually first: define the population the rule actually applies to, then recompute valid and invalid counts inside that population.", correct:true, feedback:"Correct. Define the population to which the rule applies, then count valid and invalid records inside that population."},
+   {label:"Round the percentage up to 99% so it reads more cleanly in the steering report.", correct:false, feedback:"Rounding doesn't fix a wrong denominator. It just makes an unverified number look more confident."},
+   {label:"Recalculate the same percentage using a different tool to confirm the number is accurate.", correct:false, feedback:"The problem isn't which tool calculated it \u2014 the same wrong denominator would produce the same misleading percentage in any tool."}
+ ]
+},
+{
+ id:"b5",nav:"Workbench B: Excel",title:"Workbench B \u2014 Excel for exploration and communication",type:"content",
+ html:`<p class="lead">Excel is extremely useful in migration analysis because it is fast, visual and accessible to business users. It is also easy to make an analysis non-repeatable through manual edits.</p>
+ <h3>Create a controlled analysis workbook</h3>
+ <ul class="framework-checks">
+   <li><strong>README</strong> \u2014 dataset identity, cycle, extract, analyst, refresh instructions.</li>
+   <li><strong>Raw_View</strong> \u2014 read-only imported or queried output; no manual cleansing.</li>
+   <li><strong>Profile_Summary</strong> \u2014 key metrics and issue counts.</li>
+   <li><strong>Distributions</strong> \u2014 pivot tables for selected coded fields.</li>
+   <li><strong>Exceptions</strong> \u2014 filtered affected records for business review.</li>
+   <li><strong>Cycle_Comparison</strong> \u2014 trend/change measures where available.</li>
+   <li><strong>Decisions</strong> \u2014 questions, owner, decision/status; not hidden in cell comments.</li>
+ </ul>
+ <p>The workbook should be disposable and reproducible from controlled source data. If the only copy of a corrected value lives in a yellow cell somebody typed over, you have created a new uncontrolled source.</p>
+ <h3>Use pivots to find concentration</h3>
+ <p>Suppose 214 active customers remain without valid payment terms in a later Bramwell cycle. A single count tells you scale. A pivot may tell you where to investigate.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Rows</th><th>Columns</th><th>Values</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Country</td><td>Validity flag</td><td>Count of CustNo</td><td>Is the problem concentrated geographically?</td></tr>
+ <tr><td>SalesRegion</td><td>Validity flag</td><td>Distinct CustNo</td><td>Is one operating team driving the issue?</td></tr>
+ <tr><td>Terms</td><td>Country</td><td>Count of CustNo</td><td>Which source codes are causing which country problems?</td></tr>
+ <tr><td>Status</td><td>CustomerGroup</td><td>Count of CustNo</td><td>Does the issue correlate with population type?</td></tr>
+ </tbody></table></div>
+ <p class="small">The 214 figure is established Bramwell progression. The example segmentation results above are synthetic unless already established in the Story Bible.</p>
+ <h3>Excel formulas that help, and their limits</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Technique</th><th>Useful for</th><th>Risk</th></tr></thead><tbody>
+ <tr><td>LEN / TRIM / CLEAN</td><td>Quick text checks</td><td>Manual formula drift across rows</td></tr>
+ <tr><td>COUNTIF(S)</td><td>Simple frequency/completeness checks</td><td>Easy to use wrong denominator/range</td></tr>
+ <tr><td>XLOOKUP</td><td>Exploratory reference comparison</td><td>Unmatched/duplicate reference behaviour can be hidden</td></tr>
+ <tr><td>Conditional formatting</td><td>Visual anomaly spotting</td><td>Not an auditable rule by itself</td></tr>
+ <tr><td>Pivot tables</td><td>Fast segmentation/distribution</td><td>Must refresh and preserve source/filter context</td></tr>
+ <tr><td>Tables/structured references</td><td>Safer ranges and readable formulas</td><td>Still vulnerable to manual edits</td></tr>
+ </tbody></table></div>
+ <p class="small">Use Excel to accelerate investigation and business dialogue, not to avoid controlled transformation design.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Controlled-Profile-Workbook-Template.xlsx</strong><p class="small">The seven-sheet workbook shape above, ready to populate for any new dataset.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Controlled-Profile-Workbook-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b6",nav:"Build the exception sheet",title:"Excel exercise \u2014 Make the issue useful to an SME",type:"guidedSteps",
+ html:`<p class="lead">You have a list of the 27 overlength customer names. Sending all 18,612 customer rows to an SME is poor consulting. Build an exception sheet containing only the fields that earn their place, in order.</p>`,
+ steps: exceptionSheetSteps,
+ firstLabel:"Walk through Field 1",
+ closingHtml:`<div class="callout misconception"><div class="callout-label">Do not pre-fill the business answer</div><p>The consultant can propose options and explain impact, but should not manufacture an approved truncation rule simply to make the exception sheet look complete.</p></div>`
+},
+{
+ id:"b7",nav:"Workbench C: Power Query",title:"Workbench C \u2014 Power Query for repeatable profiling preparation",type:"content",
+ html:`<p class="lead">Power Query sits between ad hoc spreadsheet analysis and a full migration ETL process. It is particularly useful for repeatable ingestion, type inspection, shaping, combining files and producing refreshable analysis tables.</p>
+ <h3>Preserve the received values</h3>
+ <p>Start by importing the controlled source. Duplicate a query or create reference queries for profiling views rather than manually altering the only representation of the raw input.</p>
+ <h3>Add profiling-friendly columns</h3>
+ <p class="small">Examples below are training patterns. They create analytical flags, not approved migration transformations.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Power Query M patterns</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>NameLength =
+  if [Name] = null then null else Text.Length([Name])
+
+NameOver60 =
+  if [Name] = null then false else Text.Length([Name]) > 60
+
+TermsBlank =
+  [Terms] = null or Text.Trim(Text.From([Terms])) = ""
+
+CountryNormalisedForAnalysis =
+  if [Country] = null then null else Text.Upper(Text.Trim([Country]))</code></pre></div>
+ <div class="principle"><strong>Analysis normalisation is not source correction</strong><br>A normalised helper column can reveal that 'standard', 'STANDARD' and 'STANDARD ' collapse to the same analytical form. Keep the original value alongside it. Whether the migration should standardise them is a separate approved rule.</div>
+ <h3>Group by for distributions</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Conceptual M pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Table.Group(
+  Source,
+  {"CustomerGroup"},
+  {{"RecordCount", each Table.RowCount(_), Int64.Type}}
+)</code></pre></div>
+ <h3>Merge for reference coverage</h3>
+ <p>Merge the source Country field to the approved country cross-reference using a Left Outer join. Expand the target code and a match indicator.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Source value</th><th>Established Bramwell reference status</th></tr></thead><tbody>
+ <tr><td>UK</td><td>Approved mapping to GB</td></tr>
+ <tr><td>NOR</td><td>Approved mapping to NO</td></tr>
+ <tr><td>BEL</td><td>Approved mapping to BE</td></tr>
+ <tr><td>GER</td><td>Approved mapping to DE</td></tr>
+ <tr><td>ZZZ</td><td>Unresolved</td></tr>
+ </tbody></table></div>
+ <p class="small">Do not replace ZZZ with a plausible country. The profiling output should show it as unmatched/unresolved.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Power-Query-Profile-Steps.txt</strong><p class="small">The M patterns above, ready to paste into a new query.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Power-Query-Profile-Steps.txt" download>Download</a></div>`
+},
+{
+ id:"b8",nav:"A refreshable exception view",title:"Power Query exercise \u2014 Build a refreshable exception view",type:"content",
+ html:`<p class="lead">Create a query called <code>Customer_Profile_Exceptions</code> that returns one row per issue event, not merely one row per customer.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Column</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>CustNo</td><td>Business key</td></tr>
+ <tr><td>IssueCode</td><td>Stable analytical identifier</td></tr>
+ <tr><td>FieldName</td><td>Affected field</td></tr>
+ <tr><td>SourceValue</td><td>Original evidence</td></tr>
+ <tr><td>IssueCategory</td><td>Completeness / validity / reference / length / key</td></tr>
+ <tr><td>ProfileCycle</td><td>Cycle being analysed</td></tr>
+ <tr><td>Comment</td><td>Optional analytical note</td></tr>
+ </tbody></table></div>
+ <p>One customer may produce several issue events. Keep a separate summary that counts distinct affected customers so issue-event volume is not mistaken for record volume.</p>
+ <div class="callout misconception"><div class="callout-label">Grain again</div><p>\u201cException events = 350\u201d and \u201caffected customers = 214\u201d can both be correct. State which one you are reporting.</p></div>`
+},
+{
+ id:"b9",nav:"Three tools, one question",title:"The same question in three tools",type:"situations",
+ html:`<p class="lead">Six profiling questions. Choose a primary tool for each before checking the model answer \u2014 more than one answer can be defensible, but some choices fit the job better than others.</p>`,
+ items: toolChoiceItems,
+ takeawayHtml:`<div class="principle"><strong>There may be more than one good answer</strong><br>Tool choice depends on scale, access, team capability and what happens next. The point isn't memorising this table \u2014 it's being able to defend whichever choice you make.</div>`
+},
+{
+ id:"b10",nav:"Validity profiling",title:"Validity profiling \u2014 Format, domain and business plausibility",type:"content",
+ html:`<p class="lead">Validity is not one test.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Validity type</th><th>Example</th><th>What it proves</th></tr></thead><tbody>
+ <tr><td>Technical type</td><td>Can CreatedDate parse as a date?</td><td>Syntax/type compatibility</td></tr>
+ <tr><td>Format</td><td>Does a code match expected shape?</td><td>Structural conformity</td></tr>
+ <tr><td>Domain</td><td>Is Country in the approved reference?</td><td>Allowed/resolvable value</td></tr>
+ <tr><td>Range</td><td>Is CreditLimit within plausible/approved bounds?</td><td>Numeric plausibility</td></tr>
+ <tr><td>Business rule</td><td>Is Terms valid for the applicable customer population?</td><td>Business readiness</td></tr>
+ <tr><td>Cross-field</td><td>Does country/legal entity combination make sense?</td><td>Internal consistency</td></tr>
+ </tbody></table></div>
+ <p>Bramwell has 20 customer creation dates in 1899. Those dates can be technically valid while still requiring investigation. It also has CreditLimit = 0 for 17,900 active customers, where zero means \u201cnot assumed.\u201d A generic rule declaring zero invalid would therefore be wrong.</p>
+ <div class="callout misconception"><div class="callout-label">Do not profile from stereotypes</div><p>A value is not invalid because it looks unusual to you. Establish source semantics and migration requirements.</p></div>`
+},
+{
+ id:"b11",nav:"Reference coverage",title:"Reference coverage \u2014 Matched is not enough",type:"content",
+ html:`<p class="lead">A strong profile tests three outcomes: no match, exactly one approved match, and more than one possible match.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: coverage against the approved reference</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.Country,
+  COUNT(*) AS CustomerRows,
+  COUNT(x.SourceCountryCode) AS ReferenceMatches
+FROM raw.CustomerInvestigation c
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = c.Country
+  AND x.IsApproved = 1
+WHERE c.CycleId = @CycleId
+GROUP BY c.Country
+ORDER BY CustomerRows DESC;</code></pre></div>
+ <p>If the reference table itself contains two approved matches for one source value, a normal join may multiply customer rows. Profiling must test reference uniqueness as well as source coverage.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: detect ambiguous reference rows</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT SourceCountryCode, COUNT(*) AS ApprovedMappings
+FROM ref.CountryCrossRef
+WHERE IsApproved = 1
+GROUP BY SourceCountryCode
+HAVING COUNT(*) <> 1;</code></pre></div>
+ <div class="principle"><strong>Migration trap</strong><br>A 100% match rate can still be wrong if some source values match twice.</div>`
+},
+{
+ id:"b12",nav:"Trend profiling",title:"Trend profiling \u2014 Is quality actually improving?",type:"content",
+ html:`<p class="lead">A cycle profile becomes much more useful when it can compare like-for-like measures over time.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Bramwell measure</th><th>Earlier</th><th>Later</th><th>Interpretation</th></tr></thead><tbody>
+ <tr><td>Active customers missing valid payment terms</td><td>760</td><td>214</td><td>Large improvement, but not the whole story</td></tr>
+ <tr><td>New payment-term exceptions in later cycle</td><td>\u2014</td><td>23</td><td>New defects can appear while the total improves</td></tr>
+ <tr><td>Blank tax classification</td><td>94</td><td>91</td><td>Small improvement</td></tr>
+ <tr><td>Key accounts missing delivery addresses</td><td>31</td><td>7</td><td>Improved; later root-cause investigation still required</td></tr>
+ <tr><td>Unrecognised CustomerGroup</td><td>108</td><td>18</td><td>Improved; remaining 99 population unresolved</td></tr>
+ </tbody></table></div>
+ <p>The 23 new payment-term exceptions are especially important. A headline saying \u201c760 reduced to 214\u201d could hide regression in part of the population.</p>
+ <h3>Track movement, not just totals</h3>
+ <ul class="framework-checks">
+   <li><strong>Previous issue keys still failing</strong> \u2014 backlog not remediated.</li>
+   <li><strong>Previous issue keys now passing</strong> \u2014 resolved population.</li>
+   <li><strong>New issue keys</strong> \u2014 regression or new data.</li>
+   <li><strong>Total current issue keys</strong> \u2014 current readiness.</li>
+   <li><strong>Rate against applicable population</strong> \u2014 comparable percentage.</li>
+   <li><strong>Segment movement</strong> \u2014 where improvement or regression occurred.</li>
+ </ul>
+ <div class="principle"><strong>A good trend profile can answer</strong><br>\u201cDid the number improve?\u201d and \u201cDid the same records improve?\u201d Those are different questions.</div>`
+},
+{
+ id:"b13",nav:"The Data Profile Pack",title:"Build the reusable Data Profile Pack",type:"content",
+ html:`<p class="lead">Combine the strongest outputs from the three workbenches into one practical deliverable.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Artefact</th><th>Contents</th></tr></thead><tbody>
+ <tr><td>01_Profile_Control</td><td>Dataset/cycle/scope/grain/key/input identity</td></tr>
+ <tr><td>02_Profile_SQL.sql</td><td>Population, completeness, uniqueness, distributions, lengths, coverage, cycle comparison</td></tr>
+ <tr><td>03_Profile_Model.xlsx</td><td>Summary, pivots, exceptions, trends, SME views</td></tr>
+ <tr><td>04_Profile_Queries.pq / documented M</td><td>Refreshable import and analytical flags/views</td></tr>
+ <tr><td>05_Field_Profile</td><td>Selected field measures and migration relevance</td></tr>
+ <tr><td>06_Exception_Register</td><td>Issue events + distinct affected-record summary</td></tr>
+ <tr><td>07_Profile_Findings</td><td>Evidence, impact, hypothesis/decision, owner, next action</td></tr>
+ <tr><td>08_Profile_Run_Record</td><td>When profile ran, against which input/version, by whom</td></tr>
+ </tbody></table></div>
+ <p class="small">Do not turn the pack into a bureaucratic deliverable. Keep the pieces that make the next cycle faster and the evidence reproducible.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Field-Profile-Template.xlsx</strong><p class="small">Field-by-field measures and migration relevance, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Field-Profile-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Exception-Register-Template.xlsx</strong><p class="small">Issue events plus a distinct affected-record summary, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Exception-Register-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Profile-Findings-Template.docx</strong><p class="small">Evidence, impact, hypothesis, owner and next action, one entry per finding.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Profile-Findings-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b14",nav:"Independent lab",title:"Independent lab \u2014 Profile a product extract",type:"reflection",
+ html:`<p class="lead">The learner receives a synthetic product extract and a small reference pack. This is training data and does not establish new Bramwell product facts. The dataset contains deliberately mixed conditions: repeated candidate keys, blanks, whitespace, overlength descriptions, unexpected status values, unit-of-measure reference gaps, a numeric field imported as text, rare values and one reference table with a duplicate approved mapping.</p>
+ <h3>The challenge</h3>
+ <ol class="framework-checks">
+   <li>Establish the applicable population and candidate key/grain.</li>
+   <li>Choose at least four SQL profiles and explain why each is useful.</li>
+   <li>Create one Excel pivot that exposes concentration rather than merely repeating a total.</li>
+   <li>Create a Power Query analytical view with original and normalised helper values side by side.</li>
+   <li>Profile NULL, blank and whitespace separately for one important field.</li>
+   <li>Test candidate-key uniqueness and return affected rows.</li>
+   <li>Test one target-length constraint.</li>
+   <li>Test reference coverage including no-match and multi-match conditions.</li>
+   <li>Identify one technically valid but business-suspicious value.</li>
+   <li>Compare issue events with distinct affected records.</li>
+   <li>Produce a concise profile summary with the five most important findings.</li>
+   <li>Write three evidence-led questions for an SME/source owner.</li>
+ </ol>
+ <h3>The scoring standard</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak</th><th>Competent</th><th>Strong</th></tr></thead><tbody>
+ <tr><td>Runs many statistics</td><td>Selects relevant measures</td><td>Links each measure to migration impact/decision</td></tr>
+ <tr><td>Reports counts</td><td>Returns affected records</td><td>Also segments and explains likely next investigation</td></tr>
+ <tr><td>Uses one favourite tool</td><td>Uses multiple tools</td><td>Chooses tools deliberately and avoids duplication</td></tr>
+ <tr><td>Cleans during profiling</td><td>Preserves source</td><td>Uses analytical helper fields without inventing migration rules</td></tr>
+ <tr><td>Reports unmatched refs</td><td>Tests no-match</td><td>Also detects ambiguous/multiple approved matches</td></tr>
+ <tr><td>Shows current totals</td><td>Shows current issues</td><td>Adds movement/trend where prior evidence exists</td></tr>
+ </tbody></table></div>
+ <p class="lead">Write your five-finding profile summary below.</p>
+ <textarea id="reflection" placeholder="The five most important findings from this profile are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/grain|key|unique/i, strength:"You addressed the candidate key and grain, not just row counts.", gap:"State what you'd check to confirm the candidate key's uniqueness and the dataset's true grain." },
+   { test:/pivot|concentrat/i, strength:"You addressed where a problem is concentrated, not just its total.", gap:"Name a specific segmentation (like country or status) that would expose concentration rather than a single total." },
+   { test:/no.match|multi.match|ambigu|duplicate/i, strength:"You addressed both no-match and multi-match reference conditions.", gap:"State what you'd check for both a no-match and a multi-match reference condition, not just one of them." },
+   { test:/issue event|distinct.*(record|customer)/i, strength:"You distinguished issue-event volume from distinct affected-record volume.", gap:"State how you'd keep issue-event counts separate from distinct affected-record counts." },
+   { test:/question|sme|owner|source/i, strength:"You included at least one specific, evidence-led question for an SME or source owner.", gap:"Write at least one precise question for the source owner, tied to a specific number or record you found." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Five findings: the proposed key is not unique across the extract, so the true grain isn't yet proven; three status codes appear that the handover never described; a reference table contains a duplicate approved mapping for one unit-of-measure code, so match-rate alone would overstate coverage; one numeric field was imported as text, silently changing its sort and comparison behaviour; and a small cluster of rare-but-plausible values sit in one segment, not spread evenly, suggesting a process rather than a data-entry cause. Three questions for the source owner: which field is the intended unique key, and is the source aware it currently isn't unique; what do the three undocumented status codes mean and are they in scope; and which of the two approved unit-of-measure mappings for the duplicated code should be treated as current.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This profile links every measure to a migration decision, which is exactly what separates a strong profile from a competent one.":"You have the right structure. Make sure each finding is tied to a specific decision or next action, not just a statistic you noticed."}</div>`
+},
+{
+ id:"b15",nav:"From profile to action",title:"Consultant output \u2014 From profile to action",type:"content",
+ html:`<p class="lead">A useful profile summary should be short enough to read and detailed enough to act on.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Example finding 1</div><p>CustomerGroup contains 18 records with source value 99. This population remains unresolved against the approved mapping baseline. The affected customer list is attached. Decision required: approved target treatment or explicit exclusion/exception handling. Owner: business data authority.</p></div></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Example finding 2</div><p>Twenty customer CreatedDate values fall in 1899. All parse successfully as dates, so this is a business-plausibility issue rather than a type failure. Confirm whether these are source sentinel/default values before defining any cleansing rule.</p></div></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Example finding 3</div><p>The current payment-term exception population is 214 active customers, down from 760, but 23 are new exceptions this cycle. Remediation has improved the total while new defects continue to enter the population. Investigate the new 23 separately from the carried backlog.</p></div></div>`
+},
+{
+ id:"b16",nav:"False confidence",title:"Profiling mistakes that create false confidence",type:"selectAll",
+ html:`<p class="lead">Explore each mistake below to see exactly why it misleads \u2014 all ten are real patterns, and any one of them can make a profile look better (or worse) than the data actually is.</p>`,
+ options: profilingMistakes,
+ coaching: profilingMistakesCoaching,
+ hint:"Explore every mistake before continuing.",
+ closingHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The 99.8% That Hid the Problem", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/998PercentHidProblem-Marcus.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b17",nav:"Reflection",title:"Reflection \u2014 What would you put on page one?",type:"reflection",
+ html:`<p class="lead">You have profiled a 40-column dataset and generated hundreds of measures. The Project Manager will look at one page. Choose the eight measures or findings you would put on that page and explain why those eight deserve attention.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong choices normally include population/grain controls, migration-blocking quality, trend/regression, unresolved reference coverage, concentration and decisions required. A technically interesting statistic with no migration impact may belong in the detail, not page one.</p></div></div>
+ <textarea id="reflection" placeholder="The eight things I would put on page one are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/grain|key|population/i, strength:"You included a population or grain control on page one.", gap:"Include at least one population or grain control among your eight, not just quality findings." },
+   { test:/block|readiness|ready/i, strength:"You included a migration-blocking quality issue.", gap:"Include a finding that would actually block migration readiness, not just something notable." },
+   { test:/trend|regress|improv|worsen/i, strength:"You included a trend or regression measure, not just a current snapshot.", gap:"Include a trend measure, like new versus resolved exceptions, not just a current total." },
+   { test:/reference|unresolved|unmatched/i, strength:"You included unresolved reference coverage.", gap:"Include an unresolved reference or mapping coverage measure." },
+   { test:/decision|owner/i, strength:"You included a decision required, with an owner.", gap:"Include at least one item framed as a decision required, with a named owner." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Page one: raw population and distinct-key count, with any gap flagged; the load-ready versus exception split; the payment-term trend (760\u2192214, 23 new); the CustomerGroup 99 unresolved population and decision owner; country reference coverage including ZZZ; the 27 overlength names as a target-constraint conflict; one geographic concentration finding; and a one-line reconciliation statement confirming the population is fully accounted for. Everything else, however technically interesting, goes in the detail pages.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuine page-one selection: readiness, trend, unresolved decisions and concentration, not just the most interesting statistics you found.":"You have good instincts. Make sure every item on your page one connects to a migration decision or risk, not just to something you found interesting while profiling."}</div>`
+},
+{
+ id:"b18",nav:"Summary",title:"Summary \u2014 Profile for decisions, not decoration",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Choose profiling measures because they answer migration questions.</li>
+   <li>Use SQL for exact, scalable, repeatable interrogation and record-level evidence.</li>
+   <li>Use Excel for rapid exploration, segmentation and business-facing analysis while protecting source control.</li>
+   <li>Use Power Query for refreshable ingestion, analytical shaping and reusable profile views.</li>
+   <li>Define the applicable denominator before calculating quality percentages.</li>
+   <li>Separate NULL, empty and whitespace where the distinction matters.</li>
+   <li>Return affected records as well as counts.</li>
+   <li>Profile distributions, lengths, types, domains and business plausibility.</li>
+   <li>Test reference uniqueness as well as source-to-reference coverage.</li>
+   <li>Track resolved, persistent and new defects across cycles.</li>
+   <li>Keep issue-event grain separate from affected-record grain.</li>
+   <li>Preserve original values when creating analytical normalisations.</li>
+   <li>Summarise evidence, impact and decision required rather than sending raw statistics.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A strong profile does not tell you everything about the data. It tells you the important things reliably, shows you the affected population, can be rerun next cycle and gives the project a clear basis for deciding what to fix next.</div>`
+},
+{
+ id:"b19",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Profiling data with SQL, Excel and Power Query.</strong></p>
+ <p>You can now build and run a repeatable migration profiling pack using SQL, Excel and Power Query: quantify completeness, uniqueness, validity, distributions, patterns and cross-reference coverage; segment problems to expose causes; compare cycles; and turn profile results into evidence another consultant or SME can act on.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building repeatable cleansing processes</strong></p>
+ <p>You will take selected profiling findings and turn approved cleansing decisions into controlled, testable and measurable remediation rather than one-off manual fixes.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone hands you a single quality percentage and calls it evidence.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 2: Profiling data with SQL, Excel and Power Query",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Building a repeatable profiling pack that turns findings into decisions",
+  storageKey: "tp_dmc2_lesson2_v1",
+  lessonId: "dmc2-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

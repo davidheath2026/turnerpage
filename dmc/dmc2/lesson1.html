@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Getting control of an unfamiliar dataset</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 1 — "Getting control of an unfamiliar
+   dataset".
+
+   Source: DMC2_Lesson1_Getting_Control_of_an_Unfamiliar_Dataset_v3.docx.
+   Note: the manuscript's own header titles this module "Data
+   Analysis, Cleansing & Transformation" — consistently, across all
+   six DMC2 lesson manuscripts. The Turner Page alignment document
+   tracks this module as "Profiling, Cleansing & Reference Data"
+   instead. The alignment doc was compiled after the manuscripts to
+   establish the canonical decisions, so it governs here: moduleTitle
+   below uses the alignment doc's title, not the manuscript's own
+   header. Worth a note to whoever maintains the manuscripts that the
+   header text there is now stale against the alignment doc.
+
+   This lesson is deliberately NOT built like DMC1's build labs, per
+   the manuscript's own authoring notes: "How this lesson is
+   different" frames it as an investigation, not a recipe. The
+   visible learner experience follows handover → evidence →
+   hypothesis → deeper evidence → prioritisation → independent
+   takeover, with the ten-block Turner Page architecture present
+   underneath but not literally ten blocks.
+
+   All Bramwell facts (18,530 earlier / 18,612 later population;
+   CustomerGroup distribution STANDARD 14,982 / KEY 1,936 / EXPORT
+   1,244 / INTERNAL 260 / STD 61 / STANDARD-space 29 / 99 18; GOV 6;
+   20 creation dates in 1899; 760→214 payment-term issue with 23 new
+   exceptions; 31→7 missing key-account delivery addresses; 27
+   overlength names; UK/NOR/BEL/GER approved country codes; ZZZ, 45E
+   and CustomerGroup 99 all still unresolved) are taken directly from
+   that manuscript and the story bible, and stay unresolved here as
+   instructed — no invented final treatment for any of them.
+
+   The C30110/C30422/C30991 repeated-key rows and the 18,607-distinct-
+   key figure are synthetic lesson evidence, explicitly not new
+   Bramwell canon, per the manuscript. The Vendor_Extract_A practical
+   in the "independent takeover" block is a wholly separate synthetic
+   dataset for the same reason — it does not create new Bramwell
+   supplier facts.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/ — that folder doesn't exist yet in the repo,
+   consistent with DMC1.
+============================================================== */
+
+const repeatedKeyPatterns = [
+ { title:"Exact repeated row: C30110, Atlas Trade Ltd",
+   short:"Two rows, identical in every visible field: CustNo, Name, Status 1, Country UK, SourceTag ERP.",
+   detail:"An exact repeat could be extract duplication, a source duplicate, or an intentional repeated snapshot. Nothing here tells you which. Return the raw repeated rows themselves, including SourceTag and any other context field, before deciding.",
+   ask:"What would make an exact repeat safe to treat as a true duplicate, rather than two genuinely different records that happen to look alike?" },
+ { title:"Same key, differing attribute: C30422, Nordvik Service AS",
+   short:"Two rows share CustNo, Name, Status and Country, but SalesRegion differs between them.",
+   detail:"This is a different problem from an exact repeat. If SalesRegion is genuinely part of how this source system represents a customer, the true grain may not be one row per customer at all. Ask whether the differing field is part of the real grain before assuming either row is wrong.",
+   ask:"If SalesRegion turns out to be part of the true grain, what does that change about how you'd treat every other 'duplicate' key in this file?" },
+ { title:"Same key, differing status: C30991, Westfield Components",
+   short:"One row shows Status 1 (Active), the other Status 0 (Inactive), for the same CustNo.",
+   detail:"This could be a temporal or history record, a genuine duplicate master, or a scope issue where both an old and a new representation of the same customer made it into the extract. Each explanation implies a different fix, so this needs its own investigation rather than the same treatment as the exact-repeat case above.",
+   ask:"Could this pattern and the exact-repeat pattern above have the same underlying cause? What evidence would tell you either way?" },
+ { title:"Key differs only by spaces or case",
+   short:"Two rows carry what looks like the same CustNo, but one has trailing whitespace or different letter casing.",
+   detail:"This might be a source-key quality problem worth a controlled cleansing rule later, or it might reflect a genuine case-sensitive distinction the source system relies on. Confirm which before treating it as noise.",
+   ask:"What would you need to see in the source system itself to be confident this is a formatting artefact rather than a meaningful distinction?" },
+ { title:"Blank key",
+   short:"A row has no CustNo value at all.",
+   detail:"A blank key could mean an alternative stable identifier exists elsewhere in the row, an invalid source record, or a population that was always meant to be excluded. Don't assume any of these; find out which the row actually is before deciding whether it belongs in scope at all.",
+   ask:"If a blank-key row turns out to be a legitimate customer with no CustNo assigned yet, what does that imply about relying on CustNo as the sole business key?" }
+];
+
+const hypothesisItems = [
+ { title:"Rows exceed distinct CustNo",
+   question:"18,612 rows, but only 18,607 distinct non-blank CustNo values in the evidence pack. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"The file may contain repeated business keys, or the true grain includes something beyond one row per customer. Inspect the repeated rows and source structure before concluding anything further.", correct:true, feedback:"Correct. This is a hypothesis to test, not a verdict. It points at exactly the right next evidence: the repeated rows themselves and whatever source structure might explain them."},
+     {label:"This proves that five specific customer records are duplicated and should be removed from the file right away, before anything else happens.", correct:false, feedback:"Not quite. \u201cProves\u201d and \u201cshould be removed\u201d both go further than the evidence allows. You don't yet know why the keys repeat, so you can't yet know the right treatment."},
+     {label:"The five-row gap is far too small to matter across a file of this overall size, so it can safely be set aside for now.", correct:false, feedback:"Rarity is not the same as safety here. A five-row gap in a business key is exactly the kind of thing that can invalidate your understanding of the whole population if it turns out to signal a grain problem."},
+     {label:"CustNo clearly isn't intended as a unique key at all in this system, so no further check is really needed before moving on.", correct:false, feedback:"That's also a conclusion, not a hypothesis. You haven't yet inspected a single repeated row to see whether CustNo behaves like a key everywhere else in the file."}
+   ]
+ },
+ { title:"Current population differs from earlier by +82",
+   question:"18,530 earlier vs 18,612 later. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"82 new customers were clearly onboarded since the last cycle, which fully explains the movement.", correct:false, feedback:"That's one possible story, stated as fact. A net movement of +82 could just as easily hide much larger gross additions and removals that happen to net out close to 82."},
+     {label:"The source population, scope, or extraction logic may have changed. Compare business keys between the two snapshots before assuming what changed.", correct:true, feedback:"Correct. \u201cMay have changed\u201d keeps every explanation open, and key-level comparison is exactly the evidence that would distinguish between them."},
+     {label:"The net movement of +82 is small enough, relative to 18,530, that it can safely be treated as ordinary noise.", correct:false, feedback:"Not quite. A net figure tells you almost nothing about what actually moved. Small net change is fully compatible with large, important gross change underneath it."},
+     {label:"The extraction must have used the same criteria as before, since the file is described in the same way as last time.", correct:false, feedback:"The file being described the same way is exactly the kind of assumption this lesson is built to catch. A description isn't evidence of matching extraction logic."}
+   ]
+ },
+ { title:"Status contains 0, X and blank in an \u201cactive customers\u201d file",
+   question:"The file is described as active customers, but Status shows 1, 0, blank and X. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"The non-1 status values are obviously data-entry errors and should simply be corrected to 1 before anything else is looked at.", correct:false, feedback:"That assumes both the cause and the fix before checking either. You don't yet know what Status actually means in the source system."},
+     {label:"Since the file is labelled active customers, every single row can safely be treated as active regardless of what Status actually shows.", correct:false, feedback:"This is exactly the trap: letting a filename override what the data itself is showing you. The whole reason to inspect Status is that the label and the data may not agree."},
+     {label:"Status must be a legacy field left over from an old system with no real bearing on scope, so it's reasonable to set it aside entirely.", correct:false, feedback:"That's an assumption with nothing behind it. A field appearing alongside a scope claim that turns out to contradict it is precisely what needs checking, not dismissing."},
+     {label:"The scope filter used to produce this file may be broader than stated, or Status may not mean what the filename implies. Check the source definition and the actual extraction query.", correct:true, feedback:"Correct. This keeps two real possibilities open (broader scope, or a misunderstood field) and points straight at the evidence that would settle it: the source definition and the extraction logic actually used."}
+   ]
+ },
+ { title:"20 customer records with a 1899 creation date",
+   question:"Every CreatedDate converts to a valid SQL date, but 20 of them fall in 1899. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"This looks like a sentinel, default, or historic-data pattern rather than a data-entry mistake. Pull the affected rows and check how the source system actually behaves.", correct:true, feedback:"Correct. Technical validity (a parseable date) isn't business plausibility. Treating this as a pattern to investigate, rather than a single guessed cause, is exactly right."},
+     {label:"These are clearly just data-entry typos and should be quietly corrected to today's date so the field looks clean.", correct:false, feedback:"That's a guess dressed up as a fix, and an unusually risky one: overwriting a date with today's date could be far more wrong than the 1899 value it replaces."},
+     {label:"20 records out of 18,612 is such a negligible share of the file that it really doesn't need investigating any further.", correct:false, feedback:"A consistent, repeated value like 1899 across 20 records is exactly the kind of pattern worth investigating precisely because it's consistent, not despite being rare."},
+     {label:"The source system itself must simply be over 120 years old, which would neatly explain where these dates come from.", correct:false, feedback:"That invents a specific, implausible cause rather than gathering evidence. 1899 is a classic default/sentinel value in many systems; that's a hypothesis to check, not the explanation to assume."}
+   ]
+ },
+ { title:"STD, STANDARD (with a trailing space), and 99 all appearing in CustomerGroup",
+   question:"Alongside the dominant STANDARD/KEY/EXPORT/INTERNAL values, three smaller values show up. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"All three of these are obviously just the same thing as STANDARD underneath, and can be merged into it immediately without further checking.", correct:false, feedback:"They may not all be the same kind of problem. Treating a whitespace variant, a legacy synonym and an unresolved code (99) as one issue risks getting at least one of them wrong."},
+     {label:"These values are rare enough across the file that they should simply be deleted from the dataset before migration.", correct:false, feedback:"Rarity is a reason to inspect, not a reason to delete. Deleting real customer records because their CustomerGroup value is uncommon would quietly shrink the population without an approved decision behind it."},
+     {label:"These look like several different code-quality or reference conditions, not one problem. Check the approved reference and the source history for each value separately.", correct:true, feedback:"Correct. STD, the whitespace variant, and 99 plausibly have three different explanations. Checking each against the approved reference, rather than assuming one story fits all three, is the right move."},
+     {label:"CustomerGroup 99 can safely be assumed to mean \u201cOther\u201d, since that's the most common convention in similar systems.", correct:false, feedback:"That invents a business meaning nobody has approved. CustomerGroup 99 is established as unresolved; assuming a plausible-sounding meaning for it is exactly the shortcut this lesson warns against."}
+   ]
+ },
+ { title:"Missing payment terms concentrated by country",
+   question:"A completeness check shows missing PaymentTerms values clustering heavily in one country rather than spread evenly. What's the right hypothesis to carry forward?",
+   options:[
+     {label:"Every country should have identical payment-term completeness, so this must just be a random data-quality issue.", correct:false, feedback:"That assumes uniformity with nothing behind it. A concentration by country is itself a clue, not something to explain away as randomness."},
+     {label:"A local process or source-ownership difference by country may explain the pattern. Segment the completeness profile and take the finding to the business owner.", correct:true, feedback:"Correct. A geographic concentration is exactly the kind of pattern that points at a process or ownership explanation, and segmenting the profile is the evidence that would confirm or rule it out."},
+     {label:"This isn't worth investigating separately, since payment terms are already a known unresolved area from earlier work.", correct:false, feedback:"A known issue elsewhere (like the unresolved 45E term) doesn't explain a geographic concentration pattern. Conflating the two would mean missing what's actually distinctive about this finding."},
+     {label:"The missing values can simply be filled in using whichever payment term happens to be most common overall.", correct:false, feedback:"That's inventing a business rule to make a profiling finding disappear, exactly the pattern this lesson warns against. Frequency is not authority."}
+   ]
+ }
+];
+
+const investigationBoardFindings = [
+ "Business key/grain not proven",
+ "Population/scope movement unexplained",
+ "Unresolved mandatory payment terms",
+ "Rare GOV CustomerGroup = 6",
+ "Whitespace variant in CustomerGroup",
+ "Cosmetic description field with blanks"
+];
+const investigationBoardCoaching = [
+ "<strong>Investigate immediately.</strong><br>Very high potential impact, high uncertainty. If the business key or grain isn't proven, everything you conclude afterwards about the population could be wrong.",
+ "<strong>Investigate immediately.</strong><br>Very high potential impact, high uncertainty. An unexplained population movement means you don't yet know what you're actually migrating.",
+ "<strong>Quantify and route to the owner.</strong><br>High impact, but a known issue with an established pattern (760→214, 23 new exceptions) rather than an open uncertainty. It needs sizing and ownership, not fresh investigation from zero.",
+ "<strong>Inspect before assuming a defect.</strong><br>Unknown impact, medium uncertainty. Six customers in a rare group could be a legitimate small population or a data-quality issue; rarity alone doesn't tell you which.",
+ "<strong>Confirm the rule, then automate.</strong><br>Usually lower impact once an approved syntactic cleanse exists, low-to-medium uncertainty. This is a formatting question, not a scope or grain question.",
+ "<strong>Defer until the target or business need is known.</strong><br>Possibly low impact, medium uncertainty. Worth noting, not worth spending investigation time on ahead of the findings above."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The handover",title:"The handover \u2014 \u201cHere's the customer file\u201d",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>You join the Bramwell project and are given a file called <code>Customer_Master_Final.xlsx</code>. It contains 18,612 rows and 34 columns. You are told it is \u201cthe customer data for the next migration cycle.\u201d</p>
+ <p>You also know from earlier Bramwell work that an earlier agreed active-customer source population was 18,530. You do not yet know why the new file contains 18,612 rows, whether the scope changed, whether the file contains one row per customer, or whether every column comes from the same authoritative source.</p>
+ </div>
+ <div class="principle"><strong>Your first 30 minutes</strong><br>You are not being asked to fix the data. You are being asked to establish what you actually have.</div>
+ <h3>Which action gives you the strongest starting position?</h3>`,
+ options:[
+   {label:"Open the file, filter the obvious blanks and begin correcting values.", correct:false, feedback:"This starts changing the only copy of the received dataset before you understand what a row even represents. Any correction made now could destroy evidence you'll need later."},
+   {label:"Run a standard profiling tool over all 34 columns and send the output to the Project Manager.", correct:false, feedback:"Profiling is valuable, but indiscriminate profiling before you understand scope and grain can produce a large amount of technically correct but badly interpreted information."},
+   {label:"Establish provenance, scope, row/key grain and basic structural controls first, then let the evidence determine the deeper profiling questions.", correct:true, feedback:"Correct. Profiling is valuable, but indiscriminate profiling before you understand scope and grain can produce a large amount of technically correct but badly interpreted information. Control the dataset first."},
+   {label:"Ask the business to confirm that the file is correct before you analyse it.", correct:false, feedback:"This hands the investigation to someone else before you've done the analysis that would let you ask a precise question. A vague \u201cis this correct?\u201d rarely gets a useful answer."}
+ ]
+},
+{
+ id:"b2",nav:"Evidence pack 1",title:"Evidence pack 1 \u2014 What do you actually know?",type:"content",
+ html:`<p class="lead">The handover email gives you only the following.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>What it tells you</th><th>What remains unknown</th></tr></thead><tbody>
+ <tr><td>Filename: Customer_Master_Final.xlsx</td><td>A human-labelled artefact exists</td><td>Whether it is authoritative, current or actually final</td></tr>
+ <tr><td>18,612 rows</td><td>Physical row count</td><td>Whether row = customer</td></tr>
+ <tr><td>34 columns</td><td>Physical structure</td><td>Which fields matter, source ownership, meaning</td></tr>
+ <tr><td>Created yesterday</td><td>File timestamp</td><td>When source data was extracted</td></tr>
+ <tr><td>\u201cFor Cycle 2\u201d</td><td>Intended use</td><td>Whether scope matches approved Cycle 2 scope</td></tr>
+ <tr><td>Earlier population: 18,530 active customers</td><td>Historical control point</td><td>Why current population differs by +82 net</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Investigation principle</div><p>Separate facts from assumptions. \u201c18,612 rows\u201d is a fact about the file. \u201c18,612 customers\u201d is an interpretation that still needs evidence.</p></div></div>
+ <h3>Build a dataset control sheet immediately</h3>
+ <p>Create a simple control sheet before doing deeper analysis. This becomes the front page of your investigation. Note how many cells honestly say unknown \u2014 that's intentional. Unknowns are safer visible than silently converted into assumptions.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control field</th><th>Example entry</th><th>Status</th></tr></thead><tbody>
+ <tr><td>Dataset</td><td>Customer_Master_Final.xlsx</td><td><span class="tp-tag tp-tag--good">Known</span></td></tr>
+ <tr><td>Intended entity</td><td>Customer</td><td><span class="tp-tag tp-tag--warn">Stated, not yet proven</span></td></tr>
+ <tr><td>Intended cycle</td><td>Cycle 2</td><td><span class="tp-tag tp-tag--good">Stated</span></td></tr>
+ <tr><td>Received rows</td><td>18,612</td><td><span class="tp-tag tp-tag--good">Proven</span></td></tr>
+ <tr><td>Columns</td><td>34</td><td><span class="tp-tag tp-tag--good">Proven</span></td></tr>
+ <tr><td>Business key</td><td>CustNo?</td><td><span class="tp-tag tp-tag--warn">To prove</span></td></tr>
+ <tr><td>Expected grain</td><td>One row per active customer?</td><td><span class="tp-tag tp-tag--warn">To prove</span></td></tr>
+ <tr><td>Approved scope</td><td>Active customers?</td><td><span class="tp-tag tp-tag--warn">To confirm</span></td></tr>
+ <tr><td>Source system(s)</td><td>Unknown from file alone</td><td><span class="tp-tag tp-tag--bad">To establish</span></td></tr>
+ <tr><td>Extract timestamp</td><td>Unknown</td><td><span class="tp-tag tp-tag--bad">To establish</span></td></tr>
+ <tr><td>Owner/contact</td><td>Unknown</td><td><span class="tp-tag tp-tag--bad">To establish</span></td></tr>
+ <tr><td>Previous control population</td><td>18,530</td><td><span class="tp-tag tp-tag--good">Known historical evidence</span></td></tr>
+ <tr><td>Population movement</td><td>+82 net</td><td><span class="tp-tag tp-tag--warn">Proven arithmetic; composition unknown</span></td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Dataset-Control-Sheet-Template.xlsx</strong><p class="small">The same control sheet shape shown above, ready to fill in for any new dataset.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Dataset-Control-Sheet-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b3",nav:"Grain before quality",title:"Grain before quality",type:"content",
+ html:`<p class="lead">Before counting blanks or invalid codes, determine what one row represents.</p>
+ <p>You inspect <code>CustNo</code> and find 18,607 distinct non-blank values across 18,612 rows in the training evidence pack. These figures are lab evidence for this lesson, not new Bramwell canon.</p>
+ <div class="callout misconception"><div class="callout-label">What can you conclude?</div><p>Only that row count and distinct CustNo count differ. You cannot yet conclude that five rows are duplicate customers.</p></div>
+ <p>Possible explanations include: true duplicate customer records; multiple records for one customer because the file grain includes another dimension; repeated extraction rows; multiple legal-entity representations; blank or formatting differences in keys; a file assembled from more than one source; or a legitimate one-to-many structure accidentally labelled as customer master.</p>
+ <h3>Return the evidence, not just the count</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: find repeated keys</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo, COUNT(*) AS RowCount
+FROM raw.CustomerInvestigation
+GROUP BY CustNo
+HAVING COUNT(*) > 1
+ORDER BY RowCount DESC, CustNo;</code></pre></div>
+ <p>Then return the full repeated rows, including fields that may explain the grain: legal entity, status, site, source marker, created date or any other relevant column present in the dataset.</p>
+ <div class="principle"><strong>The DMC question</strong><br>\u201cWhy are there repeated keys?\u201d is more useful than \u201cHow many duplicates do we have?\u201d</div>`
+},
+{
+ id:"b4",nav:"Evidence pack 2",title:"Evidence pack 2 \u2014 The repeated keys are not all the same problem",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Five repeated-key examples from the training evidence pack. These are synthetic training records \u2014 explore each one. You will not be told that all three underlying patterns get the same treatment, because they don't.</p>`,
+ items: repeatedKeyPatterns,
+ takeawayHtml:`<div class="callout misconception"><div class="callout-label">Do not cleanse away the evidence</div><p>If you <code>SELECT DISTINCT</code> at the start, you may make the file easier to work with while destroying the clue that explains how it was produced.</p></div>`
+},
+{
+ id:"b5",nav:"Scope is a data question",title:"Scope is a data question",type:"content",
+ html:`<p class="lead">The file is described as active customers. Test that claim against the fields available.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: distribution of Status</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT Status, COUNT(*) AS Rows
+FROM raw.CustomerInvestigation
+GROUP BY Status
+ORDER BY Status;</code></pre></div>
+ <p>Suppose the training result contains status values <code>1</code>, <code>0</code>, blank and <code>X</code>. You already know from DMC1 that only approved status logic should drive target treatment. Here the immediate question is earlier: why are non-active or unexplained statuses present in a file described as active customers?</p>
+ <h3>Scope evidence matrix</h3>
+ <ul class="framework-checks">
+   <li><strong>What population was requested?</strong> Approved scope statement or extraction requirement.</li>
+   <li><strong>What filter was actually applied?</strong> Source query, report criteria or extraction logic.</li>
+   <li><strong>What does Status mean?</strong> Source-system definition or SME confirmation.</li>
+   <li><strong>Are inactive rows intentionally included?</strong> A scope decision, not an assumption.</li>
+   <li><strong>Are there legal-entity or country restrictions?</strong> The approved migration scope.</li>
+   <li><strong>Are recently created customers included?</strong> Extract timing and cut-off.</li>
+   <li><strong>Are deleted, blocked or test customers present?</strong> Source flags and the scope rule.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Important distinction</div><p>A data-quality issue is a bad or unsuitable value within the intended population. A scope issue means the wrong population is being analysed in the first place. Do not spend days cleansing records that should never have been in scope.</p></div>`
+},
+{
+ id:"b6",nav:"The +82 movement",title:"The population changed by 82. Investigate the movement.",type:"content",
+ html:`<p class="lead">The earlier approved active-customer population was 18,530. The later dataset has 18,612 rows. As DMC1 established, +82 is only a net movement.</p>
+ <p>For this investigation, compare business keys between the earlier and current snapshots.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: key-level cycle comparison</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- New keys in current dataset
+SELECT cur.CustNo
+FROM raw.Customer_Current cur
+LEFT JOIN raw.Customer_Previous prev
+  ON prev.CustNo = cur.CustNo
+WHERE prev.CustNo IS NULL;
+
+-- Keys no longer present
+SELECT prev.CustNo
+FROM raw.Customer_Previous prev
+LEFT JOIN raw.Customer_Current cur
+  ON cur.CustNo = prev.CustNo
+WHERE cur.CustNo IS NULL;</code></pre></div>
+ <p>The lesson lab supplies the actual synthetic comparison results. This lesson does not invent the composition of Bramwell's canonical +82 movement.</p>
+ <div class="principle"><strong>What you are trying to establish</strong><br>Did the business population genuinely change, did extraction logic change, did scope change, or did the dataset structure change? Those causes require different responses.</div>`
+},
+{
+ id:"b7",nav:"Structure before semantics",title:"Structure before semantics",type:"content",
+ html:`<p class="lead">Now inspect the 34 columns. You are not yet deciding whether every value is good. First understand the physical and structural behaviour of the fields.</p>
+ <ul class="framework-checks">
+   <li><strong>What data type does the file appear to contain?</strong> Numeric, date or text parse success.</li>
+   <li><strong>What is the maximum observed length?</strong> <code>MAX(LEN(field))</code></li>
+   <li><strong>How often is the field populated?</strong> NULL and blank counts.</li>
+   <li><strong>How many distinct values exist?</strong> <code>COUNT(DISTINCT field)</code></li>
+   <li><strong>Does the field behave like a key?</strong> Uniqueness plus nullability.</li>
+   <li><strong>Does it contain mixed formats?</strong> Pattern or category grouping.</li>
+   <li><strong>Does Excel infer a misleading type?</strong> Compare the displayed value with the raw import.</li>
+   <li><strong>Does the column contain formulas?</strong> Inspect workbook or formula behaviour before export.</li>
+   <li><strong>Are there hidden columns or rows?</strong> Workbook structural inspection.</li>
+   <li><strong>Are headings stable and unique?</strong> A column-name audit.</li>
+ </ul>
+ <p>Excel is especially capable of making source data look cleaner than it is: dates can be reinterpreted, leading zeroes can disappear, long identifiers can display in scientific notation and formula cells can hide the underlying dependency.</p>
+ <h3>A field inventory, not a 34-column wall of statistics</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Observed behaviour</th><th>Migration relevance</th><th>Next question</th></tr></thead><tbody>
+ <tr><td>CustNo</td><td>High distinctness; repeated examples</td><td>Likely business key</td><td>Confirm grain and key semantics</td></tr>
+ <tr><td>Name</td><td>Mostly populated; some long values</td><td>Target name field</td><td>Known 60-character target limit; treatment separate</td></tr>
+ <tr><td>Terms</td><td>Coded values incl. 45E</td><td>Payment-term mapping</td><td>Which codes are approved or unresolved?</td></tr>
+ <tr><td>Status</td><td>Small coded domain</td><td>Scope and target status</td><td>Source meaning and approved scope</td></tr>
+ <tr><td>Country</td><td>Small coded domain incl. ZZZ</td><td>Reference mapping</td><td>Coverage against approved cross-reference</td></tr>
+ <tr><td>Rep</td><td>Many coded values</td><td>Sales-owner mapping</td><td>Authority or reference dependency</td></tr>
+ <tr><td>CreatedDate</td><td>Date-like values</td><td>Potential scope or audit field</td><td>Are 1899 values real or sentinel/bad data?</td></tr>
+ </tbody></table></div>
+ <p>Bramwell has 20 customer records with creation dates in 1899. That is an established case-study fact. This lesson does not decide their treatment. It uses them as an example of a field whose behaviour needs explanation.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Field-Inventory-Template.xlsx</strong><p class="small">The same field-by-field shape shown above, ready to fill in for any new dataset.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Field-Inventory-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b8",nav:"A date that looks valid",title:"Evidence pack 3 \u2014 A date that looks valid",type:"content",
+ html:`<p class="lead">A profiling query reports that every CreatedDate can be converted to a SQL date. That sounds reassuring until you inspect the minimum.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: date range check</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  MIN(TRY_CONVERT(date, CreatedDate)) AS MinCreatedDate,
+  MAX(TRY_CONVERT(date, CreatedDate)) AS MaxCreatedDate,
+  SUM(CASE WHEN TRY_CONVERT(date, CreatedDate) IS NULL
+      THEN 1 ELSE 0 END) AS UnparseableDates
+FROM raw.CustomerInvestigation;</code></pre></div>
+ <p>Result: zero unparseable dates, but the minimum falls in 1899.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Lesson</div><p>Technical validity is not business plausibility. A value can be a perfectly valid date and still be wrong, defaulted, historic, sentinel or misunderstood.</p></div></div>
+ <p>The next query should return the affected records and surrounding context, not automatically replace the date.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: inspect affected records</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo, Name, CreatedDate, Status, SourceTag
+FROM raw.CustomerInvestigation
+WHERE TRY_CONVERT(date, CreatedDate) < '1900-01-01'
+ORDER BY CreatedDate, CustNo;</code></pre></div>`
+},
+{
+ id:"b9",nav:"Distribution",title:"Distribution is where the dataset starts talking",type:"content",
+ html:`<p class="lead">For coded fields, frequency distributions often reveal more than a generic null percentage. Bramwell's established earlier CustomerGroup source distribution was:</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>CustomerGroup</th><th>Count</th></tr></thead><tbody>
+ <tr><td>STANDARD</td><td>14,982</td></tr>
+ <tr><td>KEY</td><td>1,936</td></tr>
+ <tr><td>EXPORT</td><td>1,244</td></tr>
+ <tr><td>INTERNAL</td><td>260</td></tr>
+ <tr><td>STD</td><td>61</td></tr>
+ <tr><td>STANDARD (trailing space)</td><td>29</td></tr>
+ <tr><td>99</td><td>18</td></tr>
+ </tbody></table></div>
+ <p>The last three values are immediately interesting, but for different reasons.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Value</th><th>Initial interpretation</th><th>What not to do yet</th></tr></thead><tbody>
+ <tr><td>STD</td><td>Possible synonym or legacy code</td><td>Do not silently convert without an approved rule</td></tr>
+ <tr><td>STANDARD (trailing space)</td><td>Likely whitespace variant</td><td>Do not overwrite the raw evidence</td></tr>
+ <tr><td>99</td><td>Known unresolved population, 18 records, for later work</td><td>Do not invent a final mapping</td></tr>
+ </tbody></table></div>
+ <p>A rare value is not automatically wrong. Bramwell also has a rare GOV CustomerGroup with six customers. Rarity is a reason to inspect, not a reason to delete or standardise.</p>
+ <h3>Useful distribution query</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: distribution with share</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CustomerGroup,
+  COUNT(*) AS Rows,
+  CAST(100.0 * COUNT(*) / SUM(COUNT(*)) OVER() AS decimal(6,2)) AS Pct
+FROM raw.CustomerInvestigation
+GROUP BY CustomerGroup
+ORDER BY Rows DESC;</code></pre></div>
+ <div class="principle"><strong>Consultant judgement</strong><br>Look for dominant values, rare values, near-duplicates, blanks, unexpected codes and changes from previous cycles. Then decide which observations deserve investigation.</div>`
+},
+{
+ id:"b10",nav:"Completeness & relationships",title:"Completeness without context, and what single-table profiling misses",type:"content",
+ html:`<p class="lead">A field that is 96% populated may be excellent or unacceptable depending on what the missing 4% represents.</p>
+ <ul class="framework-checks">
+   <li><strong>Is the field mandatory in the target?</strong> Missing values may block load.</li>
+   <li><strong>Mandatory for all records, or only some?</strong> Conditional completeness changes the denominator.</li>
+   <li><strong>Is the field derived later?</strong> A source blank may be legitimate.</li>
+   <li><strong>Does another authoritative source provide it?</strong> Completeness is source-model dependent.</li>
+   <li><strong>Are missing values concentrated in one country, entity or status?</strong> A pattern may reveal the cause.</li>
+   <li><strong>Has completeness improved or worsened since the prior cycle?</strong> A trend helps assess remediation.</li>
+ </ul>
+ <p>Bramwell's known quality examples include 760 active customers initially missing valid payment terms, later improved to 214, with 23 new exceptions. That progression matters more than quoting one percentage in isolation.</p>
+ <div class="principle"><strong>Profile the denominator</strong><br>If a rule applies only to active EU customers, measure completeness against active EU customers, not the entire file.</div>
+ <h3>Relationships can expose what single-table profiling misses</h3>
+ <p>A customer dataset may look structurally clean while failing when related data is considered. You do not need to perform full relationship validation in this lesson, but you should identify dependencies early.</p>
+ <ul class="framework-checks">
+   <li><strong>Payment terms:</strong> Does every in-scope source code have an approved target treatment?</li>
+   <li><strong>Sales rep / owner:</strong> Does the code resolve to the target owner population?</li>
+   <li><strong>Country:</strong> Does it resolve through the approved reference?</li>
+   <li><strong>Delivery address:</strong> Does every required customer relationship exist?</li>
+   <li><strong>Legal entity:</strong> Is the customer assigned to the correct target context?</li>
+   <li><strong>Open sales orders:</strong> Will customer keys needed by open orders survive the migration?</li>
+ </ul>
+ <p>Bramwell previously exposed seven missing key-account delivery addresses after improvement from 31. Later troubleshooting found a transformation-rule defect. At this stage, the lesson is simpler: a customer profile that ignores dependent addresses could miss a migration-critical risk.</p>`
+},
+{
+ id:"b11",nav:"Forming hypotheses",title:"Stop profiling and start forming hypotheses",type:"situations",
+ html:`<p class="lead">After the first investigation pass, do not produce 34 pages of statistics. Convert each observation below into a hypothesis that can be tested \u2014 and only that, not a conclusion.</p>`,
+ items: hypothesisItems,
+ takeawayHtml:`<div class="principle"><strong>This is consultant analysis</strong><br>A profile tells you what is unusual. A hypothesis tells you what to investigate next. Do not present hypotheses as facts.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Hypothesis-Log-Template.xlsx</strong><p class="small">Observation, hypothesis and next evidence needed, one row per finding.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Hypothesis-Log-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"The investigation board",title:"The investigation board \u2014 Decide what matters first",type:"selectAll",
+ html:`<p class="lead">Not every anomaly deserves equal attention. Explore each finding below to see how a Data Migration Consultant would prioritise it, based on potential impact and uncertainty together.</p>`,
+ options: investigationBoardFindings,
+ coaching: investigationBoardCoaching,
+ hint:"Explore every finding before continuing.",
+ closingHtml:`<div class="principle"><strong>Prioritisation rule</strong><br>Investigate conditions that could invalidate your understanding of the population before polishing individual fields.</div>`
+},
+{
+ id:"b13",nav:"The 60-minute takeover",title:"Practical investigation \u2014 The 60-minute dataset takeover",type:"reflection",
+ html:`<p class="lead">You now receive a synthetic unfamiliar dataset, <code>Vendor_Extract_A.xlsx</code>, with no detailed handover. It is intentionally different from the Bramwell customer case and does not create new Bramwell supplier facts. You have 60 simulated minutes.</p>
+ <h3>Phase A \u2014 Control the artefact</h3>
+ <ul class="framework-checks">
+   <li>Record filename, received timestamp, row/column counts and intended entity.</li>
+   <li>Identify what provenance information is missing.</li>
+   <li>State the assumed grain, clearly labelled as an assumption.</li>
+   <li>Identify candidate keys and test uniqueness and nullability.</li>
+   <li>Create the first version of the Dataset Control Sheet.</li>
+ </ul>
+ <h3>Phase B \u2014 Interrogate structure</h3>
+ <ul class="framework-checks">
+   <li>Inspect column names, inferred types and maximum observed lengths.</li>
+   <li>Identify fields with mixed parse behaviour.</li>
+   <li>Measure NULL, blank and whitespace separately for selected fields.</li>
+   <li>Return suspicious records rather than only statistics.</li>
+   <li>Identify at least three fields whose meaning cannot be inferred safely from the data alone.</li>
+ </ul>
+ <h3>Phase C \u2014 Test scope and distributions</h3>
+ <ul class="framework-checks">
+   <li>Choose three coded fields worth distributing and explain why.</li>
+   <li>Identify rare, near-duplicate and unexpected values.</li>
+   <li>Segment one completeness issue by a meaningful dimension.</li>
+   <li>Identify evidence that the supplied scope description may be incomplete or wrong.</li>
+   <li>Write two hypotheses and specify the evidence needed to confirm or refute each.</li>
+ </ul>
+ <h3>Phase D \u2014 Produce the consultant output</h3>
+ <ul class="framework-checks">
+   <li>Complete the Dataset Control Sheet.</li>
+   <li>Create a one-page Dataset Investigation Summary.</li>
+   <li>List the five highest-priority unknowns or risks.</li>
+   <li>Separate proven facts, observations, hypotheses and decisions required.</li>
+   <li>Write the first five questions you would send to the source owner or SME, each tied to evidence.</li>
+ </ul>
+ <p class="lead">Write your Dataset Investigation Summary below \u2014 what you'd tell a Project Manager after this first hour.</p>
+ <textarea id="reflection" placeholder="The supplied vendor extract contains..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/key|grain|unique/i, strength:"You addressed whether the business key and grain are actually proven.", gap:"State what you'd need to see to confirm the candidate key is genuinely unique, not just mostly unique." },
+   { test:/scope|population|status/i, strength:"You addressed scope or population as a question, not an assumption.", gap:"Name a specific piece of evidence that would confirm or challenge the stated scope of this file." },
+   { test:/hypothes/i, strength:"You framed at least one finding as a hypothesis rather than a conclusion.", gap:"Turn at least one anomaly into an explicit hypothesis, stated as something still to be tested." },
+   { test:/question|sme|owner|source/i, strength:"You included a specific, evidence-led question you'd take back to the source owner or SME.", gap:"Write at least one precise question for the source owner, tied to a specific number or record you found, not a general \u201cis this right?\u201d." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The supplied vendor extract contains 12,406 rows, but the proposed VendorNo key is not unique, so the business grain is not yet proven. The file also contains three status codes not described in the handover and 47 rows with blank VendorNo. Before cleansing, we need the extraction criteria, source-key definition and status semantics. Separately, CountryCode contains four low-frequency values not present in the supplied reference list; these are quantified and attached for review. No source values have been altered.</div>
+ <p class="small">The numbers above are synthetic lab values. The quality comes from the structure of the conclusion: proven evidence, uncertainty, impact and next action, not the specific figures.</p>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads exactly like a consultant who did enough analysis to ask a precise question, rather than a general 'is this right?'. SMEs are far more useful when you show them the affected population and the decision you need.":"You have the right instinct. Make sure your summary keeps facts, hypotheses and open questions clearly separate, and that each question you'd send an SME is tied to a specific number or record you actually found."}</div>`
+},
+{
+ id:"b14",nav:"Tools & first-hour discipline",title:"Tools, and what not to do in the first hour",type:"content",
+ html:`<p class="lead">This lesson is tool-agnostic by design. The same investigation may use SQL, Excel and Power Query together.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Tool</th><th>Strong use in first-pass investigation</th><th>Watch for</th></tr></thead><tbody>
+ <tr><td>SQL</td><td>Counts, distinctness, distributions, joins, cycle comparisons, large datasets</td><td>Querying the wrong grain or scope very efficiently</td></tr>
+ <tr><td>Excel</td><td>Rapid visual inspection, filters, pivots, spot checks, SME-friendly extracts</td><td>Type coercion, manual edits, hidden rows or formulas, scale</td></tr>
+ <tr><td>Power Query</td><td>Repeatable import, type inspection, profiling, transformation prototypes</td><td>Treating exploratory steps as approved migration logic too early</td></tr>
+ <tr><td>Python or other analysis tools</td><td>Large or custom profiling and pattern analysis</td><td>Creating a specialist dependency the team cannot operate</td></tr>
+ <tr><td>ETL tool</td><td>Useful once rules become repeatable migration execution</td><td>Too heavy for every exploratory question</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Tool principle</strong><br>Be tool-agnostic but project-specific. Use the tool that gets reliable evidence quickly and leaves enough traceability for the next person.</div>
+ <h3>What not to do in the first hour</h3>
+ <ul class="framework-checks">
+   <li>Do not delete repeated rows because they look like duplicates.</li>
+   <li>Do not trim, standardise or default values in the only copy of the received dataset.</li>
+   <li>Do not assume the filename describes the true scope.</li>
+   <li>Do not treat Excel display formatting as source truth.</li>
+   <li>Do not profile every field to the same depth.</li>
+   <li>Do not send SMEs a spreadsheet containing thousands of anomalies with no question.</li>
+   <li>Do not interpret rare as wrong.</li>
+   <li>Do not turn an observation into a business rule.</li>
+   <li>Do not build cleansing logic before you know whether the record belongs in scope.</li>
+   <li>Do not hide unknowns to make the analysis look complete.</li>
+ </ul>
+ <div class="to-record">${TPKit.fromField({
+   title:"The File That Changed Overnight", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/FileChangedOvernight-Priya.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b15",nav:"Reflection",title:"Reflection \u2014 What do you need to know before you touch the data?",type:"reflection",
+ html:`<p class="lead">You receive a dataset from a system you have never seen before. Write the six things you would most want to establish before making the first cleansing change.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers usually cover provenance, scope, grain and key, source meaning, target relevance, repeatability and evidence, and ownership. The exact order can vary with the dataset.</p></div></div>
+ <textarea id="reflection" placeholder="The six things I would most want to establish are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/proven|source|origin|where.*(from|came)/i, strength:"You addressed provenance \u2014 where the data actually came from.", gap:"Name what you'd want to know about the file's origin: source system, extraction method, and who produced it." },
+   { test:/scope|population/i, strength:"You addressed scope \u2014 whether the right population is even present.", gap:"State how you'd confirm the file represents the population it claims to." },
+   { test:/grain|key/i, strength:"You addressed grain and key \u2014 what one row actually represents.", gap:"Name what would prove the candidate key is genuinely unique at the grain you expect." },
+   { test:/meaning|semantic|definition/i, strength:"You addressed source meaning \u2014 what fields and codes actually mean in the source system.", gap:"Name a field whose meaning you'd want confirmed before trusting it, rather than assuming from the name." },
+   { test:/repeat|evidence|trace|reproduc/i, strength:"You addressed repeatability and evidence \u2014 whether your investigation can be re-run and checked.", gap:"State how you'd keep your investigation reproducible, not just a one-off set of manual checks." },
+   { test:/owner|contact|business|sme/i, strength:"You addressed ownership \u2014 who to go to with questions.", gap:"Name who you'd want identified as the dataset's owner or business contact before relying on it." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before touching the data, I'd want to establish: where it actually came from and how it was extracted; whether it represents the population it claims to; what one row represents, and whether the candidate key is genuinely unique at that grain; what the coded fields and unfamiliar values actually mean in the source system, not just what they look like; how I can keep my investigation reproducible so someone else can check it; and who the named owner or SME contact is for the questions I'll inevitably have.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuinely investigation-ready list. Notice how none of it is about fixing anything yet \u2014 that's exactly the discipline this lesson is built around.":"You have good instincts here. Make sure your six things stay focused on establishing control before quality, rather than jumping ahead to how you'd fix what you've found."}</div>`
+},
+{
+ id:"b16",nav:"Summary",title:"Summary \u2014 Control first, cleanse second",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Treat the received dataset as evidence before treating it as material to fix.</li>
+   <li>Separate facts, assumptions, observations, hypotheses and decisions.</li>
+   <li>Prove grain and key behaviour before interpreting duplicates.</li>
+   <li>Prove scope before investing in field-level cleansing.</li>
+   <li>Explain population movement at key level rather than relying on net counts.</li>
+   <li>Inspect structural behaviour before deciding business validity.</li>
+   <li>Use distributions to discover patterns, but do not equate rarity with error.</li>
+   <li>Measure completeness against the population to which the rule actually applies.</li>
+   <li>Identify relationships and dependencies that single-table profiling may miss.</li>
+   <li>Convert anomalies into testable hypotheses.</li>
+   <li>Prioritise findings that threaten your understanding of the population.</li>
+   <li>Ask SMEs precise, evidence-led questions.</li>
+   <li>Choose tools for the investigation rather than forcing every problem into one tool.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>When an unfamiliar dataset arrives, your first job is not to improve it. Your first job is to make it explainable: what it is, where it came from, what one row means, which population it represents, what you can prove and what you still need to find out.</div>`
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Getting control of an unfamiliar dataset.</strong></p>
+ <p>You can now receive an unfamiliar migration dataset and establish control before attempting to cleanse or transform it: its grain and keys, its proven population, field behaviour, structural and scope risks, and a focused investigation plan.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Profiling data with SQL, Excel and Power Query</strong></p>
+ <p>You will take the controlled investigation approach from this lesson and build a repeatable profiling toolkit that exposes quality, pattern and migration-readiness issues efficiently.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time an unfamiliar file lands in your inbox marked \u201cfinal.\u201d</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 1: Getting control of an unfamiliar dataset",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Establishing control over a dataset before you cleanse or transform it",
+  storageKey: "tp_dmc2_lesson1_v1",
+  lessonId: "dmc2-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building repeatable cleansing processes</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 3 — "Building repeatable cleansing
+   processes". Built around a cleansing backlog and rule clinic,
+   per the manuscript's own authoring notes — not another linear
+   ETL lab. The learner is meant to sometimes be rewarded for
+   choosing "no change" or "controlled exception."
+
+   Source: DMC2_Lesson3_Building_Repeatable_Cleansing_Processes_v3.docx.
+   moduleTitle follows the alignment doc, not the manuscript's own
+   header text, per the standing rule from Lesson 1.
+
+   All Bramwell facts (CustomerGroup distribution incl. STD 61 and
+   STANDARD-space 29; CustomerGroup 99, 18 records unresolved; 27
+   overlength names; UK/NOR/BEL/GER approved, ZZZ unresolved; 20
+   dates in 1899; CreditLimit=0 for 17,900 active customers meaning
+   "not assumed"; the 760→214 payment-term progression with 23 new
+   exceptions; the 126 fixed-asset DEP-07/FA-009871 example) are
+   taken directly from the manuscript and story bible, and stay
+   unresolved as instructed — 45E, CustomerGroup 99, ZZZ and DEP-07
+   all remain open. The supplier-quality backlog in the independent
+   lab is explicitly synthetic and creates no new Bramwell facts.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC2 Lessons 1-2.
+============================================================== */
+
+const backlogFindings = [
+ "Trailing spaces in an approved CustomerGroup code \u2014 tempting fix: TRIM",
+ "An unknown reference code \u2014 tempting fix: map it to the nearest-looking value",
+ "An overlength customer name \u2014 tempting fix: LEFT(Name,60)",
+ "A blank optional field \u2014 tempting fix: apply a default value",
+ "A 1899 creation date \u2014 tempting fix: set it to NULL",
+ "A duplicate-looking row \u2014 tempting fix: SELECT DISTINCT",
+ "A lowercase email address \u2014 tempting fix: force UPPER or lower case",
+ "Country code ZZZ \u2014 tempting fix: default it to GB",
+ "CreditLimit = 0 on an active customer \u2014 tempting fix: set it to NULL",
+ "A whitespace-only code \u2014 tempting fix: convert it straight to NULL"
+];
+const backlogCoaching = [
+ "<strong>Safe rule, or hidden semantic risk?</strong><br>TRIM can be a legitimate syntactic normalisation, but only once it's approved as one. Trimming isn't automatically safe just because it looks harmless.",
+ "<strong>Exception, reference decision, or source correction?</strong><br>\u201cNearest-looking\u201d is a guess wearing the costume of a decision. An unknown code needs an authority to resolve it, not a plausible neighbour.",
+ "<strong>Does this need a business treatment first?</strong><br>LEFT(Name,60) silently discards characters and can even collide two different customers into the same truncated name. Investigate the consequences before proposing anything.",
+ "<strong>Does the target or process actually require a value here?</strong><br>A default manufactures a value nobody supplied. Confirm the field is genuinely mandatory before inventing anything to fill it.",
+ "<strong>Sentinel, valid history, or a genuine error?</strong><br>All three explanations are still open. Setting it to NULL destroys the exact evidence that would let anyone tell which one it was.",
+ "<strong>True duplicate, or a grain issue?</strong><br>DISTINCT can just as easily erase the evidence that would have explained why two similar-looking rows exist in the first place.",
+ "<strong>Is case normalisation actually needed here, and is it safe?</strong><br>Emails are sometimes case-sensitive at the target system. \u201cTidier-looking\u201d isn't the same as \u201ccorrect.\u201d",
+ "<strong>This is an unresolved reference exception, not a default waiting to happen.</strong><br>ZZZ has no approved mapping. Defaulting it to GB manufactures a country nobody approved.",
+ "<strong>Zero is not automatically wrong here.</strong><br>Bramwell's established meaning for this population is that zero means \u201cnot assumed,\u201d not \u201cmissing.\u201d Cleansing it away would destroy a real, approved meaning.",
+ "<strong>What does the approved blank treatment actually require?</strong><br>Converting straight to NULL skips the question of whether whitespace-only should be treated identically to a true blank, or routed differently."
+];
+
+const treatmentSituations = [
+ { title:"A. 61 source records contain STD",
+   question:"A developer says everyone knows STD means STANDARD. What's the right response?",
+   options:[
+     {label:"Do not assume. Obtain or confirm the approved reference treatment. Technical similarity is evidence for a question, not authority for a rule.", correct:true, feedback:"Correct. Do not assume. Obtain or confirm the approved reference treatment. Technical similarity is evidence for a question, not authority for a rule."},
+     {label:"Since everyone on the team agrees STD means STANDARD, it's safe to map it directly without asking anyone.", correct:false, feedback:"Team consensus isn't approval. \u201cEveryone knows\u201d is exactly the kind of informal authority this lesson is built to catch."},
+     {label:"STD should be treated as a data-entry error and silently corrected to STANDARD without further checking.", correct:false, feedback:"That assumes both the cause and the fix. STD might be an intentional legacy code, not a typo."},
+     {label:"Leave STD exactly as it is in every output, since changing it at all risks losing information.", correct:false, feedback:"Leaving it entirely untouched forever isn't the same as investigating it. The right move is to get the reference question answered, not to avoid it indefinitely."}
+   ]
+ },
+ { title:"B. 20 CreatedDate values are in 1899",
+   question:"All values parse correctly as dates. What's the right response?",
+   options:[
+     {label:"Since all values parse correctly as dates, they can be treated as valid and left completely alone without further thought.", correct:false, feedback:"Parsing correctly proves technical validity, not business plausibility. The scenario needs both checked, not just one."},
+     {label:"Set all 1899 values to NULL, since a date that old obviously isn't a real creation date.", correct:false, feedback:"\u201cObviously\u201d is doing a lot of work here. NULLing them destroys evidence before anyone has actually investigated what 1899 represents."},
+     {label:"Replace 1899 with the earliest plausible real date the business happens to suggest.", correct:false, feedback:"Inventing a replacement date is manufacturing a value nobody has evidence for, exactly the pattern this lesson warns against."},
+     {label:"Investigate meaning. Do not automatically NULL them. Technical validity and business plausibility are separate.", correct:true, feedback:"Correct. Investigate meaning. Do not automatically NULL them. Technical validity and business plausibility are separate."}
+   ]
+ },
+ { title:"C. 17,900 active customers have CreditLimit 0",
+   question:"A generic profiling rule marks zero as invalid. What's the right response?",
+   options:[
+     {label:"A generic profiling rule marking zero as invalid should be trusted, and the values corrected across the board.", correct:false, feedback:"A generic rule doesn't know Bramwell's specific established meaning for this field. Trusting it blindly here would be actively wrong."},
+     {label:"Do not cleanse. Bramwell's established meaning is that zero means not assumed.", correct:true, feedback:"Correct. Do not cleanse. Bramwell's established meaning is that zero means not assumed."},
+     {label:"Since so many records are affected, this must be a systemic data-entry fault worth fixing at scale.", correct:false, feedback:"Volume isn't evidence of a fault here. 17,900 records sharing the same established, approved meaning is exactly what you'd expect to see."},
+     {label:"Convert all zero CreditLimit values to NULL so the field at least reads as genuinely missing.", correct:false, feedback:"NULL and \u201cnot assumed\u201d are different meanings. Converting one into the other quietly changes an already-established business fact."}
+   ]
+ },
+ { title:"D. A source owner corrects 50 records after your profile",
+   question:"The migration team already has a staged extract. What's the right response?",
+   options:[
+     {label:"Prefer a controlled re-extract, delta or correction process with reconciliation. Do not silently edit stage rows.", correct:true, feedback:"Correct. Prefer a controlled re-extract, delta or correction process with reconciliation. Do not silently edit stage rows."},
+     {label:"Since the team already has a staged extract, just update the 50 affected rows directly in staging.", correct:false, feedback:"Silently editing staged rows breaks the evidence trail between what the source sent and what the migration actually processed."},
+     {label:"Ignore the source owner's correction for this cycle and apply it only in the next extract, however long that takes.", correct:false, feedback:"That discards a genuine, owned correction for no real reason, when a controlled process could incorporate it properly now."},
+     {label:"Ask the source owner to email the corrected values so they can be pasted into the output file directly.", correct:false, feedback:"An email and a paste is exactly the kind of unrecorded manual edit that makes a population impossible to reproduce or prove later."}
+   ]
+ },
+ { title:"E. A trim rule reduces invalid groups but one new code appears",
+   question:"Total quality improved overall. What's the right response?",
+   options:[
+     {label:"Since the overall total improved, the new code can be folded into the good headline without any separate mention.", correct:false, feedback:"That's exactly the trap: a falling total can hide a genuinely new problem if nobody reports it separately."},
+     {label:"The new code must be a mistake in the trim rule itself, and should be investigated as a bug before anything else.", correct:false, feedback:"That assumes a specific cause without checking. The new code might be a real, previously-hidden source value the trim simply revealed."},
+     {label:"Ignore the new code this cycle, since the net quality trend is clearly positive overall.", correct:false, feedback:"A positive net trend doesn't make a genuinely new exception disappear. It's a different finding that deserves its own visibility."},
+     {label:"Report the new exception separately. A good total does not make the new code disappear.", correct:true, feedback:"Correct. Report the new exception separately. A good total does not make the new code disappear."}
+   ]
+ },
+ { title:"F. The hard one \u2014 an approved rule changes mid-cycle",
+   question:"The new rule would resolve additional records, but the current transformed baseline was produced under the old version. What's the right response?",
+   options:[
+     {label:"Apply the new rule immediately to the already-transformed baseline without rerunning anything, since it only resolves more records.", correct:false, feedback:"Applying a new rule without rerunning the transformation mixes two rule versions into one baseline with no clear record of which rows used which version."},
+     {label:"Treat the rule version as part of the migration baseline. Decide with project governance whether the current cycle adopts it, then rerun the affected transformation and controls deliberately.", correct:true, feedback:"Correct. Treat the rule version as part of the migration baseline. Decide with project governance whether the current cycle adopts it, then rerun the affected transformation and controls deliberately."},
+     {label:"Wait until the next cycle to apply the new rule at all, since changing anything mid-cycle is automatically too risky to consider.", correct:false, feedback:"That's one reasonable option to weigh, but it's a decision to make deliberately with governance, not a default to apply automatically."},
+     {label:"Let each consultant decide individually whether to use the old or new rule version for their own part of the output.", correct:false, feedback:"That guarantees the migration baseline becomes internally inconsistent, with different parts of the output built against different rule versions."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Monday morning",title:"Monday morning \u2014 327 problems, but what does \u201ccleanse\u201d mean?",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The profiling pack from Lesson 2 has produced a list of customer issues. A colleague says: \u201cGreat. Let's cleanse them and get the file green.\u201d That sentence should make a Data Migration Consultant cautious.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Finding</th><th>Known evidence</th></tr></thead><tbody>
+ <tr><td>CustomerGroup value STANDARD (trailing space)</td><td>29 records in the established earlier distribution</td></tr>
+ <tr><td>CustomerGroup value STD</td><td>61 records</td></tr>
+ <tr><td>CustomerGroup value 99</td><td>18 records; target treatment unresolved</td></tr>
+ <tr><td>Customer names &gt;60 characters</td><td>27 records; target limit known, treatment not approved</td></tr>
+ <tr><td>Payment-term exceptions</td><td>214 active customers remain in a later cycle; 23 are new</td></tr>
+ <tr><td>CreatedDate in 1899</td><td>20 records; technically valid dates, business meaning uncertain</td></tr>
+ </tbody></table></div>
+ <h3>Which statement is strongest?</h3>`,
+ options:[
+   {label:"Every issue identified by profiling should become an automated cleansing rule.", correct:false, feedback:"That treats every finding as equally safe to automate, when several of these need a business decision, not code."},
+   {label:"Only obvious formatting issues should be automated; all other data should be manually fixed in Excel.", correct:false, feedback:"\u201cManually fixed in Excel\u201d is exactly the non-repeatable pattern that makes a population impossible to reproduce or prove next cycle."},
+   {label:"Each issue needs a defined treatment based on meaning, authority and risk: automated syntactic cleanse, approved business transformation, source correction, controlled exception or explicit no-change.", correct:true, feedback:"Correct. \u201cCleansing\u201d is not one activity. The consultant must distinguish technical normalisation from business decisions and preserve a route for unresolved data rather than manufacturing correctness."},
+   {label:"The DMC should cleanse whatever is necessary and ask the business to approve the output afterwards.", correct:false, feedback:"Approval after the fact isn't approval. By the time the business reviews it, an unapproved decision has already shaped the output."}
+ ]
+},
+{
+ id:"b2",nav:"The cleansing clinic",title:"The cleansing clinic \u2014 Classify before you fix",type:"content",
+ html:`<p class="lead">Place every profiling finding into a treatment class before writing code.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Treatment class</th><th>Meaning</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Syntactic normalisation</td><td>Same business meaning, inconsistent technical representation</td><td>Trim trailing spaces where approval allows</td></tr>
+ <tr><td>Reference standardisation</td><td>Known source value maps to approved standard value</td><td>Approved country cross-reference UK \u2192 GB</td></tr>
+ <tr><td>Business transformation</td><td>Meaning changes or is derived under an approved rule</td><td>Approved status/segment derivation</td></tr>
+ <tr><td>Source correction</td><td>Authoritative source should be corrected</td><td>Incorrect master data owned by business</td></tr>
+ <tr><td>Controlled exception</td><td>No approved treatment yet</td><td>CustomerGroup 99; unresolved 45E</td></tr>
+ <tr><td>Exclusion</td><td>Record is explicitly outside migration scope</td><td>Only when scope owner approves</td></tr>
+ <tr><td>No change</td><td>Unusual value is valid or treatment unnecessary</td><td>Rare value that is legitimate</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">The dangerous word</div><p>\u201cObvious\u201d is not an approval status. A transformation can look obvious and still change business meaning.</p></div>
+ <h3>Work the Bramwell backlog</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Finding</th><th>Likely class</th><th>What is actually approved?</th></tr></thead><tbody>
+ <tr><td>STANDARD (trailing space)</td><td>Candidate syntactic normalisation</td><td>Needs an approved rule; preserve original evidence</td></tr>
+ <tr><td>STD</td><td>Possible reference/business standardisation</td><td>Do not assume it means STANDARD without approval</td></tr>
+ <tr><td>CustomerGroup 99</td><td>Controlled exception</td><td>No final mapping established</td></tr>
+ <tr><td>Name &gt;60</td><td>Constraint issue / decision required</td><td>No approved truncation treatment</td></tr>
+ <tr><td>Country UK/NOR/BEL/GER</td><td>Reference standardisation</td><td>UK\u2192GB, NOR\u2192NO, BEL\u2192BE, GER\u2192DE approved</td></tr>
+ <tr><td>Country ZZZ</td><td>Controlled exception</td><td>Unresolved</td></tr>
+ <tr><td>CreatedDate 1899</td><td>Investigation / possibly source correction</td><td>No canonical treatment established</td></tr>
+ <tr><td>CreditLimit = 0</td><td>No automatic cleanse</td><td>Established meaning: not assumed</td></tr>
+ </tbody></table></div>
+ <p>This classification prevents the common mistake of turning profiling heuristics into migration rules.</p>`
+},
+{
+ id:"b3",nav:"A rule needs a contract",title:"A cleansing rule needs a contract",type:"content",
+ html:`<p class="lead">Before implementation, define the rule in a form that can be reviewed, tested and traced.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Rule field</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Rule ID</td><td>CLN-CUST-001</td></tr>
+ <tr><td>Entity / field</td><td>Customer / CustomerGroup</td></tr>
+ <tr><td>Problem</td><td>Trailing whitespace creates a non-standard code representation</td></tr>
+ <tr><td>Applicable population</td><td>In-scope customer records where the approved rule applies</td></tr>
+ <tr><td>Input condition</td><td>CustomerGroup has leading/trailing whitespace</td></tr>
+ <tr><td>Treatment</td><td>Trim whitespace</td></tr>
+ <tr><td>Business meaning changed?</td><td>No, if rule is approved as syntactic normalisation</td></tr>
+ <tr><td>Owner / approval</td><td>Named business/data authority in project artefact</td></tr>
+ <tr><td>Exception behaviour</td><td>If normalised result is still not approved, route to exception</td></tr>
+ <tr><td>Effective cycle/version</td><td>Controlled baseline</td></tr>
+ <tr><td>Test cases</td><td>Clean value, leading space, trailing space, whitespace-only, unresolved result</td></tr>
+ <tr><td>Evidence retained</td><td>Original value + cleansed value + Rule ID + RunId</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Rule design test</strong><br>Could another consultant implement the rule without asking what you meant, and could a reviewer prove later why a value changed?</div>`
+},
+{
+ id:"b4",nav:"Preserve raw",title:"Preserve raw. Create a cleansed representation.",type:"content",
+ html:`<p class="lead">Do not update the received raw table to make profiling statistics improve.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: raw untouched, cleansed carries both values</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Raw remains unchanged
+SELECT CustNo, CustomerGroup
+FROM raw.Customer
+WHERE RunId = @RunId;
+
+-- Cleansed representation carries both values
+SELECT
+  CustNo,
+  CustomerGroup AS CustomerGroup_Source,
+  NULLIF(LTRIM(RTRIM(CustomerGroup)), '') AS CustomerGroup_Cleansed,
+  'CLN-CUST-001' AS AppliedRule
+FROM raw.Customer
+WHERE RunId = @RunId;</code></pre></div>
+ <p>Even a trim rule deserves traceability when it affects migration output. The cost is small; the diagnostic value is high.</p>
+ <div class="callout misconception"><div class="callout-label">Never measure improvement by destroying the baseline</div><p>If you overwrite the source values, you can no longer prove what was received, what the rule changed or whether the rule caused a later defect.</p></div>`
+},
+{
+ id:"b5",nav:"Rule clinic 1",title:"Rule clinic 1 \u2014 Whitespace is easy until it is not",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Source value</th><th>Naive TRIM result</th><th>Question</th></tr></thead><tbody>
+ <tr><td>STANDARD</td><td>STANDARD</td><td>No change</td></tr>
+ <tr><td>STANDARD (trailing space)</td><td>STANDARD</td><td>Likely intended syntactic normalisation</td></tr>
+ <tr><td>(leading space)STANDARD</td><td>STANDARD</td><td>Likely intended syntactic normalisation</td></tr>
+ <tr><td>(whitespace only)</td><td>empty</td><td>Should empty become NULL, exception, or remain empty?</td></tr>
+ <tr><td>STD (trailing space)</td><td>STD</td><td>Trim does not resolve whether STD is an approved code</td></tr>
+ <tr><td>99 (trailing space)</td><td>99</td><td>Trim does not resolve the business mapping</td></tr>
+ </tbody></table></div>
+ <p>One technical operation can produce several business outcomes. The rule must define what happens after normalisation.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: normalise, then classify the outcome</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WITH c AS (
+  SELECT
+    CustNo,
+    CustomerGroup AS SourceValue,
+    NULLIF(LTRIM(RTRIM(CustomerGroup)), '') AS NormalisedValue
+  FROM raw.Customer
+  WHERE RunId = @RunId
+)
+SELECT
+  CustNo, SourceValue, NormalisedValue,
+  CASE
+    WHEN NormalisedValue IS NULL THEN 'BLANK_AFTER_NORMALISATION'
+    WHEN x.SourceGroup IS NULL THEN 'UNRESOLVED_GROUP'
+    ELSE 'APPROVED'
+  END AS RuleOutcome
+FROM c
+LEFT JOIN ref.CustomerGroupCrossRef x
+  ON x.SourceGroup = c.NormalisedValue
+  AND x.IsApproved = 1;</code></pre></div>
+ <div class="principle"><strong>The lesson</strong><br>Normalisation can prepare a value for validation. It does not replace validation.</div>`
+},
+{
+ id:"b6",nav:"Rule clinic 2",title:"Rule clinic 2 \u2014 Never use cleansing to invent missing business meaning",type:"content",
+ html:`<p class="lead">Bramwell's source payment term 45E remains unresolved. A developer suggests:</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The tempting shortcut</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>COALESCE(x.TargetPaymentTerm, 'NET30') AS PaymentTerms</code></pre></div>
+ <p>The code eliminates the NULL and makes the output look cleaner. It also manufactures a business decision.</p>
+ <div class="callout misconception"><div class="callout-label">Correct treatment</div><p>Keep 45E visible as an unresolved exception until an authorised target treatment is approved. NET30 is not an approved Bramwell mapping.</p></div>
+ <p>The same principle applies to:</p>
+ <ul class="framework-checks">
+   <li>Defaulting unknown country ZZZ to GB.</li>
+   <li>Turning every unknown status into Inactive.</li>
+   <li>Assigning a rare CustomerGroup to the nearest familiar category.</li>
+   <li>Using a generic sales owner when the source owner cannot be resolved.</li>
+ </ul>`
+},
+{
+ id:"b7",nav:"Rule clinic 3",title:"Rule clinic 3 \u2014 Target constraints do not authorise data loss",type:"content",
+ html:`<p class="lead">Twenty-seven Bramwell customer names exceed the target maximum of 60 characters. The easiest technical fix is <code>LEFT(Name,60)</code>. Why is that not automatically a cleansing rule?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Risk</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Meaning loss</td><td>Legal/customer name may be materially altered</td></tr>
+ <tr><td>Collision</td><td>Two distinct names may become identical after truncation</td></tr>
+ <tr><td>Downstream use</td><td>Name may appear on invoices, documents or search results</td></tr>
+ <tr><td>Auditability</td><td>Silent truncation hides the source value</td></tr>
+ <tr><td>Ownership</td><td>Technical target limit does not define acceptable business treatment</td></tr>
+ </tbody></table></div>
+ <h3>Test the consequences before proposing treatment</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: would truncation create collisions?</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WITH x AS (
+  SELECT CustNo, Name, LEFT(Name,60) AS CandidateName
+  FROM raw.Customer
+  WHERE RunId = @RunId
+    AND LEN(Name) > 60
+)
+SELECT CandidateName, COUNT(*) AS Customers
+FROM x
+GROUP BY CandidateName
+HAVING COUNT(*) > 1;</code></pre></div>
+ <p>This query does not approve truncation. It gives the business better evidence for deciding how to handle the constraint.</p>
+ <div class="principle"><strong>Consultant contribution</strong><br>You can investigate the impact of possible treatments without implementing them as approved rules.</div>`
+},
+{
+ id:"b8",nav:"Pipeline, not spreadsheet",title:"Build a cleansing pipeline, and implement it consistently",type:"content",
+ html:`<p class="lead">Manual remediation can be legitimate when a business owner is correcting authoritative source data. It is weak when the migration team repeatedly performs the same uncontrolled edits in a workbook.</p>
+ <p>A repeatable cleansing flow should separate:</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Conceptual flow</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RAW EVIDENCE
+  -> Approved syntactic normalisation
+  -> Approved reference/business rules
+  -> Validation
+  -> Cleansed / migration-ready
+  -> Controlled exception
+  -> Source-correction request</code></pre></div>
+ <p>The exact implementation may be SQL, Power Query, an ETL data flow or a combination. The architecture matters more than the product.</p>
+ <h3>Implement the same rule in different tools</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CustNo,
+  CustomerGroup AS SourceValue,
+  NULLIF(LTRIM(RTRIM(CustomerGroup)), '') AS NormalisedValue
+FROM raw.Customer
+WHERE RunId = @RunId;</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Power Query pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Table.AddColumn(
+  Source,
+  "CustomerGroup_Normalised",
+  each if [CustomerGroup] = null
+    then null
+    else
+      let v = Text.Trim(Text.From([CustomerGroup]))
+      in if v = "" then null else v,
+  type text
+)</code></pre></div>
+ <p>In SSIS, an equivalent implementation might use Derived Column for normalisation, Lookup against an approved reference, Conditional Split for approved/unresolved outcomes, and separate clean/exception destinations.</p>
+ <div class="callout misconception"><div class="callout-label">Do not create three competing truths</div><p>If a rule exists in SQL, Power Query and SSIS for different purposes, they should derive from the same approved rule definition and test cases. Copy-pasted logic that drifts between tools is a control risk.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_SQL-Cleansing-Patterns.sql</strong><p class="small">The normalise-then-classify pattern above, ready to adapt to a new field.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_SQL-Cleansing-Patterns.sql" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_PowerQuery-Cleansing-Patterns.txt</strong><p class="small">The equivalent M pattern above, ready to adapt to a new field.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_PowerQuery-Cleansing-Patterns.txt" download>Download</a></div>`
+},
+{
+ id:"b9",nav:"Tests before volume",title:"Cleansing needs tests before it needs volume",type:"content",
+ html:`<p class="lead">Build a small rule test set before running across 18,000+ records.</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Test ID</th><th>Source value</th><th>Expected outcome</th></tr></thead><tbody>
+ <tr><td>T01</td><td>STANDARD</td><td>No change; approved if reference valid</td></tr>
+ <tr><td>T02</td><td>STANDARD (trailing space)</td><td>Normalise to STANDARD; record rule application</td></tr>
+ <tr><td>T03</td><td>(leading space)STANDARD</td><td>Normalise to STANDARD</td></tr>
+ <tr><td>T04</td><td>(whitespace only)</td><td>Normalises to NULL; route according to blank rule</td></tr>
+ <tr><td>T05</td><td>STD</td><td>No invented conversion; validate against approved reference</td></tr>
+ <tr><td>T06</td><td>99</td><td>Remain unresolved unless approved treatment exists</td></tr>
+ <tr><td>T07</td><td>(none)</td><td>Remain NULL; controlled outcome</td></tr>
+ </tbody></table></div>
+ <p>Tests should cover boundaries, already-clean values, blanks, unresolved values and cases where the cleansing operation succeeds technically but the result still fails business validation.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Cleansing-Test-Matrix-Template.xlsx</strong><p class="small">The seven-test structure above, ready to extend for any new cleansing rule.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Cleansing-Test-Matrix-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Measure the change",title:"Measure what the rule changed",type:"content",
+ html:`<p class="lead">After applying a rule, record more than the new exception total.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Measure</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Applicable population</td><td>Shows denominator</td></tr>
+ <tr><td>Records changed by rule</td><td>Shows intervention volume</td></tr>
+ <tr><td>Records unchanged</td><td>Confirms rule did not touch everything</td></tr>
+ <tr><td>Records now valid</td><td>Measures successful remediation</td></tr>
+ <tr><td>Records still unresolved</td><td>Keeps backlog visible</td></tr>
+ <tr><td>New exceptions</td><td>Detects regression/new source issues</td></tr>
+ <tr><td>Unexpected changes</td><td>Detects over-broad rule</td></tr>
+ <tr><td>Rule version / cycle</td><td>Makes trend comparable</td></tr>
+ </tbody></table></div>
+ <p>Bramwell's payment-term progression demonstrates why this matters: the population improved from 760 exceptions to 214, but 23 of the later exceptions were new. A falling total does not prove the process stopped generating defects.</p>
+ <div class="principle"><strong>Cleansing KPI</strong><br>Track persistent, resolved and new exceptions separately. Otherwise a good headline can hide a bad process.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Quality-Trend-Template.xlsx</strong><p class="small">Previous, resolved, persistent and new populations, ready to track cycle over cycle.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Quality-Trend-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b11",nav:"Regression control",title:"Regression control \u2014 Did the cleanse damage clean data?",type:"content",
+ html:`<p class="lead">A cleansing rule can improve its target issue while changing records it should never have touched.</p>
+ <h3>Compare changed records explicitly</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: what actually changed?</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  s.CustNo, s.CustomerGroup_Source, s.CustomerGroup_Cleansed
+FROM stage.CustomerCleansed s
+WHERE s.RunId = @RunId
+  AND ISNULL(s.CustomerGroup_Source,'<NULL>')
+   <> ISNULL(s.CustomerGroup_Cleansed,'<NULL>');</code></pre></div>
+ <h3>Assert that already-approved values remain stable</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: nothing approved should have moved</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo, CustomerGroup_Source, CustomerGroup_Cleansed
+FROM stage.CustomerCleansed
+WHERE RunId = @RunId
+  AND CustomerGroup_Source IN ('STANDARD','KEY','EXPORT','INTERNAL')
+  AND CustomerGroup_Cleansed <> CustomerGroup_Source;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Expected result</div><p>Zero rows, unless an explicitly approved rule says otherwise. A cleansing test suite should prove what must not change as well as what should change.</p></div>`
+},
+{
+ id:"b12",nav:"Source vs migration correction",title:"Source correction versus migration correction",type:"content",
+ html:`<p class="lead">Suppose Finance confirms that a customer's payment term is wrong in the legacy ERP.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Approach</th><th>When it may be appropriate</th><th>Control needed</th></tr></thead><tbody>
+ <tr><td>Correct source system</td><td>Best where business can safely repair authoritative master data before next extract</td><td>Owner, timing, re-extract proof</td></tr>
+ <tr><td>Migration-side correction table</td><td>Useful where source cannot be changed in time but authorised correction is required</td><td>Business approval, key/value, reason, effective cycle, audit</td></tr>
+ <tr><td>Hard-code in transformation</td><td>Usually weak for record-specific correction</td><td>Avoid unless represented as controlled data/rule</td></tr>
+ <tr><td>Manual edit to output file</td><td>High risk</td><td>Generally avoid; if emergency process exists, needs explicit control and reconciliation</td></tr>
+ </tbody></table></div>
+ <p>A migration correction table can be useful, but it becomes a controlled data source and must be treated accordingly.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example controlled correction structure</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Entity: Customer
+BusinessKey: Cxxxxx
+FieldName: PaymentTerms
+SourceValue: <source value>
+CorrectedValue: <approved value>
+Reason: <business reason>
+ApprovedBy: <authorised owner>
+EffectiveCycle: <cycle>
+Status: Approved</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not turn the correction table into a shadow master system</div><p>Record-specific overrides should be exceptional, owned, reviewable and retired when no longer needed.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Controlled-Correction-Template.xlsx</strong><p class="small">The eight-field correction structure above, ready to fill in for an approved record-specific fix.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Controlled-Correction-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b13",nav:"The backlog",title:"Cleansing backlog \u2014 Decide the treatment",type:"selectAll",
+ html:`<div class="callout misconception"><div class="callout-label">Enterprise check \u2014 not every invalid-looking code is a cleansing problem</div><p>Bramwell has 126 fixed-asset records whose legacy depreciation-category value is outside the approved target reference set. FA-009871 at UK01 carries DEP-07, and no target treatment has been approved. A consultant must not "cleanse" DEP-07 to the nearest-looking category. Preserve the source value, classify the exception, identify the Fixed Asset Finance Owner as the authority for accounting meaning, and implement only an approved treatment.</p></div>
+ <p class="lead">Ten findings from the backlog, each with a tempting technical fix. Explore each one \u2014 the point is deciding what you'd actually need to know before treating it, not memorising a single right answer. You'll get credit for refusing to cleanse when evidence or authority is insufficient.</p>`,
+ options: backlogFindings,
+ coaching: backlogCoaching,
+ hint:"Explore every finding before continuing.",
+ closingHtml:`<div class="principle"><strong>Scoring principle</strong><br>The learner gets credit for refusing to cleanse when evidence or authority is insufficient. Progress on this backlog does not mean every item gets changed.</div>`
+},
+{
+ id:"b14",nav:"Independent lab",title:"Independent lab \u2014 Turn a quality finding into a controlled rule",type:"reflection",
+ html:`<p class="lead">You receive a synthetic supplier-quality backlog from Lesson 2's style of profiling. This is training data and does not establish Bramwell supplier facts.</p>
+ <p>Choose three issues: one suitable for syntactic automation, one requiring reference/business approval and one that should remain an exception or source-correction request.</p>
+ <h3>For each issue, produce</h3>
+ <ol class="framework-checks">
+   <li>A clear problem statement based on profile evidence.</li>
+   <li>Treatment classification.</li>
+   <li>Rule ID and applicable population.</li>
+   <li>Source and target/cleansed values to preserve.</li>
+   <li>Approval/ownership requirement.</li>
+   <li>Implementation logic in SQL or Power Query.</li>
+   <li>At least five test cases including one already-clean record and one boundary/unresolved case.</li>
+   <li>Exception behaviour.</li>
+   <li>Before/after measures.</li>
+   <li>Regression check showing records that must not change.</li>
+   <li>Cycle-to-cycle monitoring measure.</li>
+   <li>A short SME/owner note asking for any decision still required.</li>
+ </ol>
+ <h3>Deliverable: Cleansing Rule Pack</h3>
+ <ul class="framework-checks">
+   <li><strong>Rule Catalogue</strong> \u2014 Rule ID, purpose, scope, approval, version.</li>
+   <li><strong>Implementation</strong> \u2014 SQL/M/ETL logic.</li>
+   <li><strong>Test Matrix</strong> \u2014 Input, expected output/outcome, actual result.</li>
+   <li><strong>Exception Output</strong> \u2014 Unresolved records with evidence.</li>
+   <li><strong>Change Audit</strong> \u2014 Original vs cleansed values + applied rule.</li>
+   <li><strong>Quality Trend</strong> \u2014 Previous, resolved, persistent, new.</li>
+   <li><strong>Decision Log</strong> \u2014 Outstanding business decisions and owners.</li>
+ </ul>
+ <p class="lead">Write your SME/owner note for your three chosen issues below.</p>
+ <textarea id="reflection" placeholder="For the three issues I've selected..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Cleansing-Rule-Catalogue-Template.xlsx</strong><p class="small">Rule ID, purpose, scope, approval and version, ready to fill in for any new rule.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Cleansing-Rule-Catalogue-Template.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/syntactic|automat/i, strength:"You identified which of your three issues is suitable for syntactic automation.", gap:"State clearly which of your three issues is safe to automate as a syntactic rule, and why." },
+   { test:/reference|business.*(approval|transformation)/i, strength:"You identified which issue requires reference or business approval.", gap:"State which issue needs reference or business approval before any rule can be written, and who that approval sits with." },
+   { test:/exception|source correction/i, strength:"You identified which issue should remain an exception or source-correction request.", gap:"State which issue should stay a controlled exception or source-correction request rather than being cleansed at all." },
+   { test:/preserve|raw|source value/i, strength:"You addressed preserving the source value alongside any cleansed representation.", gap:"State how the original source value stays visible alongside whatever cleansed value you produce." },
+   { test:/test|boundary|already.clean/i, strength:"You addressed test cases, including an already-clean and a boundary case.", gap:"Name at least one already-clean test case and one boundary or unresolved test case for your rules." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Three issues selected: a trailing-whitespace variant on an approved supplier-status code (syntactic automation \u2014 safe to trim once approved, source value preserved alongside the normalised one); an unrecognised unit-of-measure code appearing on 40 records (requires reference/business approval \u2014 routed as a controlled exception with the affected records attached, not mapped to the nearest-looking unit); and a supplier name exceeding the target length limit (remains an exception \u2014 investigated for truncation collisions, but no treatment implemented without an approved business decision). SME note: please confirm the approved target for the unrecognised unit-of-measure code, and advise whether supplier names may be safely shortened for target systems, or whether the source system should be asked to hold the full name instead.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine rule pack: one safe automation, one referred decision, one held exception \u2014 not three findings all funnelled toward the same treatment.":"You have the right structure. Make sure your three issues actually land in three different treatment classes, not the same one dressed up three ways."}</div>`
+},
+{
+ id:"b15",nav:"Worked example",title:"A worked example \u2014 From profile finding to rule",type:"content",
+ html:`<p class="lead">Finding: the source CustomerGroup distribution contains 29 STANDARD values with trailing whitespace.</p>
+ <h3>Evidence</h3>
+ <ul class="framework-checks">
+   <li>The raw source value is preserved.</li>
+   <li>The value differs from STANDARD only by trailing whitespace.</li>
+   <li>STANDARD is an established source code in the distribution.</li>
+   <li>The project still needs an approved syntactic-normalisation rule before production use.</li>
+ </ul>
+ <h3>Proposed rule</h3>
+ <div class="principle"><strong>CLN-CUST-001</strong><br>For in-scope CustomerGroup values, remove leading/trailing whitespace for validation and downstream mapping. Preserve the original value. If the normalised result is blank or is not covered by the approved CustomerGroup reference, route it to exception rather than defaulting.</div>
+ <h3>Tests</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Input</th><th>Expected normalised value</th><th>Expected status</th></tr></thead><tbody>
+ <tr><td>STANDARD</td><td>STANDARD</td><td>Continue to reference validation</td></tr>
+ <tr><td>STANDARD (trailing space)</td><td>STANDARD</td><td>Continue to reference validation</td></tr>
+ <tr><td>(leading space)STANDARD</td><td>STANDARD</td><td>Continue to reference validation</td></tr>
+ <tr><td>STD (trailing space)</td><td>STD</td><td>Still requires reference coverage</td></tr>
+ <tr><td>99 (trailing space)</td><td>99</td><td>Still unresolved unless approved</td></tr>
+ <tr><td>(whitespace only)</td><td>None</td><td>Blank/unresolved path</td></tr>
+ </tbody></table></div>
+ <h3>What the rule does not do</h3>
+ <ul class="framework-checks">
+   <li>It does not map STD to STANDARD.</li>
+   <li>It does not map 99.</li>
+   <li>It does not overwrite the raw field.</li>
+   <li>It does not claim that every trimmed value is business-valid.</li>
+   <li>It does not remove the need for reference validation.</li>
+ </ul>`
+},
+{
+ id:"b16",nav:"When manual is legitimate",title:"When manual cleansing is legitimate",type:"content",
+ html:`<p class="lead">Repeatability does not mean every correction must be coded.</p>
+ <p>Manual business remediation can be the correct process when:</p>
+ <ul class="framework-checks">
+   <li>The authoritative business owner is correcting source master data.</li>
+   <li>The affected population is small and requires judgement record by record.</li>
+   <li>The correction is a genuine business decision rather than a deterministic transformation.</li>
+   <li>The corrected data will be re-extracted or supplied through a controlled correction artefact.</li>
+   <li>The migration team can reconcile exactly which records changed.</li>
+ </ul>
+ <div class="principle"><strong>The control question</strong><br>Can you reproduce and prove the final migration population next cycle? If the answer depends on remembering which cells somebody edited last Tuesday, the process is not controlled.</div>`
+},
+{
+ id:"b17",nav:"Consultant situations",title:"Consultant situations \u2014 Fix, automate, escalate or leave alone?",type:"situations",
+ html:`<p class="lead">Six moments where the tempting fix and the right fix aren't the same thing.</p>`,
+ items: treatmentSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Cleanse That Looked Too Easy", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/CleanseThatLookedTooEasy-Sam.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>
+ <div class="principle"><strong>Field lesson</strong><br>The safest cleanse is sometimes the one you don't invent.</div>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2014 Which fixes should a consultant refuse?",type:"reflection",
+ html:`<p class="lead">Write three examples of changes that a technically capable DMC could implement easily but should refuse to implement without stronger business authority or evidence.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers include plausible defaults, destructive truncation, deduplication without proven grain, inferred code mappings, replacement of suspicious but unexplained values, and record-specific overrides with no owner.</p></div></div>
+ <textarea id="reflection" placeholder="The three changes I would refuse to implement without stronger authority are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/default/i, strength:"You named a plausible default as one of your three refusals.", gap:"Name a specific plausible-looking default you'd refuse to implement without approval." },
+   { test:/truncat|overlength|60 char/i, strength:"You named destructive truncation as one of your three refusals.", gap:"Name a truncation or length-related fix you'd refuse to implement without a business decision." },
+   { test:/duplicate|dedup|grain/i, strength:"You named deduplication without proven grain as one of your three refusals.", gap:"Name a deduplication action you'd refuse until the grain is actually proven." },
+   { test:/map|infer|nearest/i, strength:"You named an inferred code mapping as one of your three refusals.", gap:"Name a code-mapping guess, like mapping to the nearest-looking value, that you'd refuse without approval." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Three changes I'd refuse without stronger authority: defaulting an unresolved payment term or country code to a plausible-looking value, since that manufactures a business decision nobody made; deleting or merging duplicate-looking rows before the grain is actually proven, since the "duplicates" might be a legitimate one-to-many structure; and mapping an unrecognised reference code to the nearest familiar category, since that's a guess dressed up as a decision. Each of these is technically trivial and each one quietly invents a business fact.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the discipline the lesson is built around: technically easy is not the same test as approved.":"You have good instincts. Make sure each of your three examples is something you'd genuinely refuse, not just something you'd double-check first."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2014 Clean data without manufacturing truth",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Classify the treatment before writing the cleansing logic.</li>
+   <li>Distinguish syntactic normalisation, approved business transformation, source correction, exception, exclusion and no-change.</li>
+   <li>Preserve raw evidence and create a separate cleansed representation.</li>
+   <li>Give every repeatable cleansing rule a scope, owner, version, exception behaviour and tests.</li>
+   <li>Normalisation can prepare data for validation; it does not prove validity.</li>
+   <li>Do not use defaults to hide unresolved business meaning.</li>
+   <li>Target constraints do not automatically authorise truncation or data loss.</li>
+   <li>Implement shared approved rules consistently across SQL, Power Query and ETL tools.</li>
+   <li>Test already-clean, boundary, blank and unresolved cases before running at volume.</li>
+   <li>Measure changed, resolved, persistent and new populations.</li>
+   <li>Prove what the rule must not change.</li>
+   <li>Use controlled source correction or correction artefacts for business-owned record fixes.</li>
+   <li>Treat rule changes as versioned changes to the migration baseline.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>Good cleansing makes approved meaning more consistent and migration-ready. Bad cleansing makes uncertainty disappear by inventing values, deleting evidence or hiding unresolved decisions.</div>`
+},
+{
+ id:"b20",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building repeatable cleansing processes.</strong></p>
+ <p>You can now take an evidence-backed data-quality finding and turn an approved cleansing decision into a controlled, repeatable remediation process: distinguish safe syntactic cleansing from business correction, define rule ownership and scope, preserve raw evidence, implement rules consistently, route unresolved records, measure before-and-after populations, prevent regressions and prove exactly what changed.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Reference data, lookups and cross-references</strong></p>
+ <p>You will build the controlled reference structures that turn source codes, identifiers and business classifications into explicit, versioned migration decisions.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone says a cleanse is obvious.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 3: Building repeatable cleansing processes",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Turning a data-quality finding into a controlled, repeatable rule",
+  storageKey: "tp_dmc2_lesson3_v1",
+  lessonId: "dmc2-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

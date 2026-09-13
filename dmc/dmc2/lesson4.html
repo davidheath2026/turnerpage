@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Reference data, lookups and cross-references</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 4 — "Reference data, lookups and
+   cross-references". Built as a reference-data control room, per
+   the manuscript's own authoring notes: the learner inherits a
+   workbook that looks 100% matched, discovers coverage isn't
+   correctness, then progressively rebuilds it into a controlled
+   reference service.
+
+   Source: DMC2_Lesson4_Reference_Data_Lookups_and_Cross_References_v3.docx.
+   moduleTitle follows the alignment doc, not the manuscript's own
+   header text, per the standing rule from Lesson 1.
+
+   All Bramwell facts (UK/NOR/BEL/GER approved; ZZZ, 45E and
+   CustomerGroup 99 unresolved; STD observed but not canonically
+   approved to STANDARD; the STANDARD-space variant as a proposed,
+   not-yet-approved syntactic rule; rare CustomerGroup GOV with six
+   customers; the S20418 Nordvik Components AS STRATEGIC/STANDARD
+   classification conflict) are taken directly from the manuscript
+   and story bible, and stay exactly as unresolved or approved as
+   stated. The poisoned workbook's twelve defects are synthetic
+   training material and do not create new Bramwell canon.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC2 Lessons 1-3.
+============================================================== */
+
+const doubledRowsHypotheses = [
+ "The reference contains more than one matching row at the join grain",
+ "The join condition is missing legal-entity, source-system or effective-date context",
+ "Draft and approved rows are both being joined",
+ "Reference history contains overlapping effective dates"
+];
+const doubledRowsCoaching = [
+ "<strong>Worth checking first.</strong><br>This is exactly what the GROUP BY / HAVING COUNT(*) > 1 query on the reference table would expose \u2014 more than one approved row for the same source value at the intended grain.",
+ "<strong>Worth checking.</strong><br>If the join only matches on SourceCountry but the reference is genuinely keyed by LegalEntity + SourceCountry, one source row can legitimately match several reference rows.",
+ "<strong>Worth checking.</strong><br>A join with no ApprovalStatus filter treats a draft or superseded row exactly the same as an approved one \u2014 both can match and both can duplicate the source row.",
+ "<strong>Worth checking.</strong><br>Two approved rows both \u201ceffective\u201d for the same source value and date is a genuine reference defect, and it produces exactly this symptom."
+];
+
+const bramwellQueueItems = [
+ { title:"Country UK \u2192 GB", short:"Established position: Approved.", detail:"This is one of Bramwell's four approved country mappings. No further action needed here \u2014 the point of this exercise is recognising which items are already settled, not re-litigating them.", ask:"" },
+ { title:"Country NOR \u2192 NO", short:"Established position: Approved.", detail:"Approved, alongside UK, BEL and GER. Settled.", ask:"" },
+ { title:"Country BEL \u2192 BE", short:"Established position: Approved.", detail:"Approved. Settled.", ask:"" },
+ { title:"Country GER \u2192 DE", short:"Established position: Approved.", detail:"Approved. Settled.", ask:"" },
+ { title:"Country ZZZ", short:"Established position: Unresolved.", detail:"No approved target exists. The correct treatment is to leave it visible as an unresolved exception, not to assign it a plausible-looking country.", ask:"" },
+ { title:"Payment term 45E", short:"Established position: Unresolved; no approved target equivalent.", detail:"NET30 and NET45 are not approved mappings for 45E, however often they appear in staging history. This stays open until an authorised decision changes it.", ask:"" },
+ { title:"CustomerGroup 99", short:"Established position: Unresolved; 18 German records remain.", detail:"No final mapping has been established for this population. Resolving it is not the migration team's decision to make unilaterally.", ask:"" },
+ { title:"CustomerGroup STD", short:"Established position: Observed source value; no canonical approval to STANDARD established.", detail:"This is exactly the trap the developer fell into in Lesson 3: technical similarity to STANDARD is not the same as an approved mapping.", ask:"" },
+ { title:"CustomerGroup STANDARD (trailing space)", short:"Established position: Observed whitespace variant; syntactic rule must still be controlled.", detail:"Even though this looks like an obvious trim candidate, it still needs an approved syntactic-normalisation rule before production use \u2014 not because it's difficult, but because \u201cobvious\u201d isn't an approval status.", ask:"" },
+ { title:"Rare CustomerGroup GOV", short:"Established position: Six customers; rarity alone does not make it invalid.", detail:"A small population is a reason to inspect a value, not a reason to treat it as wrong. GOV may be a perfectly legitimate, if uncommon, classification.", ask:"" }
+];
+
+const stopTheRunSituations = [
+ { title:"Optional descriptive reference is missing",
+   question:"A source value has no approved mapping, but the target field is an optional descriptive reference. What's the right treatment?",
+   options:[
+     {label:"It may be acceptable to continue with a controlled blank, if the approved design explicitly permits that outcome.", correct:true, feedback:"Correct. Not every unresolved lookup has the same operational consequence \u2014 an optional field can sometimes continue with a controlled blank, if that's what the approved design actually permits."},
+     {label:"Treat it exactly like a mandatory field failure and block the record regardless.", correct:false, feedback:"That overstates the severity. An optional descriptive field missing a mapping doesn't carry the same consequence as a mandatory one."},
+     {label:"Default it to whatever value makes the record look most complete on the report.", correct:false, feedback:"That manufactures a value nobody approved, purely for appearances \u2014 exactly the pattern Lesson 3 warned against."},
+     {label:"Remove the field from the output entirely so the gap isn't visible to anyone reviewing it.", correct:false, feedback:"Hiding the gap doesn't resolve it, and it removes evidence a reviewer would need to see the real state of the data."}
+   ]
+ },
+ { title:"Mandatory field required for load is missing its mapping",
+   question:"A source value has no approved mapping, and the target field is mandatory for load. What's the right treatment?",
+   options:[
+     {label:"Continue the load and leave the mandatory field blank, since one missing mapping shouldn't stop the whole population.", correct:false, feedback:"A mandatory field with no value will typically make the record unusable at the target regardless of how the rest of the population fares."},
+     {label:"Substitute the most common approved value for the mandatory field so the record can still load.", correct:false, feedback:"Frequency is not authority. That's exactly the invented-default pattern this module keeps warning against."},
+     {label:"Block the affected record, and possibly the whole entity if the missing mapping is material enough.", correct:true, feedback:"Correct. A mandatory field required for load typically blocks the affected record, and possibly the whole entity if the gap is material or critical."},
+     {label:"Escalate to the business immediately and pause all customer processing project-wide.", correct:false, feedback:"That's a disproportionate response to one unresolved mapping. The right scope is the affected record or entity, not the whole project."}
+   ]
+ },
+ { title:"Low-volume, non-critical classification is missing its mapping",
+   question:"A rarely-used classification field has no approved mapping for a handful of records. What's the right treatment?",
+   options:[
+     {label:"Treat it with the same severity as a mandatory field failure regardless of volume or criticality.", correct:false, feedback:"That treats every gap identically, when severity should actually track how critical and how material the specific field and population are."},
+     {label:"Automatically approve a default classification since the volume affected is too low to matter.", correct:false, feedback:"Low volume doesn't grant approval authority. It just means the invented decision affects fewer records."},
+     {label:"Exclude the affected records from the migration without asking anyone.", correct:false, feedback:"That's an unapproved scope decision dressed up as a technical workaround."},
+     {label:"This could remain a controlled exception, if the business accepts that treatment for this specific classification.", correct:true, feedback:"Correct. A low-volume, non-critical classification gap could remain a controlled exception, if the business accepts that treatment."}
+   ]
+ },
+ { title:"Parent or identity relationship is missing its mapping",
+   question:"A child record's link to its parent identity has no approved mapping. What's the right treatment?",
+   options:[
+     {label:"Treat it the same as an optional reference, since it's still just one missing lookup.", correct:false, feedback:"An identity relationship isn't equivalent to an optional descriptive field \u2014 the child record's usability often depends entirely on it."},
+     {label:"Load the child record anyway and fix the relationship in a later cycle.", correct:false, feedback:"That loads a record that may be functionally unusable at the target, on the assumption a fix will happen eventually."},
+     {label:"Usually treat this as high severity \u2014 the child record may be unusable without the identity relationship resolving correctly.", correct:true, feedback:"Correct. A missing parent or identity relationship is usually high severity; the child record may be unusable without it."},
+     {label:"Assume the parent record will always be added later, so there's no need to flag anything now.", correct:false, feedback:"That assumes a future fact instead of surfacing the current gap as a visible risk."}
+   ]
+ },
+ { title:"The reference table itself is unavailable",
+   question:"Thousands of records suddenly show no-match, and the cause turns out to be the reference table itself failing to load. What's the right treatment?",
+   options:[
+     {label:"Treat this as a technical or process failure, not as thousands of individual business no-matches.", correct:true, feedback:"Correct. \u2018No match because the reference service failed to load\u2019 and \u2018no match because the source value is unresolved\u2019 are not the same incident."},
+     {label:"Treat every affected record as its own separate unresolved business mapping needing individual review.", correct:false, feedback:"That misdiagnoses a single technical failure as thousands of unrelated business decisions, which wastes enormous review effort."},
+     {label:"Wait for the no-match count to climb high enough to justify investigating properly.", correct:false, feedback:"A sudden, massive spike is itself the signal. Waiting for it to get worse before investigating delays an obvious technical diagnosis."},
+     {label:"Assume the reference table is empty on purpose and proceed without it.", correct:false, feedback:"That's a significant assumption with no evidence behind it, and proceeding without required reference data risks a much larger defect."}
+   ]
+ },
+ { title:"The hard one \u2014 a source value has two approved matches",
+   question:"The reference table returns more than one approved mapping for the same source value. What's the right treatment?",
+   options:[
+     {label:"Pick whichever approved match appears first in the table and proceed with the load.", correct:false, feedback:"\u201cFirst row wins\u201d is not a control. It's an arbitrary choice dressed up as a resolved lookup."},
+     {label:"Average or merge the two approved target values into one combined result.", correct:false, feedback:"Reference codes generally can't be meaningfully merged, and this still avoids raising the real reference-integrity problem underneath."},
+     {label:"Treat this as a control failure. Do not choose one of the matches arbitrarily.", correct:true, feedback:"Correct. More than one approved match is a control failure, not a coin flip. Do not choose arbitrarily."},
+     {label:"Since both matches are approved, either one is safe to use going forward.", correct:false, feedback:"Two approved rows for one source value at the same grain means the reference itself is ambiguous \u2014 neither is safely \u201cthe\u201d answer until the ambiguity is resolved."}
+   ]
+ }
+];
+
+const poisonedWorkbookDefects = [
+ "One source value has two approved target mappings",
+ "One draft row is accidentally marked Approved",
+ "One duplicate row differs only by trailing whitespace",
+ "One legal-entity-specific code is stored without its legal entity",
+ "One expired row is still included in the active extract",
+ "Two effective-date rows overlap",
+ "One target value does not exist in the supplied target domain",
+ "One source value was defaulted to the most common target",
+ "One reference row has no decision evidence at all",
+ "One source value was normalised by removing a meaningful leading zero",
+ "One mapping was approved for Cycle 1 but silently edited for Cycle 2",
+ "One unmatched source code is omitted from the workbook entirely"
+];
+const poisonedWorkbookCoaching = [
+ "<strong>Blocks release.</strong><br>Two approved mappings for one source value is exactly the ambiguity this lesson's SQL check (§18.1) is built to catch. The reference is not deterministic until this is resolved.",
+ "<strong>Blocks release.</strong><br>A draft row treated as production logic can silently affect real migration output. This is precisely why lookups should filter on ApprovalStatus, not just existence in the table.",
+ "<strong>Reference-table defect, not source coverage.</strong><br>Two \u201csame\u201d rows differing only by whitespace usually signal a control gap in how the reference itself was maintained, not a source-side problem.",
+ "<strong>A grain defect.</strong><br>If the mapping genuinely depends on legal entity, storing it without that context means the table can't represent two legitimate but different meanings for the same code.",
+ "<strong>Blocks release.</strong><br>An expired row that's still active can be matched by mistake, silently reintroducing a superseded mapping into current output.",
+ "<strong>Blocks release.</strong><br>Overlapping effective-date rows mean two approved answers exist for the same source key on the same date \u2014 exactly the ambiguity the overlap test in this lesson is designed to find.",
+ "<strong>Blocks release.</strong><br>A target value with no home in the actual target domain will fail downstream, or worse, load successfully as something meaningless.",
+ "<strong>Blocks release.</strong><br>A source value defaulted to the most common target is a manufactured decision wearing the costume of a resolved mapping \u2014 exactly what Lesson 3's rule clinics warn against.",
+ "<strong>A control gap, not a data defect.</strong><br>A mapping with no decision evidence can't be traced back to who approved it or why, which undermines the whole point of a controlled reference.",
+ "<strong>High risk.</strong><br>Removing a leading zero can change what an identifier actually means. This is exactly the \u201chigh risk\u201d normalisation category from earlier in this lesson.",
+ "<strong>A version-control failure.</strong><br>A silent edit to an already-approved Cycle 1 mapping means nobody can prove which value a given run actually used \u2014 this is what reference versioning exists to prevent.",
+ "<strong>Source coverage gap, not a reference-table defect.</strong><br>An omitted code isn't wrong reference data \u2014 it's a source value the reference simply hasn't addressed yet, which the coverage query in §18.2 would surface."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"100% matched",title:"The spreadsheet says 100% matched",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>A developer sends you the Bramwell country lookup workbook. Every source country value now returns a target country code. The status column is green.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>SourceCountry</th><th>TargetCountry</th><th>Comment</th></tr></thead><tbody>
+ <tr><td>UK</td><td>GB</td><td>matched</td></tr>
+ <tr><td>NOR</td><td>NO</td><td>matched</td></tr>
+ <tr><td>BEL</td><td>BE</td><td>matched</td></tr>
+ <tr><td>GER</td><td>DE</td><td>matched</td></tr>
+ <tr><td>ZZZ</td><td>GB</td><td>matched</td></tr>
+ </tbody></table></div>
+ <p>You already know that ZZZ is unresolved in the Bramwell case.</p>
+ <h3>What has actually happened, and what should you do first?</h3>`,
+ options:[
+   {label:"The lookup is now complete \u2014 ZZZ has been successfully resolved to GB.", correct:false, feedback:"That's exactly the confusion this scenario is built to catch: a value appearing is not the same as a value being approved."},
+   {label:"Coverage has been confused with correctness. Ask what evidence authorises a target value for ZZZ, rather than accepting that a value now exists.", correct:true, feedback:"Correct. A migration lookup is not successful because every row returns a value. It is successful when every value is resolved according to an approved, traceable rule, and unresolved values remain visible. The first question is not \u2018How do we make ZZZ match?\u2019 It is \u2018What evidence authorises any target value for ZZZ?\u2019"},
+   {label:"The workbook is fine as it stands; a 100% match rate is the goal of any lookup.", correct:false, feedback:"100% match rate as a goal in itself is exactly the trap. It rewards filling gaps over resolving them properly."},
+   {label:"Reject the whole workbook and rebuild every mapping from scratch, including UK, NOR, BEL and GER.", correct:false, feedback:"That overcorrects. Four of the five mappings here are genuinely approved; only ZZZ is the actual problem."}
+ ]
+},
+{
+ id:"b2",nav:"Decisions stored as data",title:"Cross-references are migration decisions stored as data",type:"content",
+ html:`<p class="lead">A cross-reference may look like a two-column table, but each row can encode a business decision.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Source</th><th>Target</th><th>What the row is really saying</th></tr></thead><tbody>
+ <tr><td>UK</td><td>GB</td><td>When the approved context applies, source country UK is represented as GB in target</td></tr>
+ <tr><td>45E</td><td>?</td><td>No approved target treatment yet</td></tr>
+ <tr><td>CustomerGroup 99</td><td>?</td><td>No approved final mapping yet</td></tr>
+ <tr><td>Legacy owner code</td><td>Target user ID</td><td>Identity relationship must be proven</td></tr>
+ <tr><td>Old product UOM</td><td>Target UOM</td><td>Business semantics must be equivalent</td></tr>
+ <tr><td>Legacy legal entity + code</td><td>Target value</td><td>Mapping may depend on organisational context</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Core principle</strong><br>Treat cross-reference data with the same discipline as transformation code: ownership, scope, version, testing, deployment and evidence.</div>`
+},
+{
+ id:"b3",nav:"The mapping grain",title:"The hidden question \u2014 What is the mapping grain?",type:"content",
+ html:`<p class="lead">Suppose source code STD appears in two legal entities. In one it means Standard Customer. In another it is an old internal category. A table keyed only by SourceCode cannot represent both meanings safely.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Possible grain</th><th>When it may be sufficient</th></tr></thead><tbody>
+ <tr><td>SourceCode</td><td>Meaning is globally unique across the migration scope</td></tr>
+ <tr><td>SourceSystem + SourceCode</td><td>Same code differs between source systems</td></tr>
+ <tr><td>LegalEntity + SourceCode</td><td>Meaning differs by company/legal entity</td></tr>
+ <tr><td>SourceCode + EffectiveDate</td><td>Meaning changes over time</td></tr>
+ <tr><td>SourceType + Country + SourceCode</td><td>Business context determines meaning</td></tr>
+ <tr><td>Composite business attributes</td><td>Derived mapping requires multiple inputs</td></tr>
+ </tbody></table></div>
+ <p>The mapping grain is the smallest set of attributes required to identify exactly one approved target outcome.</p>
+ <div class="principle"><strong>Design test</strong><br>If two legitimate source records can share your lookup key but require different target values, your lookup grain is incomplete.</div>
+ <h3>Detect ambiguity before the data flow does</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: ambiguity at the intended grain</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  LegalEntity, SourceCode, COUNT(*) AS ApprovedMappings
+FROM ref.CustomerGroupCrossRef
+WHERE ApprovalStatus = 'Approved'
+GROUP BY LegalEntity, SourceCode
+HAVING COUNT(*) > 1;</code></pre></div>
+ <p>A zero-row result is one piece of evidence that the approved reference is unique at the intended grain. It does not prove the business mapping itself is correct.</p>`
+},
+{
+ id:"b4",nav:"Rebuild the table",title:"Rebuild the reference table",type:"content",
+ html:`<p class="lead">Replace the two-column workbook with a controlled structure. This is a training implementation pattern, not a prescribed enterprise data model.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: controlled reference structure</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE TABLE ref.MigrationCrossReference (
+  ReferenceSet varchar(100) NOT NULL,
+  SourceSystem varchar(50) NULL,
+  LegalEntity varchar(30) NULL,
+  SourceValue varchar(200) NOT NULL,
+  TargetValue varchar(200) NULL,
+  ApprovalStatus varchar(30) NOT NULL,
+  EffectiveFrom date NULL,
+  EffectiveTo date NULL,
+  ReferenceVersion varchar(50) NOT NULL,
+  DecisionReference varchar(100) NULL,
+  Notes varchar(1000) NULL
+);</code></pre></div>
+ <p>Depending on the project, ownership, approver, timestamps and target descriptions may sit in the same table or in controlled metadata. The design goal is traceability, not maximum column count.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Why it matters</th></tr></thead><tbody>
+ <tr><td>ReferenceSet</td><td>Separates Country, PaymentTerms, CustomerGroup, UOM, etc.</td></tr>
+ <tr><td>SourceSystem / LegalEntity</td><td>Adds mapping context where required</td></tr>
+ <tr><td>SourceValue</td><td>Preserves the source code/value</td></tr>
+ <tr><td>TargetValue</td><td>Approved target outcome, nullable while unresolved</td></tr>
+ <tr><td>ApprovalStatus</td><td>Prevents draft guesses being treated as production mappings</td></tr>
+ <tr><td>Effective dates</td><td>Supports time-bounded meaning when genuinely needed</td></tr>
+ <tr><td>ReferenceVersion</td><td>Ties a migration run to a controlled baseline</td></tr>
+ <tr><td>DecisionReference</td><td>Links the row to evidence/approval</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_MigrationCrossReference.sql</strong><p class="small">The controlled reference table definition above, ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_MigrationCrossReference.sql" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Approval status & outcomes",title:"Approval status is part of the lookup logic",type:"content",
+ html:`<p class="lead">A dangerous implementation joins to whatever happens to be in the table.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Weak</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountry = c.Country</code></pre></div>
+ <p>A stronger implementation explicitly selects the controlled baseline.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Stronger</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountry = c.Country
+  AND x.ApprovalStatus = 'Approved'
+  AND x.ReferenceVersion = @ReferenceVersion</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Why this matters</div><p>A draft row, superseded row or analyst suggestion must not silently become production migration logic simply because it exists in the same spreadsheet/table.</p></div>
+ <h3>The three lookup outcomes</h3>
+ <p>Every controlled lookup should be designed to distinguish three outcomes.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Outcome</th><th>Meaning</th><th>Migration behaviour</th></tr></thead><tbody>
+ <tr><td>0 approved matches</td><td>Unresolved / missing reference</td><td>Route to exception or stop according to rule criticality</td></tr>
+ <tr><td>1 approved match</td><td>Deterministic approved result</td><td>Continue</td></tr>
+ <tr><td>&gt;1 approved matches</td><td>Ambiguous reference</td><td>Treat as control failure; do not choose arbitrarily</td></tr>
+ </tbody></table></div>
+ <h3>SQL pattern that exposes all three</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: distinguish 0, 1 and >1 matches</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WITH MatchCounts AS (
+  SELECT
+    c.CustNo, c.Country,
+    COUNT(x.TargetCountry) AS ApprovedMatches,
+    MAX(x.TargetCountry) AS CandidateTarget
+  FROM stage.Customer c
+  LEFT JOIN ref.CountryCrossRef x
+    ON x.SourceCountry = c.Country
+    AND x.ApprovalStatus = 'Approved'
+    AND x.ReferenceVersion = @ReferenceVersion
+  WHERE c.RunId = @RunId
+  GROUP BY c.CustNo, c.Country
+)
+SELECT
+  CustNo, Country, ApprovedMatches,
+  CASE WHEN ApprovedMatches = 1 THEN CandidateTarget ELSE NULL END AS TargetCountry,
+  CASE
+    WHEN ApprovedMatches = 0 THEN 'COUNTRY_UNRESOLVED'
+    WHEN ApprovedMatches > 1 THEN 'COUNTRY_AMBIGUOUS'
+    ELSE 'APPROVED'
+  END AS LookupOutcome
+FROM MatchCounts;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not let MAX hide ambiguity</div><p><code>MAX(TargetValue)</code> is only used above after counting matches. Using MIN/MAX alone to force one result from multiple mappings is a silent data defect.</p></div>`
+},
+{
+ id:"b6",nav:"Incident 1: doubled rows",title:"Control-room incident 1 \u2014 The lookup doubled the rows",type:"selectAll",
+ html:`<p class="lead">The customer transform starts with 18,612 rows. Immediately after the country lookup it contains 18,641 rows. No source rows were added. Explore each hypothesis below \u2014 all four are worth checking, and the SQL check underneath tells you how to test the first.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: check for duplicate approved rows</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT SourceCountry, COUNT(*) AS MatchingRows
+FROM ref.CountryCrossRef
+WHERE ApprovalStatus = 'Approved'
+  AND ReferenceVersion = @ReferenceVersion
+GROUP BY SourceCountry
+HAVING COUNT(*) > 1;</code></pre></div>`,
+ options: doubledRowsHypotheses,
+ coaching: doubledRowsCoaching,
+ hint:"Explore every hypothesis before continuing.",
+ closingHtml:`<div class="principle"><strong>Population control</strong><br>A lookup that increases row count may be legitimate in a one-to-many enrichment, but not when the intended transformation is one customer to one country result. Know the expected grain.</div>`
+},
+{
+ id:"b7",nav:"Incident 2: LEFT JOIN isn't enough",title:"Control-room incident 2 \u2014 A left join can still hide bad reference design",type:"content",
+ html:`<p class="lead">Consultants are often taught to prefer LEFT JOIN because it preserves unmatched source rows. That is useful, but not sufficient.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Failure</th><th>LEFT JOIN protects you?</th></tr></thead><tbody>
+ <tr><td>No reference match</td><td><span class="tp-tag tp-tag--good">Yes, source row remains visible</span></td></tr>
+ <tr><td>Two approved reference matches</td><td><span class="tp-tag tp-tag--bad">No, source row can duplicate</span></td></tr>
+ <tr><td>Wrong but approved mapping</td><td><span class="tp-tag tp-tag--bad">No</span></td></tr>
+ <tr><td>Stale reference version</td><td><span class="tp-tag tp-tag--bad">No</span></td></tr>
+ <tr><td>Missing legal-entity context</td><td><span class="tp-tag tp-tag--bad">No</span></td></tr>
+ <tr><td>Source value contains whitespace/case variation</td><td><span class="tp-tag tp-tag--warn">Only if normalisation strategy is designed</span></td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Lookup quality has two sides</strong><br>Profile the source coverage and profile the reference integrity.</div>`
+},
+{
+ id:"b8",nav:"Normalised keys",title:"Normalised keys \u2014 Helpful, but preserve the source",type:"content",
+ html:`<p class="lead">Reference matching often needs a controlled comparison key.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: source preserved, match key added</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  Country AS Country_Source,
+  UPPER(LTRIM(RTRIM(Country))) AS Country_MatchKey
+FROM raw.Customer;</code></pre></div>
+ <p>The match key may improve technical consistency, but the source value remains evidence. Do not use aggressive normalisation that can collapse genuinely different codes without proving equivalence.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Normalisation</th><th>Usually low semantic risk?</th><th>Caution</th></tr></thead><tbody>
+ <tr><td>Trim outer whitespace</td><td>Often</td><td>Whitespace can occasionally be meaningful</td></tr>
+ <tr><td>Upper/lower case</td><td>Often for codes</td><td>Not safe for every identifier/system</td></tr>
+ <tr><td>Remove punctuation</td><td>Depends</td><td>Can collapse distinct values</td></tr>
+ <tr><td>Remove leading zeros</td><td>High risk</td><td>May change identifier meaning</td></tr>
+ <tr><td>Convert text to number</td><td>High risk</td><td>Can lose formatting/key semantics</td></tr>
+ <tr><td>Translate synonyms</td><td>Business mapping</td><td>Requires approval</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b9",nav:"Effective dates",title:"Effective dates \u2014 Use only when the business meaning needs them",type:"content",
+ html:`<p class="lead">Not every reference table needs effective dating. Adding dates to everything creates complexity without control value.</p>
+ <p>Use effective dates when a source value legitimately maps differently at different points in time, or when the migration needs to reproduce a historical business rule.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: effective-date filter</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>... AND @AsOfDate >= x.EffectiveFrom
+    AND (@AsOfDate < x.EffectiveTo OR x.EffectiveTo IS NULL)</code></pre></div>
+ <div class="principle"><strong>Overlap test</strong><br>If two approved rows are effective for the same source key and date, the reference is ambiguous. Test for overlaps before migration execution.</div>`
+},
+{
+ id:"b10",nav:"Version the baseline",title:"Version the reference baseline",type:"content",
+ html:`<p class="lead">During a migration cycle, reference data changes. A new country code is approved. Finance resolves a payment-term mapping. A target user is created. The migration process needs to answer: which version did this run use?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Pattern</th><th>Control</th></tr></thead><tbody>
+ <tr><td>Snapshot/version table</td><td>Run uses a named immutable reference version</td></tr>
+ <tr><td>Effective-status release</td><td>Only rows in approved release are visible to migration</td></tr>
+ <tr><td>Reference extract file</td><td>File identity/hash/version recorded with run</td></tr>
+ <tr><td>Database view over controlled rows</td><td>View filters approved release; release ID logged</td></tr>
+ </tbody></table></div>
+ <p>The exact mechanism varies. The principle does not: a rerun must not accidentally use a different mapping baseline without the change being visible.</p>
+ <div class="principle"><strong>Connection to DMC1</strong><br>BuildVersion + ReferenceVersion + InputIdentity together explain much of why two technically similar runs can produce different results.</div>`
+},
+{
+ id:"b11",nav:"Change during a cycle",title:"Reference change during a cycle",type:"content",
+ html:`<p class="lead">A source value that was unresolved yesterday is approved today. What happens next?</p>
+ <ol class="framework-checks">
+   <li>Record the decision and update the controlled reference baseline.</li>
+   <li>Create or promote a new reference version according to project control.</li>
+   <li>Identify the affected source population.</li>
+   <li>Determine which transformed outputs/checkpoints were produced under the old baseline.</li>
+   <li>Rerun from the appropriate transformation boundary.</li>
+   <li>Retest the affected mapping and regression controls.</li>
+   <li>Reconcile the new output and confirm the old exception population moved as expected.</li>
+   <li>Record which run used which reference version.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Do not patch the target rows</div><p>If the migration result should change because a reference decision changed, rerun the controlled logic from a valid boundary rather than manually editing the output.</p></div>`
+},
+{
+ id:"b12",nav:"Coverage dashboard",title:"Cross-reference coverage dashboard",type:"content",
+ html:`<p class="lead">For each important reference set, report coverage at the correct grain.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Reference set</th><th>Source distinct values</th><th>Approved matched</th><th>Unresolved</th><th>Ambiguous</th><th>Affected records</th></tr></thead><tbody>
+ <tr><td>Country</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td></tr>
+ <tr><td>PaymentTerms</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td></tr>
+ <tr><td>CustomerGroup</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td></tr>
+ <tr><td>SalesOwner</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td><td>profile result</td></tr>
+ </tbody></table></div>
+ <p>Do not confuse distinct source values with affected records. One unresolved code can affect thousands of customers; fifty unresolved codes may affect only fifty.</p>
+ <div class="principle"><strong>Prioritisation</strong><br>Coverage work should consider both the number of unresolved codes and the business population affected by them.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_CrossReference-Coverage.xlsx</strong><p class="small">The coverage dashboard shape above, ready to fill in with real profile results.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_CrossReference-Coverage.xlsx" download>Download</a></div>`
+},
+{
+ id:"b13",nav:"The Bramwell queue",title:"Bramwell reference queue \u2014 What can you actually resolve?",type:"selectAll",
+ html:`<div class="callout misconception"><div class="callout-label">A mismatch that is not yours to turn into a lookup</div><p>Supplier S20418, Nordvik Components AS, is STRATEGIC in the legacy ERP and STANDARD in SupplierClass.accdb. That is evidence of conflicting business classification, not permission to create a technical cross-reference. Procurement owns supplier-classification meaning. Finance owns finance/payment meaning. The migration team should expose the conflict and implement the approved treatment, not decide which source wins.</p></div>
+ <p class="lead">Explore each item in the queue below. This exercise deliberately contains fewer "answers" than rows \u2014 a strong consultant leaves unresolved items unresolved when the evidence does not support a mapping.</p>`,
+ options: bramwellQueueItems.map(i => i.title),
+ coaching: bramwellQueueItems.map(i => `<strong>${i.short}</strong><br>${i.detail}`),
+ hint:"Explore every item before continuing.",
+ closingHtml:`<div class="principle"><strong>The point of this exercise</strong><br>Four items are genuinely approved. Six are not \u2014 and leaving those six visibly unresolved is the correct, credit-worthy answer, not a sign of an incomplete reference.</div>`
+},
+{
+ id:"b14",nav:"Identity is different",title:"Identity cross-references are different",type:"content",
+ html:`<p class="lead">Some references translate codes. Others connect identities: source customer to target customer, legacy sales rep to target user, source supplier to target supplier. Identity matching can require stronger evidence than code mapping.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Identity method</th><th>Risk</th></tr></thead><tbody>
+ <tr><td>Stable shared identifier</td><td>Strong when genuinely shared and unique</td></tr>
+ <tr><td>Approved legacy-to-target ID table</td><td>Strong if generated/controlled during migration</td></tr>
+ <tr><td>Name-only match</td><td>High risk; names change and duplicate</td></tr>
+ <tr><td>Email match</td><td>Useful in some domains, but not always unique/stable</td></tr>
+ <tr><td>Composite attributes</td><td>Can be strong if designed and tested</td></tr>
+ <tr><td>Fuzzy match</td><td>Investigation aid, not automatic approval without governance</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not turn fuzzy similarity into identity truth</div><p>A 96% name similarity can suggest a candidate. It does not prove that two records represent the same business entity.</p></div>`
+},
+{
+ id:"b15",nav:"SME workbook design",title:"Cross-reference workbook design for SMEs",type:"content",
+ html:`<p class="lead">Business users may prefer Excel for reviewing unresolved mappings. That is fine if the workbook is treated as a controlled decision interface rather than the production truth.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Column</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>ReferenceSet</td><td>Country / Terms / Group / etc.</td></tr>
+ <tr><td>Context</td><td>Legal entity/source system where needed</td></tr>
+ <tr><td>SourceValue</td><td>Exact observed source value</td></tr>
+ <tr><td>SourceDescription</td><td>Human-readable source meaning if available</td></tr>
+ <tr><td>AffectedRecords</td><td>Impact</td></tr>
+ <tr><td>SuggestedTarget</td><td>Optional consultant suggestion, clearly not approval</td></tr>
+ <tr><td>TargetDescription</td><td>Helps business judge meaning</td></tr>
+ <tr><td>Decision</td><td>Approved / Reject / Remain unresolved</td></tr>
+ <tr><td>ApprovedTarget</td><td>Only populated for approved mapping</td></tr>
+ <tr><td>DecisionOwner</td><td>Authority</td></tr>
+ <tr><td>DecisionDate</td><td>Traceability</td></tr>
+ <tr><td>DecisionReference</td><td>Meeting/ticket/sign-off evidence</td></tr>
+ <tr><td>Comments</td><td>Reason/context</td></tr>
+ </tbody></table></div>
+ <p>After approval, ingest the decisions into the controlled reference store and validate them. Do not point production ETL directly at an SME workbook sitting in somebody's Downloads folder.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_SME-Reference-Decision-Workbook.xlsx</strong><p class="small">The thirteen-column decision-interface shape above, ready to populate for any unresolved reference set.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_SME-Reference-Decision-Workbook.xlsx" download>Download</a></div>`
+},
+{
+ id:"b16",nav:"The poisoned workbook",title:"The poisoned workbook challenge",type:"selectAll",
+ html:`<p class="lead">You're given a synthetic cross-reference workbook containing twelve defects, before it's released. Explore each one below \u2014 all twelve are genuinely present.</p>`,
+ options: poisonedWorkbookDefects,
+ coaching: poisonedWorkbookCoaching,
+ hint:"Explore every defect before continuing.",
+ closingHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Poisoned-Workbook-Exercise.xlsx</strong><p class="small">The synthetic twelve-defect workbook itself, for hands-on practice finding each one.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Poisoned-Workbook-Exercise.xlsx" download>Download</a></div>`
+},
+{
+ id:"b17",nav:"The release note",title:"Write the release note",type:"reflection",
+ html:`<p class="lead">Having found the twelve defects, produce the required output for releasing a corrected reference version.</p>
+ <ol class="framework-checks">
+   <li>State the intended mapping grain.</li>
+   <li>List every integrity defect found.</li>
+   <li>Separate reference-table defects from unresolved source coverage.</li>
+   <li>Produce a query/check for duplicate approved mappings.</li>
+   <li>Produce a query/check for target-domain validity.</li>
+   <li>Produce a query/check for source coverage.</li>
+   <li>Identify which defects block release of the reference set.</li>
+   <li>Create a corrected reference version without deleting the original evidence.</li>
+   <li>Write a release note describing what changed.</li>
+   <li>Prove that the corrected lookup does not change source row count at the intended grain.</li>
+ </ol>
+ <p class="lead">Write your release note below.</p>
+ <textarea id="reflection" placeholder="This reference release corrects..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Reference-Release-Note-Template.docx</strong><p class="small">Grain, defects found, defects blocking release and what changed, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Reference-Release-Note-Template.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/grain/i, strength:"You stated the intended mapping grain.", gap:"State explicitly what the intended mapping grain is for this reference set." },
+   { test:/block|release/i, strength:"You identified which defects block release.", gap:"State which of the twelve defects actually block release, versus which are lower-severity." },
+   { test:/original evidence|without delet|preserve/i, strength:"You addressed preserving the original evidence when creating the corrected version.", gap:"State how the corrected reference version is created without deleting the original, defective one." },
+   { test:/row count|grain.*(same|unchanged)|does not change/i, strength:"You addressed proving the corrected lookup doesn't change source row count at the intended grain.", gap:"State how you'd prove the corrected lookup produces the same source row count as before, at the intended grain." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Intended grain: LegalEntity + SourceValue. Defects found span both reference-table integrity (duplicate approved mapping, draft row marked Approved, overlapping effective dates, silently edited Cycle 1 mapping, missing decision evidence, invalid target value, expired row still active) and source coverage (one omitted unmatched code). Of these, the duplicate approved mapping, the mis-marked draft row, the overlapping effective dates and the invalid target value block release outright; the rest are logged for correction but don't block. The corrected version is released as a new ReferenceVersion; the original rows remain in the table, superseded rather than deleted. Row-count proof: rerunning the lookup against the same staged population before and after the correction returns an identical row count at the LegalEntity + SourceValue grain, confirming the fix resolved ambiguity without silently duplicating or dropping any source row.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuine release note: grain stated, defects separated by severity and type, evidence preserved, and the row-count proof that closes the loop.":"You have the right structure. Make sure you're separating which defects actually block release from which are lower-severity, and that you can prove the row count didn't move."}</div>`
+},
+{
+ id:"b18",nav:"SQL toolkit",title:"SQL controls worth keeping in your toolkit",type:"content",
+ html:`<h3>Duplicate approved mappings</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT ReferenceSet, LegalEntity, SourceValue, COUNT(*) AS Cnt
+FROM ref.MigrationCrossReference
+WHERE ApprovalStatus = 'Approved'
+  AND ReferenceVersion = @ReferenceVersion
+GROUP BY ReferenceSet, LegalEntity, SourceValue
+HAVING COUNT(*) > 1;</code></pre></div>
+ <h3>Unresolved source values</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  s.SourceValue, COUNT(*) AS AffectedRecords
+FROM stage.SourcePopulation s
+LEFT JOIN ref.MigrationCrossReference x
+  ON x.ReferenceSet = @ReferenceSet
+  AND x.SourceValue = s.SourceValue
+  AND x.ApprovalStatus = 'Approved'
+  AND x.ReferenceVersion = @ReferenceVersion
+WHERE x.SourceValue IS NULL
+GROUP BY s.SourceValue
+ORDER BY AffectedRecords DESC;</code></pre></div>
+ <h3>Target-domain validation</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT x.SourceValue, x.TargetValue
+FROM ref.MigrationCrossReference x
+LEFT JOIN target_ref.ValidTargetValue t
+  ON t.TargetValue = x.TargetValue
+WHERE x.ReferenceSet = @ReferenceSet
+  AND x.ApprovalStatus = 'Approved'
+  AND x.ReferenceVersion = @ReferenceVersion
+  AND t.TargetValue IS NULL;</code></pre></div>
+ <div class="principle"><strong>Toolkit mindset</strong><br>These are patterns, not sacred schemas. Adapt them to the project, but keep the questions: uniqueness, coverage, target validity, context and version.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Reference-Integrity-Checks.sql</strong><p class="small">The three checks above, ready to adapt to any reference set.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Reference-Integrity-Checks.sql" download>Download</a></div>`
+},
+{
+ id:"b19",nav:"When to stop the run",title:"Consultant judgement \u2014 When should a missing mapping stop the run?",type:"situations",
+ html:`<p class="lead">Not every unresolved lookup has the same operational consequence. Six conditions, six different treatments.</p>`,
+ items: stopTheRunSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Lookup That Multiplied Customers", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/LookupThatMultipliedCustomers-Farah.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>
+ <div class="callout misconception"><div class="callout-label">Important distinction</div><p>\u2018No match because the source value is unresolved\u2019 and \u2018no match because the reference service failed to load\u2019 are not the same incident.</p></div>`
+},
+{
+ id:"b20",nav:"Reflection",title:"Reflection \u2014 The most dangerous lookup",type:"reflection",
+ html:`<p class="lead">Which is more dangerous: a lookup that returns NULL for an unresolved value, or a lookup that always returns something? Explain the conditions under which your answer could change.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers recognise that visible failure is often safer than plausible wrong data, while also considering mandatory relationships, controlled defaults and the quality of the reference itself.</p></div></div>
+ <textarea id="reflection" placeholder="I think the more dangerous lookup is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/plausible|wrong data|hide|invisible/i, strength:"You addressed why a lookup that always returns something can be more dangerous than one that returns NULL.", gap:"State why a lookup that always returns a plausible-looking value can hide a problem more effectively than one that visibly fails." },
+   { test:/mandatory|critical|relationship/i, strength:"You considered mandatory or critical relationships as a condition that could change your answer.", gap:"Name a condition, like a mandatory relationship, where a NULL result might actually be the more dangerous choice." },
+   { test:/default|approved|control/i, strength:"You addressed the role of controlled defaults in your reasoning.", gap:"State how a properly approved, controlled default changes this trade-off compared to an invented one." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">In general, a lookup that always returns something is more dangerous, because plausible-looking wrong data is much harder to catch than a visible failure \u2014 nobody investigates a field that already has a value in it. But that flips for a genuinely mandatory relationship with no approved controlled-default design: there, a NULL that blocks the record might cause more operational disruption than a well-understood, approved default would. The deciding factor isn't NULL versus a value \u2014 it's whether whatever the lookup returns is actually traceable back to an approved decision.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This captures the real nuance: it's not NULL versus a value that matters, it's whether the result is traceable to an approved decision.":"You have good instincts. Make sure you're naming the specific condition that would flip your answer, not just picking one side as always safer."}</div>`
+},
+{
+ id:"b21",nav:"Summary",title:"Summary \u2014 A lookup is a controlled decision engine",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Define the mapping grain before building the lookup.</li>
+   <li>Store context when the same source code can mean different things.</li>
+   <li>Separate draft, approved, superseded and unresolved reference states.</li>
+   <li>Tie migration runs to a controlled reference version.</li>
+   <li>Design explicitly for zero, one and multiple approved matches.</li>
+   <li>Preserve source values and use normalised match keys carefully.</li>
+   <li>Profile reference integrity as well as source coverage.</li>
+   <li>Do not use defaults to manufacture 100% coverage.</li>
+   <li>Validate approved targets against the target domain.</li>
+   <li>Use effective dates only when business meaning genuinely changes over time.</li>
+   <li>Treat reference changes as controlled migration changes and rerun from the correct boundary.</li>
+   <li>Report distinct unresolved codes and affected-record impact separately.</li>
+   <li>Use SME workbooks as decision interfaces, then ingest approved decisions into controlled reference data.</li>
+   <li>Treat identity matching more cautiously than simple code translation.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>The purpose of a cross-reference is not to make every source value match. It is to make every approved mapping explicit, deterministic and traceable, while making every unresolved or ambiguous value impossible to hide.</div>`
+},
+{
+ id:"b22",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Reference data, lookups and cross-references.</strong></p>
+ <p>You can now design and operate controlled migration cross-references: define the mapping grain, build versioned reference structures, detect missing and ambiguous matches, preserve unresolved values, apply legal-entity and effective-date context, prove coverage before loading, and manage reference changes without turning lookup tables into uncontrolled spreadsheets.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Turning analysis into migration-ready outputs</strong></p>
+ <p>You will combine profiling, cleansing and controlled references into outputs that can enter the migration build with clear readiness status, exception populations and reconciliation evidence.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time somebody hands you a spreadsheet that says 100% matched.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 4: Reference data, lookups and cross-references",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Turning source codes and identifiers into explicit, versioned migration decisions",
+  storageKey: "tp_dmc2_lesson4_v1",
+  lessonId: "dmc2-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

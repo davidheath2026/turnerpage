@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Turning analysis into migration-ready outputs</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 5 — "Turning analysis into migration-ready
+   outputs". Built as a release gate and evidence review, per the
+   manuscript's own authoring notes — not another profiling or
+   cleansing tutorial.
+
+   Source: DMC2_Lesson5_Turning_Analysis_into_Migration_Ready_Outputs_v3.docx.
+   moduleTitle follows the alignment doc, not the manuscript's own
+   header text, per the standing rule from Lesson 1.
+
+   All Bramwell facts used here (the 760→214 payment-term
+   progression with 23 new; 94→91 blank tax classification; 31→7
+   missing key-account delivery addresses; 108→18 unrecognised
+   CustomerGroup; 27 overlength names; 286 product-site
+   relationships referencing unapproved warehouse/location
+   combinations) are taken directly from the manuscript and story
+   bible. 45E and CustomerGroup 99 stay unresolved throughout.
+
+   Per the manuscript's own note, the later canonical 18,612 /
+   18,573 / 34-approved-pre-load-exceptions / 5-approved-exclusions
+   population belongs to a later case-study point and is
+   deliberately NOT used here — forcing it into this lesson's
+   earlier quality board would misrepresent which cycle it belongs
+   to. The release-simulation panel figures (12,000 / 11,810 / 165 /
+   25) and the independent-lab supplier pack are explicitly
+   synthetic, per the manuscript, and create no new Bramwell canon.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC2 Lessons 1-4.
+============================================================== */
+
+const releaseSimulationSteps = [
+{html:`<h4>Panel A \u2014 Profile summary</h4>
+ <p>All mandatory-field completeness measures are above the project threshold. Several controlled exceptions remain.</p>
+ <p class="small">Would you release now, based on this panel alone? Hold that thought \u2014 there's more evidence to see.</p>`},
+{html:`<h4>Panel B \u2014 Reference coverage</h4>
+ <p>All released values have one approved reference match, but the reference-integrity check shows one source value with two approved target mappings.</p>
+ <p class="small">Does that change your answer? A single ambiguous mapping is a different kind of problem than an unresolved one.</p>`},
+{html:`<h4>Panel C \u2014 Reconciliation</h4>
+ <p>Input = 12,000 records. Ready = 11,810. Exception = 165. Approved exclusions = 25. Arithmetic reconciles to 12,000.</p>
+ <p class="small">This looks reassuring in isolation. Keep it in mind alongside Panel B, not instead of it.</p>`},
+{html:`<h4>Panel D \u2014 Key control</h4>
+ <p>Ready output contains 11,810 rows but only 11,809 distinct business keys.</p>
+ <p class="small">One row too many for the keys available. Where might that connect to what Panel B already told you?</p>`},
+{html:`<h4>Panel E \u2014 Version evidence</h4>
+ <p>The reference workbook was edited after the release output was generated; the run record does not identify which workbook state was used.</p>
+ <p class="small">Now you can't even prove which reference baseline produced this output in the first place.</p>`}
+];
+
+const lostBeforeBuildItems = [
+ "Only the \u2018good file\u2019 is handed over",
+ "Exception reasons exist only in analyst notes",
+ "Cleansed values overwrite source values",
+ "The reference workbook has no release or version",
+ "Quality percentages have no record lists behind them",
+ "Different status grains are added together",
+ "Target constraints are left for first load to discover",
+ "No build/run identifier appears anywhere in the output",
+ "The filename says FINAL"
+];
+const lostBeforeBuildCoaching = [
+ "<strong>Consequence:</strong> missing records become invisible. Nobody handling the \u201cgood file\u201d can see what was left out, or why.",
+ "<strong>Consequence:</strong> the build team cannot explain exclusions. Evidence that only lives in someone's notes isn't evidence the next person can act on.",
+ "<strong>Consequence:</strong> lineage is lost. Once the source value is gone, nobody can prove what the migration actually changed.",
+ "<strong>Consequence:</strong> the output cannot be reproduced. Without a version, a rerun might silently use a different reference baseline.",
+ "<strong>Consequence:</strong> issues cannot be remediated or retested. A percentage with no underlying record list gives nobody anything to act on.",
+ "<strong>Consequence:</strong> reconciliation becomes false. Adding populations at different grains produces a total that looks precise and means nothing.",
+ "<strong>Consequence:</strong> avoidable rejects are discovered late \u2014 at the point they're most expensive to fix.",
+ "<strong>Consequence:</strong> results cannot be tied back to execution evidence. Nobody can prove which run, build or reference version produced this file.",
+ "<strong>Consequence:</strong> a filename creates confidence without control. \u201cFINAL\u201d describes an intention, not a proven, reconciled state."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The data is clean now",title:"\u201cThe data is clean now\u201d",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The customer analysis team has completed another remediation pass. The headline metrics look much better.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Measure</th><th>Earlier</th><th>Later</th></tr></thead><tbody>
+ <tr><td>Active customers missing valid payment terms</td><td>760</td><td>214</td></tr>
+ <tr><td>Blank tax classification</td><td>94</td><td>91</td></tr>
+ <tr><td>Key accounts missing delivery addresses</td><td>31</td><td>7</td></tr>
+ <tr><td>Unrecognised CustomerGroup</td><td>108</td><td>18</td></tr>
+ </tbody></table></div>
+ <p>A colleague says: \u201cGreat. We can send the customer file to the ETL team.\u201d</p>
+ <h3>What is missing from that conclusion?</h3>`,
+ options:[
+   {label:"Nothing. Quality improved, so the data is migration-ready.", correct:false, feedback:"Improvement is not the same as readiness. Every one of those \u201clater\u201d figures is still a real, unresolved population."},
+   {label:"A final Excel cleanup to remove the remaining bad rows.", correct:false, feedback:"Removing rows manually hides exactly the population that needs to stay visible as a controlled exception, not disappear."},
+   {label:"A controlled release view that proves population, applies only approved treatments, identifies every unresolved/excluded record, validates target-facing constraints and reconciles the output to the input.", correct:true, feedback:"Correct. Migration-ready does not mean perfect source data. It means the population has been processed through approved rules and every record is accounted for in a controlled outcome."},
+   {label:"A sign-off saying the source data is 100% correct.", correct:false, feedback:"Nobody could honestly sign that off given the figures above, and it isn't what readiness actually requires."}
+ ]
+},
+{
+ id:"b2",nav:"Ready at record level",title:"Define \u2018migration-ready\u2019 at record level",type:"content",
+ html:`<p class="lead">Avoid a vague dataset-level label such as Ready/Not Ready until you can explain what happened to each record.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Record status</th><th>Meaning</th></tr></thead><tbody>
+ <tr><td>READY</td><td>Passes the agreed release rules and can proceed to migration build/load preparation</td></tr>
+ <tr><td>EXCEPTION</td><td>In scope, but one or more unresolved conditions prevent release</td></tr>
+ <tr><td>APPROVED_EXCLUSION</td><td>Explicitly outside the released population under an approved scope/exclusion decision</td></tr>
+ <tr><td>BLOCKED</td><td>Cannot be assessed/released because a prerequisite or control has failed</td></tr>
+ <tr><td>PENDING_DECISION</td><td>Optional separate status where the project wants to distinguish unresolved business decisions from other exceptions</td></tr>
+ </tbody></table></div>
+ <p>Projects may use different labels. The important design is that statuses are mutually understandable, traceable and reconcilable.</p>
+ <div class="principle"><strong>A useful equation</strong><br>Input population = Ready + Exception + Approved exclusion + other explicitly controlled status populations at the agreed record grain.</div>`
+},
+{
+ id:"b3",nav:"The release gate",title:"Build the release gate from rules, not optimism",type:"content",
+ html:`<p class="lead">You receive a release-rule sheet. Some checks block a record, some flag a warning, and some are dataset-level controls.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Level</th><th>Example outcome</th></tr></thead><tbody>
+ <tr><td>Business key present/unique</td><td>Record / population</td><td>Block duplicate or missing key according to approved design</td></tr>
+ <tr><td>Mandatory target field resolved</td><td>Record</td><td>Exception if unresolved</td></tr>
+ <tr><td>Approved reference coverage</td><td>Record</td><td>Exception for no match; control failure for ambiguity</td></tr>
+ <tr><td>Target length/type constraint</td><td>Record</td><td>Exception unless approved treatment exists</td></tr>
+ <tr><td>Relationship prerequisite</td><td>Record / entity</td><td>Exception or blocked depending on dependency</td></tr>
+ <tr><td>Population reconciliation</td><td>Dataset</td><td>Release blocked if unexplained gap/duplication</td></tr>
+ <tr><td>Reference integrity</td><td>Dataset</td><td>Release blocked if approved reference is ambiguous</td></tr>
+ <tr><td>Build/reference version recorded</td><td>Dataset</td><td>Release blocked if baseline cannot be identified</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Severity belongs in the rule design</div><p>Do not decide during execution that a failed check is \u2018only a warning\u2019 because the deadline is close.</p></div>`
+},
+{
+ id:"b4",nav:"One controlled release view",title:"Create one controlled release view",type:"content",
+ html:`<p class="lead">A useful pattern is to preserve source and cleansed values, calculate rule outcomes, and derive a release status without deleting the evidence.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: derive release status from evidence</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.RunId, c.CustNo,
+  c.Name_Source, c.Name_Cleansed,
+  c.Terms_Source, c.PaymentTerms_Target,
+  c.Country_Source, c.Country_Target,
+  c.CustomerGroup_Source, c.CustomerGroup_Target,
+  CASE
+    WHEN c.BusinessKeyIssue = 1 THEN 'EXCEPTION'
+    WHEN c.ReferenceAmbiguity = 1 THEN 'BLOCKED'
+    WHEN c.UnresolvedIssueCount > 0 THEN 'EXCEPTION'
+    WHEN c.ApprovedExclusion = 1 THEN 'APPROVED_EXCLUSION'
+    ELSE 'READY'
+  END AS ReleaseStatus
+FROM stage.CustomerAssessed c
+WHERE c.RunId = @RunId;</code></pre></div>
+ <p>The exact fields and precedence are project-specific. The key idea is that the release status is reproducible from controlled evidence.</p>
+ <div class="callout misconception"><div class="callout-label">Do not filter first and explain later</div><p>If you create the \u2018clean file\u2019 by selecting only rows that happen to look valid, you still need an accounted population showing what was left out and why.</p></div>`
+},
+{
+ id:"b5",nav:"Exception grain again",title:"Exception grain matters again",type:"content",
+ html:`<p class="lead">One customer can have several unresolved issues. Therefore:</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Measure</th><th>Example interpretation</th></tr></thead><tbody>
+ <tr><td>Exception events</td><td>How many rule failures were recorded</td></tr>
+ <tr><td>Exception records</td><td>How many distinct customers are affected</td></tr>
+ <tr><td>Ready records</td><td>How many customers can proceed</td></tr>
+ <tr><td>Approved exclusions</td><td>How many customers were intentionally removed from release</td></tr>
+ <tr><td>Blocked records</td><td>How many cannot be assessed because a prerequisite/control failed</td></tr>
+ </tbody></table></div>
+ <p>Never reconcile input records to exception-event rows.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: release status counts</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT ReleaseStatus, COUNT(*) AS CustomerRecords
+FROM stage.CustomerRelease
+WHERE RunId = @RunId
+GROUP BY ReleaseStatus;</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: events vs distinct customers</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  COUNT(*) AS ExceptionEvents,
+  COUNT(DISTINCT CustNo) AS ExceptionCustomers
+FROM err.CustomerException
+WHERE RunId = @RunId;</code></pre></div>`
+},
+{
+ id:"b6",nav:"The readiness board",title:"The Bramwell readiness board",type:"content",
+ html:`<p class="lead">Use established Bramwell facts without pretending that unresolved populations are already solved.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Finding</th><th>Release implication</th></tr></thead><tbody>
+ <tr><td>214 active customers remain without valid payment terms</td><td>Affected records cannot receive an invented target term; unresolved treatment remains visible</td></tr>
+ <tr><td>23 of those payment-term exceptions are new</td><td>Separate regression/new issues from carried backlog</td></tr>
+ <tr><td>91 blank tax classifications remain</td><td>Apply the approved target/readiness rule; do not infer treatment here</td></tr>
+ <tr><td>7 key accounts still missing delivery addresses at that point in the case</td><td>Relationship readiness remains an issue until corrected/retested</td></tr>
+ <tr><td>18 unrecognised CustomerGroup records remain</td><td>Known unresolved group population; do not invent mapping</td></tr>
+ <tr><td>27 customer names exceed target 60 characters</td><td>Constraint remains unresolved unless approved treatment exists</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Important</div><p>These issue populations can overlap. Do not add them together and call the total \u2018bad customers.\u2019 Build distinct record-level status from the actual evidence.</p></div>`
+},
+{
+ id:"b7",nav:"Wrong population",title:"Release gate incident \u2014 100% valid columns, wrong population",type:"content",
+ html:`<p class="lead">A release file passes every field-level rule. Row count also looks plausible. You compare the business keys to the controlled input and find that 42 customers are absent while 42 different customers appear twice. The total count is unchanged.</p>
+ <div class="callout misconception"><div class="callout-label">Decision</div><p>Block release. Field validity and total row count cannot compensate for population identity failure.</p></div>
+ <h3>Key-level reconciliation</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: input keys missing from release</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo
+FROM stage.CustomerInput
+WHERE RunId = @RunId
+EXCEPT
+SELECT CustNo
+FROM stage.CustomerRelease
+WHERE RunId = @RunId;</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: unexpected release keys</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo
+FROM stage.CustomerRelease
+WHERE RunId = @RunId
+EXCEPT
+SELECT CustNo
+FROM stage.CustomerInput
+WHERE RunId = @RunId;</code></pre></div>
+ <h3>Duplicate control</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: duplicate release keys</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustNo, COUNT(*) AS Rows
+FROM stage.CustomerRelease
+WHERE RunId = @RunId
+GROUP BY CustNo
+HAVING COUNT(*) > 1;</code></pre></div>
+ <div class="principle"><strong>Reconciliation principle</strong><br>Counts tell you how much. Keys tell you who. Migration release needs both.</div>`
+},
+{
+ id:"b8",nav:"Target-facing validation",title:"Target-facing validation before handover",type:"content",
+ html:`<p class="lead">The analysis layer should validate what it can against known target requirements before handing data to the build/load process.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Check</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Mandatory fields</td><td>Will the target require a value?</td></tr>
+ <tr><td>Lengths</td><td>Will values fit without unapproved truncation?</td></tr>
+ <tr><td>Types/formats</td><td>Can the target-facing representation be produced safely?</td></tr>
+ <tr><td>Reference values</td><td>Does the target value exist and is it approved?</td></tr>
+ <tr><td>Key uniqueness</td><td>Does output satisfy target/business grain?</td></tr>
+ <tr><td>Relationships</td><td>Are required parents/children represented?</td></tr>
+ <tr><td>Legal-entity context</td><td>Will the record enter the correct target context?</td></tr>
+ <tr><td>Derived values</td><td>Can the output be traced to an approved rule?</td></tr>
+ </tbody></table></div>
+ <p>This does not replace target-system load validation. It prevents avoidable failures from being discovered only after the file reaches the load tool.</p>`
+},
+{
+ id:"b9",nav:"Field-level lineage",title:"Create a field-level lineage view",type:"content",
+ html:`<p class="lead">A migration-ready output should be explainable. For important fields, you should be able to answer: where did this value come from?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Target field</th><th>Source/evidence</th><th>Treatment</th><th>Traceability</th></tr></thead><tbody>
+ <tr><td>CustomerNumber</td><td>CustNo</td><td>Direct</td><td>Mapping ID</td></tr>
+ <tr><td>CustomerName</td><td>Name</td><td>Direct or approved treatment</td><td>Mapping/rule ID</td></tr>
+ <tr><td>CountryCode</td><td>Country</td><td>Approved cross-reference</td><td>CUS-006 + reference version</td></tr>
+ <tr><td>PaymentTerms</td><td>Terms</td><td>Approved cross-reference</td><td>Mapping ID + reference version</td></tr>
+ <tr><td>CustomerStatus</td><td>Status</td><td>Approved conditional rule</td><td>Mapping/rule ID</td></tr>
+ <tr><td>CustomerGroup</td><td>Source attributes</td><td>Approved reference/derivation</td><td>Rule/reference version</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Lineage does not require a giant data catalogue</strong><br>For migration, practical lineage means another consultant can trace an important target value back to source evidence, the rule/reference that changed it, and the run that produced it.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Field-Lineage-Template.xlsx</strong><p class="small">The six-field lineage shape above, ready to extend for any release.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Field-Lineage-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Ready and exception outputs",title:"Produce separate ready and exception outputs",type:"content",
+ html:`<p class="lead">Do not make business reviewers search the load-ready file to discover what is missing.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: ready population</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT *
+FROM stage.CustomerRelease
+WHERE RunId = @RunId
+  AND ReleaseStatus = 'READY';</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: exception population</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  r.CustNo, e.ExceptionCode, e.SourceField, e.SourceValue, e.MappingId
+FROM stage.CustomerRelease r
+JOIN err.CustomerException e
+  ON e.RunId = r.RunId
+  AND e.CustNo = r.CustNo
+WHERE r.RunId = @RunId
+  AND r.ReleaseStatus = 'EXCEPTION';</code></pre></div>
+ <p>The exception output is a work queue and an audit trail. It should contain enough context for the next action without becoming a copy of every source column.</p>`
+},
+{
+ id:"b11",nav:"Release control totals",title:"Release control totals",type:"content",
+ html:`<p class="lead">A compact release-control record might contain:</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Value</th></tr></thead><tbody>
+ <tr><td>RunId</td><td>controlled execution ID</td></tr>
+ <tr><td>Input records</td><td>count</td></tr>
+ <tr><td>Ready records</td><td>count</td></tr>
+ <tr><td>Exception records</td><td>distinct record count</td></tr>
+ <tr><td>Approved exclusions</td><td>count</td></tr>
+ <tr><td>Blocked records</td><td>count</td></tr>
+ <tr><td>Unaccounted records</td><td>must be zero</td></tr>
+ <tr><td>Duplicate release keys</td><td>must meet approved expectation, usually zero at customer grain</td></tr>
+ <tr><td>Reference version</td><td>controlled baseline</td></tr>
+ <tr><td>Rule/build version</td><td>controlled baseline</td></tr>
+ <tr><td>Release status</td><td>Ready / Not ready / Ready with controlled exceptions according to project design</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The reconciliation equation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Unaccounted =
+    InputRecords
+  - ReadyRecords
+  - ExceptionRecords
+  - ApprovedExclusions
+  - BlockedRecords</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">This arithmetic has a precondition</div><p>It is only valid if the status populations are mutually exclusive at the same record grain. If records can hold multiple statuses, redesign the reconciliation view before using the equation.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Release-Control-Sheet-Template.xlsx</strong><p class="small">The eleven-control structure above, ready to fill in for any release.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Release-Control-Sheet-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"Ready with exceptions",title:"What does \u2018ready with exceptions\u2019 mean?",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Relationship readiness can qualify a technically valid release</div><p>Bramwell has 286 product-site relationships that reference warehouse/location combinations outside the approved target reference set. A product record can pass its own field checks and still be operationally unusable through an unresolved relationship. Migration-ready therefore includes the dependencies required for the target process, not only the validity of the row being handed over.</p></div>
+ <p class="lead">Projects sometimes allow an entity to proceed while a controlled subset remains outside the load. That can be legitimate, but the phrase must not become a loophole.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Required evidence</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Exact excluded/exception population</td><td>Know what will not migrate in this release</td></tr>
+ <tr><td>Reason per record</td><td>No silent loss</td></tr>
+ <tr><td>Business/project acceptance where required</td><td>Risk is consciously accepted</td></tr>
+ <tr><td>Dependency impact assessed</td><td>Excluded parent may break children/transactions</td></tr>
+ <tr><td>Reconciliation adjusted explicitly</td><td>Counts still account</td></tr>
+ <tr><td>Recovery/future treatment defined</td><td>Exception does not vanish after the cycle</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>DMC boundary</strong><br>The consultant provides the evidence and implements the controlled release behaviour. Wider acceptance of material business exceptions belongs to the authorised project decision-makers.</div>`
+},
+{
+ id:"b13",nav:"Handover is part of the output",title:"Handover is part of the output",type:"content",
+ html:`<p class="lead">A migration-ready file without context is not a migration-ready handover.</p>
+ <h3>The five-minute handover</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Handover item</th><th>What the receiver needs</th></tr></thead><tbody>
+ <tr><td>What is this?</td><td>Entity, cycle, scope and grain</td></tr>
+ <tr><td>Which population?</td><td>Input, ready, exception, exclusion counts</td></tr>
+ <tr><td>Which baseline?</td><td>Input identity, build/rule/reference versions</td></tr>
+ <tr><td>What remains unresolved?</td><td>Exception populations and decisions outstanding</td></tr>
+ <tr><td>What should happen next?</td><td>Load/build action, validation expectation, escalation if controls fail</td></tr>
+ <tr><td>Where is the evidence?</td><td>Control totals, exception output, lineage/rule pack</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Weak handover</div><p>\u201cCustomer_Final_v7.xlsx is ready. Please load.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger handover</div><p>\u201cCustomer Cycle 2 release was produced from the controlled Cycle 2 input under the recorded rule/reference baseline. The attached control sheet reconciles the input to Ready, Exception and Approved Exclusion populations at customer-key grain. Unresolved records are in the exception file with rule IDs; no unresolved value has been defaulted. Load only the Ready output and return target rejects against RunId and CustomerNumber.\u201d</p></div></div>`
+},
+{
+ id:"b14",nav:"The release simulation",title:"The release simulation",type:"guidedSteps",
+ html:`<p class="lead">Five evidence panels from a synthetic customer release, revealed one at a time. You'll decide whether the release can proceed \u2014 and you're free to revise that judgement as each new panel arrives.</p>`,
+ steps: releaseSimulationSteps,
+ firstLabel:"Reveal Panel A",
+ closingHtml:`<div class="callout misconception"><div class="callout-label">Final decision</div><p>Not ready. Several individually reassuring metrics cannot overcome ambiguous reference integrity, duplicate-key evidence and an unprovable reference baseline.</p></div>
+ <div class="principle"><strong>Why this matters</strong><br>Panel C's clean reconciliation and Panel A's strong completeness both looked like good news in isolation. Neither one, on its own, told you about the ambiguous reference mapping, the duplicate key or the unprovable baseline \u2014 and any one of those three is enough to block release by itself.</div>`
+},
+{
+ id:"b15",nav:"Repair the release",title:"Repair the release, not the symptoms",type:"content",
+ html:`<p class="lead">For the simulation above, a strong recovery plan is:</p>
+ <ol class="framework-checks">
+   <li>Stop distribution of the current output.</li>
+   <li>Resolve the duplicate approved reference mapping and create a controlled reference version.</li>
+   <li>Investigate the duplicate ready business key and determine whether the release grain or transformation is wrong.</li>
+   <li>Identify the last valid upstream state produced under a known rule/reference baseline.</li>
+   <li>Rerun the affected assessment/transformation from the correct boundary.</li>
+   <li>Regenerate ready and exception outputs.</li>
+   <li>Repeat population, key, reference-integrity and target-facing controls.</li>
+   <li>Record the exact build/reference/input identities in the release record.</li>
+   <li>Issue a new handover and mark the earlier output superseded.</li>
+ </ol>
+ <div class="principle"><strong>Notice what this plan does not do</strong><br>It doesn't delete the duplicate row and republish. It doesn't quietly pick one of the two approved mappings. It goes back to the actual cause \u2014 the reference ambiguity \u2014 and reruns from there.</div>`
+},
+{
+ id:"b16",nav:"Independent lab",title:"Independent lab \u2014 Build a Migration-Ready Data Pack",type:"reflection",
+ html:`<p class="lead">You receive a synthetic supplier dataset that has already been profiled and partially cleansed. The source pack includes approved rules, unresolved decisions, a cross-reference set and a deliberately incomplete release workbook. This is training data and does not create Bramwell supplier canon.</p>
+ <h3>Required work</h3>
+ <ol class="framework-checks">
+   <li>Define the supplier release grain and record statuses.</li>
+   <li>Translate the supplied readiness rules into record-level tests.</li>
+   <li>Build a release view preserving source, cleansed and target-facing values where relevant.</li>
+   <li>Route each record to Ready, Exception, Approved Exclusion or Blocked.</li>
+   <li>Produce an exception-event output and a distinct exception-record summary.</li>
+   <li>Validate reference coverage and reference uniqueness.</li>
+   <li>Validate at least two target-facing constraints.</li>
+   <li>Reconcile the input population to mutually exclusive release statuses.</li>
+   <li>Test ready-output key uniqueness.</li>
+   <li>Create a field-lineage sheet for the six most important target fields.</li>
+   <li>Produce a Release Control Sheet with input/build/reference identities.</li>
+   <li>Write a concise handover to the migration-build consultant.</li>
+ </ol>
+ <h3>Required artefacts</h3>
+ <ul class="framework-checks">
+   <li><strong>Migration_Ready_Output</strong> \u2014 only records that pass the controlled release gate.</li>
+   <li><strong>Exception_Output</strong> \u2014 unresolved record/rule evidence.</li>
+   <li><strong>Release_Status_Register</strong> \u2014 one record-level status per source business key.</li>
+   <li><strong>Release_Control_Sheet</strong> \u2014 population and baseline reconciliation.</li>
+   <li><strong>Field_Lineage</strong> \u2014 important target fields to source/rule/reference.</li>
+   <li><strong>Release_Test_Evidence</strong> \u2014 key, reference, constraint and reconciliation checks.</li>
+   <li><strong>Handover_Note</strong> \u2014 what to load, what not to load, what remains unresolved.</li>
+ </ul>
+ <p class="lead">Write your handover note to the migration-build consultant below.</p>
+ <textarea id="reflection" placeholder="The supplier release is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Release-Status-Register-Template.xlsx</strong><p class="small">One record-level status per source business key, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Release-Status-Register-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Release-Test-Evidence-Template.xlsx</strong><p class="small">Key, reference, constraint and reconciliation checks, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Release-Test-Evidence-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Handover-Note-Template.docx</strong><p class="small">What to load, what not to load and what remains unresolved, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Handover-Note-Template.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/ready|exception|approved.exclusion|blocked/i, strength:"You used explicit record-level statuses rather than a single ready/not-ready label.", gap:"Name the record-level statuses your release uses, not just an overall ready/not-ready verdict." },
+   { test:/key.*(unique|grain)|business key/i, strength:"You addressed testing ready-output key uniqueness.", gap:"State how you tested that the ready output is unique at the supplier business-key grain." },
+   { test:/reference.*(coverage|unique|ambigu)/i, strength:"You addressed reference coverage and uniqueness.", gap:"State how you validated reference coverage and checked for ambiguous mappings." },
+   { test:/reconcil|accounted|mutually exclusive/i, strength:"You addressed reconciling the input population to mutually exclusive statuses.", gap:"State how the input population reconciles to your release statuses, and confirm nothing is unaccounted for." },
+   { test:/load|not load|unresolved/i, strength:"You wrote this as an actual handover: what to load, what not to load, what remains unresolved.", gap:"Say explicitly what the migration-build consultant should load, what they shouldn't, and what's still unresolved." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The supplier release is ready for migration build for the controlled Ready population. All input business keys are accounted for across mutually exclusive release statuses, the Ready output is unique at supplier grain, all released reference values have exactly one approved match, and target-facing mandatory/length checks pass. The exception population remains outside the release and is supplied separately with rule IDs and owners. The Release Control Sheet records the input, rule and reference baselines used. Load only the Ready output; do not load the exception file; return target rejects against RunId and SupplierNumber.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the model release decision: specific, evidence-backed, and explicit about what to load and what not to.":"You have the right structure. Make sure your handover is specific enough that the build consultant could act on it without asking you anything further."}</div>`
+},
+{
+ id:"b17",nav:"The model decision",title:"Model release decision",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cThe data quality score is 98.7%, so the supplier file is ready.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201cThe supplier release is ready for migration build for the controlled Ready population. All input business keys are accounted for across mutually exclusive release statuses, the Ready output is unique at supplier grain, all released reference values have exactly one approved match, and target-facing mandatory/length checks pass. The exception population remains outside the release and is supplied separately with rule IDs and owners. The Release Control Sheet records the input, rule and reference baselines used.\u201d</p></div></div>
+ <p class="small">The difference isn't length or formality. It's that the strong version is a claim backed by specific, checkable evidence \u2014 the poor version is a single number standing in for all of it.</p>`
+},
+{
+ id:"b18",nav:"Lost before build",title:"Common ways analysis gets lost before build",type:"selectAll",
+ html:`<p class="lead">Explore each failure below \u2014 all nine are genuine, common ways a perfectly good analysis quietly stops being trustworthy on its way to the build team.</p>`,
+ options: lostBeforeBuildItems,
+ coaching: lostBeforeBuildCoaching,
+ hint:"Explore every failure before continuing.",
+ closingHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Ready File I Wouldn't Hand Over", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/ReadyFileIWouldntHandOver-Owen.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b19",nav:"Reflection",title:"Reflection \u2014 What would make you refuse the handover?",type:"reflection",
+ html:`<p class="lead">Imagine you are the consultant receiving a supposedly migration-ready customer file from another analyst. List the five missing pieces of evidence that would most quickly make you refuse to load it.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers usually include population reconciliation, business-key grain/uniqueness, unresolved-record evidence, rule/reference baseline, source/output lineage and target-facing controls.</p></div></div>
+ <textarea id="reflection" placeholder="The five things that would make me refuse to load this file are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/reconcil|accounted/i, strength:"You named population reconciliation as a missing piece.", gap:"Name reconciliation evidence: proof that every input record has an accounted-for outcome." },
+   { test:/key.*(unique|grain)|business key/i, strength:"You named business-key grain or uniqueness as a missing piece.", gap:"Name business-key uniqueness at the correct grain as something you'd need to see." },
+   { test:/exception|unresolved/i, strength:"You named unresolved-record evidence as a missing piece.", gap:"Name the exception or unresolved-record evidence you'd need to see, not just the ready file." },
+   { test:/reference|build|version|baseline/i, strength:"You named the rule/reference baseline as a missing piece.", gap:"Name the rule or reference baseline evidence you'd want to see before trusting the file." },
+   { test:/lineage|source|trace/i, strength:"You named source/output lineage as a missing piece.", gap:"Name lineage: the ability to trace an important output value back to its source and rule." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Five things that would make me refuse: no reconciliation showing every input key has an accounted-for outcome; no proof the ready output is unique at the intended business-key grain; no separate exception file with rule IDs, only a vague "some records were removed"; no record of which rule/reference version produced the output; and no way to trace an important field, like CountryCode, back to its source value and the rule that changed it. Any one of these missing is a reason to pause, not just proceed cautiously.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the discipline Owen's story demonstrates: refusing a handover isn't obstructive, it's the job.":"You have good instincts. Make sure each of your five is something you'd genuinely refuse over, not just something you'd want clarified."}</div>`
+},
+{
+ id:"b20",nav:"Summary",title:"Summary \u2014 Make readiness provable",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Define migration readiness at record level before applying a dataset-level label.</li>
+   <li>Use explicit, mutually understandable release statuses.</li>
+   <li>Build release gates from approved rules and prerequisites.</li>
+   <li>Preserve source, cleansed and target-facing evidence.</li>
+   <li>Keep exception-event counts separate from distinct affected-record counts.</li>
+   <li>Do not add overlapping issue populations and call the total bad records.</li>
+   <li>Reconcile counts and business keys.</li>
+   <li>Validate known target-facing constraints before handover.</li>
+   <li>Trace important target values to source, rule and reference evidence.</li>
+   <li>Produce separate ready and exception outputs.</li>
+   <li>Record input, rule/build and reference baselines.</li>
+   <li>Treat \u2018ready with exceptions\u2019 as a controlled decision, not a euphemism for incomplete analysis.</li>
+   <li>Include a concise operational handover with every released dataset.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>Analysis becomes migration-ready only when every in-scope record has a controlled outcome and the released population can be reproduced, reconciled and explained from evidence.</div>`
+},
+{
+ id:"b21",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Turning analysis into migration-ready outputs.</strong></p>
+ <p>You can now convert profiling findings, approved cleansing rules and controlled cross-references into a migration-ready dataset with explicit record status, exception evidence, rule traceability, population reconciliation and release controls \u2014 and prove exactly which records are ready, excluded, unresolved or blocked.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building your consultant data toolkit</strong></p>
+ <p>You will consolidate the practical SQL, Excel, Power Query, control sheets, rule catalogues and investigation patterns from DMC2 into a reusable toolkit you can take onto a real migration project.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone tells you a data quality score means a file is ready.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 5: Turning analysis into migration-ready outputs",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Proving exactly which records are ready, excluded, unresolved or blocked",
+  storageKey: "tp_dmc2_lesson5_v1",
+  lessonId: "dmc2-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
