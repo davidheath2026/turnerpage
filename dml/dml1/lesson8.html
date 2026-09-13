@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | From workstream to leadership</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* Placeholder flag for "From the Field" audio not yet recorded. */
+.to-record{border:2px dashed #d98c1f;border-radius:12px;padding:4px 4px 14px;margin:18px 0}
+.to-record-flag{background:#fff6e8;color:#8a5a10;font-size:.82rem;font-weight:700;padding:8px 12px;border-radius:8px 8px 0 0;margin:-2px -2px 10px}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   LESSON 8 DATA — content only. All chrome, styling and engine
+   behaviour come from shared/turner-page-kit.css + .js.
+   Capstone lesson for DML1, built from section 5 (application to
+   real projects) and section 6 (evolving your leadership).
+   Deliberately draws threads from Lessons 1-7 together rather
+   than introducing an isolated new framework. Follows the Turner
+   Page lesson playbook (ten-block shape). Click-tested against
+   the real turner-page-kit.js.
+   RESOLVED: nextUrl now points to lesson8-complete.html — the final
+   lesson of the module, which offers the module assessment. See
+   tp-html-build-guide.md §10/§12.1.
+============================================================== */
+
+const growthSigns=[
+ {title:"You're asked for a recommendation, not just a status",short:"People want your judgement now",
+  detail:"Early on, people ask a DML \u201cwhere are we?\u201d Later, they start asking \u201cwhat do you think we should do?\u201d That shift \u2014 being trusted for judgement, not just information \u2014 is one of the clearest signs the role has grown, whether or not the job title has changed."},
+ {title:"You notice risks before anyone assigns you to look for them",short:"Scanning becomes automatic",
+  detail:"A task-focused mindset waits to be told what to check. A workstream-owner mindset is already looking two steps ahead, unprompted \u2014 not from anxiety, but because the five daily questions and the RAG habits have become instinct rather than a checklist."},
+ {title:"Your team brings you blockers, not just their manager",short:"You've become a safe place to raise problems",
+  detail:"If people quietly route problems around you to someone else, that's worth noticing. When they come to you first \u2014 including with things that make them look bad \u2014 it usually means they trust how you'll react, which is earned, not automatic."},
+ {title:"You can explain your reasoning, not just your conclusion",short:"Under real scrutiny, not just when it's easy",
+  detail:"Anyone can state a conclusion. Being able to walk a sceptical sponsor through exactly why \u2014 the evidence, the trade-off, the alternative you rejected and why \u2014 is what actually earns durable trust, especially the first time you're challenged on it."}
+];
+
+const capstoneSituations=[
+ {
+   title:"Situation 1",
+   question:"You're asked to take on a second workstream while still running your current one, starting next month. What matters most in deciding how to respond?",
+   options:[
+     {label:"Decline outright \u2014 one workstream done well is better than two done poorly.",correct:false,
+      feedback:"This might be the right call, but declining outright without first genuinely assessing capacity skips the analysis that would actually justify the decision either way."},
+     {label:"Honestly assess current workload and risk profile first, then respond with what you can genuinely commit to.",correct:true,
+      feedback:"Correct. The same evidence-based habits used for a scope decision apply here \u2014 a considered, honest answer protects both workstreams and is far more valuable than an eager yes you can't fully deliver on."},
+     {label:"Say yes immediately \u2014 turning down a bigger opportunity could hurt your reputation.",correct:false,
+      feedback:"Enthusiasm is good, but committing to two workstreams without first assessing genuine capacity risks doing both badly \u2014 which damages reputation far more than a considered response would."}
+   ]
+ },
+ {
+   title:"Situation 2",
+   question:"A less experienced colleague on another workstream is clearly struggling but hasn't asked for help. What's the strongest move?",
+   options:[
+     {label:"Raise your concern with their manager instead of speaking to them directly.",correct:false,
+      feedback:"Going over someone's head before speaking to them directly, when the issue is still small and private, tends to feel like a betrayal even when the intent was genuinely supportive."},
+     {label:"Wait for them to ask \u2014 offering unsolicited help could come across as undermining.",correct:false,
+      feedback:"Waiting indefinitely for someone who's struggling to ask for help often means waiting until the problem is much bigger and much harder to fix quietly."},
+     {label:"Offer a specific, low-pressure way in \u2014 a particular thing you noticed, not a general \u201care you okay?\u201d",correct:true,
+      feedback:"Correct. A specific observation (\u201cI noticed the reconciliation numbers took longer than usual this week \u2014 want a second pair of eyes?\u201d) is much easier to accept than a vague, exposing offer of general help."}
+   ]
+ },
+ {
+   title:"Situation 3",
+   question:"Looking back over this module, you realise you've been quietly absorbing a lot of pressure alone rather than distributing it. What's the most useful response now?",
+   options:[
+     {label:"Start deliberately sharing more \u2014 visibility, decisions, even discomfort \u2014 with the people around you.",correct:true,
+      feedback:"Correct. Every habit in this module \u2014 the RAG, the decision log, the escalation structure \u2014 exists partly to prevent exactly this: one person quietly carrying a load the whole structure is meant to distribute."},
+     {label:"Keep doing it \u2014 it's clearly working, since nothing has visibly gone wrong.",correct:false,
+      feedback:"Nothing visibly going wrong isn't the same as it being sustainable. Quietly absorbed pressure tends to surface eventually \u2014 often at the worst possible moment, and often as a much bigger problem than it needed to be."},
+     {label:"Wait until after this project to change the pattern, to avoid disrupting things now.",correct:false,
+      feedback:"Patterns like this rarely fix themselves once the project ends \u2014 they tend to simply repeat on the next one, just as quietly."}
+   ]
+ },
+ {
+   title:"Situation 4",
+   question:"A newer DML asks you, directly, what the single most important habit is that they should build first. What's the strongest answer?",
+   options:[
+     {label:"Focus on being liked by your team and stakeholders above all else.",correct:false,
+      feedback:"Being well-regarded matters, but it's a byproduct of consistently good judgement and honest communication \u2014 not something to aim at directly, and rarely durable on its own."},
+     {label:"Master every framework and template before you need them.",correct:false,
+      feedback:"Frameworks matter, but leading with template mastery misses what actually makes them work \u2014 the underlying habit of writing things down honestly, before you're forced to."},
+     {label:"Write things down honestly, the moment they happen \u2014 before you're under pressure to.",correct:true,
+      feedback:"Correct. Almost every skill across this module \u2014 RAG, RAID, decision logs, escalation \u2014 is really one underlying habit applied in different situations: an honest, timely written record of decisions, risks and status."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The converging afternoon",title:"The converging afternoon",type:"mcq",
+ html:`<p class="lead">Week 10 of a twelve-week programme. In the space of one afternoon, three things land at once.</p>
+ <p>A data owner asks for a small \u201charmless\u201d scope addition. This week's RAG submission is due in two hours, and one metric is right on the edge of the tolerance. And a junior analyst on your team quietly mentions they're overwhelmed and might miss tomorrow's deadline.</p>
+ <div class="quote">\u201cI can probably just about handle all of this myself.\u201d</div>
+ <h3>How do you actually spend the next hour?</h3>`,
+ options:["Submit an accurate RAG immediately, then explicitly triage the other two by real urgency and impact.","Deal with the scope request first, since it's quick and clears your plate.","Focus entirely on the junior analyst's workload \u2014 people come first.","Try to handle all three at the same time to keep everyone happy."],
+ feedback:[
+ "This is the strongest response. The RAG has a fixed deadline and high visibility; getting it out accurately first, then genuinely triaging the rest, is structured judgement rather than reactive firefighting.",
+ "Quick doesn't mean most important. Clearing the easy item first, out of order, is exactly the instinct that led to under-assessed scope creep back in an earlier lesson.",
+ "People matter enormously, but jumping straight to one issue without weighing it against a hard-deadline item risks missing something time-critical while it's still fixable.",
+ "Attempting all three simultaneously usually means none get proper attention. It looks responsive in the moment but rarely produces good outcomes on any of the three."
+ ],
+ _correctIndex:0
+},
+{
+ id:"b2",nav:"What happens next",title:"What happens next: the hour, done well",type:"content",
+ html:`<p class="lead">Watch how the strongest response actually draws on nearly everything covered in this module, not a new skill.</p>
+ <p><strong>First twenty minutes:</strong> the RAG goes out, honestly reflecting the borderline metric as Amber with a route back to Green \u2014 the same discipline from the RAG lesson, applied without hesitation even under time pressure.</p>
+ <p><strong>Next twenty minutes:</strong> a real conversation with the junior analyst. Not \u201care you okay\u201d in the abstract, but a specific question \u2014 which task is actually the blocker \u2014 followed by reassigning one piece of it. Fifteen minutes of focused attention, not an open-ended promise to \u201csort it all out.\u201d</p>
+ <p><strong>Last twenty minutes:</strong> the scope request gets logged properly, exactly as taught in the scope-boundary lesson \u2014 not accepted on the spot, not ignored, but given the process it deserves, with an honest answer to follow once actually assessed.</p>
+ <p>Nothing about this hour used a technique that hasn't already appeared earlier in this module. What changed is the ability to triage three real pressures at once and apply the right tool to each, quickly, without letting any of them quietly slide.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The difference between a DML managing one task at a time and a DML leading a workstream isn't a bigger toolkit. It's the ability to reach for the right tool from the same kit, fast, while three things are happening simultaneously.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>Nothing in a genuinely hard afternoon requires a new skill. It requires applying the skills you already have, in the right order, without panicking.</div>`
+},
+{
+ id:"b3",nav:"From doing to leading",title:"From executing a workstream to leading one",type:"content",
+ html:`<p class="lead">Every lesson in this module has been building toward the same underlying shift: from doing migration tasks correctly, to owning the outcomes of an entire workstream \u2014 including the parts that were never written on a technical spec.</p>
+ <p>That shift is rarely a single dramatic moment. It's the accumulation of habits: an honest RAG here, a properly logged scope decision there, a calm escalation under real pressure, a meeting that stops re-litigating settled ground. None of it looks impressive in isolation. Together, it's what separates a DML who gets migrations done from one who gets trusted with them.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p><strong>The job is finished once the technical migration is correct.</strong></p><p>Technical correctness is necessary, never sufficient. A perfectly reconciled dataset delivered through a trail of surprised stakeholders, unresolved team burnout and undocumented decisions is not, in the way that matters, a job well done.</p></div>
+ <div class="principle"><strong>Key takeaway</strong><br>Leading a workstream isn't a bigger version of executing one. It's a different job, built from the same daily habits, aimed at a wider set of outcomes.</div>`
+},
+{
+ id:"b4",nav:"Four signs of growth",title:"Four signs you're growing from task-doer to workstream leader",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">This growth is often easier to notice in hindsight than in the moment. Four signals worth watching for. Open each one.</p>`,
+ items: growthSigns
+},
+{
+ id:"b5",nav:"Triage it yourself",title:"Triaging a different converging afternoon",type:"reflection",
+ html:`<p class="lead">A different combination lands this time. A vendor invoice needs your sign-off \u2014 no fixed deadline, but the vendor relationship is politically sensitive. The monthly steering pack is due in three hours. And you've just been asked to informally mentor a struggling colleague on a completely different workstream, starting today.</p>
+ <p>Write your own triage plan: identify the genuine hard deadline, assess how time-sensitive the other two actually are, and write down briefly how you'd spend the next few hours.</p>
+ <textarea id="reflection" placeholder="Hard deadline: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:80,
+ checks:[
+   { test:/steering|three hours|deadline/i, strength:"You correctly identified the steering pack as the genuine hard deadline.", gap:"Identify which of the three actually has a fixed, external deadline \u2014 that goes first, regardless of how the others feel." },
+   { test:/vendor|political|sensitiv|no fixed/i, strength:"You recognised the vendor invoice has no fixed deadline despite feeling urgent, and assessed it on that basis.", gap:"Assess the vendor invoice honestly \u2014 politically sensitive doesn't automatically mean time-critical." },
+   { test:/mentor|colleague|today|specific/i, strength:"You gave the mentoring request a real, bounded amount of time rather than an open-ended promise.", gap:"Decide what a reasonable, bounded first step on the mentoring request looks like today, not an open-ended commitment." },
+   { test:/log|written|record|note/i, strength:"You wrote the plan down, not just reasoned through it in your head.", gap:"Write the plan down briefly \u2014 a triage that only exists in your head isn't yet a plan." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model triage</h3>
+ <div class="quote">Steering pack: fixed deadline, three hours, high visibility. This goes first. Vendor invoice: politically sensitive, but no fixed deadline \u2014 logged for a proper decision tomorrow rather than a rushed sign-off today. Mentoring: a genuine ask, but doesn't need to consume the afternoon \u2014 twenty focused minutes today to understand what they're actually stuck on, with a proper follow-up booked for later in the week. Written down: "2pm: steering pack submitted. 2:20pm: vendor invoice logged, decision by tomorrow. 2:40pm: twenty minutes with [colleague], follow-up booked Thursday."</div>
+ <div class="principle"><strong>Key takeaway</strong><br>The specific pressures change every time. The triage logic \u2014 real deadline first, honest assessment of the rest, written down briefly \u2014 doesn't.</div>`,
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is genuine triage, not just a to-do list \u2014 you correctly separated what's actually urgent from what merely feels that way, and wrote it down.":score>=4?"You've got some of the logic, but check whether you actually identified the genuine hard deadline first, and gave the mentoring request a bounded amount of time rather than an open-ended commitment.":"This needs the full triage applied specifically \u2014 which of the three has a real deadline, how you'd bound the other two, and a brief written record of the plan."}</div>`
+},
+{
+ id:"b6",nav:"Reading the moment",title:"Reading the moment",type:"situations",
+ html:`<p class="lead">Four moments that sit beyond any single lesson in this module \u2014 where growing into the role itself is being tested.</p>`,
+ items:capstoneSituations
+},
+{
+ id:"b7",nav:"Evolving beyond your first migration",title:"Evolving beyond your first migration",type:"content",
+ html:`<p class="lead">Everything in this module was framed around a first migration, or one currently in front of you. Worth pausing on what changes after it.</p>
+ <p>The most common trap for a DML who's just delivered a genuinely good migration is assuming the next one should look identical \u2014 same habits, same intensity, same instinct to hold everything close. What actually needs to evolve is the ratio: less time spent personally executing every check, more time spent building the habits into the people around you.</p>
+ <p>This is exactly the territory DML5 goes on to cover in depth. For now, the discipline worth taking from this module is simpler: noticing when a habit has quietly become a bottleneck, and handing it over before it has to be forced out of your hands.</p>
+ <div class="to-record">
+   <div class="to-record-flag">\u26A0 PLACEHOLDER \u2014 record via ElevenLabs (or similar) and replace the src below before publishing. Script text will double as an on-page transcript once real audio is in place.</div>
+   ${TPKit.fromField({
+     title:"The Habit I Almost Kept To Myself",
+     name:"Isabel",
+     role:"Data Migration Lead",
+     project:"Retail ERP",
+     src:"/assets/audio/lesson8-fromfield-isabel.mp3",
+     reflection:"\u201cAfter my first migration went well, I kept running the daily questions myself, every morning, for the whole next project too \u2014 it felt safer that way. It took a teammate asking, quite directly, why I never let anyone else own that check, for me to realise I'd turned a habit into a bottleneck. I handed it over. It was slower and messier for about three weeks. After that, the whole team asked the questions I used to ask alone, and the workstream was stronger for it than it had ever been with just me doing it.\u201d"
+   })}
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The habits that make a first migration go well are rarely the same ones that make a DML's tenth migration go well. The tools stay the same. What has to change is who else is holding them.</p></div></div>
+ <div class="principle"><strong>Key takeaway</strong><br>The goal was never to become the person who does everything right. It was to build habits solid enough that they'd hold up even once you're no longer doing them alone.</div>`
+},
+{
+ id:"b8",nav:"Reflection",title:"Your biggest shift across this module",type:"reflection",
+ html:`<p>Looking back across everything in this module, think about the single biggest shift in how you now approach migration work.</p>
+ <div class="quote">\u201cWhat's different about how you'd handle your very first scenario in Lesson 1, now?\u201d</div>
+ <textarea id="reflection" placeholder="The biggest shift for me has been..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/log|record|written|document|honest/i, strength:"You connected your growth to the habit of writing things down honestly, which is the thread running through this whole module.", gap:"Consider whether your shift relates to writing things down earlier or more honestly than before." },
+   { test:/team|delegat|others|people/i, strength:"You reflected on how you involve others now, not just your own individual habits.", gap:"Think about whether the shift involves how you work with or through other people." },
+   { test:/pressure|calm|panic|triage/i, strength:"You connected the shift to how you handle pressure or competing priorities.", gap:"Consider how differently you'd triage multiple pressures now compared to before." },
+   { test:/confiden|trust|judg/i, strength:"You reflected on a shift in confidence or judgement, which is exactly what this module has been building toward.", gap:"Think about whether your confidence in your own judgement has genuinely changed." }
+ ],
+ mentorFeedbackHtml:(score)=>`<div class="principle"><strong>Overall coaching</strong><br>${score>=6?"That's a genuinely clear-eyed reflection \u2014 the kind of self-awareness that tends to keep compounding on the next project.":"Good reflection. The detail worth adding is something concrete you'd now do differently in that very first Lesson 1 scenario."}</div>`
+},
+{
+ id:"b9",nav:"Summary",title:"If you remember nothing else from this module",type:"content",
+ html:`<p class="lead">Eight lessons, one underlying thread: honest, timely, written evidence \u2014 applied to whatever the situation actually is.</p>
+ <ul class="framework-checks lesson-outcomes">
+   <li>Evidence-based decisions and ownership over task-completion (Lessons 1-2).</li>
+   <li>A defensible scope boundary and a real PMO relationship (Lesson 3).</li>
+   <li>Escalation as routine discipline, not last resort (Lesson 4).</li>
+   <li>RAG as a forecast, not a photograph (Lesson 5).</li>
+   <li>The same escalation structure, applied fast under real pressure (Lesson 6).</li>
+   <li>A cadence that survives because decisions actually stay decided (Lesson 7).</li>
+   <li>Triage under convergence, and building habits into others, not just yourself (Lesson 8).</li>
+ </ul>
+ <div class="principle"><strong>The goal was never a bigger toolkit.</strong><br>It was the same small set of honest habits, applied consistently enough that they become instinct \u2014 and eventually, someone else's instinct too.</div>`
+},
+{
+ id:"b10",nav:"Module complete",title:"Module complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">✓</div>
+ <p class="lead"><strong>You have completed Module 1: Leading the Migration Workstream.</strong></p>
+ <p>Across eight lessons, you've built the evidence-based habits that underpin confident, trustworthy Data Migration leadership \u2014 from your first readiness assessment through to triaging real pressure and developing the people around you.</p>
+ </div>
+ ${TPKit.promiseCard()}
+ <h3>What is the single most valuable thing you learned across this whole module?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most as you carry it into a real project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>What's next</h3>
+ <p><strong>The next Data Migration Lead module continues your development \u2014 details coming soon.</strong></p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Well done on completing Module 1. Return to this whenever the next real project starts putting these habits to the test.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "Module 1",
+  moduleTitle: "Leading the Migration Workstream",
+  lessonLabel: "Lesson 8: From workstream to leadership",
+  lessonShortLabel: "Lesson 8",
+  lessonTagline: "Applying it all, and evolving beyond your first migration",
+  storageKey: "tp_lesson8_v1",
+  lessonId: "dml1-lesson8",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson8-complete.html",
+  finalButtonLabel: "Finish Lesson 8 \u2192",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+</body>
+</html>
