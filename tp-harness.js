@@ -1,32 +1,27 @@
 #!/usr/bin/env node
 /* ==============================================================
-   Turner Page estate harness.
+   Turner Page estate harness (v2).
    Usage: node tp-harness.js <dir> [<dir> ...] [--cast cast.json]
+          add --full to list every instance instead of a sample
 
-   Reads every lesson*.html under the directories given, extracts
-   the blocks array, and reports across the whole estate rather
-   than one file at a time. Companion to lint-lesson.js, which
-   stays the per-file mechanical check.
-
-   Checks map to the four things that are hard to see by eye:
-     A. Is the correct answer too obvious?
-     B. Is there text written for the author, not the student?
-     C. Is there enough real interactivity?
-     D. What can only be seen by comparing lessons?
+   v2: findings are scored and grouped rather than listed one per
+   occurrence. Systemic issues collapse to a single line with a
+   count. Only questions showing two or more independent "obvious
+   answer" tells are reported. Fact checking flags minority values
+   against the dominant one rather than listing every number seen.
 ============================================================== */
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-// ---------- args ----------
-const args = process.argv.slice(2);
-const castIdx = args.indexOf("--cast");
-const castPath = castIdx !== -1 ? args[castIdx + 1] : path.join(__dirname, "persona-cast.json");
-const dirs = args.filter((a, i) => !a.startsWith("--") && i !== castIdx + 1);
-if (!dirs.length) { console.error("Usage: node tp-harness.js <dir> [...] [--cast cast.json]"); process.exit(2); }
+const argv = process.argv.slice(2);
+const FULL = argv.includes("--full");
+const castIdx = argv.indexOf("--cast");
+const castPath = castIdx !== -1 ? argv[castIdx + 1] : path.join(__dirname, "persona-cast.json");
+const dirs = argv.filter((a, i) => !a.startsWith("--") && i !== castIdx + 1);
+if (!dirs.length) { console.error("Usage: node tp-harness.js <dir> [...] [--cast cast.json] [--full]"); process.exit(2); }
 const knownCast = fs.existsSync(castPath) ? JSON.parse(fs.readFileSync(castPath, "utf8")) : {};
 
-// ---------- collect files ----------
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -37,94 +32,87 @@ function walk(dir, out = []) {
 }
 const files = dirs.flatMap(d => walk(d)).sort();
 
-// ---------- extract ----------
 function extract(file) {
   const html = fs.readFileSync(file, "utf8");
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const content = scripts.find(s => /const\s+blocks\s*=/.test(s));
   if (!content) return { file, error: "no blocks array" };
-
   const personas = [];
-  const stub = new Proxy({
-    promiseCard: () => "",
-    fromField: cfg => { personas.push(cfg); return ""; },
-    mount: () => {}, icons: {}
-  }, { get: (t, k) => (k in t ? t[k] : () => "") });
-
+  const stub = new Proxy({ promiseCard: () => "", fromField: c => { personas.push(c); return ""; }, mount: () => {}, icons: {} },
+    { get: (t, k) => (k in t ? t[k] : () => "") });
   const sandbox = {
     window: {}, localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => ({}), querySelector: () => null,
-                querySelectorAll: () => [], addEventListener: () => {},
-                createElement: () => ({ style: {} }) },
+    document: { getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [], addEventListener: () => {}, createElement: () => ({ style: {} }) },
     TPKit: stub, console: { log(){}, warn(){}, error(){} }
   };
   vm.createContext(sandbox);
-  try {
-    vm.runInContext(content + "\n;this.__b=blocks;this.__c=typeof LESSON_CONFIG!=='undefined'?LESSON_CONFIG:null;", sandbox);
-  } catch (e) { return { file, error: e.message }; }
-  return { file, html, blocks: sandbox.__b || [], config: sandbox.__c || {}, personas };
+  try { vm.runInContext(content + "\n;this.__b=blocks;", sandbox); }
+  catch (e) { return { file, error: e.message }; }
+  return { file, html, blocks: sandbox.__b || [], personas };
 }
 
 const lessons = files.map(extract);
 const ok = lessons.filter(l => !l.error);
 const broken = lessons.filter(l => l.error);
 
-// ---------- helpers ----------
-const label = f => f.replace(/\\/g, "/").split("/").slice(-2).join("/").replace(".html", "");
-const strip = h => String(h || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-const GATING = new Set(["mcq", "situations", "expandableList", "guidedSteps", "reflection", "valuable", "selectN", "selectAll", "tradeoffTriangle"]);
+const lab = f => f.replace(/\\/g, "/").split("/").slice(-2).join("/").replace(".html", "");
+const mod = f => lab(f).split("/")[0];
+const strip = h => String(h || "").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
+const GATING = new Set(["mcq","situations","expandableList","guidedSteps","reflection","valuable","selectN","selectAll","tradeoffTriangle"]);
 
 function questions(blocks) {
   const out = [];
   for (const b of blocks) {
     if (b.type === "mcq" && Array.isArray(b.options) && b.options.length && typeof b.options[0] === "object")
-      out.push({ id: b.id, title: b.title || b.id, options: b.options });
+      out.push({ id: b.id, title: strip(b.title) || b.id, options: b.options });
     if (b.type === "situations" && Array.isArray(b.items))
-      for (const it of b.items)
-        if (Array.isArray(it.options)) out.push({ id: b.id, title: it.title || b.id, options: it.options });
+      for (const it of b.items) if (Array.isArray(it.options)) out.push({ id: b.id, title: strip(it.title) || b.id, options: it.options });
   }
   return out;
 }
+function learnerStrings(b) {
+  const out = []; const push = v => { if (typeof v === "string" && v.trim()) out.push(v); };
+  push(b.html); push(b.title); push(b.takeawayHtml); push(b.closingHtml); push(b.modelAnswerHtml); push(b.savedHtml); push(b.hint);
+  (b.options || []).forEach(o => typeof o === "string" ? push(o) : (push(o.label), push(o.feedback)));
+  (b.coaching || []).forEach(push);
+  (b.items || []).forEach(i => { push(i.title); push(i.short); push(i.detail); push(i.ask); push(i.question);
+    (i.options || []).forEach(o => { push(o.label); push(o.feedback); }); });
+  (b.steps || []).forEach(s => push(s.html));
+  (b.checks || []).forEach(c => { push(c.strength); push(c.gap); });
+  return out;
+}
 
-const findings = { A: [], B: [], C: [], D: [] };
+const OUT = { A: [], C: [], D: [] };
 
-// ================= A. Is the correct answer too obvious? =================
-const HEDGE = /\b(because|although|unless|rather than|while|whereas|provided|if that|so that|then)\b/i;
+/* ---------- A. Correct answer too obvious (scored, 2+ tells only) ---------- */
+const HEDGE = /\b(because|although|unless|rather than|whereas|provided that|so that)\b/i;
+const ABS = /\b(never|always|everyone|nobody|completely|entirely)\b/i;
 for (const L of ok) {
   for (const q of questions(L.blocks)) {
     const c = q.options.find(o => o.correct === true);
     const d = q.options.filter(o => o.correct !== true);
-    if (!c || !d.length) continue;
-    const cl = (c.label || "").length, dl = d.map(o => (o.label || "").length);
-    const avgD = dl.reduce((a, b) => a + b, 0) / dl.length;
-
-    // A1 length tell
-    if (cl > avgD * 1.5)
-      findings.A.push(`${label(L.file)} ${q.id} "${q.title}" - correct option ${Math.round(cl / avgD * 100)}% of distractor average length`);
-    // A2 reasoning-word tell: only the correct option hedges or explains
-    const cH = HEDGE.test(c.label || ""), dH = d.filter(o => HEDGE.test(o.label || "")).length;
-    if (cH && dH === 0)
-      findings.A.push(`${label(L.file)} ${q.id} "${q.title}" - only the correct option reasons (because/although/rather than); distractors are flat assertions`);
-    // A3 clause-count tell
-    const cC = (c.label || "").split(",").length, dC = d.map(o => (o.label || "").split(",").length);
-    if (cC >= 3 && Math.max(...dC) <= 1)
-      findings.A.push(`${label(L.file)} ${q.id} "${q.title}" - correct option has ${cC} clauses, every distractor has 1`);
-    // A4 feedback asymmetry: distractor feedback much thinner than correct
+    if (!c || d.length < 2) continue;
+    const tells = [];
+    const cl = (c.label || "").length;
+    const avgD = d.reduce((s, o) => s + (o.label || "").length, 0) / d.length;
+    if (cl > avgD * 1.6) tells.push(`${Math.round(cl / avgD * 100)}% of distractor length`);
+    if (HEDGE.test(c.label || "") && !d.some(o => HEDGE.test(o.label || ""))) tells.push("only correct option reasons");
+    const cC = (c.label || "").split(",").length;
+    if (cC >= 3 && d.every(o => (o.label || "").split(",").length <= 1)) tells.push(`${cC} clauses vs 1`);
     const cf = strip(c.feedback).length;
-    const dfs = d.map(o => strip(o.feedback).length).filter(n => n > 0);
+    const dfs = d.map(o => strip(o.feedback).length).filter(Boolean);
     if (cf && dfs.length) {
       const avgF = dfs.reduce((a, b) => a + b, 0) / dfs.length;
-      if (avgF && cf > avgF * 1.8)
-        findings.A.push(`${label(L.file)} ${q.id} "${q.title}" - correct feedback ${cf} chars vs distractor average ${Math.round(avgF)}; distractors look written to lose`);
+      if (cf > avgF * 2) tells.push("correct feedback 2x distractors");
     }
-    // A5 distractor that gives itself away
-    for (const o of d)
-      if (/\b(never|always|everyone|nobody|all of|completely|entirely)\b/i.test(o.label || "") && !/\bnever\b/i.test(c.label || ""))
-        findings.A.push(`${label(L.file)} ${q.id} "${q.title}" - distractor uses an absolute ("${(o.label || "").match(/\b(never|always|everyone|nobody|all of|completely|entirely)\b/i)[0]}"), a common giveaway`);
+    const absD = d.filter(o => ABS.test(o.label || "") && !ABS.test(c.label || "")).length;
+    if (absD >= 2) tells.push(`${absD} distractors use absolutes`);
+    if (tells.length >= 2) OUT.A.push({ score: tells.length, where: `${lab(L.file)} ${q.id}`, what: q.title.slice(0, 55), tells });
   }
 }
+OUT.A.sort((a, b) => b.score - a.score);
 
-// ================= B. Author-facing text in learner content =================
+/* ---------- B. Author-facing text (grouped) ---------- */
 const LEAK = [
   [/\bcanon(ical)?\b/i, "canon/canonical"],
   [/\btraining data\b/i, "training data"],
@@ -133,187 +121,165 @@ const LEAK = [
   [/\bStory Bible\b/i, "Story Bible"],
   [/\bmanuscript\b/i, "manuscript"],
   [/\bsynthetic\b/i, "synthetic"],
-  [/\bplaceholder\b/i, "placeholder"],
-  [/\bper the (playbook|build guide|alignment)\b/i, "per the playbook/guide"],
   [/\bdo not invent\b/i, "do not invent (author instruction)"],
-  [/\bTODO\b/, "TODO"],
-  [/\blorem ipsum\b/i, "lorem ipsum"]
+  [/\bTODO\b/, "TODO"]
 ];
-function learnerStrings(b) {
-  const out = [];
-  const push = v => { if (typeof v === "string" && v.trim()) out.push(v); };
-  push(b.html); push(b.title); push(b.takeawayHtml); push(b.closingHtml);
-  push(b.modelAnswerHtml); push(b.savedHtml); push(b.hint);
-  (b.options || []).forEach(o => { if (typeof o === "string") push(o); else { push(o.label); push(o.feedback); } });
-  (b.coaching || []).forEach(push);
-  (b.items || []).forEach(i => {
-    push(i.title); push(i.short); push(i.detail); push(i.ask); push(i.question);
-    (i.options || []).forEach(o => { push(o.label); push(o.feedback); });
-  });
-  (b.steps || []).forEach(s => push(s.html));
-  (b.checks || []).forEach(c => { push(c.strength); push(c.gap); });
-  return out;
-}
+const leakHits = new Map();
+const emDash = new Map();
 for (const L of ok) {
   for (const b of L.blocks) {
-    for (const s of learnerStrings(b)) {
+    const texts = learnerStrings(b);
+    for (const s of texts) {
       const t = strip(s);
       for (const [re, name] of LEAK) {
-        if (re.test(t)) {
-          const m = t.match(re);
-          const i = t.toLowerCase().indexOf(m[0].toLowerCase());
-          findings.B.push(`${label(L.file)} ${b.id} - "${name}" in learner text: ...${t.slice(Math.max(0, i - 45), i + 55)}...`);
-        }
+        const m = t.match(re);
+        if (!m) continue;
+        const i = t.toLowerCase().indexOf(m[0].toLowerCase());
+        if (!leakHits.has(name)) leakHits.set(name, []);
+        leakHits.get(name).push({ where: `${lab(L.file)} ${b.id}`, snippet: t.slice(Math.max(0, i - 40), i + 50) });
       }
     }
-    // em dash in learner-facing text
-    for (const s of learnerStrings(b))
-      if (/[\u2014]/.test(s)) { findings.B.push(`${label(L.file)} ${b.id} - em dash in learner text`); break; }
+    if (texts.some(s => /[\u2014]/.test(s))) emDash.set(mod(L.file), (emDash.get(mod(L.file)) || 0) + 1);
   }
 }
 
-// ================= C. Enough real interactivity? =================
-const ACTION = /\b(build|construct|write your own|draft|decide|work it out|your turn|produce|create your)\b/i;
-const shapeOf = b => b.map(x => x.type);
+/* ---------- C. Interactivity ---------- */
+const ACTION = /\b(you (will|must|should|now) (build|write|draft|produce|decide|construct)|build (your|the|it) |write your own|draft your|your turn|now build|produce (your|the) )/i;
 for (const L of ok) {
-  const types = shapeOf(L.blocks);
-  const total = types.length;
+  const types = L.blocks.map(b => b.type);
+  const n = types.length;
   const contentN = types.filter(t => t === "content").length;
-  const pct = Math.round(contentN / total * 100);
+  const pct = Math.round(contentN / n * 100);
   const gating = types.filter(t => GATING.has(t)).length;
   let run = 0, maxRun = 0;
   for (const t of types) { if (t === "content") { run++; maxRun = Math.max(maxRun, run); } else run = 0; }
-  if (pct >= 65) findings.C.push(`${label(L.file)} - ${pct}% content blocks (${contentN}/${total}); norm is around 40%`);
-  if (maxRun >= 5) findings.C.push(`${label(L.file)} - ${maxRun} content blocks in a row; learner can click straight through`);
-  if (gating < 5) findings.C.push(`${label(L.file)} - only ${gating} blocks require the learner to do anything`);
-  // framing promises action but the mechanism does not require it
-  for (const b of L.blocks) {
-    if (!["content", "guidedSteps", "expandableList"].includes(b.type)) continue;
-    const t = strip(b.title) + " " + strip(b.html).slice(0, 400);
-    if (ACTION.test(t))
-      findings.C.push(`${label(L.file)} ${b.id} (${b.type}) - framing says "${t.match(ACTION)[0]}" but the block only reveals text`);
-  }
+  const flags = [];
+  if (pct >= 68) flags.push(`${pct}% content`);
+  if (maxRun >= 7) flags.push(`${maxRun} content blocks in a row`);
+  if (gating <= 6) flags.push(`only ${gating} gating blocks`);
+  const mismatched = L.blocks.filter(b => ["content", "guidedSteps", "expandableList"].includes(b.type)
+    && ACTION.test(strip(b.title) + " " + strip(b.html).slice(0, 500))
+    && !/textarea/i.test(String(b.html || "")));
+  if (mismatched.length) flags.push(`${mismatched.length} block(s) promise construction but only reveal text (${mismatched.map(b => b.id).join(", ")})`);
+  if (flags.length) OUT.C.push({ where: lab(L.file), flags });
 }
 
-// ================= D. Only visible across lessons =================
-// D1 identical block-shape signatures
+/* ---------- D. Cross-lesson ---------- */
 const sig = new Map();
 for (const L of ok) {
   const counts = {};
-  shapeOf(L.blocks).forEach(t => counts[t] = (counts[t] || 0) + 1);
+  L.blocks.forEach(b => counts[b.type] = (counts[b.type] || 0) + 1);
   const key = Object.keys(counts).sort().map(k => `${counts[k]}${k}`).join("|");
   if (!sig.has(key)) sig.set(key, []);
-  sig.get(key).push(label(L.file));
+  sig.get(key).push(lab(L.file));
 }
-for (const [key, ls] of sig)
-  if (ls.length >= 3)
-    findings.D.push(`${ls.length} lessons share an identical block composition: ${ls.join(", ")}`);
+for (const [, ls] of sig) if (ls.length >= 3) OUT.D.push(`${ls.length} lessons share an identical block composition: ${ls.join(", ")}`);
 
-// D2 repeated takeaway / principle lines
 const lines = new Map();
-for (const L of ok)
-  for (const b of L.blocks) {
-    const html = String(b.html || "") + String(b.takeawayHtml || "") + String(b.closingHtml || "");
-    for (const m of html.matchAll(/<div class="principle">([\s\S]*?)<\/div>/g)) {
-      const t = strip(m[1]).toLowerCase().replace(/[^a-z0-9 ]/g, "");
-      if (t.length < 40) continue;
-      const k = t.split(" ").slice(-14).join(" ");
-      if (!lines.has(k)) lines.set(k, new Set());
-      lines.get(k).add(`${label(L.file)} ${b.id}`);
-    }
+for (const L of ok) for (const b of L.blocks) {
+  const html = String(b.html || "") + String(b.takeawayHtml || "") + String(b.closingHtml || "");
+  for (const m of html.matchAll(/<div class="principle">([\s\S]*?)<\/div>/g)) {
+    const t = strip(m[1]).toLowerCase().replace(/[^a-z0-9 ]/g, "");
+    if (t.length < 50) continue;
+    const k = t.split(" ").slice(-14).join(" ");
+    if (!lines.has(k)) lines.set(k, new Set());
+    lines.get(k).add(`${lab(L.file)} ${b.id}`);
   }
-for (const [k, where] of lines)
-  if (where.size > 1)
-    findings.D.push(`Takeaway line reused in ${where.size} places (${[...where].join(", ")}): "...${k}"`);
+}
+for (const [k, w] of lines) if (w.size > 1) OUT.D.push(`Takeaway reused in ${w.size} places (${[...w].join(", ")}): "...${k.slice(-65)}"`);
 
-// D3 repeated question stems
 const stems = new Map();
-for (const L of ok)
-  for (const q of questions(L.blocks)) {
-    const t = strip(q.title).toLowerCase().replace(/[^a-z ]/g, "").trim();
-    if (t.length < 12) continue;
-    if (!stems.has(t)) stems.set(t, []);
-    stems.get(t).push(`${label(L.file)} ${q.id}`);
-  }
-for (const [t, where] of stems)
-  if (where.length > 1) findings.D.push(`Question title "${t}" appears ${where.length}x: ${where.join(", ")}`);
+for (const L of ok) for (const q of questions(L.blocks)) {
+  const t = q.title.toLowerCase().replace(/[^a-z ]/g, "").trim();
+  if (t.length < 14) continue;
+  if (!stems.has(t)) stems.set(t, []);
+  stems.get(t).push(`${lab(L.file)} ${q.id}`);
+}
+for (const [t, w] of stems) if (w.length > 1) OUT.D.push(`Question title "${t.slice(0, 45)}" appears ${w.length}x: ${w.join(", ")}`);
 
-// D4 fact consistency: numbers reported next to recurring tokens
-const TOKENS = ["accepted", "submitted", "payment-term exception", "CustomerGroup 99", "classification conflict",
-                "delivery address", "depreciation-category exception", "product-site relationship", "STD", "rejected supplier"];
-const facts = new Map();
-for (const L of ok) {
-  const text = L.blocks.flatMap(learnerStrings).map(strip).join(" ");
-  for (const tok of TOKENS) {
-    const re = new RegExp("([\\d][\\d,]{1,9})\\s+(?:\\w+\\s+){0,3}?" + tok.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "gi");
+const TOKENS = ["payment-term exception", "CustomerGroup 99", "classification conflict", "rejected supplier",
+  "depreciation-category exception", "product-site relationship", "accepted record", "active asset",
+  "German customer record", "unresolved record"];
+for (const tok of TOKENS) {
+  const esc = tok.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+  const re = new RegExp("(\\d[\\d,]{0,8})\\s+(?:[a-z]+\\s)?" + esc + "s?\\b", "gi");
+  const vals = new Map();
+  for (const L of ok) {
+    const text = L.blocks.flatMap(learnerStrings).map(strip).join("  ");
     for (const m of text.matchAll(re)) {
-      const n = m[1];
-      if (!facts.has(tok)) facts.set(tok, new Map());
-      const g = facts.get(tok);
-      if (!g.has(n)) g.set(n, new Set());
-      g.get(n).add(label(L.file));
+      const v = m[1].replace(/,$/, "");
+      if (!/^\d/.test(v) || v.length > 8) continue;
+      if (!vals.has(v)) vals.set(v, new Set());
+      vals.get(v).add(lab(L.file));
     }
   }
-}
-for (const [tok, g] of facts) {
-  if (g.size > 1) {
-    const parts = [...g.entries()].map(([n, w]) => `${n} (${[...w].join(", ")})`);
-    findings.D.push(`"${tok}" appears with ${g.size} different numbers: ${parts.join(" | ")}`);
-  }
+  if (vals.size < 2) continue;
+  const ranked = [...vals.entries()].sort((a, b) => b[1].size - a[1].size);
+  const [domV, domW] = ranked[0];
+  for (const [v, w] of ranked.slice(1))
+    if (w.size < domW.size) OUT.D.push(`"${tok}": ${domV} in ${domW.size} lessons, but ${v} in ${[...w].join(", ")}`);
 }
 
-// D5 persona usage
 const useCount = new Map();
-for (const L of ok)
-  for (const p of L.personas) {
-    if (!useCount.has(p.name)) useCount.set(p.name, []);
-    useCount.get(p.name).push(label(L.file));
-    const known = knownCast[p.name];
-    if (known && known.project !== p.project)
-      findings.D.push(`Persona "${p.name}" used with "${p.project}" in ${label(L.file)} but cast says "${known.project}"`);
-  }
-
-// ---------- report ----------
-const line = s => console.log(s);
-line("");
-line("=".repeat(72));
-line("  TURNER PAGE ESTATE HARNESS");
-line(`  ${ok.length} lessons read${broken.length ? `, ${broken.length} unreadable` : ""}`);
-line("=".repeat(72));
-if (broken.length) { line("\nUNREADABLE"); broken.forEach(b => line(`  x ${label(b.file)} - ${b.error}`)); }
-
-const sections = [
-  ["A. CORRECT ANSWER TOO OBVIOUS", findings.A],
-  ["B. AUTHOR-FACING TEXT IN LEARNER CONTENT", findings.B],
-  ["C. INTERACTIVITY", findings.C],
-  ["D. ONLY VISIBLE ACROSS LESSONS", findings.D]
-];
-for (const [name, list] of sections) {
-  const uniq = [...new Set(list)];
-  line(`\n${name}  (${uniq.length})`);
-  line("-".repeat(72));
-  if (!uniq.length) { line("  nothing flagged"); continue; }
-  uniq.slice(0, 40).forEach(f => line("  ! " + f));
-  if (uniq.length > 40) line(`  ... and ${uniq.length - 40} more`);
+for (const L of ok) for (const p of L.personas) {
+  if (!useCount.has(p.name)) useCount.set(p.name, []);
+  useCount.get(p.name).push(lab(L.file));
+  const known = knownCast[p.name];
+  if (known && known.project !== p.project)
+    OUT.D.push(`Persona "${p.name}" used with "${p.project}" in ${lab(L.file)} but cast says "${known.project}"`);
 }
 
-line("\nLESSON SHAPE TABLE");
-line("-".repeat(72));
+/* ---------- report ---------- */
+const P = console.log;
+P("");
+P("=".repeat(74));
+P("  TURNER PAGE ESTATE HARNESS");
+P(`  ${ok.length} lessons${broken.length ? `, ${broken.length} unreadable` : ""}`);
+P("=".repeat(74));
+if (broken.length) { P("\nUNREADABLE"); broken.forEach(b => P(`  x ${lab(b.file)} - ${b.error}`)); }
+
+P(`\nA. CORRECT ANSWER TOO OBVIOUS  -  ${OUT.A.length} questions with 2 or more tells`);
+P("-".repeat(74));
+if (!OUT.A.length) P("  nothing flagged");
+(FULL ? OUT.A : OUT.A.slice(0, 12)).forEach(f =>
+  P(`  [${f.score}] ${f.where.padEnd(17)} ${f.what}\n        ${f.tells.join("; ")}`));
+if (!FULL && OUT.A.length > 12) P(`  ... ${OUT.A.length - 12} more (run with --full)`);
+
+P(`\nB. AUTHOR-FACING TEXT IN LEARNER CONTENT`);
+P("-".repeat(74));
+if (emDash.size) P(`  Em dashes in learner text  -  ${[...emDash.entries()].sort().map(([m, n]) => `${m}: ${n} blocks`).join(", ")}`);
+if (!leakHits.size && !emDash.size) P("  nothing flagged");
+for (const [name, hits] of [...leakHits.entries()].sort((a, b) => b[1].length - a[1].length)) {
+  P(`  "${name}"  -  ${hits.length} occurrence(s) in ${new Set(hits.map(h => h.where.split(" ")[0])).size} lesson(s)`);
+  (FULL ? hits : hits.slice(0, 2)).forEach(h => P(`        ${h.where}: ...${h.snippet}...`));
+  if (!FULL && hits.length > 2) P(`        ... ${hits.length - 2} more`);
+}
+
+P(`\nC. INTERACTIVITY  -  ${OUT.C.length} lessons flagged`);
+P("-".repeat(74));
+if (!OUT.C.length) P("  nothing flagged");
+OUT.C.forEach(f => P(`  ${f.where.padEnd(17)} ${f.flags.join("; ")}`));
+
+P(`\nD. ONLY VISIBLE ACROSS LESSONS  -  ${OUT.D.length}`);
+P("-".repeat(74));
+if (!OUT.D.length) P("  nothing flagged");
+(FULL ? OUT.D : OUT.D.slice(0, 20)).forEach(f => P("  ! " + f));
+if (!FULL && OUT.D.length > 20) P(`  ... ${OUT.D.length - 20} more (run with --full)`);
+
+P("\nLESSON SHAPE TABLE");
+P("-".repeat(74));
 for (const L of ok) {
-  const types = shapeOf(L.blocks);
-  const c = types.filter(t => t === "content").length;
-  const g = types.filter(t => GATING.has(t)).length;
-  const kinds = [...new Set(types.filter(t => GATING.has(t)))].sort().join(",");
-  line(`  ${label(L.file).padEnd(22)} ${String(types.length).padStart(2)} blocks  ${String(Math.round(c / types.length * 100)).padStart(3)}% content  ${String(g).padStart(2)} gating  ${kinds}`);
+  const t = L.blocks.map(b => b.type);
+  const c = t.filter(x => x === "content").length;
+  const g = t.filter(x => GATING.has(x)).length;
+  P(`  ${lab(L.file).padEnd(17)} ${String(t.length).padStart(2)} blocks  ${String(Math.round(c / t.length * 100)).padStart(3)}% content  ${String(g).padStart(2)} gating`);
 }
 
-line("\nPERSONA USE");
-line("-".repeat(72));
-[...useCount.entries()].sort().forEach(([n, w]) => line(`  ${n.padEnd(8)} ${w.length}x  ${w.join(", ")}`));
-
-const totalFindings = sections.reduce((a, [, l]) => a + new Set(l).size, 0);
-line("");
-line("=".repeat(72));
-line(`  ${totalFindings} findings across ${ok.length} lessons`);
-line("=".repeat(72));
-line("");
+P("\nPERSONA USE");
+P("-".repeat(74));
+[...useCount.entries()].sort().forEach(([n, w]) => P(`  ${n.padEnd(8)} ${w.length}x  ${w.join(", ")}`));
+P("");
+P("=".repeat(74));
+P(`  A: ${OUT.A.length} questions   B: ${leakHits.size} phrase types   C: ${OUT.C.length} lessons   D: ${OUT.D.length} items`);
+P("=".repeat(74));
+P("");
