@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Making migration processes production-ready</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 1 — LESSON 6 — "Making migration processes
+   production-ready". The DMC1 culmination: a release/readiness
+   exercise, not another transformation lesson, per the manuscript's
+   own authoring notes.
+
+   Source: DMC1_Lesson6_Making_Migration_Processes_Production_Ready_v3.docx.
+   The Core customer transformation timings (42 minutes Cycle 1, 31
+   minutes Cycle 2) are established Bramwell figures; the 35-minute
+   threshold, the 54-minute regression and the Build 1.7/1.8 timing
+   breakdown are explicitly lab assumptions per the manuscript, not
+   Bramwell canon. The synthetic product lab in the "Do it yourself"
+   block does not create new Bramwell product facts.
+
+   This is DMC1's last lesson, so its nextUrl breaks the usual
+   same-folder convention on purpose: LESSON_CONFIG.nextUrl points to
+   this lesson's own completion page as normal, but that completion
+   page's own "Continue" action should point to the DMC1 module
+   assessment.html once it exists (per the settled per-module
+   certification model, tp-html-build-guide.md §12.1) — not to
+   DMC2 lesson 1 directly. That assessment.html doesn't exist yet;
+   see the handover note.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with Lessons 1-5.
+============================================================== */
+
+const productionLabSteps = [
+{html:`<h4>Lab part 1 \u2014 Remove environment assumptions from the build</h4>
+ <p>Open the Bramwell customer process and search for values that would force a code or package edit when moving from development to the migration environment.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Hard-coded assumption</th><th>Production-ready treatment</th></tr></thead><tbody>
+ <tr><td>Server/database name inside SQL or task</td><td>Environment connection/configuration</td></tr>
+ <tr><td><code>C:\\Migration\\Cycle2\\Customers.csv</code></td><td>Input root + cycle/file configuration</td></tr>
+ <tr><td>Output folder in package expression</td><td>Controlled output configuration</td></tr>
+ <tr><td>Reference version literal</td><td>Approved reference-version parameter</td></tr>
+ <tr><td>CycleId embedded in WHERE clause</td><td>Cycle/run parameter</td></tr>
+ <tr><td>Email recipient embedded in script</td><td>Environment/notification configuration if used</td></tr>
+ <tr><td>Password/API key in package or script</td><td>Approved secret/credential mechanism</td></tr>
+ <tr><td>DEV-specific table/schema name</td><td>Environment abstraction or deployment configuration</td></tr>
+ </tbody></table></div>
+ <p>The transformation rule itself should not change simply because the package moves environment. If UK \u2192 GB is approved, that rule remains the rule. Connections, paths and operational values are what normally vary.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Illustrative configuration</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Environment: MIG_TEST
+CycleId: CYCLE_02
+InputRoot: \\\\migration\\inbound\\cycle02
+OutputRoot: \\\\migration\\outbound\\cycle02
+ReferenceVersion: REF_CYCLE02_APPROVED
+BuildVersion: CUST_1.8
+MaxAllowedRuntimeMin: 75</code></pre></div>
+ <p class="small">These are training implementation values, not new Bramwell facts.</p>
+ <div class="principle"><strong>Configuration is evidence too</strong><br>Record the configuration baseline used by the run. If two executions produce different results, you need to know whether code, input, reference data or configuration changed.</div>
+ <div class="callout misconception"><div class="callout-label">Avoid configuration sprawl</div><p>Externalising every literal can make a process harder to understand. Externalise values that legitimately vary by environment, cycle or controlled business baseline. Keep stable transformation logic in the controlled build.</p></div>`},
+{html:`<h4>Lab part 2 \u2014 Know exactly what you deployed</h4>
+ <p>A surprisingly common migration failure begins with the sentence: \u201cI thought that fix was in this version.\u201d</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Minimum evidence</th></tr></thead><tbody>
+ <tr><td>Build version</td><td>Unique version/release identifier</td></tr>
+ <tr><td>Source control</td><td>Committed code/package baseline</td></tr>
+ <tr><td>Approved change</td><td>Defect/mapping/change reference where applicable</td></tr>
+ <tr><td>Deployment target</td><td>Environment and deployment time</td></tr>
+ <tr><td>Deployed by</td><td>Traceable operator/process</td></tr>
+ <tr><td>Smoke test</td><td>Evidence that deployed package connects and basic controls run</td></tr>
+ <tr><td>Rollback/recovery</td><td>Known previous deployable version or defined recovery approach</td></tr>
+ </tbody></table></div>
+ <h4>Build version in the run evidence</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example run evidence</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RunId: C2-CUST-004
+Entity: Customer
+BuildVersion: CUST_1.8
+ReferenceVer: REF_CYCLE02_APPROVED
+Environment: MIG_TEST
+RunStatus: Started</code></pre></div>
+ <p class="small">If the run log says only \u201cCustomer package,\u201d you have lost an important diagnostic dimension.</p>
+ <div class="principle"><strong>Change-control principle</strong><br>A migration defect fix is not complete when the developer changes the package. It is complete when the approved change is built, tested, deployed, identifiable and its affected controls are retested.</div>`},
+{html:`<h4>Lab part 3 \u2014 Operationalise the run</h4>
+ <p>Create an operator runbook for the customer process. It should not duplicate every technical detail in the package. It should tell a competent consultant what to check, execute, observe and do when something is wrong.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Runbook section</th><th>What it should contain</th></tr></thead><tbody>
+ <tr><td>Purpose/scope</td><td>Entity and intended cycle/output</td></tr>
+ <tr><td>Prerequisites</td><td>Input, references, environment/access, upstream dependencies</td></tr>
+ <tr><td>Configuration</td><td>CycleId, paths, reference/build version, approved parameters</td></tr>
+ <tr><td>Start procedure</td><td>How to initiate the controlled run</td></tr>
+ <tr><td>Expected checkpoints</td><td>Major stages and expected evidence</td></tr>
+ <tr><td>Controls</td><td>Population, reconciliation and exception checks</td></tr>
+ <tr><td>Expected outputs</td><td>Artefact/table identity and location</td></tr>
+ <tr><td>Failure response</td><td>Where evidence is, when to stop, recovery decision route</td></tr>
+ <tr><td>Completion</td><td>What must be true before status is Complete/Ready</td></tr>
+ <tr><td>Handover/escalation</td><td>What evidence to provide and to whom</td></tr>
+ </tbody></table></div>
+ <h4>Pre-flight checklist</h4>
+ <ul class="framework-checks">
+   <li>Correct build version deployed.</li>
+   <li>Correct cycle/environment configuration loaded.</li>
+   <li>Expected source input present and identity proven.</li>
+   <li>Approved reference baseline available.</li>
+   <li>Required upstream dependencies complete.</li>
+   <li>No conflicting execution active.</li>
+   <li>Staging/output destinations available.</li>
+   <li>Sufficient storage/capacity where relevant.</li>
+   <li>Operator has required access without using developer credentials.</li>
+   <li>Previous failed/partial output cannot be mistaken for the new run.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Runbook test</div><p>Give the runbook to a consultant who did not build the package. If they must phone the developer to discover the input path, expected controls or meaning of a failure state, the handover is incomplete.</p></div>`}
+];
+
+const readySituations = [
+ { title:"Situation 1: Fast but untraceable",
+   question:"A developer halves runtime by embedding reference mappings in a local script that is not source-controlled. Is it ready?",
+   options:[
+     {label:"Not ready. Performance improvement does not justify losing rule traceability, deployment control and reproducibility.", correct:true, feedback:"Correct. Not ready. Performance improvement does not justify losing rule traceability, deployment control and reproducibility."},
+     {label:"Ready. Halving the runtime is a clear, measurable improvement that solves the performance problem.", correct:false, feedback:"The runtime number improved, but the rule now lives somewhere untracked and unreviewable. That's a new, more serious problem than the one it solved."},
+     {label:"Ready, as long as the developer documents the embedded mappings in an email to the team.", correct:false, feedback:"An email isn't source control, version history or deployment evidence. The traceability gap is still there, just described somewhere."},
+     {label:"Not ready, but only because the script wasn't written in the same language as the rest of the pipeline.", correct:false, feedback:"The language isn't the issue. The issue is that an approved rule now lives outside any controlled, versioned, deployable location."}
+   ]
+ },
+ { title:"Situation 2: Correct but too slow",
+   question:"The process produces correct output but consistently exceeds the available migration window. Is it ready?",
+   options:[
+     {label:"Ready, since correctness is the most important thing and the timing can probably be sorted out later.", correct:false, feedback:"Correct output that can't be delivered inside the available window isn't usable for the actual cutover, whatever its accuracy."},
+     {label:"Not production-ready for that window. Quantify the bottleneck and options rather than hoping cutover runs faster.", correct:true, feedback:"Correct. Not production-ready for that window. Quantify the bottleneck and options rather than hoping cutover runs faster."},
+     {label:"Ready, provided the team agrees informally to start the process a little earlier than planned.", correct:false, feedback:"Starting earlier doesn't fix an unquantified bottleneck, and \u201cagreed informally\u201d isn't the kind of evidence a readiness decision should rest on."},
+     {label:"Not ready, and the only real fix is to reduce the amount of data in scope for this cycle.", correct:false, feedback:"That jumps to one specific fix before the bottleneck has even been localised. Reducing scope may not be necessary, or even relevant, once the actual cause is known."}
+   ]
+ },
+ { title:"Situation 3: Different environment, different count",
+   question:"The same build and source extract produce a different load-ready count after deployment. What's the right response?",
+   options:[
+     {label:"Accept the new count, since the build and source extract are both confirmed to be identical between environments.", correct:false, feedback:"Identical build and source don't guarantee an identical result if configuration, reference data or environment behaviour differ."},
+     {label:"Assume the newer environment's count is the more accurate one, since it's the one closer to production.", correct:false, feedback:"\u201cCloser to production\u201d isn't evidence of correctness. Either count could be the wrong one until something is actually checked."},
+     {label:"Stop. Compare configuration, reference data, target/environment behaviour and build identity. Environment promotion is not proven.", correct:true, feedback:"Correct. Stop. Compare configuration, reference data, target/environment behaviour and build identity. Environment promotion is not proven."},
+     {label:"Rerun the process a third time and use whichever count appears twice out of the three attempts.", correct:false, feedback:"Majority voting across reruns doesn't establish which environment's behaviour is actually correct. It just picks an outcome without explaining the discrepancy."}
+   ]
+ },
+ { title:"Situation 4: Only the developer can run it",
+   question:"All tests pass, but execution requires undocumented local steps and the developer's credentials. Is it ready?",
+   options:[
+     {label:"Ready, since every test the team has run against it has passed without any functional issues.", correct:false, feedback:"Passing functional tests proves the logic works. It says nothing about whether anyone besides the developer could actually run it."},
+     {label:"Not ready, but only in the narrow sense that the documentation needs a short paragraph added to it.", correct:false, feedback:"This understates the gap. Undocumented steps plus personal credentials means no one else can operate this at all yet, not just that a paragraph is missing."},
+     {label:"Ready, provided the developer remains available throughout the entire migration window as a precaution.", correct:false, feedback:"That reintroduces the exact single-person dependency this lesson (and Lesson 3's \u201conly one person could run it\u201d story) warns against."},
+     {label:"The technical build may work; the operational process is not ready.", correct:true, feedback:"Correct. The technical build may work; the operational process is not ready."}
+   ]
+ },
+ { title:"Situation 5: Repeat run creates duplicate output",
+   question:"The second controlled execution appends another copy of every load-ready row. What's the right response?",
+   options:[
+     {label:"Restartability/repeatability has failed. Fix output/run scoping and prove the corrected behaviour before release.", correct:true, feedback:"Correct. Restartability/repeatability has failed. Fix output/run scoping and prove the corrected behaviour before release."},
+     {label:"This is expected and fine, since appending output means no data was lost between the two runs.", correct:false, feedback:"Nothing being lost doesn't mean nothing is wrong. A duplicated population is exactly the kind of defect a repeatability test exists to catch."},
+     {label:"De-duplicate the output manually after each run rather than changing how the pipeline scopes its output.", correct:false, feedback:"A manual clean-up step every run is a workaround, not a fix, and it's exactly the kind of manual step a production-ready process shouldn't depend on."},
+     {label:"Reduce how often the process is rerun, since duplication only happens when it runs more than once.", correct:false, feedback:"Reruns are a normal, expected part of migration operations. Avoiding them doesn't fix a process that can't handle its own repetition safely."}
+   ]
+ },
+ { title:"Situation 6: The hard one \u2014 33 minutes in a 35-minute lab window",
+   question:"All controls pass, but runtime leaves only two minutes of headroom. What's the right response?",
+   options:[
+     {label:"Since every control passed, 33 out of 35 minutes is a clear pass and can be reported as fully ready.", correct:false, feedback:"A pass on every control doesn't make the tight margin disappear. Reporting it as simply \u201cready\u201d hides a real risk from whoever needs to weigh it."},
+     {label:"Report the measured margin and migration dependencies/recovery risk. Wider readiness is a DML/project decision; the DMC supplies evidence and mitigation options.", correct:true, feedback:"Correct. Do not invent a universal pass/fail percentage. Report the measured margin and migration dependencies/recovery risk. The DML/project decides wider readiness; the DMC supplies clear evidence and mitigation options."},
+     {label:"This automatically fails readiness, since anything under 10% headroom should never be accepted on a migration project.", correct:false, feedback:"That invents a universal threshold the manuscript specifically warns against. Whether 2 minutes of headroom is acceptable is a project risk decision, not a fixed rule."},
+     {label:"Quietly extend the lab's 35-minute threshold to 40 minutes so the run comfortably passes next time it's measured.", correct:false, feedback:"Moving the target to make the number look better hides the actual risk instead of surfacing it for the people who need to decide."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"It works, but will it survive the cycle?",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The Bramwell customer pipeline now transforms approved rules, exposes exceptions, reconciles its populations and can recover from a controlled failure. In development, it works.</p>
+ <p>The next migration rehearsal is different. The process will run in a controlled migration environment, against a fresh extract, under a fixed execution window. Another consultant may operate it. The build must be deployed without editing package internals.</p>
+ </div>
+ <div class="quote">\u201cAre customers production-ready?\u201d \u2014 the Data Migration Lead</div>
+ <h3>What's the strongest response?</h3>`,
+ options:[
+   {label:"Yes. The package completed successfully in development.", correct:false, feedback:"Development success proves the logic can work under conditions you control. It doesn't prove anything about configuration, deployment, performance or operability by someone else."},
+   {label:"Yes. We have tested the transformations and the output looks correct.", correct:false, feedback:"Correct-looking output is necessary but not sufficient. It says nothing about whether the process can be configured, deployed, operated and recovered under real migration-cycle conditions."},
+   {label:"Not yet. We need evidence that the deployed build is configurable, repeatable, supportable, performant enough for the window, operationally controlled and produces the same proven outcome from the same controlled inputs.", correct:true, feedback:"Correct. Functional correctness is essential, but it is only one dimension of readiness. A migration process that requires manual code edits, cannot be diagnosed, misses its execution window or behaves differently on a rerun is not ready for controlled project operation."},
+   {label:"No migration process can be production-ready until cutover itself.", correct:false, feedback:"That sets an impossible bar. Readiness is something you build and prove evidence for ahead of cutover, not something that can only be declared in hindsight."}
+ ]
+},
+{
+ id:"b2",nav:"Working build to process",title:"Teach \u2014 From working build to operational process",type:"content",
+ html:`<p class="lead">A development build proves that the logic can work. Production readiness asks whether the process can be trusted when the conditions become less forgiving.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dimension</th><th>Working build</th><th>Production-ready migration process</th></tr></thead><tbody>
+ <tr><td>Configuration</td><td>Developer edits paths/connections</td><td>Environment/run values supplied through controlled configuration</td></tr>
+ <tr><td>Deployment</td><td>Latest local copy is used</td><td>Known build version is promoted and identifiable</td></tr>
+ <tr><td>Execution</td><td>Developer knows the sequence</td><td>Operator can follow a runbook and pipeline controls</td></tr>
+ <tr><td>Failure</td><td>Developer investigates interactively</td><td>Failure evidence and recovery boundaries are designed</td></tr>
+ <tr><td>Data control</td><td>Output appears correct</td><td>Population, exception and output controls are repeatable</td></tr>
+ <tr><td>Performance</td><td>Runtime feels acceptable</td><td>Runtime is measured against the migration window with headroom</td></tr>
+ <tr><td>Security</td><td>Credentials may exist in local setup</td><td>Secrets/access follow project controls</td></tr>
+ <tr><td>Support</td><td>Original developer is needed</td><td>Another competent consultant can diagnose and operate it</td></tr>
+ <tr><td>Change</td><td>Code is edited when needed</td><td>Changes are versioned, tested and linked to approved rules</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Production-ready does not mean perfect</strong><br>It means the process is controlled enough for its intended migration cycle and risk. A one-off 5,000-row reference load and a 185,000-product transformation may justify different engineering effort. Apply discipline proportionately.</div>`
+},
+{
+ id:"b3",nav:"The readiness gate",title:"Readiness gate \u2014 Seven questions before release",type:"content",
+ html:`<ol class="framework-checks">
+   <li>Can we prove exactly which build and configuration will run?</li>
+   <li>Can it move between environments without changing transformation code?</li>
+   <li>Can another consultant execute it from documented inputs and controls?</li>
+   <li>Can we detect and diagnose failure without reconstructing the process from memory?</li>
+   <li>Can we rerun or recover without silently duplicating, losing or overwriting evidence?</li>
+   <li>Does it complete inside the required migration window with sensible headroom?</li>
+   <li>Can we prove that repeated execution produces the intended controlled result?</li>
+ </ol>
+ <div class="principle"><strong>The release question</strong><br>Do not ask only \u201cDoes it work?\u201d Ask \u201cCan we operate, repeat, explain and recover it under migration-cycle conditions?\u201d</div>`
+},
+{
+ id:"b4",nav:"The production lab",title:"The lab \u2014 Make the Bramwell process operational",type:"guidedSteps",
+ html:`<p class="lead">Work through all three lab parts in order. Each one closes a different gap between "it works on my machine" and "another consultant can run this."</p>`,
+ steps: productionLabSteps,
+ firstLabel:"Walk through Lab part 1",
+ closingHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Configuration-Matrix-Template.xlsx</strong><p class="small">Environment, cycle and run values with ownership, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Configuration-Matrix-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Preflight-Checklist-Template.xlsx</strong><p class="small">The ten-item pre-flight checklist above, ready to run before any execution.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Preflight-Checklist-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Operator-Runbook-Template.docx</strong><p class="small">The ten-section runbook structure above, ready to fill in for any entity.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Operator-Runbook-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Performance lab",title:"Performance lab \u2014 Runtime is a migration requirement",type:"content",
+ html:`<p class="lead">Bramwell's earlier Core case recorded customer transformation times of 42 minutes in Cycle 1 and 31 minutes in Cycle 2. Those established figures show why runtime should be measured across cycles rather than guessed.</p>
+ <p>For this lab, the production-readiness team sets a training requirement: the customer transformation stage should complete within 35 minutes in the test environment. That 35-minute threshold is a lab assumption, not Bramwell canon.</p>
+ <p>A new build takes 54 minutes.</p>
+ <div class="principle"><strong>Your job</strong><br>Do not start optimising random components. Establish where the additional time is being spent and whether the change is caused by data volume, transformation design, reference access, blocking operations, destination behaviour, environment or another factor.</div>
+ <h3>Establish a performance baseline</h3>
+ <ul class="framework-checks">
+   <li><strong>Input rows</strong> \u2014 runtime comparisons need volume context.</li>
+   <li><strong>Stage start/end</strong> \u2014 find the slow stage.</li>
+   <li><strong>Rows per stage</strong> \u2014 identify expansion, reduction or unexpected grain.</li>
+   <li><strong>Reference sizes</strong> \u2014 large or changed lookups can alter behaviour.</li>
+   <li><strong>Source read time</strong> \u2014 separate extraction from transformation.</li>
+   <li><strong>Transformation time</strong> \u2014 measure logic cost.</li>
+   <li><strong>Destination write time</strong> \u2014 separate the output bottleneck.</li>
+   <li><strong>Environment/build/reference version</strong> \u2014 make runs comparable.</li>
+   <li><strong>Resource/engine diagnostics when needed</strong> \u2014 explain the bottleneck after localisation.</li>
+ </ul>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Stage</th><th>Build 1.7</th><th>Build 1.8</th></tr></thead><tbody>
+ <tr><td>Read staged customers</td><td>4m</td><td>4m</td></tr>
+ <tr><td>Country/payment lookups</td><td>6m</td><td>27m</td></tr>
+ <tr><td>Derived transformations</td><td>12m</td><td>12m</td></tr>
+ <tr><td>Exception routing</td><td>3m</td><td>3m</td></tr>
+ <tr><td>Write transformed output</td><td>6m</td><td>8m</td></tr>
+ <tr><td><strong>TOTAL</strong></td><td><strong>31m</strong></td><td><strong>54m</strong></td></tr>
+ </tbody></table></div>
+ <p>The evidence localises the regression to the lookup stage. Now investigate that stage instead of redesigning the entire pipeline.</p>`
+},
+{
+ id:"b6",nav:"Diagnose the slowdown",title:"Diagnose it \u2014 Why did the lookup slow down?",type:"mcq",
+ _correctIndex:3,
+ html:`<div class="callout experience">
+ <div class="callout-label">The finding</div>
+ <p>The lab reveals that Build 1.8 replaced a small controlled reference lookup with a query that repeatedly calls a remote reference source for each data-flow execution partition.</p>
+ </div>
+ <h3>What's the strongest response?</h3>`,
+ options:[
+   {label:"Increase the package timeout so the slower lookup has time to finish.", correct:false, feedback:"That may hide the symptom; it does not address the cause. The lookup is still doing far more remote work than it needs to."},
+   {label:"Remove the lookup entirely so nothing can slow it down.", correct:false, feedback:"That destroys required transformation control. The lookup exists to translate a controlled reference, not to be optimised away."},
+   {label:"Default unmatched values so the lookup has less work to do.", correct:false, feedback:"That improves neither correctness nor legitimate performance, and reintroduces the exact hidden-default problem earlier lessons warn against."},
+   {label:"Stage or cache the approved reference once, then join to it locally.", correct:true, feedback:"Correct. This is a strong candidate if the reference baseline can be controlled and refreshed correctly \u2014 it removes the repeated remote calls without weakening the lookup's controls."},
+   {label:"Run everything in parallel to make up the lost time elsewhere.", correct:false, feedback:"That may worsen contention and does not target the measured bottleneck, which is specifically the repeated remote lookup calls."}
+ ]
+},
+{
+ id:"b7",nav:"Blocking operations",title:"Blocking and expensive transformations",type:"content",
+ html:`<p class="lead">In SSIS and similar tools, some operations require substantial buffering, sorting or whole-set processing. Sort, Aggregate, certain Merge patterns and custom scripts can become expensive at scale. That does not make them forbidden.</p>
+ <ul class="framework-checks">
+   <li><strong>Do we need this operation?</strong> Keep it if it implements a real migration requirement.</li>
+   <li><strong>Can the source/staging layer provide the data already ordered or indexed appropriately?</strong> Consider it if controlled and demonstrably faster.</li>
+   <li><strong>Can a reference be loaded once rather than repeatedly queried?</strong> Often useful where freshness or version is controlled.</li>
+   <li><strong>Is custom script doing work a standard component or SQL layer can do clearly?</strong> Simplify if it improves maintainability and performance.</li>
+   <li><strong>Are we processing rows that should have been excluded by approved scope earlier?</strong> Correct the population design, not merely the component.</li>
+   <li><strong>Can independent entities or stages run in parallel?</strong> Only after dependency and resource contention are understood.</li>
+ </ul>
+ <p class="small">Do not repeat simplistic rules such as \u201ctransformations always belong in the Data Flow\u201d or \u201cnever transform in source SQL.\u201d Choose the layer that is controlled, testable, traceable, maintainable and performant enough.</p>
+ <h3>Create a performance evidence sheet</h3>
+ <ul class="framework-checks">
+   <li><strong>RunId / CycleId</strong> \u2014 identify the execution.</li>
+   <li><strong>Entity</strong> \u2014 Customer.</li>
+   <li><strong>BuildVersion</strong> \u2014 compare releases.</li>
+   <li><strong>InputRows</strong> \u2014 normalise runtime against volume.</li>
+   <li><strong>StageName</strong> \u2014 localise time.</li>
+   <li><strong>Start / End / Duration</strong> \u2014 measure.</li>
+   <li><strong>RowsIn / RowsOut</strong> \u2014 spot grain or population anomalies.</li>
+   <li><strong>Environment</strong> \u2014 avoid invalid comparisons.</li>
+   <li><strong>ReferenceVersion</strong> \u2014 identify baseline changes.</li>
+   <li><strong>Result</strong> \u2014 pass/fail against the agreed window.</li>
+   <li><strong>Comment</strong> \u2014 explain the anomaly or change.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Headroom matters</div><p>A process that takes 59 minutes in a 60-minute slot is not comfortably ready. Migration windows contain variability, dependencies and recovery needs. The appropriate headroom is project-specific, but zero margin is a risk worth surfacing.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Performance-Evidence-Template.xlsx</strong><p class="small">The eleven-field structure above, ready to fill in for any stage timing comparison.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Performance-Evidence-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b8",nav:"Repeatability test",title:"Repeatability test \u2014 Same controlled input, same controlled result",type:"content",
+ html:`<p class="lead">Run the customer process twice using the same synthetic lab input, build, configuration and approved reference baseline. Use a separate attempt/run identity so evidence is preserved. Compare: raw/source population and distinct keys; load-ready population; exception population and exception reasons; key transformed field distributions; output business keys; output content or a deterministic comparison/hash where appropriate; reconciliation status; unexpected duplicates; runtime variation.</p>
+ <h3>SQL comparison patterns</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: keys present in one run but not the other</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Keys in Run A but not Run B
+SELECT CustomerNumber
+FROM output.Customer
+WHERE RunId = @RunA
+EXCEPT
+SELECT CustomerNumber
+FROM output.Customer
+WHERE RunId = @RunB;
+
+-- Keys in Run B but not Run A
+SELECT CustomerNumber
+FROM output.Customer
+WHERE RunId = @RunB
+EXCEPT
+SELECT CustomerNumber
+FROM output.Customer
+WHERE RunId = @RunA;</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: field-level comparison</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  a.CustomerNumber,
+  a.CountryCode AS RunA_Country,
+  b.CountryCode AS RunB_Country
+FROM output.Customer a
+JOIN output.Customer b
+  ON b.CustomerNumber = a.CustomerNumber
+WHERE a.RunId = @RunA
+  AND b.RunId = @RunB
+  AND ISNULL(a.CountryCode,'') <> ISNULL(b.CountryCode,'');</code></pre></div>
+ <div class="principle"><strong>Determinism with nuance</strong><br>Some outputs legitimately contain generated timestamps, sequence values or environment-specific identifiers. Define which fields should be stable and which are expected to vary. Do not call a process non-repeatable because an execution timestamp changed.</div>`
+},
+{
+ id:"b9",nav:"The second run differs",title:"Diagnose it \u2014 The second run differs",type:"content",
+ html:`<p class="lead">The repeatability test produces the same row count but 42 customer records have different target values between runs.</p>
+ <p>What should you compare before changing code?</p>
+ <ol class="framework-checks">
+   <li>Input identity and content.</li>
+   <li>Build version.</li>
+   <li>Reference version and reference contents.</li>
+   <li>Configuration/parameters.</li>
+   <li>Execution order and any time-dependent logic.</li>
+   <li>Non-deterministic joins or ambiguous reference matches.</li>
+   <li>Target/output behaviour such as generated defaults.</li>
+   <li>Environment differences.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Counts are not repeatability</div><p>Two runs can both contain 18,612 rows and still disagree on which values were produced. Repeatability needs key- and field-level evidence for the transformations that matter.</p></div>`
+},
+{
+ id:"b10",nav:"Security and access",title:"Security and access \u2014 Enough for a DMC to control",type:"content",
+ html:`<p class="lead">A Data Migration Consultant is not expected to design enterprise security architecture, but should recognise unsafe operational practices.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak practice</th><th>Better practice</th></tr></thead><tbody>
+ <tr><td>Password stored in SQL/script/package text</td><td>Use project-approved credential/secret mechanism</td></tr>
+ <tr><td>Developer personal account runs scheduled migration</td><td>Use approved execution identity/service mechanism</td></tr>
+ <tr><td>Everyone has write access to raw evidence</td><td>Restrict write access appropriately; preserve evidence</td></tr>
+ <tr><td>Output share is open to broad users</td><td>Limit access to migration/business need</td></tr>
+ <tr><td>Credentials copied into runbook</td><td>Reference the approved access process, not the secret</td></tr>
+ <tr><td>Production-like access granted without testing</td><td>Verify operator permissions before the migration window</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Operational lesson</strong><br>A perfectly designed pipeline can still fail at cutover because the execution account cannot read the source or write the destination. Access is a pre-flight dependency and should be tested before the window.</div>`
+},
+{
+ id:"b11",nav:"The readiness review",title:"Production-readiness review \u2014 Bramwell customer process",type:"content",
+ html:`<p class="lead">Use the following review as the final worked assessment of DMC1. Each area is marked Ready, Ready with action, or Not ready \u2014 and backed by evidence, not a tick.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Area</th><th>Evidence required</th></tr></thead><tbody>
+ <tr><td>Mapping logic</td><td>Build traceable to approved mapping/rules; unresolved values remain exceptions</td></tr>
+ <tr><td>Staging</td><td>Raw evidence preserved; run/cycle identity; controlled references</td></tr>
+ <tr><td>Pipeline</td><td>Dependencies, pre-flight, reconciliation and output gates explicit</td></tr>
+ <tr><td>Transformations</td><td>No hidden defaults; boundary, no-match and multi-match behaviour tested</td></tr>
+ <tr><td>Logging</td><td>Run/step/exception evidence sufficient for diagnosis</td></tr>
+ <tr><td>Recovery</td><td>Known checkpoints; partial-output and rerun behaviour tested</td></tr>
+ <tr><td>Configuration</td><td>Environment/cycle values externalised appropriately</td></tr>
+ <tr><td>Deployment</td><td>Build version identifiable and promotion controlled</td></tr>
+ <tr><td>Performance</td><td>Measured against required window with risk/headroom understood</td></tr>
+ <tr><td>Repeatability</td><td>Same controlled baseline produces expected equivalent result</td></tr>
+ <tr><td>Access</td><td>Execution identity and destinations tested</td></tr>
+ <tr><td>Runbook</td><td>Another consultant can operate and escalate from evidence</td></tr>
+ </tbody></table></div>
+ <h3>A readiness decision is evidence-based</h3>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cCustomers are ready. We have run them several times.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Stronger</div><p>\u201cCustomer build CUST_1.8 has passed functional, reconciliation, recovery and repeatability tests in the migration test environment. Runtime is 33 minutes against the 35-minute lab threshold, so performance headroom remains a risk to track. The runbook and configuration pack have been executed by a second consultant. Unresolved business exceptions remain reported separately.\u201d</p></div></div>
+ <p class="small">The 35-minute threshold and CUST_1.8 label are lab values. The structure of the statement is the lesson: claim, evidence, residual risk.</p>`
+},
+{
+ id:"b12",nav:"Do it yourself",title:"Do it yourself \u2014 Make a migration process production-ready",type:"reflection",
+ html:`<p class="lead">The independent lab supplies a synthetic product migration process that currently works only on its developer's laptop. Product volume may use a training subset; do not treat lab counts as Bramwell canon. The process has these deliberate weaknesses:</p>
+ <ul class="framework-checks">
+   <li>Hard-coded development connection and local input/output paths.</li>
+   <li>No build version in execution evidence.</li>
+   <li>Manual editing of CycleId before each run.</li>
+   <li>One large transformation with no stage timings.</li>
+   <li>A lookup that queries a remote source repeatedly.</li>
+   <li>Output overwritten on every execution.</li>
+   <li>Developer credentials required.</li>
+   <li>No operator runbook.</li>
+   <li>No repeatability test.</li>
+   <li>Runtime close to the available training window.</li>
+ </ul>
+ <h3>Your task</h3>
+ <ol class="framework-checks">
+   <li>Separate stable transformation logic from environment/cycle configuration.</li>
+   <li>Define the deployment/version evidence required.</li>
+   <li>Create a pre-flight checklist.</li>
+   <li>Instrument stage timings and row counts.</li>
+   <li>Use evidence to identify the main performance bottleneck.</li>
+   <li>Propose an optimisation that preserves migration controls.</li>
+   <li>Define the output-versioning/replacement behaviour.</li>
+   <li>Define the approved execution-access requirement without storing credentials in the artefact.</li>
+   <li>Execute or simulate two controlled repeatability runs and compare them.</li>
+   <li>Produce a production-readiness assessment with evidence and residual risks.</li>
+   <li>Write an operator handover that another consultant can follow.</li>
+ </ol>
+ <h3>Required artefacts</h3>
+ <ul class="framework-checks">
+   <li><strong>Configuration matrix</strong> \u2014 environment/cycle/run values and ownership.</li>
+   <li><strong>Deployment record</strong> \u2014 build/version/environment evidence.</li>
+   <li><strong>Pre-flight checklist</strong> \u2014 prerequisites before execution.</li>
+   <li><strong>Performance evidence sheet</strong> \u2014 stage timings, volumes and comparison.</li>
+   <li><strong>Optimisation note</strong> \u2014 measured bottleneck, change, retest result.</li>
+   <li><strong>Repeatability comparison</strong> \u2014 key/field/count evidence across controlled runs.</li>
+   <li><strong>Production-readiness checklist</strong> \u2014 evidence-backed status by readiness dimension.</li>
+   <li><strong>Operator runbook</strong> \u2014 execute, observe, stop, recover, complete.</li>
+   <li><strong>Handover note</strong> \u2014 known limitations, unresolved risks and next action.</li>
+ </ul>
+ <p class="lead">Write your production-readiness assessment below, in the claim/evidence/residual-risk structure from this lesson.</p>
+ <textarea id="reflection" placeholder="Product build..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Repeatability-Comparison-Template.xlsx</strong><p class="small">Key, field and count evidence across two controlled runs, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Repeatability-Comparison-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Production-Readiness-Checklist.xlsx</strong><p class="small">The twelve-area readiness board from this lesson, ready to fill in with evidence.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Production-Readiness-Checklist.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/config|environment|hard-?cod/i, strength:"You addressed separating configuration from stable transformation logic.", gap:"Name a specific value that should move from hard-coded to configuration." },
+   { test:/build version|deploy/i, strength:"You addressed build/version/deployment evidence.", gap:"State what build or version evidence should exist in the run record." },
+   { test:/bottleneck|performance|timing|stage/i, strength:"You addressed localising the performance bottleneck with evidence, not guesswork.", gap:"State how you'd localise the bottleneck to a specific stage before proposing a fix." },
+   { test:/repeatab|two.*run|compare/i, strength:"You addressed proving repeatability across two controlled runs.", gap:"State what you'd compare between two controlled runs, beyond just row counts." },
+   { test:/risk|residual/i, strength:"You named a specific residual risk rather than declaring the process simply ready.", gap:"Name a specific residual risk you'd report alongside your readiness claim." },
+   { test:/handover|runbook|another consultant/i, strength:"You wrote this so another consultant could actually operate the process from it.", gap:"Say what a different consultant would need from your handover to actually run this themselves." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Product build PROD_1.0 has passed functional and reconciliation tests against the synthetic lab dataset. Connection strings, input/output paths and CycleId are now configuration, not hard-coded; the run record captures BuildVersion and Environment. The remote lookup was identified as the main bottleneck through stage timings and replaced with a locally cached, version-controlled reference. Two controlled repeatability runs produced identical business keys and matching field values, with only the execution timestamp expected to differ. Runtime is within the training window with acceptable headroom. Residual risk: the pre-flight checklist has not yet been executed by a second consultant, so operability by someone other than the builder is not yet proven. Handover: run PreflightCheck.sql, confirm the configuration matrix values for the target environment, then start via RunCustomerProcess with the approved BuildVersion.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine production-readiness assessment: claim, evidence and an honestly reported residual risk, not a blanket 'it's ready.'":"You have the right structure. Make sure you're naming a specific residual risk rather than declaring the process simply ready, and that your handover gives a different consultant enough to actually start the run."}</div>`
+},
+{
+ id:"b13",nav:"Ready enough?",title:"Consultant situations \u2014 Ready enough?",type:"situations",
+ html:`<p class="lead">Six moments where "ready" isn't a simple yes or no.</p>`,
+ items: readySituations,
+ takeawayHtml:`<div class="principle"><strong>The pattern across all six</strong><br>None of these are solved by picking the more comfortable-sounding answer. Each one needs the same discipline: report what's actually proven, name the residual risk, and let evidence, not hope, carry the readiness claim.</div>`
+},
+{
+ id:"b14",nav:"The DMC1 production pack",title:"The DMC1 production pack",type:"content",
+ html:`<p class="lead">By the end of Module 1, you should have a coherent set of project-usable artefacts rather than six disconnected lessons.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>From lesson</th><th>Artefact / capability</th></tr></thead><tbody>
+ <tr><td>L1 \u2014 Mapping to logic</td><td>Mapping-to-Build Specification + transformation test matrix</td></tr>
+ <tr><td>L2 \u2014 SQL and staging</td><td>Staging design + SQL control pack</td></tr>
+ <tr><td>L3 \u2014 ETL pipeline</td><td>Pipeline diagram + parameter/pre-flight/control-total pack</td></tr>
+ <tr><td>L4 \u2014 Robust transformations</td><td>Transformation rule catalogue + boundary/lookup test evidence</td></tr>
+ <tr><td>L5 \u2014 Logging/restartability</td><td>Run/step/exception logging + recovery evidence pack</td></tr>
+ <tr><td>L6 \u2014 Production readiness</td><td>Configuration, deployment, performance, repeatability and operator handover pack</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Module-level outcome</strong><br>A candidate completing DMC1 should be able to take an approved mapping and build a controlled migration process that another consultant can understand, execute, diagnose, recover and prepare for a real migration cycle.</div>
+ <div class="to-record">${TPKit.fromField({
+   title:"The Build That Worked on One Laptop", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/BuildThatWorkedOnOneLaptop-Nadia.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b15",nav:"Reflection",title:"Reflection \u2014 Would you put your name against this build?",type:"reflection",
+ html:`<p class="lead">Choose the production-readiness dimension you would be least willing to compromise under time pressure: configuration, deployment traceability, operational control, failure recovery, performance, repeatability, access or handover.</p>
+ <p>Explain why, then identify one dimension where you think proportional compromise may sometimes be reasonable on a real migration project.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers recognise that production readiness is risk-based rather than perfection-based, while still identifying controls whose absence would make the process impossible to trust.</p></div></div>
+ <textarea id="reflection" placeholder="The dimension I would be least willing to compromise is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/configuration|deployment|operational control|failure recovery|performance|repeatab|access|handover/i, strength:"You named a specific readiness dimension as your line.", gap:"Name one specific dimension \u2014 configuration, deployment, recovery, performance, repeatability, access or handover \u2014 as the one you wouldn't compromise." },
+   { test:/because|since|reason/i, strength:"You explained why that dimension is the one you'd hold the line on.", gap:"Explain why that particular dimension matters more to you than the others." },
+   { test:/proportional|compromise|reasonable|trade.?off/i, strength:"You identified a dimension where proportional compromise could be reasonable.", gap:"Name a second dimension where some compromise might be reasonable on a real project, and why." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The dimension I'd be least willing to compromise is failure recovery: without proven recovery evidence, every other control's benefit disappears the moment something goes wrong at 2am. A dimension where proportional compromise can be reasonable is performance headroom on a genuinely low-volume, low-risk entity, where a tighter margin might be an acceptable, explicitly reported risk rather than a blocking issue.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the risk-based thinking the lesson is built around: not every dimension needs the same rigour, but some genuinely can't be traded away.":"You have good instincts. Make sure your reasoning is about risk and consequence, not just which control feels most technically interesting to you."}</div>`
+},
+{
+ id:"b16",nav:"Summary",title:"Summary \u2014 Production-ready means operable and provable",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Functional correctness is necessary but not sufficient.</li>
+   <li>Externalise values that genuinely vary by environment, cycle or controlled baseline.</li>
+   <li>Know exactly which build and configuration executed.</li>
+   <li>Deploy through a controlled, identifiable process.</li>
+   <li>Give operators a runbook focused on prerequisites, controls, outputs and failure behaviour.</li>
+   <li>Measure runtime by stage and compare like with like.</li>
+   <li>Optimise the measured bottleneck without weakening migration meaning or controls.</li>
+   <li>Test repeatability using the same controlled baseline and compare more than row counts.</li>
+   <li>Treat access and credentials as operational prerequisites.</li>
+   <li>Use evidence to state readiness and residual risk.</li>
+   <li>Make the process supportable by someone other than its original developer.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A migration process becomes production-ready when it stops being a developer's working solution and becomes a controlled project process that can be configured, deployed, operated, measured, repeated, recovered and explained from evidence.</div>`
+},
+{
+ id:"b17",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Making migration processes production-ready \u2014 and with it, DMC Module 1.</strong></p>
+ <p>You can now take a migration process that works in development and prepare it for repeated project execution: externalise environment configuration, control deployments and versions, establish operational checks, measure runtime against the migration window, remove avoidable bottlenecks, prove repeatability and hand the process to another consultant with enough evidence to operate it safely.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>What's next</h3>
+ <p>You have completed DMC1 \u2014 Building Migration Solutions. DMC2 moves from building the migration process to getting control of unfamiliar data: profiling it, exposing quality problems, creating repeatable cleansing and turning analysis into migration-ready outputs.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone asks whether a build is production-ready.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 1",
+  moduleTitle: "Building Migration Solutions",
+  lessonLabel: "Lesson 6: Making migration processes production-ready",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "Preparing a working build for repeated, real project execution",
+  storageKey: "tp_dmc1_lesson6_v1",
+  lessonId: "dmc1-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6-complete.html",
+  finalButtonLabel: "Finish Lesson 6",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
