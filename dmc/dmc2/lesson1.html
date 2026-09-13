@@ -218,7 +218,7 @@ const blocks=[
 {
  id:"b3",nav:"Grain before quality",title:"Grain before quality",type:"content",
  html:`<p class="lead">Before counting blanks or invalid codes, determine what one row represents.</p>
- <p>You inspect <code>CustNo</code> and find 18,607 distinct non-blank values across 18,612 rows in the training evidence pack. These figures are lab evidence for this lesson, not new Bramwell canon.</p>
+ <p>You inspect <code>CustNo</code> and find 18,607 distinct non-blank values across 18,612 rows.</p>
  <div class="callout misconception"><div class="callout-label">What can you conclude?</div><p>Only that row count and distinct CustNo count differ. You cannot yet conclude that five rows are duplicate customers.</p></div>
  <p>Possible explanations include: true duplicate customer records; multiple records for one customer because the file grain includes another dimension; repeated extraction rows; multiple legal-entity representations; blank or formatting differences in keys; a file assembled from more than one source; or a legitimate one-to-many structure accidentally labelled as customer master.</p>
  <h3>Return the evidence, not just the count</h3>
@@ -233,7 +233,7 @@ ORDER BY RowCount DESC, CustNo;</code></pre></div>
 {
  id:"b4",nav:"Evidence pack 2",title:"Evidence pack 2 \u2014 The repeated keys are not all the same problem",type:"expandableList",
  layout:"loop",
- html:`<p class="lead">Five repeated-key examples from the training evidence pack. These are synthetic training records \u2014 explore each one. You will not be told that all three underlying patterns get the same treatment, because they don't.</p>`,
+ html:`<p class="lead">Five repeated-key examples from the evidence pack. Explore each one \u2014 you will not be told that all three underlying patterns get the same treatment, because they don't.</p>`,
  items: repeatedKeyPatterns,
  takeawayHtml:`<div class="callout misconception"><div class="callout-label">Do not cleanse away the evidence</div><p>If you <code>SELECT DISTINCT</code> at the start, you may make the file easier to work with while destroying the clue that explains how it was produced.</p></div>`
 },
@@ -274,7 +274,7 @@ FROM raw.Customer_Previous prev
 LEFT JOIN raw.Customer_Current cur
   ON cur.CustNo = prev.CustNo
 WHERE cur.CustNo IS NULL;</code></pre></div>
- <p>The lesson lab supplies the actual synthetic comparison results. This lesson does not invent the composition of Bramwell's canonical +82 movement.</p>
+ <p>The actual comparison results are supplied separately \u2014 this walkthrough doesn't presume what the +82 movement is actually made up of.</p>
  <div class="principle"><strong>What you are trying to establish</strong><br>Did the business population genuinely change, did extraction logic change, did scope change, or did the dataset structure change? Those causes require different responses.</div>`
 },
 {
@@ -394,7 +394,7 @@ ORDER BY Rows DESC;</code></pre></div>
 },
 {
  id:"b13",nav:"The 60-minute takeover",title:"Practical investigation \u2014 The 60-minute dataset takeover",type:"reflection",
- html:`<p class="lead">You now receive a synthetic unfamiliar dataset, <code>Vendor_Extract_A.xlsx</code>, with no detailed handover. It is intentionally different from the Bramwell customer case and does not create new Bramwell supplier facts. You have 60 simulated minutes.</p>
+ html:`<p class="lead">You now receive an unfamiliar dataset, <code>Vendor_Extract_A.xlsx</code>, with no detailed handover. You have 60 simulated minutes.</p>
  <h3>Phase A \u2014 Control the artefact</h3>
  <ul class="framework-checks">
    <li>Record filename, received timestamp, row/column counts and intended entity.</li>
@@ -446,7 +446,7 @@ ORDER BY Rows DESC;</code></pre></div>
  ],
  modelAnswerHtml:`<h3>Turner Page model answer</h3>
  <div class="quote">The supplied vendor extract contains 12,406 rows, but the proposed VendorNo key is not unique, so the business grain is not yet proven. The file also contains three status codes not described in the handover and 47 rows with blank VendorNo. Before cleansing, we need the extraction criteria, source-key definition and status semantics. Separately, CountryCode contains four low-frequency values not present in the supplied reference list; these are quantified and attached for review. No source values have been altered.</div>
- <p class="small">The numbers above are synthetic lab values. The quality comes from the structure of the conclusion: proven evidence, uncertainty, impact and next action, not the specific figures.</p>`,
+ <p class="small">The specific numbers matter less here than the structure of the conclusion: proven evidence, uncertainty, impact and next action.</p>`,
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads exactly like a consultant who did enough analysis to ask a precise question, rather than a general 'is this right?'. SMEs are far more useful when you show them the affected population and the decision you need.":"You have the right instinct. Make sure your summary keeps facts, hypotheses and open questions clearly separate, and that each question you'd send an SME is tied to a specific number or record you actually found."}</div>`
 },
 {
