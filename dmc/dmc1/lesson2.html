@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Working with SQL and staging data</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 1 — LESSON 2 — "Working with SQL and staging data".
+   Built to the Teach → Work through → Build it → Diagnose it →
+   Do it yourself → Consultant situations → Nuance → Reflection →
+   Summary standard established for DMC in Lesson 1.
+
+   Source: DMC1_Lesson2_Working_with_SQL_and_Staging_Data_v3.docx.
+   All Bramwell facts (18,530 earlier / 18,612 later population;
+   UK/NOR/BEL/GER approved country codes; ZZZ and 45E unresolved;
+   27 overlength names; the 214 payment-term exception figure) are
+   taken directly from that manuscript and stay unresolved here as
+   instructed. The staging table/query examples are training
+   implementation patterns, not new Bramwell business facts, per the
+   manuscript's own note.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with Lesson 1.
+============================================================== */
+
+const stagingSteps = [
+{html:`<h4>Build a controlled raw customer table</h4>
+ <p>The following SQL is deliberately simple. The point is the migration design around it.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: raw layer</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE TABLE raw.Customer (
+  CycleId varchar(20) NOT NULL,
+  RunId varchar(50) NOT NULL,
+  SourceRowNo int NULL,
+  CustNo varchar(30) NULL,
+  Name varchar(250) NULL,
+  Terms varchar(30) NULL,
+  Rep varchar(50) NULL,
+  Status varchar(10) NULL,
+  Country varchar(20) NULL,
+  SourceFile varchar(260) NULL,
+  LoadedAt datetime2 NOT NULL DEFAULT sysdatetime()
+);</code></pre></div>
+ <p>Notice what is absent: no target country, no cleaned customer name, no guessed payment term. The table represents received evidence.</p>
+ <h4>Prove the population before transforming it</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: population control</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CycleId,
+  COUNT(*) AS RowsReceived,
+  COUNT(DISTINCT CustNo) AS DistinctCustomerKeys,
+  SUM(CASE WHEN CustNo IS NULL OR LTRIM(RTRIM(CustNo)) = ''
+      THEN 1 ELSE 0 END) AS BlankCustomerKeys
+FROM raw.Customer
+WHERE CycleId = @CycleId
+GROUP BY CycleId;</code></pre></div>
+ <p>The result should trigger questions, not automatic fixes.</p>
+ <ul class="framework-checks">
+   <li><strong>Rows = distinct keys:</strong> may mean no duplicate CustNo in this population. Does not prove CustNo is the correct business key in every context.</li>
+   <li><strong>Rows &gt; distinct keys:</strong> one or more keys repeat. Does not prove the repeated records are disposable duplicates.</li>
+   <li><strong>Blank keys &gt; 0:</strong> some rows cannot currently be identified by CustNo. Does not prove those rows should simply be deleted.</li>
+   <li><strong>Current count differs from prior cycle:</strong> the population moved. Does not prove the new extract is wrong.</li>
+ </ul>
+ <h4>Return duplicate rows, not just a duplicate count</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: return the duplicate rows</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WITH DuplicateKeys AS (
+  SELECT CustNo
+  FROM raw.Customer
+  WHERE CycleId = @CycleId
+  GROUP BY CustNo
+  HAVING COUNT(*) > 1
+)
+SELECT c.*
+FROM raw.Customer c
+JOIN DuplicateKeys d
+  ON d.CustNo = c.CustNo
+WHERE c.CycleId = @CycleId
+ORDER BY c.CustNo, c.SourceRowNo;</code></pre></div>
+ <div class="principle"><strong>Why this matters</strong><br>\u201cFive duplicate keys\u201d is a metric. The actual rows are evidence. You need the rows to determine whether the cause is a duplicate entity, a one-to-many source structure, repeated extraction, bad scope logic or something else.</div>`},
+{html:`<h4>Explain the movement between two cycles</h4>
+ <p>The current 18,612-row population is 82 rows larger than the earlier 18,530 population. Do not stop at 18,612 minus 18,530 equals 82. A net movement can hide additions and removals.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: new and missing keys</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Keys present now but not in the earlier cycle
+SELECT cur.CustNo
+FROM raw.Customer cur
+LEFT JOIN raw.Customer prev
+  ON prev.CustNo = cur.CustNo
+  AND prev.CycleId = @PreviousCycle
+WHERE cur.CycleId = @CurrentCycle
+  AND prev.CustNo IS NULL;
+
+-- Keys present earlier but not now
+SELECT prev.CustNo
+FROM raw.Customer prev
+LEFT JOIN raw.Customer cur
+  ON cur.CustNo = prev.CustNo
+  AND cur.CycleId = @CurrentCycle
+WHERE prev.CycleId = @PreviousCycle
+  AND cur.CustNo IS NULL;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Net change is not population movement</div><p>A net increase of 82 could be 82 additions and zero removals, 100 additions and 18 removals, or many other combinations. Never invent the composition. Query it.</p></div>
+ <h4>Compare changed records separately from new or missing records</h4>
+ <p>Once key membership is understood, compare fields that matter to migration. A row can exist in both cycles but still have changed materially.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: material field changes</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  cur.CustNo,
+  prev.Terms AS PreviousTerms, cur.Terms AS CurrentTerms,
+  prev.Country AS PreviousCountry, cur.Country AS CurrentCountry,
+  prev.Status AS PreviousStatus, cur.Status AS CurrentStatus
+FROM raw.Customer cur
+JOIN raw.Customer prev
+  ON prev.CustNo = cur.CustNo
+  AND prev.CycleId = @PreviousCycle
+WHERE cur.CycleId = @CurrentCycle
+  AND (
+    ISNULL(cur.Terms,'') <> ISNULL(prev.Terms,'')
+    OR ISNULL(cur.Country,'') <> ISNULL(prev.Country,'')
+    OR ISNULL(cur.Status,'') <> ISNULL(prev.Status,'')
+  );</code></pre></div>
+ <p class="small">This is a starting comparison, not a universal change-detection design. NULL handling, data types and meaningful field comparisons should reflect the project.</p>`},
+{html:`<h4>Use controlled reference data without losing unmatched rows</h4>
+ <p>Bramwell's established country cross-reference includes UK \u2192 GB, NOR \u2192 NO, BEL \u2192 BE and GER \u2192 DE. ZZZ remains unresolved.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: reference table</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE TABLE ref.CountryCrossRef (
+  SourceCountryCode varchar(20) NOT NULL,
+  TargetCountryCode varchar(20) NOT NULL,
+  ApprovalStatus varchar(20) NOT NULL,
+  ReferenceVersion varchar(30) NOT NULL
+);</code></pre></div>
+ <p class="small">The table structure is a training implementation pattern, not a new Bramwell business fact. The business facts are the approved mappings themselves.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: preserve unmatched rows</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo, c.Country AS SourceCountry, x.TargetCountryCode,
+  CASE WHEN x.SourceCountryCode IS NULL
+       THEN 'COUNTRY_CODE_UNRESOLVED' ELSE NULL END AS CountryException
+FROM raw.Customer c
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = LTRIM(RTRIM(c.Country))
+  AND x.ApprovalStatus = 'Approved'
+  AND x.ReferenceVersion = @ReferenceVersion
+WHERE c.CycleId = @CycleId;</code></pre></div>
+ <div class="principle"><strong>Why LEFT JOIN?</strong><br>Because the migration question is: which source rows do not have an approved reference? An INNER JOIN would remove those rows from the result and could make the output look cleaner than the evidence warrants.</div>
+ <h4>Detect ambiguous references as well as missing references</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: ambiguous reference check</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  SourceCountryCode, COUNT(*) AS ApprovedMatches
+FROM ref.CountryCrossRef
+WHERE ApprovalStatus = 'Approved'
+  AND ReferenceVersion = @ReferenceVersion
+GROUP BY SourceCountryCode
+HAVING COUNT(*) <> 1;</code></pre></div>
+ <p class="small">A lookup can fail in two directions: zero approved matches or more than one approved match. Both need deliberate behaviour.</p>`},
+{html:`<h4>Create a transformed view without rewriting raw evidence</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: transformed view</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE VIEW stage.vCustomer_Transformed AS
+SELECT
+  c.CycleId, c.RunId,
+  c.CustNo AS CustomerNumber,
+  c.Name AS CustomerName,
+  c.Terms AS SourcePaymentTerm,
+  c.Status AS SourceStatus,
+  c.Country AS SourceCountry,
+  x.TargetCountryCode AS CountryCode
+FROM raw.Customer c
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = LTRIM(RTRIM(c.Country))
+  AND x.ApprovalStatus = 'Approved';</code></pre></div>
+ <p>This view is intentionally incomplete. Payment terms such as 45E still need approved reference logic, and customer names over 60 characters still need an approved treatment. The correct design exposes those gaps instead of making the SQL look finished.</p>
+ <h4>NULL, blank and whitespace are not automatically the same business condition</h4>
+ <ul class="framework-checks">
+   <li><strong>NULL</strong> \u2014 no value stored. Was the source field absent, unknown or not applicable?</li>
+   <li><strong>'' (empty string)</strong> \u2014 did the source explicitly supply blank?</li>
+   <li><strong>' ' (whitespace)</strong> \u2014 formatting artefact, or meaningful source behaviour?</li>
+   <li><strong>'45E' (populated code)</strong> \u2014 does it resolve to an approved target value?</li>
+ </ul>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: separate NULL, empty and whitespace</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  SUM(CASE WHEN Terms IS NULL THEN 1 ELSE 0 END) AS NullTerms,
+  SUM(CASE WHEN Terms = '' THEN 1 ELSE 0 END) AS EmptyTerms,
+  SUM(CASE WHEN Terms IS NOT NULL AND Terms <> ''
+      AND LTRIM(RTRIM(Terms)) = ''
+      THEN 1 ELSE 0 END) AS WhitespaceTerms
+FROM raw.Customer
+WHERE CycleId = @CycleId;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not clean by reflex</div><p>TRIM can be perfectly appropriate as an approved syntactic standardisation. But updating raw data in place destroys the distinction between received evidence and transformed value.</p></div>`}
+];
+
+const stagingSituations = [
+ { title:"Situation 1: 18,612 rows, 18,607 keys",
+   question:"The raw extract contains 18,612 rows but only 18,607 distinct CustNo values. The business says the extract \u201clooks right.\u201d What do you do?",
+   options:[
+     {label:"Return the repeated keys and rows. Do not delete anything until you understand the source grain and whether the repetitions are legitimate.", correct:true, feedback:"Correct. Do not delete anything until you understand the source grain and whether the repetitions are legitimate."},
+     {label:"Since the business says the extract looks right, accept the row count as the source of truth and move on to transformation.", correct:false, feedback:"The business's confidence isn't evidence about the key population. \u201cLooks right\u201d and \u201cis proven right\u201d are different things."},
+     {label:"Delete the five extra rows so the row count matches the distinct key count before loading anything.", correct:false, feedback:"This destroys the evidence that would explain what's actually happening, and risks deleting a legitimate record rather than a true duplicate."},
+     {label:"Ask the business to manually decide which of the repeated rows is the correct one to keep.", correct:false, feedback:"That skips straight to a decision before anyone, including you, has actually looked at what the repeated rows contain."}
+   ]
+ },
+ { title:"Situation 2: Your clean count fell by 214",
+   question:"The raw population is correct, but the load-ready population has 214 fewer customers. Those customers have unresolved payment-term conditions. What's the right response?",
+   options:[
+     {label:"A falling clean count always means something has gone wrong with the transformation logic and needs an urgent fix.", correct:false, feedback:"Not necessarily. A falling clean count can be exactly what a working exception design should produce."},
+     {label:"Since the raw population is correct, quietly restore the 214 customers to the load-ready output so the numbers look healthier.", correct:false, feedback:"That would default unresolved payment terms into the load-ready population, exactly the kind of hidden decision this lesson warns against."},
+     {label:"Report the clean count drop to the Project Manager as a defect, without first checking where the 214 actually went.", correct:false, feedback:"That's premature. You haven't yet established whether the 214 are visible, accounted-for exceptions or a genuine loss."},
+     {label:"A lower clean count is not automatically data loss if the 214 are deliberately visible as exceptions and reconcile to the raw population. Prove that.", correct:true, feedback:"Correct. A lower clean count is not automatically data loss if the 214 are deliberately visible as exceptions and reconcile to the raw population. Prove that."}
+   ]
+ },
+ { title:"Situation 3: ZZZ suddenly disappears",
+   question:"Earlier profiling showed unresolved country code ZZZ. The new load-ready output contains no ZZZ and there are no country exceptions. What's the right response?",
+   options:[
+     {label:"A clean result with no exceptions confirms the reference data has finally been completed for every country code.", correct:false, feedback:"That's an assumption, not a finding. Nothing here confirms a new approved mapping actually exists for ZZZ."},
+     {label:"Treat the disappearance as suspicious. Trace the join or default or filter logic. A clean output can be evidence that the problem has been hidden.", correct:true, feedback:"Correct. Treat the disappearance as suspicious. Trace the join, default or filter logic. A clean output can be evidence that the problem has been hidden."},
+     {label:"ZZZ probably just stopped appearing in the new extract, so there's nothing left to trace.", correct:false, feedback:"That's a guess offered instead of a check. The extract's actual ZZZ population is a query away, not something to assume."},
+     {label:"Since the load-ready output has no country exceptions, the country logic can now be marked complete.", correct:false, feedback:"An absence of exceptions is exactly what a defaulting bug would also produce. It isn't proof that the logic is correct."}
+   ]
+ },
+ { title:"Situation 4: Raw data is \u2018fixed\u2019 in place",
+   question:"A colleague runs UPDATE raw.Customer SET Name = LTRIM(RTRIM(Name)). What's the right response?",
+   options:[
+     {label:"This is a harmless tidy-up to leave in place, since a trimmed name is obviously an improvement over one with stray whitespace.", correct:false, feedback:"The value itself might be fine. The problem is where it happened: the received evidence is now gone, regardless of how reasonable the change looks."},
+     {label:"Leave the update in place as it stands, since reloading the raw layer now would be more disruptive to the project than it's worth.", correct:false, feedback:"Convenience isn't a substitute for control. Once raw evidence is overwritten, nobody can prove what the source actually sent."},
+     {label:"The transformed value may be useful, but raw evidence has been overwritten. Restore or reload raw evidence and apply the approved standardisation in a controlled transformation layer.", correct:true, feedback:"Correct. The transformed value may be useful, but raw evidence has been overwritten. Restore or reload raw evidence and apply the approved standardisation in a controlled transformation layer."},
+     {label:"Ask the colleague to go ahead and run the same UPDATE against every other text field in the table while they're at it.", correct:false, feedback:"That would compound the problem across more fields rather than fixing the underlying control gap."}
+   ]
+ },
+ { title:"Situation 5: The hard one \u2014 counts reconcile but keys do not",
+   question:"Raw equals 18,612, and load-ready plus exceptions plus exclusions also equals 18,612. A key-level comparison still shows customers missing and others duplicated. What's the right response?",
+   options:[
+     {label:"Row-count arithmetic is necessary but insufficient. Reconcile business keys and grain, not only totals.", correct:true, feedback:"Correct. Row-count arithmetic is necessary but insufficient. Reconcile business keys and grain, not only totals."},
+     {label:"If the totals reconcile, the population is proven correct regardless of which specific keys are involved.", correct:false, feedback:"This is the exact trap the scenario sets up: matching totals can coexist with a genuinely broken key-level population."},
+     {label:"The mismatch must be a reporting error in how the totals were added up, rather than a real problem.", correct:false, feedback:"That assumes the totals are wrong instead of checking whether the underlying keys actually line up. The totals may well be arithmetically correct and still mask a real defect."},
+     {label:"Since the counts already balance, there's no need to run a key-level comparison at all.", correct:false, feedback:"Balanced counts are exactly why a key-level check is still needed here. Balancing totals is not the same as a correct population."}
+   ]
+ }
+];
+
+const staleQueryDefects = [
+ "Silently truncates names to 60 characters with LEFT(...,60), with no approved treatment",
+ "Defaults unmatched payment terms to 'NET30', even though 45E is unresolved",
+ "Turns every non-'1' Status value into 'Inactive', including unknown values",
+ "Defaults unresolved countries to 'GB', hiding ZZZ and any other unapproved code",
+ "Uses an INNER JOIN to the payment-term reference, so unmatched rows disappear before ISNULL is even evaluated",
+ "Does not constrain reference approval status or reference version on either join",
+ "Produces no exception evidence anywhere in the output",
+ "Produces no control totals to reconcile against the raw population"
+];
+const staleQueryCoaching = [
+ "<strong>Real defect.</strong><br>This is the same CUS-002 problem from Lesson 1: an unapproved shortening rule, applied silently, with no record that it happened.",
+ "<strong>Real defect.</strong><br>NET30 has never been an approved substitute for 45E. Defaulting to it hides an unresolved payment term behind a plausible-looking value.",
+ "<strong>Real defect.</strong><br>Collapsing blank, 2, X and every other non-1 value into 'Inactive' destroys a distinction the source status field is actually making.",
+ "<strong>Real defect.</strong><br>ZZZ, and any other unapproved country code, disappears into 'GB'. Nobody reviewing the output would ever know it happened.",
+ "<strong>Real defect.</strong><br>Because the payment-term join is INNER, a customer with no matching reference row is removed before the ISNULL default is even reached \u2014 the ISNULL never gets the chance to run on those rows.",
+ "<strong>Real defect.</strong><br>Without an approval-status or version filter, a draft or superseded reference row can silently affect the result.",
+ "<strong>Real defect.</strong><br>Every one of the defects above fails silently. There is no exception output and no reason code for any of them.",
+ "<strong>Real defect.</strong><br>With no control totals, nobody running this query would ever notice that rows have quietly vanished or been defaulted."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"The number has changed",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Bramwell Industries has delivered a later customer extract containing 18,612 rows. The earlier agreed active-customer source population was 18,530. The extract has already been copied into a SQL staging environment.</p>
+ <p>Your Data Migration Lead asks: \u201cBefore we transform anything, tell me what changed.\u201d</p>
+ </div>
+ <h3>You have the current extract, the earlier extract and the approved mapping. What do you do first?</h3>`,
+ options:[
+   {label:"Run the transformation and compare the final output counts.", correct:false, feedback:"This skips straight past the raw evidence. Any difference you find in the transformed output could come from the transformation logic itself, not the source population."},
+   {label:"Ask the source-system owner to explain the extra 82 rows.", correct:false, feedback:"You'd be asking a vague question with no evidence behind it. Arrive with a quantified population first, not just a number that puzzles you."},
+   {label:"Interrogate the raw datasets first: confirm row and key counts, test duplicates, then identify records that are new, missing or changed.", correct:true, feedback:"Correct. The increase is evidence, not yet a defect. First establish exactly what the two datasets contain. A source owner may later explain the movement, but you should arrive with a quantified population rather than a vague question."},
+   {label:"Reject the extract because the active-customer population should never change.", correct:false, feedback:"A changing population isn't automatically wrong. Populations move between cycles for legitimate reasons; the job is to explain the movement, not assume it's invalid."}
+ ]
+},
+{
+ id:"b2",nav:"SQL answers questions",title:"Teach \u2014 SQL answers migration questions",type:"content",
+ html:`<p class="lead">Useful migration SQL starts with a question. The query is simply the quickest controlled way to obtain evidence.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Migration question</th><th>SQL pattern</th><th>What you learn</th></tr></thead><tbody>
+ <tr><td>How many rows did we receive?</td><td><code>COUNT(*)</code></td><td>Raw population</td></tr>
+ <tr><td>Does the key population equal the row population?</td><td><code>COUNT(DISTINCT key)</code></td><td>Possible duplicates or repeated keys</td></tr>
+ <tr><td>Which keys repeat?</td><td><code>GROUP BY ... HAVING COUNT(*) &gt; 1</code></td><td>Affected duplicate population</td></tr>
+ <tr><td>Which records are new this cycle?</td><td>LEFT JOIN / NOT EXISTS / EXCEPT</td><td>Population movement</td></tr>
+ <tr><td>Which records disappeared?</td><td>Reverse comparison</td><td>Potential scope or source movement</td></tr>
+ <tr><td>Which source values do not resolve?</td><td>LEFT JOIN to approved reference + IS NULL</td><td>Unmatched reference population</td></tr>
+ <tr><td>Which values dominate or look unusual?</td><td><code>GROUP BY</code> + <code>COUNT</code></td><td>Distribution and rare values</td></tr>
+ <tr><td>Which rows violate a known target constraint?</td><td>WHERE / CASE / length or range checks</td><td>Pre-load exceptions</td></tr>
+ <tr><td>Do clean, exception and exclusion totals reconcile?</td><td>Aggregate counts</td><td>Population control</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Consultant habit</strong><br>Do not begin with \u201cWhich SQL should I write?\u201d Begin with \u201cWhat do I need to prove?\u201d A simple query that answers the right migration question is more valuable than clever SQL that produces an impressive but unexplained result.</div>
+ <h3>The five SQL habits a DMC needs constantly</h3>
+ <ul class="framework-checks">
+   <li>Filter explicitly. A count without its scope can be worse than no count.</li>
+   <li>Keep the business key visible. You need to trace affected rows, not only quote totals.</li>
+   <li>Return the affected records after measuring them. Someone will need to investigate.</li>
+   <li>Preserve unmatched rows when the question is about completeness or reference coverage.</li>
+   <li>Make cycle and run context part of the evidence so tomorrow's result is not confused with today's.</li>
+ </ul>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_SQL-Migration-Cheatsheet.pdf</strong><p class="small">The migration-question-to-SQL-pattern table above, as a quick reference.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_SQL-Migration-Cheatsheet.pdf" download>Download</a></div>`
+},
+{
+ id:"b3",nav:"Staging preserves evidence",title:"Teach \u2014 A staging layer should preserve evidence",type:"content",
+ html:`<p class="lead">A staging database is not just somewhere to put data before loading it. It is the working evidence base of the migration. A good design lets you answer three questions quickly: what did the source actually send, what did our migration logic do to it, and what are we proposing to load?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>Purpose</th><th>Bramwell customer example</th><th>Rule</th></tr></thead><tbody>
+ <tr><td>Raw</td><td>Preserve received source values</td><td>CustNo, Name, Terms, Rep, Status, Country</td><td>Do not overwrite source evidence</td></tr>
+ <tr><td>Transform / stage</td><td>Apply approved, traceable logic</td><td>Normalised values, lookups, derived fields</td><td>Keep logic attributable to MappingID/RuleID</td></tr>
+ <tr><td>Exception</td><td>Retain rows/fields that cannot be safely transformed</td><td>Unresolved 45E; ZZZ; overlength names if no approved treatment</td><td>Explain why the row is not load-ready</td></tr>
+ <tr><td>Load-ready / export</td><td>Produce target-shaped approved output</td><td>CustomerNumber, CustomerName, PaymentTerms, CustomerStatus, CountryCode</td><td>Only approved results</td></tr>
+ <tr><td>Control / metadata</td><td>Record cycle, run, source, counts and build/reference context</td><td>CycleId, RunId, timestamps, source file, row counts</td><td>Make repeated executions distinguishable</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Raw means raw</div><p>If you trim, translate, default or repair values in the raw layer, you weaken your ability to prove what the source supplied. Preserve the received value and create transformed values separately.</p></div>
+ <h3>CycleId, RunId and source identity</h3>
+ <p>Migration work repeats. The same entity can be extracted and processed many times. The minimum metadata depends on project architecture, but the design must distinguish the business cycle from an individual technical execution.</p>
+ <ul class="framework-checks">
+   <li><strong>CycleId</strong> \u2014 which migration cycle or rehearsal the data belongs to. Used to compare earlier and later customer populations.</li>
+   <li><strong>RunId</strong> \u2014 one technical execution of an entity or process. Ties exceptions and control totals to the exact run.</li>
+   <li><strong>SourceFile / ExtractId</strong> \u2014 which received source artefact produced the rows. Proves whether two runs used the same input.</li>
+   <li><strong>LoadedAt / ExtractedAt</strong> \u2014 when evidence was received or landed. Helps diagnose stale or mixed-cycle data.</li>
+   <li><strong>BuildVersion</strong> \u2014 which transformation implementation ran. Relates changed results to code changes.</li>
+   <li><strong>ReferenceVersion</strong> \u2014 which controlled lookup baseline was used. Explains mapping-result changes.</li>
+ </ul>
+ <p>These columns are controls, not decoration. Without them, a table called Customer_Final may be impossible to interpret two weeks later.</p>`
+},
+{
+ id:"b4",nav:"Work through it",title:"Work through it \u2014 Build the Bramwell staging flow",type:"guidedSteps",
+ html:`<p class="lead">Work through the staging flow in order. Each step builds on the evidence the last one produced \u2014 don't skip ahead.</p>`,
+ steps: stagingSteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>None of these four steps produces a finished target table. Each one deliberately leaves something visible and unresolved \u2014 that gap between \u201cthe SQL runs\u201d and \u201cthe evidence is trustworthy\u201d is the actual job.</p></div></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Bramwell-Customer-Staging-Lab.sql</strong><p class="small">A runnable version of the raw table, reference table and queries shown across these four steps.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Bramwell-Customer-Staging-Lab.sql" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Build it",title:"Build it \u2014 Exceptions and reconciliation",type:"content",
+ html:`<p class="lead">A useful staging flow does not merely produce a load-ready table. It can explain why records or fields are not load-ready.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Exception</th><th>Established Bramwell example</th><th>Required evidence</th></tr></thead><tbody>
+ <tr><td>Unresolved payment term</td><td>45E has no approved target equivalent</td><td>CustNo, source Terms, Rule/Mapping ID, reason</td></tr>
+ <tr><td>Unresolved country</td><td>ZZZ has no approved target mapping</td><td>CustNo, source Country, reference version, reason</td></tr>
+ <tr><td>Target length conflict</td><td>27 customer names exceed 60 characters</td><td>CustNo, source Name, actual length, target limit</td></tr>
+ <tr><td>Ambiguous reference</td><td>More than one approved reference match</td><td>Source value, matching reference rows, reference version</td></tr>
+ <tr><td>Missing key</td><td>Blank or unusable CustNo</td><td>Source row identity, received values, reason</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: example country exceptions</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CycleId, c.RunId, c.CustNo,
+  'CUS-006' AS MappingId, 'Country' AS SourceField,
+  c.Country AS SourceValue, 'COUNTRY_CODE_UNRESOLVED' AS ExceptionCode
+FROM raw.Customer c
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = LTRIM(RTRIM(c.Country))
+  AND x.ApprovalStatus = 'Approved'
+WHERE c.CycleId = @CycleId
+  AND x.SourceCountryCode IS NULL;</code></pre></div>
+ <p>The exception output should be understandable without reopening the transformation code.</p>
+ <h3>Reconcile the staging flow</h3>
+ <p>Counts are controls only when the populations are defined consistently.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Conceptual control equation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Input population
+  = Load-ready population
+  + Exception population
+  + Approved exclusions
+
+-- If records can have multiple field-level exceptions,
+-- do NOT equate exception-row count with distinct
+-- affected-record count.</code></pre></div>
+ <ul class="framework-checks">
+   <li><strong>Raw row count:</strong> how many rows did we receive for this cycle or run?</li>
+   <li><strong>Distinct business keys:</strong> how many identifiable customers are represented?</li>
+   <li><strong>Load-ready distinct keys:</strong> how many customers can currently be submitted?</li>
+   <li><strong>Exception distinct keys:</strong> how many customers are blocked or held?</li>
+   <li><strong>Exception rows:</strong> how many individual rule failures exist?</li>
+   <li><strong>Approved exclusions:</strong> which records are intentionally outside the submitted population?</li>
+   <li><strong>Unaccounted population:</strong> is any source key neither ready, exceptioned nor approved for exclusion?</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Important</div><p>One customer can fail more than one rule. Therefore 214 exception rows do not necessarily mean 214 affected customers unless the exception design guarantees one row per customer. Reconcile at the grain that matches the control.</p></div>`
+},
+{
+ id:"b6",nav:"Diagnose it",title:"Diagnose it \u2014 Review SQL that produces a dangerously clean result",type:"selectAll",
+ html:`<p class="lead">A colleague proposes the following query because it creates a target-shaped customer file in one step.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: submitted for review</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo AS CustomerNumber,
+  LEFT(LTRIM(RTRIM(c.Name)),60) AS CustomerName,
+  ISNULL(p.TargetPaymentTerm,'NET30') AS PaymentTerms,
+  CASE WHEN c.Status='1' THEN 'Active' ELSE 'Inactive' END AS CustomerStatus,
+  ISNULL(x.TargetCountryCode,'GB') AS CountryCode
+FROM raw.Customer c
+INNER JOIN ref.PaymentTermCrossRef p
+  ON p.SourcePaymentTerm = c.Terms
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = c.Country
+WHERE c.CycleId = @CycleId;</code></pre></div>
+ <p>Before reading the mentor review, select every way this query can hide or manufacture a migration result.</p>`,
+ options: staleQueryDefects,
+ coaching: staleQueryCoaching,
+ hint:"Explore every defect before continuing.",
+ closingHtml:`<div class="callout misconception"><div class="callout-label">The INNER JOIN trap in this example</div><p>Because the payment-term table is INNER JOINed, a customer with no matching payment-term reference is removed from the result. The later <code>ISNULL(p.TargetPaymentTerm,'NET30')</code> cannot rescue a row that no longer exists.</p></div>
+ <div class="principle"><strong>Consultant skill</strong><br>Be able to read SQL well enough to understand population behaviour. You do not need to be a database engineer to notice that a join has changed the grain or silently removed source rows.</div>`
+},
+{
+ id:"b7",nav:"Do it yourself",title:"Do it yourself \u2014 Build the Bramwell staging control pack",type:"reflection",
+ html:`<p class="lead">Using the staging patterns from this lesson, produce a small staging control pack against a synthetic subset of Bramwell customer rows.</p>
+ <ol class="framework-checks">
+   <li>Load the supplied current and previous customer extracts into a raw layer without changing source values.</li>
+   <li>Record CycleId, RunId and source-file identity.</li>
+   <li>Prove row count, distinct CustNo count and blank-key count for both cycles.</li>
+   <li>Return any duplicate-key rows.</li>
+   <li>Produce lists of new keys and missing keys between cycles. Do not infer the composition from the net difference.</li>
+   <li>Compare Terms, Country and Status for customers present in both cycles.</li>
+   <li>Join Country to the approved country reference while preserving unmatched values such as ZZZ.</li>
+   <li>Create an exception query for unresolved country values.</li>
+   <li>Create a separate query that exposes customer names longer than 60 characters without truncating them.</li>
+   <li>Demonstrate that 45E remains unresolved rather than defaulting it.</li>
+   <li>Produce a control summary showing raw, load-ready, exception and approved-exclusion populations at the correct grain.</li>
+   <li>Write a short handover note explaining what the staging flow proves, what remains unresolved and which query the next consultant should run first on the next extract.</li>
+ </ol>
+ <h3>Deliverables</h3>
+ <ul class="framework-checks">
+   <li><strong>01_RawPopulation.sql</strong> \u2014 counts, distinct keys, blanks, duplicate extraction.</li>
+   <li><strong>02_CycleComparison.sql</strong> \u2014 new, missing and materially changed keys.</li>
+   <li><strong>03_ReferenceCoverage.sql</strong> \u2014 approved matches, unmatched and ambiguous references.</li>
+   <li><strong>04_Exceptions.sql</strong> \u2014 business-readable exception evidence.</li>
+   <li><strong>05_Reconciliation.sql</strong> \u2014 defined population controls at the correct grain.</li>
+   <li><strong>Staging Design Sheet</strong> \u2014 layer purpose, tables/views, keys, metadata, reference dependencies.</li>
+   <li><strong>Handover note</strong> \u2014 what changed, what is safe, what is unresolved, what to rerun.</li>
+ </ul>
+ <p class="lead">Write your handover note below \u2014 what would you tell the next consultant who picks this up?</p>
+ <textarea id="reflection" placeholder="This staging flow proves..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Staging-Design-Sheet-Template.xlsx</strong><p class="small">Layer purpose, tables/views, keys, metadata and reference dependencies, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Staging-Design-Sheet-Template.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/raw|preserve|evidence|overwrit/i, strength:"You addressed preserving raw evidence rather than overwriting it.", gap:"State explicitly that raw values are preserved untouched, with transformed values kept separately." },
+   { test:/key|duplicate|grain/i, strength:"You addressed key-level proof rather than just row counts.", gap:"Name what you'd check to prove the business key and grain, not just the row count." },
+   { test:/45e|zzz|unresolved/i, strength:"You named a specific unresolved item (45E or ZZZ) and kept it visible rather than defaulted.", gap:"Name a specific unresolved value, like 45E or ZZZ, and confirm it stays visible rather than being defaulted away." },
+   { test:/reconcil|control total|grain/i, strength:"You addressed reconciliation at the correct grain.", gap:"State how raw, load-ready, exception and exclusion populations reconcile, and at what grain." },
+   { test:/rerun|next|handover|another consultant/i, strength:"You wrote this as a genuine handover, telling the next consultant what to run first.", gap:"Say what the very next consultant to touch this should do first, not just what you did." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Raw customer rows for both cycles are preserved untouched, tagged with CycleId, RunId and source file. Row count, distinct key count and blank-key count are proven for both cycles; the current extract's five repeated keys are returned as rows, not just a count. New and missing keys between cycles are listed directly from a key comparison, not inferred from the net +82. Country resolves through the approved cross-reference with ZZZ left visible as an unresolved exception; 45E remains unresolved rather than defaulted to NET30. Load-ready, exception and exclusion populations reconcile against the raw count at the customer-key grain. Next consultant: rerun 01_RawPopulation.sql first against the new extract before touching anything else.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine handover note, not a status report \u2014 exactly what the next consultant on this project would need.":"You have the right structure. Make sure every unresolved item stays visibly unresolved in your note, and that the next consultant would know exactly which query to run first."}</div>`
+},
+{
+ id:"b8",nav:"Consultant situations",title:"Consultant situations \u2014 Read the data before you act",type:"situations",
+ html:`<p class="lead">Five moments where the data seems to be telling you one thing. Decide what a Data Migration Consultant actually does next.</p>`,
+ items: stagingSituations,
+ takeawayHtml:`<div class="principle"><strong>The pattern across all five</strong><br>A number, on its own, is never the end of the investigation. Whether it looks reassuring or alarming, the next step is almost always the same: look at the actual keys and rows behind it.</div>`
+},
+{
+ id:"b9",nav:"Nuance",title:"Nuance \u2014 Write SQL for the next consultant, not for applause",type:"content",
+ html:`<ul class="framework-checks">
+   <li>Prefer readable stages over one enormous statement when intermediate evidence matters.</li>
+   <li>Use meaningful aliases and names that reveal source, stage and target meaning.</li>
+   <li>Parameterise cycle, run and reference context rather than editing literals before every execution.</li>
+   <li>Keep controlled reference translations in data or configuration where practical, rather than scattering CASE expressions through code.</li>
+   <li>Comment unusual logic and link it to a MappingID, RuleID or an approved decision.</li>
+   <li>Know when a view is enough and when a materialised staging table is useful for evidence, performance or restartability.</li>
+   <li>Do not add indexes, hints or clever optimisations before you know the actual volume and bottleneck. Production-readiness performance comes later in DMC1.</li>
+   <li>Use project architecture deliberately. SQL is a tool inside the migration solution, not the solution by itself.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">What this lesson does not ask you to become</div><p>You are not being trained as a database administrator. A Data Migration Consultant does, however, need enough SQL fluency to interrogate populations independently, challenge suspicious outputs, understand join behaviour, build controlled transformations and communicate evidence to developers and business SMEs.</p></div></div>
+ <div class="to-record">${TPKit.fromField({
+   title:"The Count That Hid the Change", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/CountThatHidTheChange-Marcus.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b10",nav:"Reflection",title:"Reflection \u2014 Would you trust this staging database?",type:"reflection",
+ html:`<p class="lead">You inherit a database containing Customer_Final, Customer_Final2, Customer_Test_New and Customer_Clean_Final. There is no CycleId, RunId, source-file metadata or obvious raw table.</p>
+ <p>Write what evidence you would establish before using it, which risks concern you most, which conventions you would introduce first, and how you would avoid breaking an execution already in progress.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers begin by identifying the current source of truth and execution context before renaming or rebuilding anything. Good control is not the same as tidying somebody else's database on sight.</p></div></div>
+ <textarea id="reflection" placeholder="Before using this database, I would first establish..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/source of truth|which.*(current|correct|authoritative)/i, strength:"You addressed identifying the current source of truth before changing anything.", gap:"State how you'd work out which of the four tables, if any, is actually the current source of truth." },
+   { test:/execution|in progress|breaking|running/i, strength:"You addressed not breaking an execution already in progress.", gap:"State how you'd check for or avoid disrupting a migration execution that might already be running against these tables." },
+   { test:/risk|concern/i, strength:"You named a specific risk this setup creates.", gap:"Name a specific risk this naming pattern creates, not just that it's untidy." },
+   { test:/convention|cycleid|runid|metadata/i, strength:"You named a specific convention you'd introduce, such as CycleId or RunId.", gap:"Name a specific convention, like CycleId or RunId, you'd introduce and why." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before touching anything, I'd establish which of the four tables, if any, is currently being read by a live process, and confirm that with whoever owns the schedule \u2014 not just by inspecting timestamps. My biggest concern is that "Final" and "Clean_Final" both sound authoritative, so a wrong guess could point new work at stale data. I would not rename or drop anything yet. I'd introduce CycleId and RunId on any new work I add, and start a parallel, clearly-labelled raw table for whatever the true current source turns out to be, rather than assuming I can silently repurpose an existing one.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the right instinct: establish, don't tidy. Renaming somebody else's tables on sight, however messy, is how executions get broken.":"You have good instincts here. Make sure your answer stays focused on establishing the current state safely, rather than jumping straight to how you'd reorganise the database."}</div>`
+},
+{
+ id:"b11",nav:"Summary",title:"Summary \u2014 SQL and staging habits that make a DMC useful",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Start with the migration question, then write the query.</li>
+   <li>Prove raw populations before transformation.</li>
+   <li>Separate row counts from distinct-key counts and understand the grain.</li>
+   <li>Compare cycles by new, missing and changed keys, not only net totals.</li>
+   <li>Preserve received source values in a raw layer.</li>
+   <li>Use CycleId, RunId and source identity so repeated executions remain distinguishable.</li>
+   <li>Use controlled reference data and expose zero-match and multi-match conditions.</li>
+   <li>Understand how JOIN choice changes the population.</li>
+   <li>Keep NULL, blank and whitespace behaviour explicit.</li>
+   <li>Create exception evidence that explains why data is not load-ready.</li>
+   <li>Reconcile at the correct grain and remember that one record may have multiple exceptions.</li>
+   <li>Write SQL that another consultant can read, challenge and rerun.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A staging layer is valuable when it lets you prove what arrived, what changed, what your migration logic did and why every record is either ready, excepted or deliberately excluded.</div>`
+},
+{
+ id:"b12",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Working with SQL and staging data.</strong></p>
+ <p>You can now take a raw migration extract into a controlled SQL staging layer, prove the population, preserve source evidence, compare cycles, use joins and reference data safely, expose exceptions, reconcile outputs and leave a staging design another consultant can understand and rerun.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Building an ETL pipeline</strong></p>
+ <p>You will take the controlled SQL and staging work from this lesson and put it under repeatable orchestration, with sequencing, control totals, failure behaviour and rerun logic.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a \u201cthe number has changed\u201d message lands in your inbox.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 1",
+  moduleTitle: "Building Migration Solutions",
+  lessonLabel: "Lesson 2: Working with SQL and staging data",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Taking a raw migration extract into a controlled, provable staging layer",
+  storageKey: "tp_dmc1_lesson2_v1",
+  lessonId: "dmc1-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3.html",
+  finalButtonLabel: "Finish Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
