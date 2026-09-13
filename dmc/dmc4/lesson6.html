@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Becoming the consultant people rely on</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 6 - "Becoming the consultant people rely
+   on". The DMC4 capstone. Built so the five-day Bramwell scenario
+   is the core interactive experience, per the manuscript's own
+   authoring notes, rather than another linear communication
+   lesson.
+
+   Source: DMC4_Lesson6_Becoming_the_Consultant_People_Rely_On_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session,
+   not the manuscript's own header.
+
+   CAPSTONE BLOCK-TYPE CHOICE. The five-day scenario is built as
+   `situations` (b16) rather than guidedSteps, because each day is
+   a genuine judgement call the learner has to commit to before
+   seeing the reasoning. The manuscript asks for earlier choices
+   to affect later trust indicators; the kit has no branching
+   state, so that is approximated by carrying consequences forward
+   in the feedback text (Day 5's mistake is the same wrong
+   reference version the learner could have prevented on Day 1 by
+   locating the controlled identifiers). Flagged rather than
+   silently worked around, per the STATE.md convention for kit
+   limitations. The construction exercise proper is b18.
+
+   Bramwell facts used and kept within their established limits:
+   73 supplier-classification conflicts with S20418 Nordvik
+   Components AS unresolved (STRATEGIC in the legacy ERP, STANDARD
+   in SupplierClass.accdb); 18 German CustomerGroup 99 records
+   unresolved; payment term 45E with no approved target equivalent
+   and NET30 an incorrect historical fallback; STD 61 against
+   STANDARD 14,982, with STD deliberately NOT resolved here; GOV
+   as a rare value appearing six times; the seven observed missing
+   delivery addresses, where recovery scope must be
+   mechanism-based rather than the reported set; 18,573 accepted
+   with zero rejects coexisting with the later 42 UK-to-Belgian
+   semantic defect; 286 product-site relationship exceptions with
+   no approved treatment.
+
+   The 42 UK-to-Belgian root cause is NOT invented. The 45E
+   mapping is NOT invented. STD to STANDARD is NOT approved.
+
+   CreditLimit = 0 across 17,900 active customers appears in b10
+   exactly as the manuscript uses it: as an assumption the
+   consultant must stop treating as a rule, with no business
+   meaning asserted.
+
+   This is the module-final lesson. Its own nextUrl still points
+   to lesson6-complete.html as normal; that completion page uses
+   the module-final variant and its button points to
+   assessment.html, which does not exist yet for any DMC module.
+
+   Persona: Owen, Data Migration Consultant, Insurance ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=1, b9=3, b16 items
+   A-E = 0,2,1,3,2. Full sequence 1,3,0,2,1,3,2 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3. None built yet.
+============================================================== */
+
+const judgementScenarios = [
+ { title:"The plausible mapping",
+   short:"STD appears 61 times. STANDARD appears 14,982 times. The strings look related.",
+   detail:"Temptation: normalise STD to STANDARD immediately. Judgement: similarity is evidence for investigation, not approval. Temptation: ask the SME whether STD means STANDARD. Judgement: that leading question anchors the answer and you will get a yes. Temptation: leave STD unresolved indefinitely to be safe. Judgement: unnecessary, if the business meaning can actually be established. The correct next move is to prepare the distribution and examples and ask what STD means. Good judgement often looks five minutes slower and five weeks faster.",
+   ask:"Are you about to convert a string resemblance into a target value?" },
+ { title:"The rare value",
+   short:"GOV appears only six times in the whole population.",
+   detail:"Wrong instinct: rare equals dirty. Better instinct: rare equals inspect. Six occurrences might be a valid business category used by a handful of accounts, a controlled exception, a legacy code that stopped being issued, or genuine error. Those four need four different treatments and you cannot tell which from the count alone. The number tells you how long the investigation will take, not what the answer is.",
+   ask:"Have you decided this is noise because it is small?" },
+ { title:"The green metric",
+   short:"18,573 submitted. 18,573 accepted. Zero rejects.",
+   detail:"Wrong conclusion: the customer migration was successful. Better conclusion: technical acceptance is clean, and semantic validation still determines whether the migrated data is correct. The later finding of 42 UK customers sitting under the Belgian legal entity is exactly why the distinction matters. Acceptance is a fact about the interface. Correctness is a fact about the business, and only one of the two was measured by that load.",
+   ask:"Does this number measure whether the data is right, or only whether it was taken?" },
+ { title:"The urgent fix",
+   short:"Seven missing delivery addresses are reported, and you have the seven keys.",
+   detail:"Wrong recovery: patch or rerun the seven. Better recovery: use the proven faulty mechanism to calculate the full affected population, correct the rule, choose a valid recovery boundary, invalidate dependent outputs and prove the rerun. The seven are the records somebody happened to notice. The mechanism defines who was actually affected, and it is nearly always a larger set than the complaint list.",
+   ask:"Is your recovery scope coming from the mechanism, or from who complained?" }
+];
+
+const reliabilityLedger = [
+ "Counts change without explanation",
+ "Deadlines are missed silently",
+ "Guesses are stated as facts",
+ "Errors are hidden or minimised",
+ "Important rules live in chat",
+ "Files are called \u201clatest\u201d",
+ "Problems appear at the last moment",
+ "The same failure repeats without learning"
+];
+const reliabilityCoaching = [
+ "<strong>The other side:</strong> numbers reconcile. When a count moves, say which snapshot, which population and what changed, before anybody has to ask. An unexplained movement costs more trust than the original number ever earned.",
+ "<strong>The other side:</strong> promises are kept, or reset early. A commitment reset at 11:40 is a professional act. The same reset at 12:05 is an apology, and the two are remembered very differently.",
+ "<strong>The other side:</strong> unknowns are labelled. One word of labelling in the sentence where you raise a hypothesis saves you from retracting it in front of the people who repeated it.",
+ "<strong>The other side:</strong> mistakes are surfaced. Reliable consultants make errors too. The difference is how quickly the error becomes visible, bounded and controlled.",
+ "<strong>The other side:</strong> decisions are recorded. A rule that lives in a Teams thread survives exactly as long as somebody remembers which thread, which is usually about a fortnight.",
+ "<strong>The other side:</strong> handoffs are reproducible. Source snapshot, reference version, package build, validation run. Project memory should not depend on your memory.",
+ "<strong>The other side:</strong> bad news arrives early. The longer a material issue is known but uncommunicated, the fewer options the project has left when it finally hears.",
+ "<strong>The other side:</strong> controls improve after defects. Do not merely fix today's record. Improve the mechanism that let the defect escape, or you will meet it again under more pressure."
+];
+
+const capstoneDays = [
+ { title:"Day 1. You have been here four hours",
+   question:"The mapping workbook has unclear version history, a developer says the load package is ready, and a Teams thread claims the addresses are fixed. What do you do first?",
+   options:[
+     {label:"Locate the controlled artefacts and identifiers, reproduce one key population number yourself, and promise one small output you can deliver by end of day.", correct:true, feedback:"Correct. The quickest way to look inexperienced is to recommend changes before understanding the project's existing controls and decisions. Reproduce something, then promise something small and deliver it."},
+     {label:"Review the mapping workbook in detail and produce a list of the version-control weaknesses you have found for the Data Migration Lead.", correct:false, feedback:"A critique of their controls in your first week, before you understand why they are as they are, buys you very little and costs you the room."},
+     {label:"Start on the readiness view the Lead asked for, since Thursday is the fixed commitment and everything else can be worked out along the way.", correct:false, feedback:"A readiness view assembled before you can reproduce a single population number is an opinion. You would be lending your name to somebody else's numbers."},
+     {label:"Ask the developer to walk you through the load package, since that is the artefact closest to the rehearsal and the most likely source of risk.", correct:false, feedback:"Useful eventually, and it starts you at the end of the chain. You have no basis yet for evaluating anything they tell you."}
+   ]
+ },
+ { title:"Day 2. The first uncomfortable finding",
+   question:"You reproduce the address check. Seven key accounts are missing delivery addresses: the rows exist in raw staging and not in transformed output. The Teams thread said this was fixed. What goes in your stand-up?",
+   options:[
+     {label:"That the addresses are demonstrably not fixed, and that the earlier claim made in the Teams thread appears to have been published without any supporting evidence.", correct:false, feedback:"The finding is right and the framing makes it about somebody's claim. Report the evidence; whoever wrote the thread will work out the rest without being told publicly."},
+     {label:"That you have found a discrepancy which you are still investigating, and that you will report on it properly once you understand the underlying mechanism.", correct:false, feedback:"You already know something firm: the rows exist in raw and not in transformed. Holding that back until you have a mechanism delays the one fact that changes what others do."},
+     {label:"That seven key accounts have addresses present in raw staging and absent from transformed output, bounding the failure to transformation, and that you will calculate the mechanism-based population first.", correct:true, feedback:"Correct. State what is proven, what that bounds, and what you will not do yet. The seven are observed examples; the affected population comes from the mechanism."},
+     {label:"That the address defect is confirmed and the transformation filter is excluding valid secondary delivery addresses, so a rule correction and a controlled rerun are both needed.", correct:false, feedback:"That is very likely where this lands, and you have not opened the filter yet. Stating the mechanism before proving it is the habit this module has spent five lessons on."}
+   ]
+ },
+ { title:"Day 3. The business decision",
+   question:"S20418 is STRATEGIC in the legacy ERP and STANDARD in SupplierClass.accdb. The SME replies: SupplierClass is normally what we use. What is your next question?",
+   options:[
+     {label:"Whether you should therefore treat SupplierClass as authoritative for all 73 conflicting suppliers going forward.", correct:false, feedback:"That asks the SME to ratify a rule you have drafted from the word \u201cnormally\u201d. It will very likely get a yes, and the yes will not mean what you need it to."},
+     {label:"Which system is formally authoritative for supplier classification, and what identifies the cases where the normal position does not hold.", correct:true, feedback:"Correct. \u201cNormally\u201d is the qualifier. You need the authoritative source and the exception condition before there is anything implementable, and the SME is the right person for both."},
+     {label:"Whether the 73 conflicts can be resolved individually by the business rather than through a single classification rule.", correct:false, feedback:"Seventy-three individual reviews is a large ask, and it skips the question of whether one rule with a named exception condition would cover most of them."},
+     {label:"Whether S20418 specifically should be treated as STRATEGIC or STANDARD, so at least one case is settled today.", correct:false, feedback:"Settling one record leaves 72 and establishes no rule. It also risks a per-record precedent that nobody can later reconstruct."}
+   ]
+ },
+ { title:"Day 4. Pressure",
+   question:"The 286 product-site relationship exceptions still have no approved treatment. The project manager says: we need the count, can you not use the closest term for now? Four sentences.",
+   options:[
+     {label:"Agree for the rehearsal only, on the basis that rehearsal data is not production and the treatment can be corrected before the real cutover.", correct:false, feedback:"A rehearsal exists to prove the process. Feeding it invented treatments proves a process nobody will run, and the value tends to survive into the next cycle."},
+     {label:"Explain that no approved treatment exists, so you cannot supply a count on that basis, and that the decision has to come from the business first.", correct:false, feedback:"Correct position, delivered as a wall. Four sentences of refusal leaves the PM with nothing, and somebody more accommodating will be asked next."},
+     {label:"Say a plausible value would create accepted but wrong data, offer the approved population with the exceptions isolated and stated, give the readiness consequence, and name what the Lead needs to decide.", correct:false, feedback:"This is nearly the right answer and it is missing the acknowledgement. Opening with the risk rather than with what you can give them makes a cooperative message sound like a refusal."},
+     {label:"Acknowledge the count is needed, say a plausible value would create accepted but wrong data, offer the approved population with the 286 isolated and explicitly stated, and name the decision that belongs to the Lead.", correct:true, feedback:"Correct. Acknowledge, state the consequence, offer the controlled alternative, name the boundary. The PM gets a usable count tonight and nobody has invented a treatment."}
+   ]
+ },
+ { title:"Day 5. Your mistake",
+   question:"The output you handed over yesterday used REF-02 rather than the approved REF-03. Nobody has noticed. What is your first move?",
+   options:[
+     {label:"Regenerate under the correct reference version and replace the file, then mention the correction in your Friday update alongside the other work.", correct:false, feedback:"Quiet replacement is the version of this that becomes serious. Somebody may have already built on the output, and they will find out from a discrepancy rather than from you."},
+     {label:"Establish the key-level delta between REF-02 and REF-03 first, so that when you do report it you can state the actual measured impact rather than a theoretical one.", correct:false, feedback:"The delta matters and it comes second. While you are calculating it, the invalid output is still live and still being used."},
+     {label:"Send the invalidation message immediately, telling the recipient not to load it, then preserve the evidence, regenerate under a new run identity, and add reference-version validation to the release check.", correct:true, feedback:"Correct. Tell people promptly, invalidate explicitly, then control it. Note that Day 1 is where this was preventable: locating the controlled reference identifiers is exactly the orientation step that stops this happening."},
+     {label:"Raise it with the Data Migration Lead first, so that the error is formally disclosed through the right governance channel before the affected consultant is contacted directly.", correct:false, feedback:"Disclosure through a channel is slower than disclosure to the person holding the bad file. Tell the affected person, then tell the Lead."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Three months in",title:"The consultant everybody asks for",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Two consultants join the same programme with similar SQL and ETL skills. Both can profile data, build transformations and investigate defects. Neither is more intelligent than the other.</p>
+ </div>
+ <p>Three months later, one is routinely brought into difficult migration problems. People trust their numbers. SMEs answer their questions. Developers value their defect evidence. The Data Migration Lead asks for their view before a cycle.</p>
+ <p>The other is still competent. People check their outputs, chase their updates and hesitate before relying on their conclusions.</p>
+ <h3>What separated them?</h3>`,
+ options:[
+   {label:"The first consultant was better at communicating, which made the same technical work land more effectively with the people who had to act on it.", correct:false, feedback:"Communication is part of it, and framed this way it sounds like presentation skill. What people are actually responding to is whether the underlying work holds up when they lean on it."},
+   {label:"Accumulated evidence: accurate work, clear boundaries, useful communication, sound judgement and follow-through, repeated until people stopped needing to check.", correct:true, feedback:"Correct. Reliability is built from repeated evidence, not declared. People rely on consultants whose behaviour reduces uncertainty rather than merely reducing discomfort."},
+   {label:"The first consultant took on more visible and more difficult work, which gave them the opportunities needed to demonstrate what they could do.", correct:false, feedback:"The visible work arrived because of the reputation, not the other way round. Three months in, the difficult problems go to whoever has already been trusted with easy ones."},
+   {label:"The first consultant built stronger working relationships with the SMEs, the developers and the Lead, which made people more willing to rely on them.", correct:false, feedback:"Relationships follow from reliability here rather than producing it. Being liked and being relied on are different things, and the next block separates them."}
+ ]
+},
+{
+ id:"b2",nav:"Liked vs relied on",title:"Trust is not the same as being liked",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Being liked</th><th>Being relied on</th></tr></thead><tbody>
+ <tr><td>Agreeing quickly</td><td>Giving an evidence-based answer, including \u201cnot yet\u201d</td></tr>
+ <tr><td>Avoiding awkward news</td><td>Surfacing material problems early</td></tr>
+ <tr><td>Saying yes to every request</td><td>Making realistic commitments</td></tr>
+ <tr><td>Fixing things quietly</td><td>Making correction and evidence visible</td></tr>
+ <tr><td>Knowing all the answers</td><td>Knowing how to find the answer, and when to involve somebody else</td></tr>
+ <tr><td>Making the client dependent on you</td><td>Making the process dependable without you</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Nothing in the left column is a character flaw. Each one is a genuinely pleasant instinct, and each one trades a small amount of somebody's certainty for a small amount of their comfort. Over three months that trade compounds in a direction you did not choose.</p></div></div>`
+},
+{
+ id:"b3",nav:"First week",title:"Your first week on an unfamiliar project",type:"content",
+ html:`<p class="lead">Do not begin by trying to prove how much you know.</p>
+ <ol class="framework-checks">
+   <li>Understand the migration scope and current cycle.</li>
+   <li>Find the source, staging, transformation, target and validation path for your area.</li>
+   <li>Locate the current mapping, decision, exception and defect records.</li>
+   <li>Identify who owns business meaning and who owns technical components.</li>
+   <li>Establish the important populations and reconciliations.</li>
+   <li>Find the latest controlled source, reference, build and run identifiers.</li>
+   <li>Understand what is currently red, amber, unresolved or time-critical.</li>
+   <li>Pick one useful piece of work you can complete with evidence.</li>
+ </ol>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>The questions a strong new consultant asks</caption><thead><tr><th>Question</th><th>What it reveals</th></tr></thead><tbody>
+ <tr><td>What is the next migration event we are preparing for?</td><td>Immediate delivery context</td></tr>
+ <tr><td>Which entities are currently least ready?</td><td>Priority</td></tr>
+ <tr><td>Where are approved mappings and decisions controlled?</td><td>Authority</td></tr>
+ <tr><td>How do we reconcile source population to target outcome?</td><td>Control model</td></tr>
+ <tr><td>What changed since the last cycle?</td><td>Regression and change risk</td></tr>
+ <tr><td>Which exceptions are business-owned versus technical?</td><td>Correct ownership</td></tr>
+ <tr><td>What is the run, build and reference identity convention?</td><td>Reproducibility</td></tr>
+ <tr><td>What currently worries the Data Migration Lead?</td><td>Material project risk</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Arriving with improvements. The quickest way to look inexperienced is to recommend changes before understanding the project's existing controls and the decisions that produced them.</p></div>`
+},
+{
+ id:"b4",nav:"The first promise",title:"The first small promise",type:"content",
+ html:`<p class="lead">You are asked to profile a new customer extract by tomorrow.</p>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cNo problem, I will sort it.\u201d</p></div>
+ <div class="quote">\u201cI will have the structural profile, key and grain checks, completeness, major distributions and an initial exception summary by 14:00 tomorrow. I will flag earlier if the file structure or source scope prevents that.\u201d</div>
+ <p>Then deliver it when you said you would. That is the whole mechanism.</p>
+ <div class="principle"><strong>Reputation is cumulative</strong><br>People do not decide you are reliable because you say you are. They observe dozens of small promises being handled well, and most of those promises are far less interesting than this one.</div>`
+},
+{
+ id:"b5",nav:"Trusted numbers",title:"Make your numbers easy to trust",type:"content",
+ html:`<p class="lead">If you say 214 customers have invalid payment terms, be ready for all six.</p>
+ <ul class="framework-checks">
+   <li>214 out of what population?</li>
+   <li>Which snapshot or run?</li>
+   <li>What qualifies as invalid?</li>
+   <li>Is that a record count or an issue count?</li>
+   <li>How does it compare with the previous cycle?</li>
+   <li>Which keys make up the population, and can another person reproduce the result?</li>
+ </ul>
+ <div class="principle"><strong>Trusted numbers have lineage</strong><br>A consultant's confidence should come from reproducibility, not from familiarity with their own spreadsheet.</div>
+ <h3>Never use confidence to cover an evidence gap</h3>
+ <div class="visual-card"><div class="visual-title">Stakeholder: are the customer mappings ready?</div>
+ <div class="quote">\u201cThe approved mapping coverage is ready for the controlled population I have tested. CustomerGroup 99 and payment term 45E still have unresolved business treatments, so I would not describe the full population as ready yet.\u201d</div>
+ <p class="small">Be decisive about what the evidence supports, and equally decisive about what it does not. The second half is where the credibility actually comes from.</p>
+ </div>`
+},
+{
+ id:"b6",nav:"Anticipation",title:"Anticipate the next question, without overstepping",type:"content",
+ html:`<p class="lead">You report that 18 CustomerGroup 99 records are unresolved. A consultant people rely on has already prepared the next seven things.</p>
+ <ul class="framework-checks">
+   <li>The 18 business keys.</li>
+   <li>Country and legal-entity context.</li>
+   <li>Representative examples.</li>
+   <li>Current approved reference coverage.</li>
+   <li>The exact business question.</li>
+   <li>The readiness consequence.</li>
+   <li>The population test to run after a decision.</li>
+ </ul>
+ <p>Do not merely discover a problem. Prepare the next useful move.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Helpful anticipation</th><th>Overstepping</th></tr></thead><tbody>
+ <tr><td>Prepare evidence for the 45E decision</td><td>Choose a plausible target term yourself</td></tr>
+ <tr><td>Calculate the full affected population for a proven defect</td><td>Decide business scope without authority</td></tr>
+ <tr><td>Recommend keeping unresolved records outside Ready status</td><td>Make the programme Go or No-Go decision</td></tr>
+ <tr><td>Prepare rerun options and impact</td><td>Authorise a cutover sequence change</td></tr>
+ <tr><td>Identify conflicting SME answers</td><td>Choose which SME wins because it is convenient</td></tr>
+ </tbody></table></div>
+ <p class="small">Being proactive does not mean taking ownership of decisions belonging to the business, the Data Migration Lead or project leadership.</p>`
+},
+{
+ id:"b7",nav:"Options",title:"Bring options, and know when to bring a recommendation instead",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Problem only</th><th>Consultant response</th></tr></thead><tbody>
+ <tr><td>\u201cThese 18 records cannot load.\u201d</td><td>These 18 lack an approved mapping. Option A: hold them as explicit exceptions and continue the approved population. Option B: delay release pending decision. I can provide population and dependency impact; the release choice belongs with the appropriate lead.</td></tr>
+ <tr><td>\u201cThe address fix needs a rerun.\u201d</td><td>The defect mechanism is proven. We can rerun from the valid transformation boundary if downstream outputs are invalidated and regenerated; otherwise a wider restart is required. Here is the evidence for each boundary.</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Offering three options because consultants offer options. Do not invent alternatives to look consultative. Offer choices only where the evidence and the project controls genuinely permit them.</p></div>
+ <h3>Sometimes one recommendation is the right answer</h3>
+ <div class="quote">\u201cDo not default unmapped CustomerGroup values to STANDARD. It would convert unresolved business meaning into apparently valid target data. Keep them as explicit exceptions until an approved treatment exists.\u201d</div>
+ <p class="small">A consultant is not neutral about unsafe migration practice.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak recommendation</th><th>Evidence-based recommendation</th></tr></thead><tbody>
+ <tr><td>\u201cI think we should rerun everything.\u201d</td><td>I recommend rerunning from transformation, because raw staging is proven correct, the defect is introduced in transformation, and all downstream outputs depend on the faulty transformed population.</td></tr>
+ <tr><td>\u201cWe should wait.\u201d</td><td>I recommend holding the 18 unresolved records outside Ready status, because no approved target treatment exists and a default would create semantically unapproved data.</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b8",nav:"Leave capability",title:"Leave capability behind, and strengthen a control each time",type:"content",
+ html:`<p class="lead">You build a useful exception query.</p>
+ <div class="callout misconception"><div class="callout-label">Dependency-building</div><p>Keep it on your laptop and send the results whenever somebody asks.</p></div>
+ <p>Better: put the controlled query in the agreed project location, document its purpose and parameters, tie the output to a source snapshot, and show another team member how to reproduce the result. The client should gain stronger migration controls because you were there.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Painful event</th><th>Control improvement</th></tr></thead><tbody>
+ <tr><td>Silent address exclusions</td><td>Reconcile input equals transformed plus excluded plus exception, and test negative eligibility cases</td></tr>
+ <tr><td>Duplicate reference matches</td><td>Add a zero, one and more-than-one mapping-match control</td></tr>
+ <tr><td>Wrong reference version in a handoff</td><td>Record and validate reference identity in the run manifest</td></tr>
+ <tr><td>Green load with the wrong legal entity</td><td>Add a semantic post-load invariant by expected entity</td></tr>
+ <tr><td>Unapproved fallback value</td><td>Separate approved mappings from unresolved and default candidates</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Consultant maturity</strong><br>Do not merely fix today's record. Improve the mechanism that allowed the defect to escape.</div>`
+},
+{
+ id:"b9",nav:"18:40 Saturday",title:"18:40 on a cutover Saturday",type:"mcq",
+ _correctIndex:3,
+ html:`<p class="lead">The customer load has completed: 18,573 records accepted, zero rejects. Post-load validation has just found 42 UK customers sitting under the Belgian legal entity. You have isolated the keys and started tracing. You do not know whether the mechanism is confined to those 42.</p>
+ <div class="callout experience"><div class="callout-label">18:40</div><p>The Data Migration Lead asks: \u201cCan we continue?\u201d</p></div>
+ <h3>What do you say?</h3>`,
+ options:[
+   {label:"Yes, since the load itself was technically clean and the 42 records can be corrected separately without holding the dependent activity.", correct:false, feedback:"You do not yet know whether the mechanism is confined to those 42. Continuing on that assumption is a decision made with the evidence still open."},
+   {label:"No, because a semantic defect of unknown scope has been found and the dependent activity should not proceed until the cause is established.", correct:false, feedback:"This may be the right outcome, and it is not yours to declare. You would also be stopping work that may be entirely unaffected."},
+   {label:"That you need more time before answering, and that you will come back to the Lead once the tracing has established the mechanism.", correct:false, feedback:"On a cutover evening that reads as no answer at all. You know a great deal right now, and withholding it leaves the Lead with less than you have."},
+   {label:"Give the accepted count and the 42-record finding, say semantic acceptance is not complete, state what is unaffected, and say you cannot recommend on the dependent activity until you know whether the mechanism is confined to those 42.", correct:true, feedback:"Correct. Do not confuse urgency with permission to guess. Speed up the evidence cycle, not the certainty of your language, and give the Lead everything they need to make the call that is theirs."}
+ ]
+},
+{
+ id:"b10",nav:"Three hard moves",title:"Saying no, changing your mind, and catching your own assumption",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">You are asked to suppress a validation failure so a dashboard stays green</div>
+ <div class="quote">\u201cI would not remove a valid failure from the control. If the condition is an approved exception, we can classify it explicitly so the dashboard distinguishes an accepted exception from an unresolved defect. If it is not approved, it should remain visible.\u201d</div>
+ <p class="small">If your usefulness depends on never making anybody uncomfortable, you will eventually approve something unsafe.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">Yesterday you recommended a narrow rerun. The source snapshot also changed.</div>
+ <div class="quote">\u201cMy earlier rerun recommendation assumed the source baseline was unchanged. That assumption is now false. I am withdrawing the narrow-rerun recommendation until we reconcile the new source snapshot and establish a valid recovery boundary.\u201d</div>
+ <p class="small">Changing your conclusion is not inconsistency. Failing to change it when the evidence changes is.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">You assumed CreditLimit = 0 meant unlimited credit. There are 17,900 active customers with zero.</div>
+ <p>Stop treating the assumption as a rule. Profile the population, identify how the field is actually used, ask the authorised SME what zero means, and record the business decision before implementing any target treatment.</p>
+ <p class="small">When evidence challenges your assumption, become curious before becoming defensive. The size of that population is the clue: 17,900 customers do not all have unlimited credit.</p>
+ </div>`
+},
+{
+ id:"b11",nav:"Recovering trust",title:"Recovering trust after a mistake",type:"content",
+ html:`<p class="lead">You handed over an output built with the wrong reference version. Eight steps, in this order.</p>
+ <ol class="framework-checks">
+   <li>Tell affected people promptly.</li>
+   <li>Invalidate the output explicitly.</li>
+   <li>State the known impact.</li>
+   <li>Preserve the failing evidence.</li>
+   <li>Produce the corrected output under a new identity.</li>
+   <li>Reconcile old against corrected results.</li>
+   <li>Explain the control change that prevents recurrence.</li>
+   <li>Follow through until downstream users confirm replacement.</li>
+ </ol>
+ <div class="quote">\u201cI identified that the customer output I handed over at 13:10 used REF-02 rather than the approved REF-03. Please treat that output as invalid and do not load it. I have isolated the reference difference and am regenerating the output under a new build and run identity. I will provide the corrected reconciliation and a key-level delta before handoff. I am also adding reference-version validation to the release check so this cannot pass silently again.\u201d</div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Notice what is absent</div><p>No excuse, no blame, no attempt to make the error sound smaller than it is, and no apology doing the work that the control change should do. Trust returns when people see control, transparency and changed behaviour.</p></div></div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Unreliable pattern</th><th>Reliable pattern</th></tr></thead><tbody>
+ <tr><td>Hide until fixed</td><td>Surface the material error promptly</td></tr>
+ <tr><td>Explain why it was understandable</td><td>Explain impact and control</td></tr>
+ <tr><td>Patch the visible records</td><td>Find the mechanism-based population</td></tr>
+ <tr><td>Reuse the same output identity</td><td>Invalidate, and version the corrected output</td></tr>
+ <tr><td>Move on after a green rerun</td><td>Prove recovery and improve the escape control</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b12",nav:"Concision",title:"Earn the right to be concise",type:"content",
+ html:`<div class="quote">\u201cCustomer release is ready except for 18 explicitly unresolved Group 99 records; reconciliation is clean and no default mapping has been applied.\u201d</div>
+ <p>One sentence, and it carries a whole workstream. It works because the evidence exists underneath it and everybody present knows you can produce that evidence in the next two minutes.</p>
+ <div class="principle"><strong>Brevity without evidence is assertion</strong><br>Concise communication becomes powerful only when people know you can produce the detail immediately.</div>
+ <h3>Preparation removes the friction from a difficult conversation</h3>
+ <div class="quote">\u201cI understand the intent. The part I still cannot implement safely is the scope. You said 99 is usually STANDARD, but we have 18 German records and an identified possibility of exceptions. If we can confirm the condition that identifies those exceptions, I can turn your answer into a controlled rule.\u201d</div>
+ <p class="small">Specific evidence removes most of the personal friction from a challenge. It is very hard to take offence at a population count.</p>
+ <h3>Know what not to care about</h3>
+ <ul class="framework-checks">
+   <li>Being the person who wrote the most SQL.</li>
+   <li>Having the cleverest spreadsheet.</li>
+   <li>Winning every technical argument.</li>
+   <li>Being copied on every email.</li>
+   <li>Being indispensable to routine tasks.</li>
+   <li>Closing the most tickets while the controls stay weak.</li>
+ </ul>
+ <p>Care instead about correct data, reproducible evidence, safe decisions, useful delivery, stronger controls, and a team that can operate without heroics.</p>`
+},
+{
+ id:"b13",nav:"Judgement",title:"Consultant judgement, in four scenarios",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Three questions before acting: what does the evidence actually support, who owns this decision, and what happens downstream if I am wrong? They matter most when the convenient action is obvious and the safe one is not. Explore each scenario below.</p>`,
+ items: judgementScenarios,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Each of these four has a tempting answer available in under a minute, and each tempting answer is wrong for a different reason: similarity is not approval, rarity is not dirt, acceptance is not correctness, and the complaint list is not the population.</p></div></div>`
+},
+{
+ id:"b14",nav:"Reliability ledger",title:"The reliability ledger",type:"selectAll",
+ html:`<p class="lead">Imagine every project interaction adds or removes a small amount of trust. These eight are the withdrawals. Explore each one to see what sits on the other side of it.</p>`,
+ options: reliabilityLedger,
+ coaching: reliabilityCoaching,
+ hint:"Explore every entry before continuing.",
+ closingHtml:`<div class="principle"><strong>No single heroic act replaces the ledger</strong><br>Reliability is ordinary good behaviour, repeated under ordinary and then under difficult conditions. Nobody remembers the weekend you saved; they remember whether your numbers reconciled.</div>`
+},
+{
+ id:"b15",nav:"Capstone setup",title:"DMC4 capstone \u2013 Monday morning at Bramwell",type:"content",
+ html:`<p class="lead">You join Bramwell ten working days before its next major migration rehearsal. The core migration team is small, the business SMEs are part-time, and you have been asked to take control of a mixed exception and readiness workstream.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>What lands on your desk</caption><thead><tr><th>Item</th><th>Condition</th></tr></thead><tbody>
+ <tr><td>A mapping workbook</td><td>Unclear version history</td></tr>
+ <tr><td>A supplier exception pack</td><td>73 classification conflicts, including S20418</td></tr>
+ <tr><td>A Teams thread</td><td>Claims the addresses are fixed</td></tr>
+ <tr><td>A developer</td><td>Says the load package is ready</td></tr>
+ <tr><td>An SME</td><td>Has very little time</td></tr>
+ <tr><td>The Data Migration Lead</td><td>Wants a readiness view by Thursday</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Your task</div><p>Become useful without pretending you understand more than you do. You are not being assessed on charisma, on how much you produce, or on how confident you sound. You are being assessed on evidence, judgement, ownership, boundary awareness, follow-through and control improvement.</p></div></div>`
+},
+{
+ id:"b16",nav:"The capstone week",title:"The capstone week \u2013 Five days, five decisions",type:"situations",
+ html:`<p class="lead">Five days. Each one has a comfortable answer available immediately, and each comfortable answer costs you something later in the same week. Commit to your choice before reading the reasoning.</p>`,
+ items: capstoneDays,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Consultant They Stopped Chasing", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/lesson6-fromfield-owen.mp3",
+   reflection:"How often does someone have to ask you for a status update before you give one?"
+ })}</div>`
+},
+{
+ id:"b17",nav:"Thursday",title:"The Thursday readiness view, and what good looks like by Day 30",type:"content",
+ html:`<p class="lead">The Data Migration Lead asks: can your workstream go into the rehearsal? Do not answer with a single green, amber or red word unless the evidence beneath it is equally clear.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>What a strong readiness view separates</caption><thead><tr><th>Section</th><th>What it contains</th></tr></thead><tbody>
+ <tr><td>Headline</td><td>A clear readiness statement with its boundary</td></tr>
+ <tr><td>Population</td><td>Reconciled counts and statuses</td></tr>
+ <tr><td>Decisions</td><td>Approved versus unresolved</td></tr>
+ <tr><td>Technical state</td><td>Defects, corrections and proof</td></tr>
+ <tr><td>Dependencies</td><td>Who or what can still change readiness</td></tr>
+ <tr><td>Recommendation</td><td>Your evidence-based consultant recommendation</td></tr>
+ <tr><td>Escalation boundary</td><td>What belongs to the Lead or project leadership</td></tr>
+ </tbody></table></div>
+ <h3>Your first 30 days</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>By day 5</th><th>By day 15</th><th>By day 30</th></tr></thead><tbody>
+ <tr><td>Know scope, people, artefacts and current risks</td><td>Own a defined area with reproducible controls</td><td>People rely on your outputs without chasing</td></tr>
+ <tr><td>Reproduce key population numbers</td><td>Improve at least one weak control</td><td>Your handoffs are predictable and clear</td></tr>
+ <tr><td>Understand decision and defect routes</td><td>Build useful relationships with SMEs, developers and testers</td><td>You anticipate common evidence needs</td></tr>
+ <tr><td>Deliver one small useful output</td><td>Handle an issue end to end</td><td>You can challenge unsafe shortcuts constructively</td></tr>
+ <tr><td>Avoid inventing project history</td><td>Leave shared artefacts better than you found them</td><td>Another consultant could pick up your work</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b18",nav:"Build the pack",title:"Build it \u2013 The readiness view and your operating pack",type:"reflection",
+ html:`<p class="lead">Two things to produce. The first is the Thursday answer. The second is what you take with you afterwards.</p>
+ <h3>Part one: the readiness view</h3>
+ <p>Write your answer to the Lead across the seven sections above, using the Bramwell evidence from your capstone week: 73 supplier classification conflicts with S20418 unresolved, seven observed missing delivery addresses with a mechanism-based population still to calculate, 286 product-site relationship exceptions with no approved treatment, 18 CustomerGroup 99 records unresolved, 45E with no approved target equivalent, and one handoff you invalidated yourself on Day 5.</p>
+ <h3>Part two: the operating pack</h3>
+ <p>Eight compact artefacts you could take onto a real migration project tomorrow.</p>
+ <ol class="framework-checks">
+   <li><strong>Daily control sheet:</strong> priorities, dependencies, downstream consumers, commitments.</li>
+   <li><strong>Evidence note:</strong> fact, source and run identity, query or control, conclusion, limitation.</li>
+   <li><strong>SME decision request:</strong> population, examples, question, scope, approval, test.</li>
+   <li><strong>Controlled handoff:</strong> output identity, population, assumptions, unresolved items, next action.</li>
+   <li><strong>Incident update:</strong> event, impact, cause status, response, next checkpoint.</li>
+   <li><strong>Peer-review note:</strong> expected rule, evidence, risk, recommendation, retest.</li>
+   <li><strong>Readiness input:</strong> population status, defects, decisions, dependencies, recommendation.</li>
+   <li><strong>Personal handover:</strong> current work, open items, versions, next actions.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The test for part two</div><p>If another consultant could adapt these artefacts and use them on a project tomorrow, the exercise has succeeded. If they are a description of what such artefacts would contain, it has not.</p></div></div>
+ <p class="lead">Write your readiness view in full below, then sketch the two artefacts from the pack you would build first and why.</p>
+ <textarea id="reflection" placeholder="READINESS VIEW&#10;Headline: ...&#10;Population: ...&#10;Decisions: ...&#10;Technical state: ...&#10;Dependencies: ...&#10;Recommendation: ...&#10;What belongs to you: ...&#10;&#10;FIRST TWO ARTEFACTS: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Consultant-Operating-Pack.zip</strong><p class="small">All eight templates from this lesson, ready to adapt on your next assignment.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Consultant-Operating-Pack.zip" download>Download</a></div>`,
+ minLength:80,
+ checks:[
+   { test:/except|apart from|other than|boundary|conditional|subject to/i, strength:"Your headline carries its boundary rather than a bare colour.", gap:"Give the headline a boundary: ready except for what, precisely." },
+   { test:/unresolved|no approved|outside ready|pending/i, strength:"You separated unresolved business decisions from technical state.", gap:"List the unresolved business decisions separately from the technical defects. They need different owners and different actions." },
+   { test:/mechanism|full affected|not (just|only) the seven|population/i, strength:"You kept the address recovery scope mechanism-based rather than closing on the seven.", gap:"Say why the seven reported addresses are not the recovery population." },
+   { test:/belongs|decision (is|for|with)|Lead|leadership|not mine|escalat/i, strength:"You named what falls outside your authority rather than quietly deciding it.", gap:"Name at least one thing in this picture that is the Lead's or the business's decision, not yours." },
+   { test:/invalidat|REF-|reference version|handoff|corrected/i, strength:"You included your own Day 5 error in the readiness view rather than leaving it out.", gap:"Your own invalidated handoff belongs in this picture. Leaving it out makes the view incomplete in exactly the way that damages trust." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Headline.</strong> My workstream can go into the rehearsal for the approved population, with four exception groups explicitly excluded and stated. I would not describe it as ready without that boundary attached.</div>
+ <div class="quote"><strong>Population and decisions.</strong> Reconciled counts hold for the approved population. Four groups sit outside it: 18 German records on CustomerGroup 99 with no approved target treatment; records on payment term 45E, where no approved equivalent exists and no fallback will be applied; 286 product-site relationship exceptions with no approved treatment; and the supplier classification conflicts, where S20418 is unresolved pending confirmation of which system is authoritative and what identifies the exceptions. None of these has been defaulted to make a count look complete.</div>
+ <div class="quote"><strong>Technical state.</strong> The address defect is proven rather than assumed: rows present in raw staging, absent from transformed output. The seven reported key accounts are observed examples, not the recovery population, so the mechanism-based population is being calculated before any rerun scope is proposed. Separately, one of my own handoffs was invalidated on Day 5 after I identified it had used REF-02 rather than the approved REF-03; the corrected output has been reconciled against it at key level and reference-version validation is now part of the release check.</div>
+ <div class="quote"><strong>Recommendation and boundary.</strong> My recommendation is to proceed on the approved population with the four exception groups isolated and visible, rather than delaying the rehearsal, because the rehearsal will still exercise the process meaningfully. Whether that is acceptable is not my call: the release decision, and any decision to change the rehearsal scope, belongs with you and with project leadership. What I can supply is the affected population, the dependency impact and the risk for each group.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The test of this answer is whether your own Day 5 mistake appears in it. A readiness view that omits the consultant's own invalidated handoff is exactly the kind of gap this module exists to close.":"Check two things. Does your headline carry its boundary rather than a colour, and does the picture include the handoff you invalidated yourself? Both are places where a good answer quietly becomes an incomplete one."}</div>`
+},
+{
+ id:"b19",nav:"Would you rely on you?",title:"Self-assessment \u2013 Would you rely on you?",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Behaviour</th><th>Evidence to look for</th></tr></thead><tbody>
+ <tr><td>Accurate</td><td>My conclusions can be reproduced</td></tr>
+ <tr><td>Dependable</td><td>I keep or reset commitments early</td></tr>
+ <tr><td>Transparent</td><td>I label unknowns and surface mistakes</td></tr>
+ <tr><td>Useful</td><td>My communication leads to action or decision</td></tr>
+ <tr><td>Safe</td><td>I do not invent business rules or hide exceptions</td></tr>
+ <tr><td>Proactive</td><td>I prepare the next evidence before being asked</td></tr>
+ <tr><td>Boundaried</td><td>I know which decisions are mine</td></tr>
+ <tr><td>Collaborative</td><td>My handoffs and defect evidence help others</td></tr>
+ <tr><td>Improving</td><td>Controls get stronger after failures</td></tr>
+ <tr><td>Transferable</td><td>My work does not collapse when I am absent</td></tr>
+ </tbody></table></div>
+ <h3>What clients actually remember</h3>
+ <ul class="framework-checks">
+   <li>Did you understand the problem before proposing a solution?</li>
+   <li>Could they trust your numbers?</li>
+   <li>Did you make difficult issues clearer?</li>
+   <li>Did you ask questions they could actually answer?</li>
+   <li>Did you tell them bad news early?</li>
+   <li>Did you do what you said?</li>
+   <li>Did you leave useful artefacts and controls behind?</li>
+   <li>Were you calm and useful when something went wrong?</li>
+ </ul>
+ <div class="principle"><strong>The DMC4 standard</strong><br>A Turner Page Data Migration Consultant should be able to say: I can explain what the data is telling us, get the right business decisions, run useful workshops, communicate problems under pressure, work effectively inside the project team, and leave behind evidence and controls that other people can rely on.</div>`
+},
+{
+ id:"b20",nav:"Reflection",title:"Reflection \u2013 The reputation you are building",type:"reflection",
+ html:`<p class="lead">Complete this sentence with observable behaviours rather than adjectives: on a difficult migration project, I want people to rely on me because I consistently... Then name the three habits you most need to practise to make that statement true.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Adjectives are easy and unfalsifiable. \u201cThorough\u201d cannot be observed; \u201cevery number I quote comes with the run it came from\u201d can. The three habits are the useful half, and they should be things you currently do inconsistently rather than things you already do well.</p></div></div>
+ <textarea id="reflection" placeholder="I want people to rely on me because I consistently...&#10;&#10;The three habits I need to practise most..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/I (send|give|record|reproduce|label|reset|state|attach|publish|tell)/i, strength:"You wrote observable behaviours rather than adjectives.", gap:"Replace any adjective with something somebody could watch you do: not \u201creliable\u201d but \u201cI reset a commitment before the deadline rather than after\u201d." },
+   { test:/three|first|second|third|1\.|2\./i, strength:"You named three distinct habits.", gap:"Name three habits, and keep them distinct rather than three versions of the same one." },
+   { test:/struggle|not always|inconsistent|need to|worst|hardest|tend to/i, strength:"You picked habits you actually find hard rather than ones you already do well.", gap:"Choose habits you currently do inconsistently. The ones you are already good at will not change anything." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">I want people to rely on me because I consistently attach the run or snapshot identity to every number I quote, tell them a commitment has moved before the deadline rather than after it, and say plainly which part of what I have told them is proven and which is still a hypothesis. The three habits I need to practise most are all ones I currently do when calm and drop under pressure. Sending the first update before I have an explanation, because my instinct is to wait until I can also offer a cause. Writing the update log during an incident rather than reconstructing it afterwards. And naming the decision that is not mine, out loud, instead of quietly making it because I am the person with the evidence in front of me.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"Habits that hold when calm and drop under pressure are the right ones to name, because pressure is when reliability is actually measured. Cutover is a poor time to invent disciplines you did not practise during test cycles.":"Check whether your three are things you already do well. If they are, they will not change anything. The useful ones are the habits that disappear when you are busy."}</div>`
+},
+{
+ id:"b21",nav:"Summary",title:"Summary \u2013 Reliability is a professional skill",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Orient yourself before prescribing solutions.</li>
+   <li>Build credibility through small, controlled promises.</li>
+   <li>Make numbers reproducible.</li>
+   <li>Be confident about evidence boundaries, in both directions.</li>
+   <li>Anticipate the next useful question or artefact.</li>
+   <li>Be proactive without taking decisions you do not own.</li>
+   <li>Bring controlled options, and clear recommendations where the evidence warrants one.</li>
+   <li>Improve client capability rather than creating dependency.</li>
+   <li>Strengthen a control after every painful lesson.</li>
+   <li>Keep evidence discipline under pressure.</li>
+   <li>Say no to unsafe shortcuts, with an alternative attached.</li>
+   <li>Change your conclusion when the evidence changes.</li>
+   <li>Treat a challenged assumption as a reason to investigate.</li>
+   <li>Recover trust through transparency, control and changed behaviour.</li>
+   <li>Use concise communication only when the evidence exists underneath it.</li>
+   <li>Make difficult conversations easier with specific evidence.</li>
+   <li>Judge actions by evidence, ownership and downstream consequence.</li>
+   <li>Do not confuse rarity, technical acceptance or visible examples with correctness.</li>
+   <li>Aim to be useful by Day 5, independently reliable by Day 30, and transferable from the start.</li>
+   <li>Remember that trust accumulates through repeated behaviour, not single acts.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>People rely on the consultant who makes the migration easier to understand, safer to execute and easier for other people to work with. That reputation is built one controlled decision, one honest update, one reproducible result and one kept promise at a time.</div>`
+},
+{
+ id:"b22",nav:"Module complete",title:"Module complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed DMC Module 4: Communication &amp; Professional Practice.</strong></p>
+ <p>Across six lessons you have practised the client-facing side of the Data Migration Consultant role: communicating findings so another person can act on them, obtaining SME decisions precise enough to implement, running workshops that produce controlled decisions, explaining defects and delays under pressure without hiding or overstating them, operating inside a project team so others can rely on your outputs, and building the professional reliability that turns technical competence into trusted consultancy.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next module</h3>
+ <p><strong>DMC5: Executing Cycles &amp; Cutover</strong></p>
+ <p>The focus moves from how you operate with people to how you prepare, execute, validate and support controlled migration cycles and cutover.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>You have finished the module. The reliability ledger starts again on Monday, as it always does.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 6: Becoming the consultant people rely on",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "The DMC4 capstone: turning technical competence into trusted consultancy",
+  storageKey: "tp_dmc4_lesson6_v1",
+  lessonId: "dmc4-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6-complete.html",
+  finalButtonLabel: "Finish Lesson 6",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

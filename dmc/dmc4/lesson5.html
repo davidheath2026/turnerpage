@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Working inside a project team</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 5 - "Working inside a project team".
+   Built as a working week per the manuscript's own authoring
+   notes: changing priorities, real trade-offs, and interruptions
+   where some deserve an immediate response and others do not.
+
+   Source: DMC4_Lesson5_Working_Inside_a_Project_Team_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session,
+   not the manuscript's own header.
+
+   Bramwell facts used: the opening handoff failure uses supplier
+   data and the 73 supplier-classification conflicts - and is
+   careful NOT to imply the migration team owns that business
+   classification decision, which is the specific risk the
+   authoring notes flag. Also: the address defect (approved rule
+   excludes BILLING_ONLY, implemented predicate retained
+   DELIVERY_PRIMARY only, C10482-DEL-02 as the demonstrating
+   example, 7 observed key accounts); 214 payment-term exceptions
+   with 23 new; 45E unresolved; 18 CustomerGroup 99 German records
+   unresolved; the customer release figures 18,612 input / 34
+   approved pre-load exceptions / 5 approved exclusions / 18,573
+   submitted; the 42 UK-to-Belgian semantic defect, cause still
+   unknown and never speculated on here.
+
+   The 42 duplicated keys in section 33 are a DIFFERENT 42 from
+   the 42 UK-to-Belgian customers - the manuscript uses the number
+   twice for unrelated things. This lesson keeps them apart by
+   never putting them in the same block, and by describing the
+   duplicate-match case purely in reference-version terms.
+
+   Sections 34 to 36 (the simulated project week and the Friday
+   five-line update) are synthetic training material and a model
+   format, not new Bramwell timeline events.
+
+   Persona: Elena, Data Migration Consultant, Utilities ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=2, b6=0, b20 items
+   A-E = 1,3,2,0,3. Full sequence 2,0,1,3,2,0,3 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3. None built yet.
+============================================================== */
+
+const workingWithRoles = [
+ { title:"Developers",
+   short:"Give them a defect they can reproduce, not a description of your afternoon.",
+   detail:"Expected: a valid DELIVERY_SECONDARY address should survive transformation. Actual: C10482-DEL-02 is absent from transformed output. First divergence: present in raw stage, absent after the address eligibility step. Relevant rule: exclude BILLING_ONLY. Current implementation evidence: the predicate retains DELIVERY_PRIMARY only. Affected population: seven observed, full mechanism-based population still to calculate. Retest: positive DELIVERY_SECONDARY, negative BILLING_ONLY, and population reconciliation. The faster another specialist can reproduce the problem, the faster the team resolves it.",
+   ask:"Could they reproduce this without messaging you first?" },
+ { title:"SMEs",
+   short:"Do the analysis before you consume their time, and bring them only what needs business authority.",
+   detail:"Before the SME: profile the affected values, count and group the population, check existing decisions, prepare representative records, and separate out the technical defects. With the SME: confirm business meaning, confirm scope and exceptions, approve or route the missing decision, and test the proposed rule. The SME should not receive raw migration confusion, and every minute of theirs you spend on something you could have established yourself is a minute you cannot spend on something only they can answer.",
+   ask:"Is anything in this message something you could have worked out?" },
+ { title:"Testers",
+   short:"Tell them exactly what changed, so they are not reverse-engineering your fix.",
+   detail:"A retest handoff: the address eligibility rule has been corrected to exclude BILLING_ONLY rather than include DELIVERY_PRIMARY only. Please retest that valid DELIVERY_PRIMARY is retained, that valid DELIVERY_SECONDARY is retained, that BILLING_ONLY is excluded, that the affected recovery keys are present as expected, and that there are no unexplained address changes outside the recovery scope. Five named checks beats \u201cfix deployed, please retest\u201d by a considerable margin.",
+   ask:"Does the tester know what should now be different, and what should not have moved at all?" },
+ { title:"The Data Migration Lead",
+   short:"Give decision-grade information: evidence, impact, options and dependencies.",
+   detail:"Not \u201clots of payment-term issues\u201d but: 214 active customers remain without valid payment-term treatment, 23 are new exceptions this cycle, and 45E still requires an approved target decision. Not \u201caddress problem fixed\u201d but: root cause proven, full affected population identified from the mechanism, correction tested, controlled rerun ready, downstream address dependencies require revalidation. Not \u201cload went well\u201d but: 18,573 accepted with zero rejects, and post-load validation found 42 UK customers in the Belgian legal entity, so semantic acceptance is not complete. Supply the evidence and the options; do not assume ownership of programme governance or Go and No-Go authority.",
+   ask:"Could the Lead make a decision from this, or would they have to ask you three questions first?" },
+ { title:"Project management",
+   short:"Translate technical work into delivery state, without becoming a status machine.",
+   detail:"The project manager needs what changed, what is on track, what is threatened, what dependency needs action, what date or checkpoint matters, and what can continue despite the issue. That is six things and none of them is a diagnostic step. Do not forward every technical detail: translate the work into delivery state while keeping the evidence available underneath for anyone who wants it.",
+   ask:"Does this tell them whether the plan moved?" }
+];
+
+const teamAntiPatterns = [
+ "Keep problems private until solved",
+ "Say \u201cblocked\u201d and wait",
+ "Send files without context",
+ "Ask for help with no evidence",
+ "Defend your work automatically",
+ "Review colleagues stylistically",
+ "Become the only person who knows the process",
+ "Promise outcomes owned by others"
+];
+const teamAntiPatternCoaching = [
+ "<strong>Better:</strong> surface material impact early. Solving it first feels like professionalism, and it removes the project's chance to protect itself while options still exist.",
+ "<strong>Better:</strong> control the dependency and continue safe work. Blocked does not mean idle: there is nearly always schema validation, comparison controls or pre-load reconciliation you can complete meanwhile.",
+ "<strong>Better:</strong> use controlled handoffs. A handoff should say what it is, which version, what population, what assumptions and decisions apply, what remains unresolved, and what the next person should do.",
+ "<strong>Better:</strong> provide reproducible evidence. Expected behaviour, actual behaviour, where the divergence begins, what you already checked, and the smallest evidence set that reproduces it.",
+ "<strong>Better:</strong> test the review comment. It is a hypothesis about your artefact, not a judgement on your competence, and defending before checking makes you slower to find real defects.",
+ "<strong>Better:</strong> review migration risk and evidence. Style preferences cost the reviewer's credibility and use up the goodwill you need when you find something that genuinely matters.",
+ "<strong>Better:</strong> make routine work reproducible. Being indispensable feels like value and is a key-person dependency wearing a flattering hat.",
+ "<strong>Better:</strong> commit to your action and expose the dependency. You do not control when Finance decides, so promising their decision date puts your reliability in somebody else's hands."
+];
+
+const weekSituations = [
+ { title:"A. The developer interrupts, and you are on a deadline",
+   question:"You are two hours from a noon profiling deadline. A developer messages asking for help with a reference join. What do you do?",
+   options:[
+     {label:"Finish the profiling report first, since a committed deadline outranks an unscheduled request and the developer can wait two hours.", correct:false, feedback:"Sometimes right, and not automatically. If the developer is blocked on something in the critical migration sequence, two hours of their waiting may cost more than an hour of your lateness."},
+     {label:"Ask what is blocked and by when, then decide: unblock them with the smallest useful action if the sequence needs it, and reset your own commitment if that changes your timing.", correct:true, feedback:"Correct. Identify what affects the critical sequence, check whether somebody is blocked waiting for you, take the smallest action that unblocks, and tell affected people when your commitment changes."},
+     {label:"Help immediately, because a colleague who is blocked represents a live cost to the project while a report is only due at a fixed time.", correct:false, feedback:"This is how consultants absorb every request and then miss all of them. Responsiveness without triage is just a queue ordered by who messaged last."},
+     {label:"Forward the question to the Data Migration Lead so they can decide whose work should take priority this morning.", correct:false, feedback:"Escalate priority when the trade-off is genuinely material and comparable. A single join question is a decision you can make in one exchange."}
+   ]
+ },
+ { title:"B. The address fix passes all seven examples",
+   question:"Your corrected address rule passes retest against the seven reported key accounts. The Data Migration Lead asks whether the defect is closed. What do you say?",
+   options:[
+     {label:"Yes, since every reported case now behaves correctly and the regression checks against those accounts have all passed.", correct:false, feedback:"The seven were the ones somebody noticed. The faulty mechanism defines the affected population, and it is almost certainly larger than the reported set."},
+     {label:"Not yet, because the target has not confirmed the corrected addresses were accepted on the subsequent load.", correct:false, feedback:"Target acceptance matters and is a different gap. The unclosed question here is which records the mechanism affected, not what the target did with them."},
+     {label:"Not yet, because a further regression cycle is needed before any correction of this kind can be treated as complete.", correct:false, feedback:"Process language standing in for the actual reason. The specific problem is the uncalculated population, and saying so is more useful than citing a cycle."},
+     {label:"Not yet: the seven were the reported examples, and the affected population has to be calculated from the proven faulty mechanism before recovery can be called complete.", correct:true, feedback:"Correct. Recovery scope comes from the mechanism, not from the complaints. Closing on the reported set leaves the unreported records silently wrong."}
+   ]
+ },
+ { title:"C. You handed over the wrong reference version",
+   question:"You realise a file you handed to the load consultant yesterday used a superseded reference version. What do you do first?",
+   options:[
+     {label:"Rebuild the output with the correct reference version, then send the corrected file with a note explaining the replacement.", correct:false, feedback:"The rebuild is right and the order is wrong. Until they know, they may be building on the bad output for the time it takes you to regenerate."},
+     {label:"Check whether the difference actually changes any values before raising it, since a superseded version may produce identical output.", correct:false, feedback:"Reasonable instinct, and it delays the one message that lets somebody else stop. Tell them now, then establish whether values differ."},
+     {label:"Tell the load consultant immediately that the handoff is invalidated and should not be used, then identify the affected scope and replace it with corrected output and evidence.", correct:true, feedback:"Correct. Say what happened, what you have controlled, what you are doing next and what evidence will prove recovery. The message that stops other people comes first."},
+     {label:"Raise it at the stand-up tomorrow so the whole team hears the version-control lesson at the same time.", correct:false, feedback:"A day of somebody else's work traded for a teaching moment nobody asked for. Tell the affected person directly and now."}
+   ]
+ },
+ { title:"D. A tester reports that a green output now differs",
+   question:"A tester says an output that passed last week now looks different. You have changed nothing in that area. How do you respond?",
+   options:[
+     {label:"Ask which run and reference identities each comparison used, and establish what actually changed before treating the difference as a defect.", correct:true, feedback:"Correct. A difference between two runs is evidence, not yet a defect. Source snapshot, reference version and package build are the three things that most often explain it."},
+     {label:"Explain that you have made no changes in that area, so the difference is most likely a problem with the test comparison itself.", correct:false, feedback:"You may well be right, and leading with your own innocence makes the tester defensive and makes you look it too. Establish the versions first."},
+     {label:"Rerun your own process to confirm your output is unchanged, then report back that the discrepancy sits on the testing side.", correct:false, feedback:"Rerunning is useful. Concluding in advance that the discrepancy is theirs is the part that will be wrong roughly half the time."},
+     {label:"Raise it as a defect against the testing environment so it is formally tracked while the cause is established.", correct:false, feedback:"Raising a defect against a specific component before you know the cause commits you to an explanation you have not evidenced."}
+   ]
+ },
+ { title:"E. The Data Migration Lead wants the unresolved records included",
+   question:"The Lead says: include those unresolved records so the count is complete. What do you say?",
+   options:[
+     {label:"Include them, since the Lead holds the release decision and a complete reconciled count is what the programme has explicitly asked the team for.", correct:false, feedback:"The Lead owns the release decision and cannot make it properly without knowing that the completeness would be achieved with unapproved values."},
+     {label:"Decline, explaining that unresolved records cannot be released without an approved business treatment under the migration controls that govern this release.", correct:false, feedback:"The position is right and it is delivered as a refusal. Without the consequence and an alternative, this reads as obstruction rather than advice."},
+     {label:"Ask the Lead to confirm the instruction in writing, so that the decision and its ownership are properly recorded before anything is implemented.", correct:false, feedback:"Documenting an instruction protects you rather than the migration. It also converts a professional conversation into a paperwork exchange."},
+     {label:"Say you can include them only with an approved treatment, that the count would otherwise be complete with unapproved values, and offer the affected population and risk for the decision.", correct:true, feedback:"Correct. Evidence, consequence, recommendation, alternative. You can disagree with authority without becoming obstructive, and the Lead ends up with a better decision than the one they asked for."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Technically perfect",title:"Being good at your own task is not enough",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>A consultant produces an excellent supplier transformation. The SQL is clean. The output reconciles. The logic is correct. By any technical measure, the work is very good.</p>
+ </div>
+ <p>Also true, by Friday afternoon:</p>
+ <ul class="framework-checks">
+   <li>the tester did not know the new output was ready</li>
+   <li>the decision register was not updated</li>
+   <li>the package used a newer reference file than the validation evidence</li>
+   <li>the Data Migration Lead still believes the 73 supplier-classification conflicts are waiting for migration-team correction, rather than an authorised business decision</li>
+   <li>the consultant goes on leave tomorrow and nobody knows how to rerun the process</li>
+ </ul>
+ <h3>How should this work be assessed?</h3>`,
+ options:[
+   {label:"As strong work with some administrative follow-up outstanding, which the consultant can complete on their return from leave next week.", correct:false, feedback:"Calling it administrative is what allows it to keep happening. The Lead is currently carrying a wrong belief about who owns a decision, and that shapes what they chase and what they report."},
+   {label:"As a documentation problem rather than a delivery problem, since the technical output itself is correct and reconciles as expected.", correct:false, feedback:"The package and the validation evidence used different reference files. That is not documentation, it is a result nobody can currently reproduce."},
+   {label:"As incomplete. The technical output is finished and the work is not, because nothing downstream can safely consume it and nobody else can reproduce it.", correct:true, feedback:"Correct. A strong Data Migration Consultant does not merely complete technical work. They connect it to the people, controls and downstream activities that depend on it."},
+   {label:"As acceptable under time pressure, given that the technical quality is high and the remaining gaps can be closed by whoever picks the work up.", correct:false, feedback:"Whoever picks it up will spend an hour reconstructing what was done before they can touch it, and they will not know about the reference mismatch at all."}
+ ]
+},
+{
+ id:"b2",nav:"Unit of delivery",title:"Your unit of delivery is not the task",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Task thinking</th><th>Project-team thinking</th></tr></thead><tbody>
+ <tr><td>\u201cI fixed the transformation.\u201d</td><td>The correction is implemented, tested, versioned, communicated and ready for the next controlled activity.</td></tr>
+ <tr><td>\u201cI sent the file.\u201d</td><td>The recipient knows which version it is, what it contains, what remains unresolved and what they need to do.</td></tr>
+ <tr><td>\u201cI raised a defect.\u201d</td><td>The defect has evidence, impact, an owner, current status and a route to retest.</td></tr>
+ <tr><td>\u201cI asked Finance.\u201d</td><td>The exact decision required is with the correct owner, with evidence and a due point linked to migration readiness.</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The left column is not laziness. It is the honest report of somebody measuring their day in tasks completed, which is what most of us were taught to do. For a consultant, done usually includes the handoff and the control evidence, not just the technical output.</p></div></div>`
+},
+{
+ id:"b3",nav:"Who depends on you",title:"Know who depends on your work",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Your output</th><th>Likely dependency</th></tr></thead><tbody>
+ <tr><td>Profile findings</td><td>SME decisions, cleansing priorities, the Lead's readiness view</td></tr>
+ <tr><td>Approved mapping implementation</td><td>ETL build, validation, target load</td></tr>
+ <tr><td>Staging output</td><td>Transformation and reconciliation</td></tr>
+ <tr><td>Exception population</td><td>Business review and release status</td></tr>
+ <tr><td>Corrected package</td><td>Tester, load executor, downstream entity</td></tr>
+ <tr><td>Post-load validation</td><td>Cycle acceptance and defect triage</td></tr>
+ <tr><td>Recovery evidence</td><td>The Lead's decision on continuing the sequence</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The dependency habit</strong><br>Before you finish a piece of work, ask: who consumes this next, and what do they need from me to use it safely?</div>`
+},
+{
+ id:"b4",nav:"Daily control loop",title:"The consultant's daily control loop",type:"content",
+ html:`<ol class="framework-checks">
+   <li>Know the most important output you are responsible for today.</li>
+   <li>Know the inputs or decisions you are waiting for.</li>
+   <li>Know who is waiting for your output.</li>
+   <li>Surface any threat to your commitment before it becomes a surprise.</li>
+   <li>Complete the work with evidence.</li>
+   <li>Hand it over in a form another person can use.</li>
+   <li>Update the relevant control record.</li>
+   <li>Re-plan the next priority based on what changed.</li>
+ </ol>
+ <p class="small">Eight steps, most days about five minutes. This is not project-management theatre. It is the minimum operating discipline that keeps technical migration work connected to the project it belongs to.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Consultant-Daily-Control.xlsx</strong><p class="small">Today's output, what you are waiting for, who is waiting for you, and what changed.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Consultant-Daily-Control.xlsx" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Stand-ups",title:"A useful stand-up update, and why activity is not progress",type:"content",
+ html:`<p class="lead">A stand-up is not a diary of yesterday.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak</th><th>Useful</th></tr></thead><tbody>
+ <tr><td>\u201cYesterday I worked on customers. Today I will carry on.\u201d</td><td>CustomerGroup profiling is complete. Four values are covered by approved rules; 99 remains unresolved for 18 German records. Today I am preparing the SME evidence pack and implementing the already-approved whitespace normalisation. I need the business owner for 99 confirmed before Thursday's release cut-off.</td></tr>
+ <tr><td>\u201cStill investigating addresses.\u201d</td><td>The seven observed missing delivery addresses are bounded to transformation, not raw staging. I am testing the eligibility filter against DELIVERY_SECONDARY now. If confirmed, I will calculate the full affected population before proposing rerun scope.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Stand-up formula</strong><br>Progress that changed the project state, plus current priority, plus blocker or dependency, plus the material next point.</div>
+ <h3>Activity is not progress</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Activity</th><th>Progress</th></tr></thead><tbody>
+ <tr><td>Ran SQL queries</td><td>Established that all seven observed missing addresses exist in raw stage but not in transformed output</td></tr>
+ <tr><td>Met Finance</td><td>Confirmed 45E remains unresolved and identified the authorised decision owner</td></tr>
+ <tr><td>Updated mapping workbook</td><td>Published an approved reference version with two controlled changes and no unresolved values silently defaulted</td></tr>
+ <tr><td>Worked on defects</td><td>Closed three proven technical defects; two business-decision exceptions remain open</td></tr>
+ </tbody></table></div>
+ <p class="small">The test: what is now known, controlled, implemented or ready that was not true before?</p>`
+},
+{
+ id:"b6",nav:"Commitments",title:"Commit to outputs you can control",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">It is Monday. Payment term 45E is unresolved and Wednesday's release needs a decision. You want to give the Data Migration Lead something they can plan against.</p>
+ <div class="quote">\u201cI will get Finance to approve 45E by Wednesday.\u201d</div>
+ <p>It sounds committed, decisive and helpful.</p>
+ <h3>What is wrong with it?</h3>`,
+ options:[
+   {label:"It commits you to somebody else's decision time. Better: the evidence pack and precise decision request reach Finance by 10:00 Tuesday, and you flag the release dependency to the Lead if approval is still outstanding at 15:00.", correct:true, feedback:"Correct. Commit to your action and expose the external dependency. The second version is less impressive and far more useful, because everything in it is something you can actually deliver."},
+   {label:"It sets a deadline too close to the release, leaving no contingency if Finance comes back with questions about the evidence pack.", correct:false, feedback:"Timing is a real concern and it is secondary. Even with a week of slack, the promise would still be about a decision you do not control."},
+   {label:"It should specify which target payment term is being proposed, so that Finance has something concrete to approve rather than an open question.", correct:false, feedback:"That is the opposite of what Lesson 2 established. Proposing the answer for Finance to approve is asking the business to rubber-stamp your guess."},
+   {label:"It does not say what happens to the affected records in the meantime, so the Lead cannot tell whether the release is at risk.", correct:false, feedback:"A genuine omission and not the central fault. The commitment would still be unsafe even with the interim treatment spelled out."}
+ ]
+},
+{
+ id:"b7",nav:"Blocked",title:"Never let a blocker become a hiding place",type:"content",
+ html:`<p class="lead">\u201cBlocked by the business\u201d is usually incomplete, and occasionally it is a place to rest.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Blocked statement</th><th>Questions to answer first</th></tr></thead><tbody>
+ <tr><td>Waiting for Finance</td><td>Has the exact question been sent? To whom? With what evidence? By when is it needed?</td></tr>
+ <tr><td>Waiting for developer</td><td>Is the defect reproducible? Is the failing key and evidence attached? What can you do meanwhile?</td></tr>
+ <tr><td>Waiting for source extract</td><td>Can you validate schema or reference logic, or prepare comparison controls now?</td></tr>
+ <tr><td>Waiting for target environment</td><td>Can you complete pre-load reconciliation, package checks or expected-result validation?</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Reporting a blocker is reporting a fact. It is also, often, the end of the sentence when it should be the middle. A strong consultant separates the genuinely blocked activity from the useful work that can continue safely alongside it.</p></div>`
+},
+{
+ id:"b8",nav:"Asking for help",title:"Ask for help with evidence, and know when to stop digging",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cMy SQL is not working. Can you have a look?\u201d</p></div>
+ <div class="quote">\u201cThis query should return one row per CustomerNumber, but 42 keys duplicate after the reference join. Source stage is unique. The duplication starts at ref.CustomerGroupMap, where two active rows match the same source and context. I have attached the 42 keys and the join result. Can you review whether the reference versioning rule is being applied correctly?\u201d</div>
+ <div class="principle"><strong>Make yourself easy to help</strong><br>State the expected behaviour, the actual behaviour, where the divergence begins, what you already checked, and the smallest evidence set that reproduces it.</div>
+ <h3>Stop digging alone when</h3>
+ <ul class="framework-checks">
+   <li>you have bounded the issue to a component owned by another specialist</li>
+   <li>continuing requires access or knowledge you do not have</li>
+   <li>the issue is now threatening a project commitment</li>
+   <li>you are repeating the same diagnostic steps without gaining evidence</li>
+   <li>another person can resolve the next uncertainty much faster</li>
+   <li>the decision is business-owned rather than technical</li>
+ </ul>
+ <p class="small">Independence is not measured by how long you struggle before involving the right person.</p>`
+},
+{
+ id:"b9",nav:"Handoffs",title:"Handoffs are part of engineering",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak handoff</th><th>Controlled handoff</th></tr></thead><tbody>
+ <tr><td>\u201cLatest customer file attached.\u201d</td><td>Customer release CUST-R3 is ready. Input population 18,612; 34 approved pre-load exceptions; 5 approved exclusions; 18,573 submitted population. Reference version REF-2026-11-14-03. Reconciliation attached. 45E and 99 treatments are not silently included unless approved in this release. Please use package build PKG-CUST-R3.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>A handoff should answer six things</strong><br>What is it? Which version? What population? What assumptions and decisions? What remains excluded or unresolved? What should the next person do?</div>
+ <h3>Version language matters</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Unsafe</th><th>Safe</th></tr></thead><tbody>
+ <tr><td>latest file</td><td>Customer_Migration_R3_20261114_1540.csv</td></tr>
+ <tr><td>new mapping</td><td>ReferenceVersion REF-2026-11-14-03</td></tr>
+ <tr><td>fixed package</td><td>PackageBuild PKG-CUST-R3-B07</td></tr>
+ <tr><td>the extract from this morning</td><td>SourceSnapshot SRC-CUST-20261114-0600</td></tr>
+ <tr><td>my validation</td><td>ValidationRun VAL-CUST-R3-02</td></tr>
+ </tbody></table></div>
+ <p class="small">Project memory should not depend on your memory. Use identifiers that let another person reproduce what you did.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Controlled-Handoff-Template.docx</strong><p class="small">The six questions a handoff has to answer, with the version fields laid out.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Controlled-Handoff-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Five relationships",title:"Working with the people around you",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Five working relationships, each needing something different from you. Explore each one, and read the test underneath it.</p>`,
+ items: workingWithRoles,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>All five tests are versions of the same question: does this person have to come back to you before they can act? The consultants people ask for by name are usually the ones who answer no five times out of five.</p></div></div>`
+},
+{
+ id:"b11",nav:"Peer review",title:"Review without territory, and receive review without defence",type:"content",
+ html:`<p class="lead">You are asked to peer-review a transformation. What you are looking for is migration risk, not authorship.</p>
+ <ul class="framework-checks">
+   <li>Start with the intended rule and the expected grain.</li>
+   <li>Test high-risk conditions and edge cases.</li>
+   <li>Check whether unknown or unmapped values are controlled.</li>
+   <li>Look for silent row loss or multiplication.</li>
+   <li>Check reference version and context.</li>
+   <li>Test restartability or rerun assumptions where relevant.</li>
+   <li>Record evidence, not stylistic preferences.</li>
+ </ul>
+ <div class="visual-card"><div class="visual-title">A useful review comment</div>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cI do not like this filter.\u201d</p></div>
+ <div class="quote">\u201cThe approved rule is to exclude BILLING_ONLY. The current predicate includes DELIVERY_PRIMARY only, which also excludes DELIVERY_SECONDARY. C10482-DEL-02 is a valid secondary delivery address and demonstrates the difference. Recommend implementing the exclusion rule directly and adding a regression test for secondary delivery addresses.\u201d</div>
+ </div>
+ <div class="visual-card"><div class="visual-title">Receiving one</div>
+ <p>Reviewer: this join can multiply rows when more than one active mapping exists.</p>
+ <p>Consultant: good catch. I assumed uniqueness in the reference table but did not enforce or test it. I will add the zero, one and more-than-one match control and rerun the population before release.</p>
+ </div>
+ <div class="principle"><strong>Treat a review comment as a hypothesis</strong><br>It is a claim about your artefact, not a judgement on your competence. Test it before you defend it, and you will find real defects faster than colleagues who do the reverse.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Peer-Review-Checklist.docx</strong><p class="small">The seven review areas, with prompts for the conditions most often left untested.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Peer-Review-Checklist.docx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"Unsafe requests",title:"Challenge unsafe requests constructively",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">The request</div><p>Developer: can we default any unmapped CustomerGroup to STANDARD so the package finishes?</p></div>
+ <div class="quote">\u201cThat would make unresolved business values look valid. I can separate approved mappings from unresolved values and keep the ready population moving, but I would not introduce a default without an approved business rule.\u201d</div>
+ <div class="principle"><strong>Challenge plus alternative</strong><br>State the risk briefly and offer a controlled route forward where one exists. A no on its own gets overruled by whoever is under the most pressure; a no with a working alternative usually does not.</div>`
+},
+{
+ id:"b13",nav:"Leave a trail",title:"Private spreadsheets, and the bus-factor test",type:"content",
+ html:`<p class="lead">You maintain an excellent personal workbook. Nobody else knows it exists.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A private artefact that is genuinely better than the project's own records feels like craftsmanship. If it holds the only current mapping decision, exception status or reconciliation logic, the project now has a key-person dependency and does not know it.</p></div>
+ <ul class="framework-checks">
+   <li>Use agreed shared locations.</li>
+   <li>Publish controlled outputs rather than local-only copies.</li>
+   <li>Make naming and versioning understandable to somebody else.</li>
+   <li>Link evidence to defects and decisions.</li>
+   <li>Keep personal scratch work separate from project records.</li>
+ </ul>
+ <h3>Imagine you are unexpectedly unavailable tomorrow</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Your evidence should answer</th></tr></thead><tbody>
+ <tr><td>What was I working on?</td><td>Current task, defect or decision ID</td></tr>
+ <tr><td>What is complete?</td><td>Controlled output and validation</td></tr>
+ <tr><td>What remains?</td><td>Explicit open items</td></tr>
+ <tr><td>What am I waiting for?</td><td>Owner and dependency</td></tr>
+ <tr><td>Which versions matter?</td><td>Source, reference, build and run identifiers</td></tr>
+ <tr><td>What happens next?</td><td>Next action and expected result</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The bus-factor test</strong><br>Could a competent consultant pick up your work tomorrow without an hour of archaeology?</div>`
+},
+{
+ id:"b14",nav:"Priorities",title:"Manage commitments visibly, and handle collisions deliberately",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Commitment</th><th>Evidence of control</th></tr></thead><tbody>
+ <tr><td>Profile customer exceptions by Tuesday</td><td>Defined output, current status, known input dependency</td></tr>
+ <tr><td>Prepare the 45E decision request</td><td>Evidence pack, recipient, send time, required decision point</td></tr>
+ <tr><td>Retest the address correction</td><td>Test cases, recovery population, build and run ID</td></tr>
+ <tr><td>Support the customer load</td><td>Readiness checks, availability window, escalation route</td></tr>
+ </tbody></table></div>
+ <h3>10:00, and five things want you</h3>
+ <p>A customer-load defect affecting today's test. A profiling report due at noon. An SME asking for clarification. A developer requesting peer review. A meeting in twenty minutes.</p>
+ <ol class="framework-checks">
+   <li>Identify which item affects the critical migration sequence.</li>
+   <li>Check whether somebody is blocked waiting for you.</li>
+   <li>Estimate the smallest action needed to unblock others.</li>
+   <li>Tell affected people when your commitment changes.</li>
+   <li>Ask the Data Migration Lead to prioritise if competing work has comparable materiality.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Priority is a project decision when the trade-offs are material. Consultants who heroically absorb all five requests do not deliver five things slightly late; they usually miss all of them, and nobody finds out until the end of the day.</p></div></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Weekly-Commitment-Board.xlsx</strong><p class="small">One row per commitment: the output, its current status, the dependency and who is waiting.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Weekly-Commitment-Board.xlsx" download>Download</a></div>`
+},
+{
+ id:"b15",nav:"Availability",title:"Protect focus without becoming unavailable",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Bad extreme</th><th>Better</th></tr></thead><tbody>
+ <tr><td>Answer every message immediately</td><td>Use clear availability and respond quickly to genuinely blocking issues</td></tr>
+ <tr><td>Disappear for four hours with no status</td><td>Protect focus, but make the critical contact route known</td></tr>
+ <tr><td>Attend every meeting</td><td>Attend where your evidence, decision or dependency matters</td></tr>
+ <tr><td>Decline all interruptions</td><td>Distinguish noise from a migration-critical interruption</td></tr>
+ </tbody></table></div>
+ <p class="small">The aim is not instant reply. It is preventing avoidable waiting in the delivery chain.</p>
+ <h3>Know why you are in the meeting</h3>
+ <ul class="framework-checks">
+   <li>To provide evidence.</li>
+   <li>To obtain a decision.</li>
+   <li>To resolve a dependency.</li>
+   <li>To coordinate a migration activity.</li>
+   <li>To review readiness or results.</li>
+   <li>To contribute specialist judgement.</li>
+ </ul>
+ <p>If none of the six applies, consider whether a concise written update would serve the project better than your hour.</p>
+ <h3>Do not become the team's human API</h3>
+ <p>If everybody has to ask you personally for counts, mappings, file locations and run status, you are a bottleneck wearing a compliment. Publish repeatable queries and reports, keep decision and exception registers accessible, use clear artefact names, document routine run instructions, and teach others how to retrieve controlled information.</p>
+ <div class="principle"><strong>Expertise should increase team capacity</strong><br>Being indispensable is worth less than making the migration process dependable.</div>`
+},
+{
+ id:"b16",nav:"Support and challenge",title:"Help without taking over, and raise risks with evidence",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">A junior consultant is struggling with a reconciliation</div>
+ <div class="callout misconception"><div class="callout-label">Taking over</div><p>You fix the workbook yourself and send them the result.</p></div>
+ <p>Better: ask them to state the expected population equation, inspect the unmatched keys together, show them how to classify the difference, then let them complete and explain the reconciliation themselves. A strong consultant improves the team as well as the output, and the second approach takes about ten minutes longer once.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">You think a colleague's process is unreliable</div>
+ <div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cTheir loads are always messy.\u201d</p></div>
+ <div class="quote">\u201cIn the last two test runs, package input was not tied to a recorded source or reference version, which made the rerun population difficult to reproduce. I recommend adding run identity and input-baseline checks before the next cycle.\u201d</div>
+ <p class="small">Raise risks with evidence, not reputation. The first version invites a defence of character; the second invites a control.</p>
+ </div>`
+},
+{
+ id:"b17",nav:"Mistakes",title:"When a teammate makes a mistake, and when you do",type:"content",
+ html:`<ol class="framework-checks">
+   <li>Protect the migration first.</li>
+   <li>Preserve the evidence.</li>
+   <li>Tell the person directly if appropriate.</li>
+   <li>Describe the mechanism, not their character.</li>
+   <li>Help bound the impact.</li>
+   <li>Escalate based on project impact, not embarrassment.</li>
+   <li>Improve the control that allowed the defect to escape.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>People surface their own mistakes early on teams that respond with control rather than humiliation. That is not a cultural nicety. It is the single cheapest defect-detection mechanism a migration programme has.</p></div></div>
+ <h3>When it was you</h3>
+ <div class="quote">\u201cI introduced the reference-version change that created the duplicate matches. I have stopped the affected output, identified the duplicated keys and reverted the uncontrolled reference selection. I am adding the zero, one and more-than-one match check before rerunning.\u201d</div>
+ <p class="small">Say what happened, what you have controlled, what you are doing next, and what evidence will prove recovery. Four sentences, no apology required.</p>`
+},
+{
+ id:"b18",nav:"Anti-patterns",title:"Team behaviour anti-patterns",type:"selectAll",
+ html:`<p class="lead">Eight habits that look like conscientiousness from the inside. Explore each one to see what it actually costs the team.</p>`,
+ options: teamAntiPatterns,
+ coaching: teamAntiPatternCoaching,
+ hint:"Explore every anti-pattern before continuing.",
+ closingHtml:`<div class="principle"><strong>The pattern behind the patterns</strong><br>Almost every one of these makes you look more capable and the team run worse. That is why they are hard to give up, and why nobody will tell you to.</div>`
+},
+{
+ id:"b19",nav:"The project week",title:"Build it \u2013 The simulated project week",type:"reflection",
+ html:`<p class="lead">You start Monday with five responsibilities.</p>
+ <ul class="framework-checks">
+   <li>Customer exception analysis.</li>
+   <li>Address-defect retest.</li>
+   <li>An SME decision request.</li>
+   <li>Peer review of a supplier transformation.</li>
+   <li>Support for Friday's migration cycle.</li>
+ </ul>
+ <h3>Then the week happens</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>#</th><th>Event</th></tr></thead><tbody>
+ <tr><td>1</td><td>The SME does not answer your original vague question.</td></tr>
+ <tr><td>2</td><td>The developer asks for help while you are working to a deadline.</td></tr>
+ <tr><td>3</td><td>Your peer review finds a silent row-multiplication risk.</td></tr>
+ <tr><td>4</td><td>The address fix passes the seven reported examples, but the full affected population has not been calculated.</td></tr>
+ <tr><td>5</td><td>The Data Migration Lead asks whether the customer data is ready.</td></tr>
+ <tr><td>6</td><td>A tester reports that a previously green output now differs.</td></tr>
+ <tr><td>7</td><td>You realise a file you handed over used the wrong reference version.</td></tr>
+ <tr><td>8</td><td>A colleague asks you to cover their load step at short notice.</td></tr>
+ </tbody></table></div>
+ <h3>Ten decisions</h3>
+ <ol class="framework-checks">
+   <li>Write Monday's stand-up update.</li>
+   <li>Rewrite the SME request into an answerable decision question.</li>
+   <li>Decide whether to interrupt your work for the developer, and say why.</li>
+   <li>Write the peer-review comment with reproducible evidence.</li>
+   <li>State why seven successful retests are not recovery proof.</li>
+   <li>Give the Lead a decision-grade readiness update.</li>
+   <li>Respond to the tester without assuming the difference is a defect.</li>
+   <li>Own and control the wrong-reference handoff.</li>
+   <li>Prepare a clean handover for the colleague's load step.</li>
+   <li>Write Friday's end-of-week status in five lines.</li>
+ </ol>
+ <p class="lead">Write Monday's stand-up and Friday's five-line status below, plus whichever of the eight events you would find hardest to handle well.</p>
+ <textarea id="reflection" placeholder="MONDAY STAND-UP: ...&#10;&#10;THE EVENT I FIND HARDEST: ...&#10;&#10;FRIDAY, FIVE LINES: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/complete|established|confirmed|remains|unresolved/i, strength:"Your stand-up reports changed project state rather than activity.", gap:"Say what is now known, controlled, implemented or ready that was not true before, rather than what you worked on." },
+   { test:/depend|waiting|need|before|cut.?off|by (monday|tuesday|wednesday|thursday|friday|\d)/i, strength:"You exposed a dependency with a point at which it starts to hurt.", gap:"Name what you are waiting for, who owns it, and the migration event it has to land before." },
+   { test:/population|mechanism|seven|full affected/i, strength:"You addressed why the reported examples are not the affected population.", gap:"Say why passing the seven reported cases does not prove recovery: the population comes from the mechanism." },
+   { test:/version|reference|build|run|identif/i, strength:"You used explicit version or run identity rather than \u201clatest\u201d or \u201cfixed\u201d.", gap:"Use real identifiers somewhere: source snapshot, reference version, package build or validation run." },
+   { test:/invalidat|replaced|wrong|stopped|corrected/i, strength:"You owned the wrong-reference handoff and controlled it rather than quietly fixing it.", gap:"Say how you would tell the recipient the handoff is invalidated, before you rebuild it." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Monday stand-up.</strong> Customer exception analysis is complete for payment terms: 214 remain without valid treatment and 23 of those are new this cycle, which is the part worth attention. Today I am calculating the address-defect population from the corrected mechanism rather than from the seven reported accounts, and sending the 45E decision request. I am waiting on a named owner for the CustomerGroup 99 treatment, and that needs to be confirmed before Thursday's release cut-off or those 18 records stay outside the ready population.</div>
+ <div class="quote"><strong>The event I would find hardest.</strong> The wrong reference version on a handoff I have already sent, because the instinct is to quietly rebuild it before anyone notices. The right order is the uncomfortable one: tell the load consultant immediately that the output is invalidated and should not be used, then establish the affected scope, then replace it with corrected output and the evidence to prove it. Rebuilding first means somebody may spend a morning on work I already know is void.</div>
+ <div class="quote"><strong>Friday, five lines.</strong> One, the customer ready population is reconciled and unresolved treatments remain explicit exceptions rather than defaults. Two, the address eligibility defect is corrected and the mechanism-based population has been rerun and regression-tested. Three, the supplier peer review identified a duplicate-reference risk, with the correction now with its owner before release. Four, one customer handoff was invalidated after I identified the wrong reference version; corrected output and evidence have replaced it. Five, Friday cycle support is prepared with source, reference and build identifiers, validation checks and named escalation dependencies.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The Friday update is the giveaway. If it reports project state rather than how busy you were, and it includes the thing that went wrong, you are operating the way this lesson describes.":"Check your Friday five lines. If none of them mentions something that went wrong or is still open, it is a summary of effort rather than a report of state."}</div>`
+},
+{
+ id:"b20",nav:"The week's moments",title:"Consultant situations \u2013 Five moments in the week",type:"situations",
+ html:`<p class="lead">Five points in an ordinary week where the comfortable choice and the useful one diverge.</p>`,
+ items: weekSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Handoff I Thought Was Obvious", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/lesson5-fromfield-elena.mp3",
+   reflection:"Think about the last thing you handed to someone else. Could they have reproduced it without asking you a single question?"
+ })}</div>`
+},
+{
+ id:"b21",nav:"Operating checklist",title:"The personal operating checklist",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Area</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Priority</td><td>Do I know the most important migration output today?</td></tr>
+ <tr><td>Dependency</td><td>What am I waiting for, and who knows it matters?</td></tr>
+ <tr><td>Downstream</td><td>Who is waiting for me?</td></tr>
+ <tr><td>Evidence</td><td>Can another person reproduce my conclusion?</td></tr>
+ <tr><td>Handoff</td><td>Have I supplied version, population, status and next action?</td></tr>
+ <tr><td>Communication</td><td>Have I surfaced threatened commitments early?</td></tr>
+ <tr><td>Team</td><td>Am I making others easier to work with, or making them depend on me?</td></tr>
+ <tr><td>Control</td><td>Are decisions, defects and outputs in shared project records?</td></tr>
+ <tr><td>Boundary</td><td>Am I solving the right problem for my role?</td></tr>
+ <tr><td>Continuity</td><td>Could somebody competent pick this up tomorrow?</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Defect-Handoff-Template.docx</strong><p class="small">Expected, actual, first divergence, relevant rule, implementation evidence, affected population and retest.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Defect-Handoff-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b22",nav:"Reflection",title:"Reflection \u2013 What does \u201ceasy to work with\u201d mean?",type:"reflection",
+ html:`<p class="lead">List three behaviours that would make you trust another Data Migration Consultant on a pressured project. Then name the evidence somebody would see if you were consistently demonstrating those behaviours yourself.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The second half is the harder one and the one that matters. \u201cI communicate well\u201d is not observable. \u201cMy handoffs name the reference version every time\u201d is something a colleague could check without asking you.</p></div></div>
+ <textarea id="reflection" placeholder="Three behaviours I would trust..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/three|first|second|third|1\.|2\./i, strength:"You named three distinct behaviours rather than one broad quality.", gap:"Give three separate behaviours, not three restatements of the same one." },
+   { test:/evidence|would see|could check|handoff|record|version/i, strength:"You translated each behaviour into something observable.", gap:"For each behaviour, say what a colleague would actually see if you were doing it consistently." },
+   { test:/early|reset|surface|tell|before/i, strength:"You included something about surfacing problems before they become surprises.", gap:"Consider whether any of your three covers what happens when something goes wrong, not just when it goes well." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">First, their handoffs are usable without a conversation. The evidence for me would be that my last five handoffs each named a source snapshot, a reference version and what remained unresolved, and that nobody replied asking which file. Second, they reset commitments before the deadline rather than after. The evidence would be a message sent at 11:40 rather than an apology at 12:05, and I can point at one from last week. Third, they make me more capable rather than more dependent on them. The evidence would be that the two queries people used to ask me to run are now published and somebody else ran one yesterday without telling me.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"If each of your three has a piece of evidence attached that somebody else could verify, you have turned a set of values into something you can actually practise and be measured on.":"Push the evidence half further. For each behaviour, finish the sentence: a colleague would know I do this because they would see..."}</div>`
+},
+{
+ id:"b23",nav:"Summary",title:"Summary \u2013 Make the team better because you are in it",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Deliver controlled outputs, not isolated tasks.</li>
+   <li>Know who depends on your work before you finish it.</li>
+   <li>Report changed project state rather than activity.</li>
+   <li>Commit to actions you control, and expose external dependencies.</li>
+   <li>Do not use blockers as a reason to become idle.</li>
+   <li>Ask for help with bounded evidence.</li>
+   <li>Escalate when the next uncertainty belongs to somebody else.</li>
+   <li>Treat handoffs as part of engineering.</li>
+   <li>Use explicit source, reference, build and run identities.</li>
+   <li>Peer-review migration risk, not personal style.</li>
+   <li>Receive review comments as hypotheses to test.</li>
+   <li>Challenge unsafe requests with evidence and an alternative.</li>
+   <li>Give developers reproducible defects.</li>
+   <li>Do the analysis before consuming SME time.</li>
+   <li>Tell testers exactly what changed and what to retest.</li>
+   <li>Give the Data Migration Lead decision-grade information.</li>
+   <li>Do not let private artefacts become project dependencies.</li>
+   <li>Leave work another consultant can pick up tomorrow.</li>
+   <li>Reset commitments before they become surprises.</li>
+   <li>Make material priority conflicts visible rather than absorbing them.</li>
+   <li>Help teammates without automatically taking over.</li>
+   <li>Own mistakes quickly and improve the control that allowed them.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A consultant becomes valuable to a project when other people can rely on their outputs, their commitments and their evidence. Technical skill gets work done. Team discipline makes that work usable.</div>`
+},
+{
+ id:"b24",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Working inside a project team.</strong></p>
+ <p>You can now operate effectively inside a wider delivery team: making useful commitments, exposing dependencies early, giving concise stand-up updates, handing work over cleanly, reviewing another consultant's output, asking for help with evidence, challenging unsafe requests constructively, and knowing where your responsibility ends and another role begins.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Becoming the consultant people rely on</strong></p>
+ <p>The DMC4 capstone. You will bring the whole module together into the professional habits, judgement and practical behaviours that turn technical competence into trusted consultancy.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you are about to send a file called \u201clatest\u201d.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 5: Working inside a project team",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Being technically useful without becoming isolated, territorial or indispensable",
+  storageKey: "tp_dmc4_lesson5_v1",
+  lessonId: "dmc4-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

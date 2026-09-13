@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Explaining defects, delays and bad news</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 4 - "Explaining defects, delays and bad
+   news". Built as a live incident timeline per the manuscript's
+   own authoring notes: evidence is revealed progressively and the
+   learner has to keep successive updates consistent.
+
+   Source: DMC4_Lesson4_Explaining_Defects_Delays_and_Bad_News_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session,
+   not the manuscript's own header.
+
+   DELIBERATE guidedSteps USE (b5). The playbook reserves
+   guidedSteps for genuinely sequential walkthroughs where each
+   step depends on having seen the last, and warns against using
+   it as a stand-in for a construction exercise. An incident
+   timeline is the case it was reserved for: the learner cannot
+   meaningfully evaluate the 14:40 update without having seen what
+   was true at 14:25, because the whole teaching point is
+   consistency across successive messages as evidence changes. The
+   construction exercise in this lesson is b22, a reflection, not
+   this block.
+
+   Bramwell facts used: the opening delay uses product-site
+   validation context, with 286 product-site relationships
+   referencing warehouse and location combinations outside the
+   approved target reference set - established, treatment
+   unresolved, and no specific failed relationship or root cause
+   invented. Also: the address defect (approved rule excludes
+   BILLING_ONLY, implemented rule retained DELIVERY_PRIMARY only,
+   valid DELIVERY_SECONDARY silently excluded, 7 key accounts
+   observed); payment term 45E unresolved with NET30 an
+   unapproved fallback; 18 CustomerGroup 99 records outside Ready
+   status; 214 payment-term exceptions with 23 new; the 18,573
+   accepted / 0 reject load with 42 UK customers under the Belgian
+   legal entity.
+
+   The 42 UK-to-Belgian root cause is NOT invented anywhere here.
+   It remains unknown and every mention says so.
+
+   The opening runtime incident is training framing only. It does
+   not overwrite Bramwell's established Core M4 customer timings
+   of 42 and 31 minutes, or validation timings of 24 and 22
+   minutes - no established timing is contradicted, because no
+   established timing is quoted.
+
+   Section 38's independent practical is synthetic.
+
+   Persona: Sam, Data Migration Consultant, Energy ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=3, b11=1, b23
+   items A-E = 2,0,3,1,0. Full sequence 3,1,2,0,3,1,0 - no run of
+   three, no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3. None built yet.
+============================================================== */
+
+const incidentTimeline = [
+{html:`<h4>14:12 \u2013 The first update, with no cause at all</h4>
+ <p>You know four things: the step has exceeded its expected window, it has not failed, dependent validation has not started, and you do not know why. That is enough to send.</p>
+ <div class="quote">\u201cCustomer transformation has exceeded the expected processing window and is still active. No failure has been recorded, but dependent validation is delayed. I am checking row progress, blocking and waits, and the last completed checkpoint. Cause is not yet confirmed. Next update: 14:25.\u201d</div>
+ <p class="small">You do not need a root cause to communicate a problem. You need enough evidence to state the observed condition and the current impact accurately, plus a time you will come back.</p>`},
+{html:`<h4>14:25 \u2013 The evidence changes</h4>
+ <p>The process is progressing, but significantly more slowly than the previous run. A lookup step is consuming most of the elapsed time. No blocking session is found.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Now proven</th><th>Still not proven</th></tr></thead><tbody>
+ <tr><td>Process is progressing</td><td>Exact completion time</td></tr>
+ <tr><td>Lookup step dominates elapsed time</td><td>Why lookup behaviour changed</td></tr>
+ <tr><td>No current database blocking</td><td>Whether reference volume, build or environment caused the slowdown</td></tr>
+ <tr><td>Dependent validation remains delayed</td><td>Whether later steps can recover the lost time</td></tr>
+ </tbody></table></div>
+ <div class="quote">\u201cTransformation is progressing rather than stalled. The slowdown is concentrated in the lookup step; database blocking has been ruled out. Validation remains delayed. We are comparing lookup and reference behaviour with the previous run. Next update 14:40.\u201d</div>
+ <p class="small">Notice what this update does not say. A developer has already suggested the lookup cache looks suspicious. That is a leading hypothesis, and it stays labelled as one.</p>`},
+{html:`<h4>14:40 \u2013 Your own estimate gets worse</h4>
+ <p>At 14:25 observed throughput supported a completion window of 14:50 to 15:05. That rate has not held. The new range is 15:20 to 15:40.</p>
+ <div class="quote">\u201cThe earlier window was based on throughput observed at 14:25. That rate has not held. The current estimate is 15:20 to 15:40, which pushes validation later. I am updating the downstream sequence on that basis rather than preserving the earlier estimate.\u201d</div>
+ <p>This is the update most consultants delay, because it contradicts one they sent forty minutes ago. Sending it late is the only thing that turns a revised estimate into a credibility problem.</p>`},
+{html:`<h4>15:00 \u2013 A dependency appears</h4>
+ <p>Comparison shows the reference baseline differs from the previous run. That is a real finding and it is not yet a cause.</p>
+ <div class="quote">\u201cThe reference baseline used by this run differs from the previous successful run. We have not yet established whether that difference explains the slowdown, so I am not treating it as the cause. The comparison completes within the hour. Validation remains delayed and I will confirm the recovery option at 15:20.\u201d</div>
+ <p class="small">A difference between two runs is the most seductive evidence in migration work, because it is so nearly an answer. State it as a difference until it is a mechanism.</p>`},
+{html:`<h4>The update log that kept all four consistent</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Time</th><th>Status</th><th>Evidence change</th><th>Impact</th><th>Next update</th></tr></thead><tbody>
+ <tr><td>14:12</td><td>Investigating</td><td>Runtime exceeded window</td><td>Validation delayed</td><td>14:25</td></tr>
+ <tr><td>14:25</td><td>Progressing slowly</td><td>Lookup dominates; blocking ruled out</td><td>Validation delayed</td><td>14:40</td></tr>
+ <tr><td>14:40</td><td>Estimate revised</td><td>Throughput fell</td><td>Downstream sequence shifts</td><td>15:00</td></tr>
+ <tr><td>15:00</td><td>Cause bounded</td><td>Reference and build comparison in progress</td><td>Recovery option assessed</td><td>15:20</td></tr>
+ </tbody></table></div>
+ <p>Four updates in fifty minutes, none contradicting another, each one explaining what changed since the last. That consistency is not memory. It is the log.</p>`}
+];
+
+const rewriteClinic = [
+ "\u201cFinance still has not fixed the terms.\u201d",
+ "\u201cThe load failed because the target is flaky.\u201d",
+ "\u201cIt is just seven addresses.\u201d",
+ "\u201cWe should still make the deadline.\u201d",
+ "\u201cThe developer broke the filter.\u201d",
+ "\u201cEverything loaded successfully.\u201d",
+ "\u201cI think we have fixed it.\u201d"
+];
+const rewriteCoaching = [
+ "<strong>Rewrite objective:</strong> state the unresolved population and the decision dependency without blame. Try: 214 customer records remain without approved payment-term treatment; the population includes both business-decision and migration or reference cases.",
+ "<strong>Rewrite objective:</strong> separate the observed failure from an unproven cause. \u201cFlaky\u201d is a character judgement about a system, and it will be quoted back to you when the cause turns out to be elsewhere.",
+ "<strong>Rewrite objective:</strong> state the scale and the materiality. Seven is a small number and these are key accounts with downstream order dependencies, so the count is the least important fact in the sentence.",
+ "<strong>Rewrite objective:</strong> replace hope with an evidence-based range or a control point. \u201cShould\u201d is doing the work of an estimate here without any of the evidence an estimate requires.",
+ "<strong>Rewrite objective:</strong> describe the implemented-rule mismatch and the recovery. The implemented address eligibility logic was narrower than the approved rule; that sentence is both more accurate and more useful than a name.",
+ "<strong>Rewrite objective:</strong> include the semantic validation status. The target accepting every submitted record tells you about the interface, not about whether the records landed in the right legal entity.",
+ "<strong>Rewrite objective:</strong> state the correction and the proof status precisely. \u201cI think\u201d plus \u201cfixed\u201d is the combination that gets a defect closed and then reopened."
+];
+
+const pressureSituations = [
+ { title:"A. The developer states an unproven cause, confidently",
+   question:"In front of the project manager, the developer says the reference table change caused the slowdown. You have not proven that. What do you say?",
+   options:[
+     {label:"Correct the developer directly so the project manager does not leave the conversation holding an unproven cause as fact.", correct:false, feedback:"Correcting a colleague in front of a stakeholder costs you a working relationship you will need this afternoon. The cause still needs labelling, but not like this."},
+     {label:"Say nothing now and clarify the cause status privately with the project manager once the conversation has finished.", correct:false, feedback:"By then the PM has already repeated it. Unlabelled causes travel fast, and a later private correction arrives after the damage."},
+     {label:"Note that the reference difference is the leading hypothesis, say it is not yet proven, and state what comparison would establish it.", correct:true, feedback:"Correct. You keep the developer's observation on the table, which is where it belongs, and attach the one word that stops it becoming a fact in the next status report."},
+     {label:"Ask the developer what evidence supports the claim, so that the strength of the hypothesis becomes clear to everyone present.", correct:false, feedback:"A reasonable question with a public cross-examination shape. You can label the hypothesis yourself in one sentence without putting a colleague on the spot."}
+   ]
+ },
+ { title:"B. \u201cWill it be done by three or not?\u201d",
+   question:"The project manager wants a yes or no. You have a throughput-based range and an assumption that may not hold. What do you give them?",
+   options:[
+     {label:"Give the evidence, the range and the assumption, and say you would not commit the downstream step to 15:00 yet, with a refresh at 14:40.", correct:true, feedback:"Correct. Give the basis, the range and the assumption, then update when the evidence changes. A PM can plan around an honest range far better than around a yes that collapses."},
+     {label:"Say yes, because the current range mostly falls before 15:00 and a definite answer is what the project manager needs in order to plan.", correct:false, feedback:"A yes you cannot support is a commitment somebody else builds a sequence on. When it breaks, the cost lands on them and the credibility loss lands on you."},
+     {label:"Say no, since the assumption behind the range may not hold and a pessimistic answer is safer than an optimistic one.", correct:false, feedback:"An unsupported no is as invented as an unsupported yes. It also triggers contingency the evidence does not yet justify."},
+     {label:"Explain that a yes or no answer is not possible with the evidence available and offer to update when the picture is clearer.", correct:false, feedback:"True and unhelpful. You have a throughput observation and a range, so withholding them leaves the PM with less than you actually know."}
+   ]
+ },
+ { title:"C. \u201cIt is only 18 records\u201d",
+   question:"A stakeholder wants to move on, pointing out that 18 CustomerGroup 99 records is a trivial population. How do you respond?",
+   options:[
+     {label:"Push back on the framing and explain that record counts are a poor measure of migration risk in almost every situation.", correct:false, feedback:"A general argument about measurement invites a general argument back. The specific point about these 18 is stronger and shorter."},
+     {label:"Agree it is small, then explain that their target treatment is unresolved so they cannot be represented on an approved basis, and offer to isolate them.", correct:true, feedback:"Correct. Scale and materiality are different things. Conceding the count costs nothing and lets the real point land, and the isolation offer keeps the rest of the population moving."},
+     {label:"Agree that the population is small enough to handle after go-live, and add it to the post-migration remediation backlog instead.", correct:false, feedback:"Deferring an unresolved treatment does not make it resolved. These records would go live represented on a basis nobody approved."},
+     {label:"Point out that a small population can conceal a critical customer, so the count cannot be treated as a reliable guide here.", correct:false, feedback:"Close, and it argues from what might be true. The actual problem is already known: the treatment is unresolved, which does not depend on who the customers turn out to be."}
+   ]
+ },
+ { title:"D. \u201cSo is the migration safe?\u201d",
+   question:"A senior manager, hearing about the incident second hand, asks whether the migration is broken. What do you say?",
+   options:[
+     {label:"Reassure them that the migration is fundamentally sound and that this is a routine issue of the kind every programme encounters.", correct:false, feedback:"Reassurance without evidence is exactly what makes later bad news land badly. You are also asserting soundness you have not demonstrated this afternoon."},
+     {label:"Explain the full technical picture so far, so they can judge the severity of the situation for themselves from the evidence.", correct:false, feedback:"A senior manager asking a one-line question needs the shape of the answer, not the investigation. The detail obscures the part they can act on."},
+     {label:"Say no, describe the defined issue and the population it affects, then say what remains controlled and what you are checking next.", correct:true, feedback:"Correct. Resist catastrophising as firmly as minimising. A defined issue with a named population, a controlled remainder and a next check is both honest and calming, in that order."},
+     {label:"Say that it is too early to characterise the overall state of the migration and that you will report once the cause is confirmed.", correct:false, feedback:"This reads as evasion, and it is not accurate: you know a great deal about what is and is not affected right now."}
+   ]
+ },
+ { title:"E. The root cause invalidates something you already called complete",
+   question:"Cause is confirmed. The package and its output must be regenerated, including work you reported as finished this morning. What does your update do?",
+   options:[
+     {label:"State plainly that the confirmed cause invalidates the earlier output, name what must be regenerated, and give the revised recovery window.", correct:true, feedback:"Correct. The earlier report was accurate on the evidence available then. What damages confidence is not the revision but discovering it later, from somebody else."},
+     {label:"Regenerate the output quietly as part of the recovery, since the end state will be correct and the earlier report was made in good faith.", correct:false, feedback:"Somebody downstream may have already relied on that output. A silent regeneration is the version of this that becomes a serious problem."},
+     {label:"Report the new recovery window, and explain the invalidated output separately once the regeneration has completed successfully.", correct:false, feedback:"Splitting it defers the uncomfortable half and makes the timeline harder to follow. Both facts belong in the same message."},
+     {label:"Acknowledge the error in the earlier report and apologise for having described the output as complete before the cause was known.", correct:false, feedback:"The earlier report was not an error. Apologising for it teaches people that your completed statements are provisional, which is the opposite of what you want."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"14:08",title:"14:08 \u2013 The message nobody wants to send",type:"mcq",
+ _correctIndex:3,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>A product-site validation step is still running well beyond its expected window. The next dependent activity cannot start until it finishes. You do not know why. Separately, this evidence set already contains 286 product-site relationships referencing warehouse and location combinations outside the approved target reference set.</p>
+ </div>
+ <p>People are waiting. You have nothing that resembles a cause. Four messages are available to you.</p>
+ <h3>Which one do you send?</h3>`,
+ options:[
+   {label:"\u201cEverything is fine, it is just running slowly. I will let you know when it finishes and we can pick the sequence up from there.\u201d", correct:false, feedback:"You do not know that everything is fine. That is the whole problem: a step is outside its window for reasons you have not established, and the reassurance is unsupported."},
+   {label:"\u201cThe migration is delayed because SQL performance is bad on this environment. I am looking at what can be tuned to bring the runtime back down.\u201d", correct:false, feedback:"Cause has not been proven. This message will be repeated to other people as fact, and every one of them will then have to be corrected."},
+   {label:"\u201cThere may potentially be a slight delay to the validation step. I will come back to you once I have a clearer picture of what is happening.\u201d", correct:false, feedback:"Vague and minimising at the same time. \u201cMay potentially\u201d and \u201cslight\u201d both soften something you have not measured, and the recipient cannot act on any of it."},
+   {label:"\u201cCustomer transformation has exceeded its expected processing window and is still active. Dependent validation has not started. Cause is not yet confirmed. I am checking current processing state and will update at 14:25.\u201d", correct:true, feedback:"Correct. Fact, impact, cause status, action and next control point. Bad news does not become safer when you delay it, soften it, or fill the gap with a plausible explanation."}
+ ]
+},
+{
+ id:"b2",nav:"Five questions",title:"What every problem update has to answer",type:"content",
+ html:`<p class="lead">Five questions, in this order. Most weak updates answer the third one at length and skip the second entirely.</p>
+ <ol class="framework-checks">
+   <li>What happened?</li>
+   <li>What is affected now?</li>
+   <li>What is proven about cause?</li>
+   <li>What are we doing?</li>
+   <li>When is the next control point?</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Stakeholders usually need the consequence before the mechanism. Translate the technical observation into the migration activity, population or dependency affected, and you will find most of the technical detail was never needed in that message at all.</p></div></div>
+ <div class="principle"><strong>Bad news has a clock</strong><br>The longer a material issue is known but uncommunicated, the fewer options the project has. Early visibility is a control, not an admission of failure.</div>`
+},
+{
+ id:"b3",nav:"Not knowing, well",title:"\u201cI do not know yet\u201d needs a second sentence",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak</th><th>Controlled</th></tr></thead><tbody>
+ <tr><td>\u201cI do not know why.\u201d</td><td>Cause is not yet confirmed. I am comparing current progress and database waits with the last successful run.</td></tr>
+ <tr><td>\u201cNot sure how long it will take.\u201d</td><td>I cannot give a reliable completion time until we know whether processing is progressing or blocked. I will update in 15 minutes.</td></tr>
+ <tr><td>\u201cWe are investigating.\u201d</td><td>We have bounded the issue to transformation and are checking slow progress, blocking and stalled-component evidence.</td></tr>
+ </tbody></table></div>
+ <p>The left column is not dishonest. It is unusable, which in an incident amounts to much the same thing.</p>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Waiting for a root cause before communicating feels responsible. It converts a communication problem into an operational one: the people who could have protected the plan find out when there is less plan left to protect.</p></div>`
+},
+{
+ id:"b4",nav:"Hypothesis",title:"Do not turn a hypothesis into a fact",type:"content",
+ html:`<p class="lead">A developer says the lookup cache looks suspicious. They may well be right. That is not the point.</p>
+ <div class="callout misconception"><div class="callout-label">Unsafe</div><p>\u201cThe delay is caused by the lookup cache.\u201d</p></div>
+ <div class="quote">\u201cThe leading hypothesis is lookup-related processing, but that is not yet proven. We are comparing the slow component with the previous successful run before changing anything.\u201d</div>
+ <p class="small">One word of labelling separates these. It costs nothing at the time and saves an awkward retraction later.</p>`
+},
+{
+ id:"b5",nav:"The incident",title:"The incident, update by update",type:"guidedSteps",
+ html:`<p class="lead">Work forward through the afternoon one update at a time. Each message has to be true on its own and consistent with everything sent before it, which is the actual difficulty. Reveal each step in order.</p>`,
+ steps: incidentTimeline,
+ takeawayHtml:`<div class="principle"><strong>Compress detail, not uncertainty</strong><br>Every one of these updates is shorter than the technical work behind it. None of them is less honest about what remains unknown.</div>`
+},
+{
+ id:"b6",nav:"Estimates",title:"Estimates are evidence, not optimism",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Answer</th><th>Assessment</th></tr></thead><tbody>
+ <tr><td>\u201cYes, should be finished by 15:00.\u201d</td><td>Unsupported reassurance</td></tr>
+ <tr><td>\u201cProbably.\u201d</td><td>No useful basis</td></tr>
+ <tr><td>\u201cNo chance.\u201d</td><td>May be equally unsupported</td></tr>
+ <tr><td>\u201cCurrent throughput suggests 14:50 to 15:05 if the rate remains stable. I would not commit the downstream step to 15:00 yet; I will refresh the estimate at 14:40.\u201d</td><td>Evidence, range and assumption</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Estimate discipline</strong><br>Give the basis, the range and the assumption. Update the estimate when the evidence changes, and say which earlier observation the old one rested on.</div>`
+},
+{
+ id:"b7",nav:"Not a diary",title:"Explain the delay without writing an incident diary",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Keep in the stakeholder update</th><th>Keep in technical notes</th></tr></thead><tbody>
+ <tr><td>Current delay and affected activity</td><td>Every diagnostic command</td></tr>
+ <tr><td>Confirmed cause status</td><td>The full execution plan</td></tr>
+ <tr><td>Recovery or mitigation action</td><td>Raw wait statistics</td></tr>
+ <tr><td>Updated timing or decision point</td><td>Rejected hypotheses</td></tr>
+ <tr><td>Material downstream dependency</td><td>The developer conversation transcript</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Listing everything you checked demonstrates effort. It mostly demonstrates that the reader has to find the two facts that matter among eleven that do not. Compress detail, not uncertainty or impact.</p></div>`
+},
+{
+ id:"b8",nav:"Neutral accountability",title:"Own the message without taking false blame",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Poor</th><th>Better</th></tr></thead><tbody>
+ <tr><td>\u201cIt is not our fault; the database is slow.\u201d</td><td>The migration step is slower than expected. We own diagnosing the migration impact and recovery path; the underlying cause is still being confirmed.</td></tr>
+ <tr><td>\u201cFinance did not clean the data.\u201d</td><td>214 customer records remain without approved payment-term treatment; the population includes both business-decision and migration or reference cases.</td></tr>
+ <tr><td>\u201cThe developer wrote the filter wrong.\u201d</td><td>The implemented transformation rule did not match the approved eligibility rule.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Neutral accountability</strong><br>Describe the mechanism and who owns the next action. Do not turn technical communication into a search for somebody to blame, including when the blame would be fair.</div>`
+},
+{
+ id:"b9",nav:"A confirmed mistake",title:"Communicating a confirmed mistake",type:"content",
+ html:`<p class="lead">The Bramwell address issue is now proven. Valid DELIVERY_SECONDARY addresses were silently excluded because the implemented rule retained DELIVERY_PRIMARY only instead of excluding BILLING_ONLY.</p>
+ <div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cThe developer made a mistake in the address filter and broke seven accounts.\u201d</p></div>
+ <div class="quote">\u201cRoot cause is confirmed: the implemented address eligibility logic was narrower than the approved rule and silently excluded valid DELIVERY_SECONDARY addresses. Seven key accounts are currently observed with missing delivery addresses. We are calculating the full affected population from the faulty mechanism, correcting the rule and preparing a controlled rerun with regression checks.\u201d</div>
+ <h3>Remove blame, not clarity</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Too blame-shaped</th><th>Too vague</th><th>Controlled</th></tr></thead><tbody>
+ <tr><td>\u201cJohn coded the rule incorrectly.\u201d</td><td>\u201cAn issue occurred with addresses.\u201d</td><td>The implemented address filter did not match the approved rule and excluded valid secondary delivery addresses.</td></tr>
+ <tr><td>\u201cFinance failed to provide mappings.\u201d</td><td>\u201cSome mappings are outstanding.\u201d</td><td>18 CustomerGroup 99 records still have no approved final target mapping and remain outside Ready status.</td></tr>
+ </tbody></table></div>
+ <p class="small">The middle column is where consultants go when they are trying to avoid the first. It avoids the blame by removing the information.</p>`
+},
+{
+ id:"b10",nav:"Layers",title:"Cause, contributing condition and control weakness",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>Address example</th></tr></thead><tbody>
+ <tr><td>Defect mechanism</td><td>Valid DELIVERY_SECONDARY addresses excluded</td></tr>
+ <tr><td>Root cause</td><td>Implemented rule narrower than approved intent</td></tr>
+ <tr><td>Control weakness</td><td>Silent exclusions not reconciled to transformed, excluded or exception outcomes</td></tr>
+ <tr><td>Impact</td><td>Observed missing target addresses and downstream dependency risk</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Do not call everything root cause</strong><br>Precise language produces better corrective action. A control weakness fixed as though it were a mechanism leaves the mechanism in place.</div>`
+},
+{
+ id:"b11",nav:"\u201cJust make it work\u201d",title:"\u201cCan you just put something in so the load can run?\u201d",type:"mcq",
+ _correctIndex:1,
+ html:`<p class="lead">Payment term 45E still has no approved target equivalent. The previous NET30 fallback was never approved, it simply happened. The project manager is under pressure and the load window is tonight.</p>
+ <div class="quote">\u201cCan you just put something in so the load can run?\u201d</div>
+ <h3>What do you say?</h3>`,
+ options:[
+   {label:"Explain that inserting an unapproved value is outside what the migration team is permitted to do, and that the decision has to come from Finance first.", correct:false, feedback:"Accurate and purely obstructive. It tells the PM what you will not do and leaves them with no route forward, which makes the next conversation harder than it needs to be."},
+   {label:"Say the process can keep moving where treatment is controlled, explain that a plausible value could create accepted but wrong data, and offer to isolate 45E and continue with records that are ready.", correct:true, feedback:"Correct. Explain the consequence and give the safest practical option available. The PM gets a load tonight, the unresolved population stays unresolved, and nobody has to argue about principle."},
+   {label:"Apply NET30 as before, since it has been used previously and the population can be corrected in a later cycle once Finance confirms.", correct:false, feedback:"NET30 was an incorrect fallback, not an approved answer, and reusing it converts an accident into a precedent. Corrections in later cycles are also much harder than they sound."},
+   {label:"Agree to apply a value on the condition that the project manager accepts the risk in writing and it is recorded in the issue log.", correct:false, feedback:"A signature does not make the data correct. You would be trading a migration control for a paper trail that protects you and not the migration."}
+ ]
+},
+{
+ id:"b12",nav:"Both directions",title:"When somebody minimises, and when somebody catastrophises",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">\u201cIt is only 18 records\u201d</div>
+ <div class="quote">\u201cIt is 18 records, and the count is small. The issue is that their target treatment is unresolved, so they cannot currently be represented on an approved basis. We can isolate them rather than hold the entire ready population, provided that matches the release controls.\u201d</div>
+ <p class="small">Scale and materiality are different. A small population can still represent a critical customer, a dependency, a legal entity or a control failure.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">\u201cSo the migration is broken?\u201d</div>
+ <div class="quote">\u201cNo. We have a defined issue affecting this population. I can tell you what is currently affected, what remains controlled and what we are checking next.\u201d</div>
+ <p class="small">Three sentences, in that order: the denial, the boundary, the next step.</p>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>These two look like opposite problems and they are the same one. Both people are estimating severity from tone rather than evidence, and both are corrected by giving them the population and the boundary instead of a counter-tone.</p></div></div>`
+},
+{
+ id:"b13",nav:"Green and wrong",title:"A green load can still carry bad news",type:"content",
+ html:`<p class="lead">A later customer cycle submits and accepts 18,573 records with zero rejects. Post-load validation then finds 42 UK customers under the Belgian legal entity.</p>
+ <div class="quote">\u201cThe customer load completed with 18,573 accepted records and zero technical rejects, but post-load validation identified 42 UK customers in the wrong legal entity. The load is technically successful but not yet semantically accepted. We have frozen the 42 keys and are tracing expected entity, transformed value, package context and target result. Exact technical cause is not yet established.\u201d</div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Leading with zero rejects. It is a real result and it is not the material new fact. Open with the defect and the acceptance figure stops looking like an attempt to soften it.</p></div>
+ <p class="small">The cause of the 42-customer defect has not been established. Every update about it says so, and none of them speculates about package context in a way a reader could mistake for a finding.</p>`
+},
+{
+ id:"b14",nav:"Whose fault",title:"What if you caused it, or another team might have?",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">When it was you</div>
+ <div class="quote">\u201cI have identified that the change I introduced to the transformation is responsible for the new defect. I have preserved the failing evidence, stopped further use of that output, and am preparing the correction and impact population now. I will provide recovery scope and test evidence before the rerun.\u201d</div>
+ <p class="small">Personal accountability is useful. The project needs control, not self-punishment, and a long apology delays the part people actually need.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">When it might have been somebody else</div>
+ <div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cThe source team sent us bad data again.\u201d</p></div>
+ <div class="quote">\u201cThe current extract contains 23 payment-term exceptions that were not present in the previous cycle. We have isolated the new keys and are confirming whether they reflect source changes, mapping coverage or another cause before assigning corrective ownership.\u201d</div>
+ </div>`
+},
+{
+ id:"b15",nav:"Missed commitments",title:"Communicating a missed commitment",type:"content",
+ html:`<p class="lead">You said the exception analysis would be ready by 12:00. At 11:40 you know it will not be.</p>
+ <div class="callout misconception"><div class="callout-label">Poor</div><p>Wait until 12:05 and apologise.</p></div>
+ <div class="quote">\u201cThe exception analysis will not be complete by 12:00. The key-level comparison exposed an unaccounted population that I need to resolve before the result is reliable. I expect the controlled output by 13:00; if that changes, I will update at 12:30.\u201d</div>
+ <div class="principle"><strong>Early reset</strong><br>As soon as a commitment is no longer credible, reset it with a reason, an impact and a new control point. Twenty minutes of notice is worth more than any apology delivered five minutes late.</div>
+ <h3>Give the reason at the right level</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak reason</th><th>Useful reason</th></tr></thead><tbody>
+ <tr><td>\u201cIt took longer than expected.\u201d</td><td>The source-to-stage key comparison exposed an unaccounted population, so I held the report until reconciliation is complete.</td></tr>
+ <tr><td>\u201cThe system was slow.\u201d</td><td>Transformation throughput fell below the established run rate, delaying validation start.</td></tr>
+ <tr><td>\u201cWe had issues.\u201d</td><td>The first package was invalidated after the reference baseline changed and had to be regenerated.</td></tr>
+ <tr><td>\u201cWaiting on the business.\u201d</td><td>The 45E target treatment remains unapproved; the affected population is isolated pending a Finance decision.</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b16",nav:"Dates",title:"Never manufacture a date",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence state</th><th>Appropriate answer</th></tr></thead><tbody>
+ <tr><td>Cause unknown</td><td>Give the next diagnostic control point, not a fix date</td></tr>
+ <tr><td>Cause proven, impact unknown</td><td>Give an impact-analysis checkpoint</td></tr>
+ <tr><td>Correction built, tests running</td><td>Give an evidence-based recovery window</td></tr>
+ <tr><td>Rerun underway with stable throughput</td><td>Give a range based on the observed rate</td></tr>
+ <tr><td>External business decision required</td><td>Give the decision dependency and its owner</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>\u201cI will know more at 15:00\u201d is sometimes the strongest commitment available, and it is one you can actually keep. A checkpoint you hit builds more confidence than an ETA you miss, even though the ETA sounds better when you give it.</p></div></div>`
+},
+{
+ id:"b17",nav:"The ladder",title:"The update ladder, and the log that holds it together",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Stage</th><th>Responsible communication</th></tr></thead><tbody>
+ <tr><td>Symptom</td><td>Observed condition and current impact</td></tr>
+ <tr><td>Bounded investigation</td><td>Where the failure can and cannot be</td></tr>
+ <tr><td>Leading hypothesis</td><td>Candidate cause, clearly labelled</td></tr>
+ <tr><td>Root cause proven</td><td>Mechanism and affected-population analysis</td></tr>
+ <tr><td>Correction ready</td><td>The change, plus regression and recovery plan</td></tr>
+ <tr><td>Recovery executed</td><td>Results and residual failures</td></tr>
+ <tr><td>Closure</td><td>Cause, scope, correction and proof</td></tr>
+ </tbody></table></div>
+ <p>Each rung has its own honest message. Skipping to a rung you have not reached is how a hypothesis becomes a root cause in somebody else's status report.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Update-Log.xlsx</strong><p class="small">Time, status, evidence change, impact and next update, so successive messages stay consistent without relying on memory.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Update-Log.xlsx" download>Download</a></div>`
+},
+{
+ id:"b18",nav:"Two formats",title:"The one-minute verbal update and the written incident update",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">Said out loud, in under a minute</div>
+ <div class="quote">\u201cCustomer transformation is running significantly slower than the previous successful cycle. It is progressing, so we do not currently have a failed or stalled process. The slowdown is concentrated in the lookup step and validation has not yet started. Current completion estimate is 15:20 to 15:40 based on observed throughput. We are comparing the lookup and reference baseline with the prior run and will update again at 15:00.\u201d</div>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Written incident update</caption><thead><tr><th>Field</th><th>Content</th></tr></thead><tbody>
+ <tr><td>Issue</td><td>Customer transformation runtime exceeds expected window</td></tr>
+ <tr><td>Current impact</td><td>Dependent validation delayed</td></tr>
+ <tr><td>Evidence</td><td>Process progressing; slowdown concentrated in lookup step; blocking ruled out</td></tr>
+ <tr><td>Cause status</td><td>Not yet confirmed</td></tr>
+ <tr><td>Action</td><td>Compare build, reference, input and component throughput with last good run</td></tr>
+ <tr><td>Timing</td><td>Current range only if the evidence supports it</td></tr>
+ <tr><td>Next update</td><td>A specific time or control point</td></tr>
+ <tr><td>Owner</td><td>Migration technical owner or consultant as appropriate</td></tr>
+ </tbody></table></div>
+ <h3>What not to put in a stakeholder message</h3>
+ <ul class="framework-checks">
+   <li>Every hypothesis you considered.</li>
+   <li>Raw blame or speculation.</li>
+   <li>An ETA you do not believe.</li>
+   <li>Technical detail that does not change the recipient's action.</li>
+   <li>\u201cAll good\u201d when validation is incomplete.</li>
+   <li>\u201cCritical\u201d merely to gain attention, or \u201cminor\u201d merely to reduce it.</li>
+   <li>A root cause copied from somebody else's guess.</li>
+ </ul>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Incident-Update-Template.docx</strong><p class="small">The eight written fields, with the one-minute verbal shape on the reverse.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Incident-Update-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b19",nav:"Rewrite clinic",title:"The bad-news rewrite clinic",type:"selectAll",
+ html:`<p class="lead">Seven sentences that get sent on real programmes every week. Explore each one to see what it needs to become before you send it.</p>`,
+ options: rewriteClinic,
+ coaching: rewriteCoaching,
+ hint:"Explore every statement before continuing.",
+ closingHtml:`<div class="principle"><strong>What all seven share</strong><br>Each one is quicker to type than the controlled version, and each one produces a follow-up conversation longer than the time it saved.</div>`
+},
+{
+ id:"b20",nav:"Escalation",title:"Escalation is not failure, and noise is not escalation",type:"content",
+ html:`<p class="lead">Escalate when any of these is true.</p>
+ <ul class="framework-checks">
+   <li>Material downstream activities are affected.</li>
+   <li>A business decision blocks migration readiness.</li>
+   <li>Recovery requires changing an agreed sequence or scope.</li>
+   <li>The same control failure is recurring.</li>
+   <li>The available recovery window is shrinking.</li>
+   <li>The issue crosses team ownership.</li>
+   <li>Current evidence contradicts a project assumption used for planning.</li>
+ </ul>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Handle locally</th><th>Needs broader visibility</th></tr></thead><tbody>
+ <tr><td>Single test-row reject with a known correction and no schedule impact</td><td>Population-wide rule defect with a downstream dependency</td></tr>
+ <tr><td>Routine rerun inside the agreed window</td><td>Recovery that pushes dependent activities</td></tr>
+ <tr><td>Known exception already controlled</td><td>New unresolved population affecting readiness</td></tr>
+ <tr><td>Minor investigation with no material impact</td><td>Uncertain issue consuming contingency or decision time</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The materiality test</strong><br>Escalate because the project needs awareness or a decision, not because the issue feels stressful. You supply evidence and impact; the Data Migration Lead and project leadership own wider prioritisation and Go or No-Go.</div>`
+},
+{
+ id:"b21",nav:"Recovery and closure",title:"The recovery update, and closure without triumphalism",type:"content",
+ html:`<div class="quote">\u201cThe address-rule correction has been deployed under a new controlled build. The affected population was selected from the proven faulty mechanism rather than only the seven reported examples. Corrected outputs and dependent packages were regenerated from the valid recovery boundary. Positive, negative and regression checks passed for the recovered population, and downstream address dependencies were revalidated. Residual exceptions remain separately controlled.\u201d</div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak close</th><th>Strong close</th></tr></thead><tbody>
+ <tr><td>\u201cAll sorted!\u201d</td><td>The proven affected population has been recovered and reconciled to controlled outcomes; regression checks passed and no unexplained changes were found outside recovery scope.</td></tr>
+ <tr><td>\u201cIssue closed.\u201d</td><td>Root cause, correction, recovery evidence and residual-status records are complete; the defect can now be closed under the project process.</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A cheerful close feels like the reward for a hard day. It also quietly asks people to take your word for it, immediately after a period where your word was all they had. Prove the recovery rather than announcing it.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Recovery-Closure-Template.docx</strong><p class="small">Cause, correction, recovery boundary, regression evidence and residual status, in the order a reviewer will want them.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Recovery-Closure-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b22",nav:"Three kinds of bad news",title:"Build it \u2013 Three kinds of bad news",type:"reflection",
+ html:`<p class="lead">Three synthetic scenarios, each needing a different kind of message.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Scenario</th><th>What makes it awkward</th></tr></thead><tbody>
+ <tr><td>A technical delay with unknown cause</td><td>The ETA keeps moving and you have no mechanism</td></tr>
+ <tr><td>A business-decision dependency</td><td>A small but important population is blocked by somebody else's decision</td></tr>
+ <tr><td>A green load with a post-load semantic defect</td><td>Every technical indicator says success</td></tr>
+ </tbody></table></div>
+ <h3>For each one, produce</h3>
+ <ol class="framework-checks">
+   <li>The first update, before root cause is known.</li>
+   <li>Current impact, stated without exaggeration.</li>
+   <li>What belongs in technical notes rather than the stakeholder message.</li>
+   <li>Your response to pressure for a definitive cause or date.</li>
+   <li>The updated message when evidence contradicts your earlier hypothesis or estimate.</li>
+   <li>The escalation message, if materiality increases.</li>
+   <li>The recovery or closure message once evidence supports it.</li>
+   <li>A replacement for one blame-shaped, defensive or falsely reassuring sentence.</li>
+ </ol>
+ <p class="lead">Pick the scenario you find hardest and write its full sequence below, including the update that has to contradict an earlier one.</p>
+ <textarea id="reflection" placeholder="SCENARIO: ...&#10;&#10;FIRST UPDATE: ...&#10;&#10;WHEN THE EVIDENCE CHANGES: ...&#10;&#10;CLOSURE: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Bad-News-Rewrite-Exercise.docx</strong><p class="small">Poor statements on the left, space to rewrite on the right, with the rewrite objective for each.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Bad-News-Rewrite-Exercise.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/not (yet )?(confirmed|proven|established)|cause is not|unknown/i, strength:"Your first update states cause status honestly rather than skipping it.", gap:"Say explicitly in the first update whether cause is proven, bounded, hypothesised or unknown." },
+   { test:/next update|will update|by \d|at \d|checkpoint/i, strength:"You gave a next control point rather than leaving the reader waiting.", gap:"Every update needs a time you will come back. Add one to each message." },
+   { test:/earlier|previously|that rate|no longer|has changed|revised/i, strength:"Your revised message explains what changed since the last one, which is what keeps a sequence credible.", gap:"When you revise an estimate or hypothesis, say what the earlier one rested on and why it no longer holds." },
+   { test:/impact|affect|delayed|blocked|dependen/i, strength:"You stated current impact in migration terms rather than technical ones.", gap:"Say which migration activity, population or dependency is affected right now." },
+   { test:/isolate|controlled|outside ready|regression|reconcil|proof/i, strength:"Your closure proves recovery rather than announcing it.", gap:"Close with evidence: what was reconciled, what regression passed, what residual status remains." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>First update, green load with a semantic defect.</strong> The customer load completed technically: all submitted records were accepted with no rejects. Post-load validation has found a population in the wrong legal entity, which the load result does not detect. Acceptance proves the target took the records, not that the business placement is right. Those keys are frozen and we are tracing expected entity, transformed value, package context and target result. Cause is not established and I am not going to guess at it. Next update at 16:00.</div>
+ <div class="quote"><strong>When the evidence contradicts me.</strong> My 14:40 estimate assumed the throughput observed at 14:25 would hold. It has not, so that window is no longer credible and I am replacing rather than defending it. The current range is later, and I have moved the downstream sequence on that basis rather than leaving it planned against a number I no longer believe. I would rather reset this now than have somebody discover it at the old deadline.</div>
+ <div class="quote"><strong>Closure.</strong> The proven affected population has been recovered and reconciled to controlled outcomes. The population was selected from the faulty mechanism rather than from the reported examples, so the recovery covers records nobody had reported. Regression checks passed and no unexplained changes were found outside the recovery scope. Residual exceptions remain separately controlled and are listed in the record. On that basis the defect can be closed under the project process.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The hardest sentence in this exercise is the one that replaces your own earlier estimate. If you wrote it without defending the old number, you have the discipline this lesson is actually teaching.":"Check your revised update. If it explains the situation but not what changed since your previous message, the reader is left to reconcile the two themselves, and they will assume the worst."}</div>`
+},
+{
+ id:"b23",nav:"Under pressure",title:"Consultant situations \u2013 Five moments under pressure",type:"situations",
+ html:`<p class="lead">Five points in a deteriorating afternoon where somebody wants something from you that the evidence cannot support.</p>`,
+ items: pressureSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Update Before the Diagnosis", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/lesson4-fromfield-sam.mp3",
+   reflection:"When something last went wrong on your project, how long was it before anyone outside your team knew?"
+ })}</div>`
+},
+{
+ id:"b24",nav:"Checklist",title:"Communication checklist for defects and delays",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Check</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Early</td><td>Have I communicated soon enough for the project to react?</td></tr>
+ <tr><td>Fact</td><td>What exactly is observed?</td></tr>
+ <tr><td>Impact</td><td>What activity or population is affected now?</td></tr>
+ <tr><td>Cause status</td><td>Is cause proven, bounded, hypothesised or unknown?</td></tr>
+ <tr><td>Ownership</td><td>Who owns the next action, without unsupported blame?</td></tr>
+ <tr><td>Timing</td><td>Is my estimate evidence-based?</td></tr>
+ <tr><td>Next point</td><td>When will I update again?</td></tr>
+ <tr><td>Audience</td><td>Have I removed technical noise without removing material uncertainty?</td></tr>
+ <tr><td>Alternatives</td><td>Can unaffected work continue safely?</td></tr>
+ <tr><td>Consistency</td><td>Does this update explain what changed since the previous one?</td></tr>
+ <tr><td>Escalation</td><td>Does somebody else need to know or decide?</td></tr>
+ <tr><td>Closure</td><td>Can I prove recovery rather than merely report green status?</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Delay-Impact-Assessment.xlsx</strong><p class="small">Affected activity, dependent work, contingency consumed and the decision point, for when a delay needs sizing rather than describing.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Delay-Impact-Assessment.xlsx" download>Download</a></div>`
+},
+{
+ id:"b25",nav:"Reflection",title:"Reflection \u2013 What makes bad news trustworthy?",type:"reflection",
+ html:`<p class="lead">Think of a project update you would trust even if the news were poor. What would make you believe the person giving it? Write three behaviours, and translate each one into something a Data Migration Consultant can actually do.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Most people arrive at the same short list: they told me early, their story did not change shape, and they distinguished what they knew from what they thought. Each of those is a habit rather than a personality, which is the useful part.</p></div></div>
+ <textarea id="reflection" placeholder="The person I would trust..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/early|before|soon|straight away|immediately/i, strength:"You identified timing, which is the behaviour that costs the most to practise.", gap:"Consider how early that person told you, and what it would take for you to match it." },
+   { test:/consistent|same story|changed|contradict/i, strength:"You noticed consistency across successive updates.", gap:"Think about whether their story kept its shape as evidence changed, and how they managed that." },
+   { test:/know|not know|unknown|proven|guess|certain/i, strength:"You picked up the separation of what was known from what was believed.", gap:"Name how that person signalled the difference between what they had proven and what they suspected." },
+   { test:/I would|I will|next time|translate|means I/i, strength:"You translated at least one behaviour into something you can actually do.", gap:"Turn each behaviour into a concrete action: not \u201cbe honest\u201d but \u201csend the first update before I have a cause\u201d." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Three things. She told us before she had an explanation, which meant we heard it from her rather than from a missed deadline; for me that translates into sending the first update the moment the window is exceeded, not once I understand why. Her updates never changed shape, only content, because she kept a log and each message said what had changed since the last; for me that means writing the log during the incident, when it feels like a distraction. And she was explicit about the boundary between proven and suspected, every time, even when the suspicion was almost certainly right; for me that means labelling the hypothesis in the same sentence I raise it, rather than hoping the caveat is implied.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The translations are what make this useful. Trustworthiness under pressure is three or four repeatable habits, not a disposition you either have or lack.":"Push each behaviour into a specific action you could be observed doing during your next incident. \u201cCommunicate clearly\u201d is not something anyone can check."}</div>`
+},
+{
+ id:"b26",nav:"Summary",title:"Summary \u2013 Say it early, say what you know, keep updating",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Communicate material problems before you have every answer.</li>
+   <li>State event, impact, cause status, response and next control point.</li>
+   <li>Translate technical observations into migration impact.</li>
+   <li>Do not turn hypotheses into facts.</li>
+   <li>Pair uncertainty with the next evidence you are checking.</li>
+   <li>Base estimates on observed evidence and state the assumption.</li>
+   <li>Revise estimates when evidence changes, and say what changed.</li>
+   <li>Compress technical detail without hiding uncertainty.</li>
+   <li>Use neutral accountability rather than blame.</li>
+   <li>Distinguish defect mechanism, root cause and control weakness.</li>
+   <li>Treat unresolved business decisions as readiness issues, not technical failures.</li>
+   <li>Offer controlled alternatives when pressured to just make it work.</li>
+   <li>Resist both minimisation and catastrophising.</li>
+   <li>Reset missed commitments before the deadline becomes fiction.</li>
+   <li>Use checkpoints when a reliable estimate is unavailable.</li>
+   <li>Keep successive updates consistent, with a log rather than memory.</li>
+   <li>Escalate material impact, not stress.</li>
+   <li>Close only when recovery and proof support the claim.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>People can cope with bad migration news. What damages confidence is late news, changing stories, invented certainty, and problems that appear to have no owner or next step. Be the consultant whose updates stay useful while the situation is still unclear.</div>`
+},
+{
+ id:"b27",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Explaining defects, delays and bad news.</strong></p>
+ <p>You can now communicate a migration problem early, accurately and usefully even when the full cause or recovery time is unknown: distinguishing impact from cause, avoiding blame and false reassurance, giving controlled estimates, explaining delays in business terms, responding to pressure for certainty, escalating material issues, and keeping stakeholders updated as the evidence changes.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Working inside a project team</strong></p>
+ <p>You will practise being technically useful without becoming isolated, territorial or dependent on constant direction, and see how a strong Data Migration Consultant fits into the wider delivery machine.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you are tempted to wait for a root cause before telling anyone.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 4: Explaining defects, delays and bad news",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Communicating a problem early and precisely, before you know what caused it",
+  storageKey: "tp_dmc4_lesson4_v1",
+  lessonId: "dmc4-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

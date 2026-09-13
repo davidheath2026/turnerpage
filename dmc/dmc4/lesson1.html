@@ -1,1 +1,617 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Communicating migration findings</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - per tp-html-build-guide.md the
+   shared kit has no built-in styling for this, so every lesson
+   using TPKit.fromField needs its own scoped copy until the clip
+   is recorded, at which point this block (and the wrapper markup
+   around the fromField call) comes back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
 
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 1 - "Communicating migration findings".
+   Built as a working communication desk per the manuscript's own
+   authoring notes: message cards, recipient switches, a rewrite
+   clinic and stakeholder pushback, rather than long passive prose.
+
+   Source: DMC4_Lesson1_Communicating_Migration_Findings_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session.
+   The manuscript's own header instead says "Working with Clients
+   as a Data Migration Consultant" - the same conflict shape as
+   DMC3's, and resolved the same way: alignment doc wins.
+
+   Bramwell facts used, all from the Story Bible / established
+   canon and cross-checked against the manuscript's authoring
+   notes: payment terms 760 -> 214 with 23 new; tax blanks 94 ->
+   91; missing delivery addresses 31 -> 7; CustomerGroup
+   unrecognised 108 -> 18; 45E has no approved target equivalent
+   and NET30 is NOT an approved fallback; 18 CustomerGroup 99
+   German records unresolved; CustomerGroup source distribution
+   STANDARD 14,982 / KEY 1,936 / EXPORT 1,244 / INTERNAL 260 /
+   STD 61 / trailing-space STANDARD 29 / 99 18; the address
+   defect chain (C10482-DEL-02, approved rule excludes
+   BILLING_ONLY, implemented rule retained DELIVERY_PRIMARY only);
+   the 18,573 accepted / 0 reject load with 42 UK customers found
+   under the Belgian legal entity, used here only as a
+   communication example rather than a new timeline event.
+
+   STD -> STANDARD is deliberately NOT presented as approved
+   anywhere in this lesson. The 29 trailing-space rows use the
+   controlled whitespace treatment established in DMC2.
+
+   Section 28's independent practical and the b19 conversion
+   exercise inputs are synthetic training material.
+
+   Persona: Priya, Data Migration Consultant, Healthcare ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=2, b8=0, b11=3,
+   b20 items A-E = 1,3,0,2,1. Full sequence 2,0,3,1,3,0,2,1 -
+   four positions used twice each, no run of three.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3 so far. None of
+   these files have been built yet.
+============================================================== */
+
+const recipientProfiles = [
+ { title:"Developer / ETL consultant",
+   short:"Keys, field values, rule and reference path, reproducible evidence.",
+   detail:"Give the developer the migration mechanics: affected business keys, the source value, the transformed value, reference-match status and version, and exception status. That is what lets them separate a source-value cause from a mapping cause from a release-control cause. What to avoid: a long business narrative with no technical detail attached, which leaves them guessing at what to reproduce.",
+   ask:"Could this person reproduce the finding from what you sent, without asking you a follow-up question first?" },
+ { title:"Business SME",
+   short:"Affected business values, a precise question, the decision needed, examples.",
+   detail:"Give the SME the business values they recognise, the population those values affect, and one question they are qualified to answer. Worked examples help. What to avoid: SQL, framework internals and unexplained target jargon, all of which make a capable SME feel the question is not for them.",
+   ask:"Is the question you are asking one this person can actually answer with business authority?" },
+ { title:"Data Migration Lead",
+   short:"Scale, movement, impact, ownership and decision need, next control point.",
+   detail:"Give the Lead the trend, the caveat inside the trend, what it means for readiness, whose decision is outstanding and what the next control point is. What to avoid: dumping row-level detail into the headline, which buries the one thing they need in order to decide where to push.",
+   ask:"Does this tell the Lead what is at risk and what decision is outstanding, in the first two sentences?" },
+ { title:"Project manager",
+   short:"Material impact on plan or readiness, owner, due date, dependency.",
+   detail:"Give the PM the material impact on the plan, who owns the next step, when it is needed and what it depends on. What to avoid: the technical investigation diary. A PM reading a sequence of things you checked cannot tell which of them changes the schedule.",
+   ask:"If this person only read your first sentence, would they know whether the plan is affected?" }
+];
+
+const channelOptions = [
+ { title:"Teams or chat",
+   short:"Quick clarification, evidence pointer, immediate coordination.",
+   detail:"Best for the fast question that unblocks you now: which extract is current, who owns this reference table, can you look at row 4. The risk is that decisions disappear in chat history. If a message turns into an agreement, move the agreement somewhere durable before the thread scrolls." },
+ { title:"Email",
+   short:"A clear request or update to defined recipients, with a written trail.",
+   detail:"Best when you need a named person to respond and you want the request preserved. The risk is that long threads fragment a decision across six replies, so the final agreed position becomes hard to reconstruct. Restate the decision in full when you confirm it." },
+ { title:"Defect or work item",
+   short:"A reproducible technical issue, its evidence, status, fix and retest.",
+   detail:"Best for anything a developer has to reproduce and fix. Keys, observed versus expected, implemented condition, build version, regression checks. The risk is turning it into stakeholder prose, which helps nobody: the developer has to dig the mechanics out of the narrative." },
+ { title:"Decision register",
+   short:"An approved business or mapping decision, captured durably.",
+   detail:"Best for anything that changes what the migration will do. It must capture the scope of the decision, who approved it and the date or version it applies from. A decision you cannot later point to is a decision you will be asked to justify from memory." },
+ { title:"Meeting or workshop",
+   short:"Ambiguous or cross-functional decisions that genuinely need discussion.",
+   detail:"Best when two functions disagree, or when the rule itself is unclear and needs to be worked out live. The risk is holding a meeting for a question one SME could have answered in a sentence, which costs eight people an hour to avoid writing one message." },
+ { title:"Dashboard or status report",
+   short:"Material trend, readiness and exception summary.",
+   detail:"Best for showing movement over time to people who are not in the detail daily. The risk is that aggregates hide record-level reality: a readiness percentage of 98.85 percent looks settled right up until somebody asks which 214 customers are outside it." }
+];
+
+const rewriteClinicItems = [
+ "\u201cThe data is bad.\u201d",
+ "\u201cFinance needs to fix it.\u201d",
+ "\u201cThe mapping is wrong.\u201d",
+ "\u201cI think the filter is broken.\u201d",
+ "\u201cIt is fixed.\u201d",
+ "\u201cOnly 18 records.\u201d",
+ "\u201cThe load was successful.\u201d"
+];
+const rewriteClinicCoaching = [
+ "<strong>What is missing:</strong> the population and the standard it fails against. Try: 214 active customers are outside valid payment-term coverage. \u201cBad\u201d is a verdict on the data rather than a description of it, and nobody can act on a verdict.",
+ "<strong>What is missing:</strong> the separation between what Finance owns and what the migration team owns. Try: we need to separate source corrections from unresolved target-treatment decisions. As written, it hands the whole population to a team that only owns part of it.",
+ "<strong>What is missing:</strong> the evidence, and the honesty about what has actually been compared. Try: the current evidence shows the transformed value differs from the approved mapping baseline. \u201cWrong\u201d asserts a conclusion the comparison may not yet support.",
+ "<strong>What is missing:</strong> the boundary you have proven and the status of the hypothesis. Try: the failure is bounded to transformation; the filter is the leading hypothesis and is being tested. \u201cI think\u201d reads as a guess even when the bounding work behind it was rigorous.",
+ "<strong>What is missing:</strong> what was rerun, what reconciles and what regression proved. Try: the corrected mechanism has been rerun and the affected population reconciles to controlled outcomes with regression checks passed. \u201cFixed\u201d invites a follow-up question you could have answered first.",
+ "<strong>What is missing:</strong> the consequence. Try: 18 records remain unresolved and cannot yet be treated as ready. \u201cOnly\u201d is doing editorial work here, telling the recipient how to feel about a number rather than what it blocks.",
+ "<strong>What is missing:</strong> the distinction between technical acceptance and business correctness. Try: the target accepted all submitted records; semantic validation is still required. A green load is evidence about the interface, not about whether the data landed in the right place."
+];
+
+const pushbackSituations = [
+ { title:"A. The project manager wants a one-word classification",
+   question:"The PM asks: is this a data issue or a system issue? What do you say?",
+   options:[
+     {label:"Say \u201csystem issue\u201d, because the raw record exists and so the source is clearly not at fault here.", correct:false, feedback:"The raw row existing rules out one explanation, not all of them. Naming a category you have not yet proven gives the PM a fact to repeat that may not survive the next hour."},
+     {label:"State what the evidence rules out, say which boundary is still unproven, and offer a confirmed classification once that check is done.", correct:true, feedback:"Correct. You can be concise without inventing certainty. The address exists in raw staging, so source absence is ruled out; whether the loss is transformation or immediate downstream processing is not yet proven."},
+     {label:"Explain that the question cannot be answered at all until the full investigation is complete, and ask the PM to wait.", correct:false, feedback:"That withholds genuinely useful evidence. You already know something firm, and a PM who gets nothing will fill the gap with a worse assumption."},
+     {label:"Walk the PM through each checkpoint examined so far, in order, so they can form their own view of the classification.", correct:false, feedback:"This is the investigation diary in message form. The PM needs the classification and its confidence level, not the sequence of steps that produced it."}
+   ]
+ },
+ { title:"B. The SME wants less, not more",
+   question:"The Finance SME says: I do not need all the migration detail, just send me what needs fixing. What is the right response?",
+   options:[
+     {label:"Send the full 214-record extract anyway, since holding evidence back would risk the SME making a decision without seeing the complete population.", correct:false, feedback:"Most of that population is not a Finance decision at all. Sending everything makes the SME do your triage, which is the work they just told you they do not want."},
+     {label:"Agree to send fewer records, but keep the technical commentary attached to each one so that nothing is lost in the handover.", correct:false, feedback:"Trimming the record count while keeping the commentary solves the wrong half. The friction was never the volume alone, it was being asked to read migration mechanics."},
+     {label:"Push back and explain that understanding the migration detail is a necessary part of the SME role on a programme of this size.", correct:false, feedback:"This defends your process rather than serving the decision. The SME is not refusing to help, they are asking you to do your own filtering."},
+     {label:"Agree, and send only the records needing a Finance decision or source correction, with the source value and the question. Keep technical cases with the migration team.", correct:true, feedback:"Correct. Good consultant communication protects stakeholders from irrelevant work as well as giving them useful work. The filtering is your job, not theirs."}
+   ]
+ },
+ { title:"C. \u201cWe fixed payment terms last week\u201d",
+   question:"The SME believes the issue is closed. How do you reopen it without a standoff?",
+   options:[
+     {label:"Acknowledge the real improvement from 760 to 214, then explain that you are raising it because 23 of the current exceptions are new, and send that cohort separately.", correct:true, feedback:"Correct. The improvement is genuine and saying so costs you nothing. The reason to raise it again is the new cohort, and separating it lets both of you see backlog and new defects distinctly."},
+     {label:"Reply that there are still 214 records wrong, so the fix clearly did not work as intended and needs to be repeated.", correct:false, feedback:"This is accurate and useless. It denies a real improvement, invites an argument about whose number is right, and buries the one fact that actually matters."},
+     {label:"Let it go for now and raise it again at the next profile, when the trend over two cycles will make the argument for you.", correct:false, feedback:"Waiting a cycle means the 23 new exceptions stay unexamined while more may accumulate behind them. The point of catching new cases early is acting early."},
+     {label:"Send the full profile comparison and let the SME work out for themselves that part of the population is newly introduced.", correct:false, feedback:"The comparison contains the answer, but finding it is analysis work you have already done. Handing over raw evidence in place of a finding is the friction this lesson exists to remove."}
+   ]
+ },
+ { title:"D. \u201cThe load passed, so why are we discussing this?\u201d",
+   question:"A customer load accepted all 18,573 submitted records with zero rejects, but 42 UK customers are sitting under the Belgian legal entity. What do you say?",
+   options:[
+     {label:"Accept that the load result is the agreed measure of success and raise the legal-entity placement separately as a new issue later.", correct:false, feedback:"Splitting it off as unrelated hides the fact that the load result and the placement problem concern exactly the same records and the same run."},
+     {label:"Explain that load acceptance is not a meaningful measure of migration quality, so the zero-reject result should not be reported.", correct:false, feedback:"Acceptance is meaningful, just narrow. Dismissing it overcorrects and makes you sound as if you are moving the goalposts after a good result."},
+     {label:"Agree the load passed technically, note that post-load validation found 42 customers in the wrong legal entity, and explain that acceptance proves submission, not correct business placement.", correct:true, feedback:"Correct. Acceptance tells you the target accepted the submitted records. It does not prove the business placement is right, and the 42 keys are preserved while entity, transformed value, package context and target result are traced."},
+     {label:"Report the 42 records as a rejection that the load statistics failed to capture, so the issue registers with the same weight as a load failure.", correct:false, feedback:"They were not rejected. Relabelling accepted records as rejects misdescribes the evidence and will not survive anyone opening the run output."}
+   ]
+ },
+ { title:"E. The good-news paragraph",
+   question:"You are writing a cycle summary. Payment terms are down from 760 to 214, CustomerGroup from 108 to 18, delivery addresses from 31 to 7, and 23 payment-term exceptions are new. How do you open?",
+   options:[
+     {label:"Open with the three improvements in order of size, then note the 23 new payment-term exceptions at the end of the paragraph.", correct:false, feedback:"Every fact is present and the important one is buried. A reader who stops after the second sentence leaves with a materially wrong picture of the cycle."},
+     {label:"Say quality has improved overall but the latest profile introduced 23 new payment-term exceptions, then give the three movements and what happens to the new cohort.", correct:true, feedback:"Correct. Lead with the fact most likely to change what the recipient does next. The improvements are still reported in full, just not used as cover."},
+     {label:"Open with the 23 new exceptions alone and leave the improvement figures out, so the new cohort gets undivided attention.", correct:false, feedback:"Omitting real improvement is its own distortion, and it costs you credibility the next time you report a genuine gain."},
+     {label:"Report only the net movement across all four measures, since the cycle produced a clear overall reduction in exceptions.", correct:false, feedback:"Net movement is exactly what conceals a new cohort. A reduction of 546 and an introduction of 23 are two different facts and only one of them needs action this week."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"09:17",title:"09:17 \u2013 You have found something. Now what?",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>You have just finished the latest Bramwell customer profile. The analysis took most of yesterday. The evidence is solid.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Latest customer profile</caption><thead><tr><th>Finding</th><th>Evidence</th></tr></thead><tbody>
+ <tr><td>Payment terms</td><td>214 active customers have no valid payment terms</td></tr>
+ <tr><td>Movement</td><td>760 in the earlier profile; now 214</td></tr>
+ <tr><td>New exceptions</td><td>23 of the current 214 are new since the previous cycle</td></tr>
+ <tr><td>Tax classification</td><td>91 blanks, down from 94</td></tr>
+ <tr><td>Delivery addresses</td><td>7 key accounts still missing delivery addresses, down from 31</td></tr>
+ <tr><td>CustomerGroup</td><td>18 unrecognised values, down from 108</td></tr>
+ </tbody></table></div>
+ <p>You send this to the Finance SME:</p>
+ <div class="quote">\u201cData quality is much better now. Only 214 payment-term issues remain. Can you fix them please?\u201d</div>
+ <h3>Every number in that message is true. What is your honest assessment of it?</h3>`,
+ options:[
+   {label:"It is a reasonable message. The SME gets the current count and a clear request, and the supporting detail can follow if they ask for it.", correct:false, feedback:"The count is current and the request is clear, but the message asks the SME to reconstruct the finding before they can act. Being true is the minimum, not the standard."},
+   {label:"It is too short. A finding of this size needs the full profile comparison pasted in so the SME can see all six measures at once.", correct:false, feedback:"Length is not the problem. Pasting all six measures would add volume without adding a decision, and most of those measures are not the SME's to act on."},
+   {label:"It is accurate but poor. It hides the 23 new exceptions, does not say what is invalid, assumes source correction, names no records and asks for no dated decision.", correct:true, feedback:"Correct. A finding is not communicated well because it is accurate. It is communicated well when the recipient understands what happened, why it matters and what to do next, without the evidence being distorted."},
+   {label:"It is fine as an opening message, since the detail belongs in the formal cycle report rather than in a chat message.", correct:false, feedback:"Treating chat as a placeholder for the real communication usually means the real communication never happens. This message will be acted on, or ignored, as written."}
+ ]
+},
+{
+ id:"b2",nav:"Why it fails",title:"Seven things wrong with a message containing no false statements",type:"content",
+ html:`<p class="lead">It is worth being precise about what went wrong, because the instinct to rewrite it as \u201cmore detail\u201d fixes almost none of it.</p>
+ <ul class="framework-checks">
+   <li><strong>\u201cMuch better\u201d</strong> hides the important fact that 23 exceptions are new.</li>
+   <li><strong>\u201cPayment-term issues\u201d</strong> does not say what is actually invalid.</li>
+   <li><strong>\u201cOnly 214\u201d</strong> minimises a population that may still block migration.</li>
+   <li><strong>\u201cCan you fix them?\u201d</strong> assumes the problem belongs in source data.</li>
+   <li><strong>No identifier</strong> for the affected records, so the SME cannot start.</li>
+   <li><strong>No date, decision or next step</strong>, so nothing forces a response.</li>
+   <li><strong>No separation</strong> of existing backlog from newly introduced defects.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>A finding is not communicated well because it is accurate. It is communicated well when the recipient understands what happened, why it matters and what they need to do next, without the evidence being distorted.</p></div></div>`
+},
+{
+ id:"b3",nav:"The five-part finding",title:"Separate the finding into five parts before you write a word",type:"content",
+ html:`<p class="lead">Most poor migration communication is one strong finding compressed into a single sentence. Pull it apart first.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Part</th><th>Question</th><th>Bramwell example</th></tr></thead><tbody>
+ <tr><td>Fact</td><td>What does the evidence prove?</td><td>214 active customers currently have no valid payment terms.</td></tr>
+ <tr><td>Movement</td><td>What changed?</td><td>Down from 760, but 23 are new exceptions.</td></tr>
+ <tr><td>Meaning and impact</td><td>Why does this matter?</td><td>These customers cannot be treated as migration-ready until an approved target treatment exists.</td></tr>
+ <tr><td>Decision or action</td><td>What is needed?</td><td>Confirm or correct authoritative source values, or approve the required target treatment, as appropriate.</td></tr>
+ <tr><td>Evidence and timing</td><td>Where is the detail, when is it needed?</td><td>Affected-key file and comparison attached; response required before the next customer release.</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>\u201cData quality is poor\u201d feels like a summary. It is an opinion. \u201c214 active customers have no valid payment term and 23 are new since the previous cycle\u201d is evidence, and it is barely longer.</p></div>`
+},
+{
+ id:"b4",nav:"Fact vs inference",title:"Fact, inference and recommendation are different things",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Statement</th><th>Type</th><th>Problem if mislabelled</th></tr></thead><tbody>
+ <tr><td>214 active customers have no valid payment terms</td><td>Fact</td><td>Low, if the evidence is controlled</td></tr>
+ <tr><td>The source team has introduced 23 new errors</td><td>Inference</td><td>The records are new exceptions; the cause has not been proven</td></tr>
+ <tr><td>We should hold these records outside the ready population</td><td>Recommendation</td><td>Requires project context and approval</td></tr>
+ <tr><td>Finance needs to fix all 214 in source</td><td>Assumption presented as action</td><td>Some may require a mapping decision rather than source correction</td></tr>
+ <tr><td>The next load will fail</td><td>Prediction</td><td>True only if release controls let unresolved records through</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Language discipline</strong><br>Use \u201cthe evidence shows\u201d for proven facts, \u201cthis suggests\u201d for supported interpretation, and \u201cI recommend\u201d for your proposed action. Do not let them sound interchangeable.</div>`
+},
+{
+ id:"b5",nav:"Four recipients",title:"Same finding, four different recipients",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Strong consultants do not copy the same paragraph to everybody. The truth stays fixed; the level changes. Explore each recipient and ask yourself the audience test underneath.</p>`,
+ items: recipientProfiles,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The audience test</div><p>If the recipient has to translate your message before they can act, you probably sent the wrong level of communication. Not the wrong facts. The wrong level.</p></div></div>`
+},
+{
+ id:"b6",nav:"Three worked messages",title:"The same payment-term finding, written three ways",type:"content",
+ html:`<p class="lead">One profile, one evidence base, three recipients. Read them in order and watch what moves.</p>
+ <div class="visual-card"><div class="visual-title">To the Finance SME</div>
+ <div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cThere are still 214 invalid terms. Please fix before the next load.\u201d</p></div>
+ <div class="quote">\u201cThe latest customer profile shows 214 active customers without a valid payment term, down from 760 in the previous profile. However, 23 of the 214 are new exceptions this cycle. I have attached the affected customer keys with the current source Terms value. Could you review the rows marked NEW and confirm whether the source value should be corrected or whether a target treatment needs to be agreed? We need the decisions before the next customer release.\u201d</div>
+ <ul class="framework-checks">
+   <li>Starts with controlled evidence.</li>
+   <li>Shows improvement without hiding the regression.</li>
+   <li>Does not assume every case is a source correction.</li>
+   <li>Gives the SME a specific population and a precise question.</li>
+   <li>Connects the response to a real migration event.</li>
+ </ul>
+ </div>
+ <div class="visual-card"><div class="visual-title">To the developer</div>
+ <div class="quote">\u201cCustomer payment-term profile: 214 active keys currently fail approved-term coverage. 23 are new versus the previous cycle. Please do not default unresolved values. For each affected key I need SourceTerms, transformed PaymentTerms, reference-match status and version, and exception status, so we can separate source-value, mapping and release-control causes. 45E remains unresolved; NET30 is not an approved fallback.\u201d</div>
+ <p class="small">More migration mechanics, because that is what this recipient can act on.</p>
+ </div>
+ <div class="visual-card"><div class="visual-title">To the Data Migration Lead</div>
+ <div class="quote">\u201cCustomer payment-term exceptions have reduced from 760 to 214, but 23 new exceptions have appeared since the previous cycle. The remaining population is not yet fully migration-ready because unresolved terms require either authoritative source correction or an approved target treatment. Finance review is focused first on the 23 new cases, while the migration team is separating source issues from mapping and reference cases. I will provide an updated ready and exception count before the next customer release.\u201d</div>
+ <p class="small">The Lead does not need the SQL in the headline. They do need the trend, the caveat, the implication and what happens next.</p>
+ </div>`
+},
+{
+ id:"b7",nav:"Headline, detail, evidence",title:"The headline, detail and evidence pattern",type:"content",
+ html:`<p class="lead">For most migration updates, three layers are enough.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>Purpose</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Headline</td><td>What matters now</td><td>214 payment-term exceptions remain; 23 are new.</td></tr>
+ <tr><td>Detail</td><td>What the recipient needs to understand or do</td><td>Finance to review new cases; migration team separating source from mapping causes.</td></tr>
+ <tr><td>Evidence</td><td>Where the proof lives</td><td>Affected-key extract, profile comparison, reference coverage output.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Do not put the spreadsheet in the sentence</strong><br>Give the recipient a clear headline, then make the detailed evidence available for inspection. Attaching is not hiding.</div>`
+},
+{
+ id:"b8",nav:"Denominators",title:"The same measure, two honest sentences",type:"mcq",
+ _correctIndex:0,
+ html:`<p class="lead">Two statements about the identical payment-term population. Both are arithmetically correct.</p>
+ <div class="visual-card"><div class="visual-title">Statement A</div><p>\u201cPayment-term completeness is 98.85 percent.\u201d</p></div>
+ <div class="visual-card"><div class="visual-title">Statement B</div><p>\u201c214 active customers are outside valid payment-term coverage. The percentage looks high because the denominator is the full active population; these 214 still require controlled treatment before release.\u201d</p></div>
+ <h3>Statement A is going into a steering pack. What is the real problem with it?</h3>`,
+ options:[
+   {label:"The percentage is true but communicatively misleading: it uses the full active population as the denominator, which makes a blocking population of 214 look immaterial.", correct:true, feedback:"Correct. A percentage can be mathematically correct and communicatively misleading. State the population the measure is based on, and use counts when the exception population itself is what blocks release."},
+   {label:"The percentage is wrong, because completeness should be measured against the population that is actually in scope for the next release rather than all active customers.", correct:false, feedback:"Scoping the denominator differently is a reasonable design choice, but the figure as given is not wrong. The problem is what it conceals, not that it miscalculates."},
+   {label:"Percentages have no place in migration reporting at all, and every quality measure should be reported as a raw exception count instead.", correct:false, feedback:"Percentages are genuinely useful for trend and for scale across entities of very different sizes. The discipline is stating the denominator, not banning the measure."},
+   {label:"The statement omits the improvement from the previous cycle, which would give the steering group the context they need to interpret the figure.", correct:false, feedback:"Trend context would help, but adding it to a figure that already minimises a blocking population makes the impression worse rather than better."}
+ ]
+},
+{
+ id:"b9",nav:"Movement",title:"Communicating movement without telling a false success story",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Finding</th><th>Bad interpretation</th><th>Better communication</th></tr></thead><tbody>
+ <tr><td>760 to 214 payment-term exceptions</td><td>\u201c546 fixed\u201d</td><td>Net reduction of 546, but 23 current exceptions are new. Cohort movement must be separated.</td></tr>
+ <tr><td>94 to 91 blank tax classifications</td><td>\u201cNearly solved\u201d</td><td>Only three fewer blanks; the issue is largely unchanged.</td></tr>
+ <tr><td>31 to 7 missing delivery addresses</td><td>\u201c24 addresses fixed\u201d</td><td>Observed count reduced by 24; validate whether the remaining seven and any newly affected keys reflect the same mechanism.</td></tr>
+ <tr><td>108 to 18 unrecognised CustomerGroup</td><td>\u201c90 corrected\u201d</td><td>Net reduction of 90; confirm current keys and approved mappings before attributing the movement.</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A lower count proves fewer exceptions exist today. It does not prove which records were corrected, and it certainly does not prove the same records are involved. Trend is not lineage. Compare business keys before saying what happened to individual records.</p></div>`
+},
+{
+ id:"b10",nav:"Uncertainty",title:"Communicating uncertainty without sounding weak",type:"content",
+ html:`<p class="lead">Consultants tend to fail in one of two directions: overstating certainty, or hiding behind vague language. Both cost credibility, and the second costs more.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak</th><th>Too certain</th><th>Controlled</th></tr></thead><tbody>
+ <tr><td>\u201cThere seems to be some sort of issue with addresses.\u201d</td><td>\u201cThe source addresses are wrong.\u201d</td><td>Seven key accounts are missing delivery addresses in target. The raw rows exist; investigation is currently bounded to transformation or immediate downstream processing.</td></tr>
+ <tr><td>\u201cMaybe the mapping changed.\u201d</td><td>\u201cThe mapping is definitely wrong.\u201d</td><td>The current evidence is consistent with a reference-version difference; I am checking the reference baseline used by the failed run.</td></tr>
+ <tr><td>\u201cI am not sure why the load failed.\u201d</td><td>\u201cThe target is broken.\u201d</td><td>The target message is generic. The submitted population reconciles; the next step is to compare rejected and accepted records by package and target context.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Controlled uncertainty</strong><br>Say what is known, what is not yet known, and what evidence you are checking next. That sounds professional because it is precise, not because it pretends certainty.</div>`
+},
+{
+ id:"b11",nav:"Hypothesis vs cause",title:"10:25 \u2013 The project manager wants an update",type:"mcq",
+ _correctIndex:3,
+ html:`<p class="lead">At 10:20 you notice something. Seven key accounts are missing delivery addresses in target. The raw rows exist. No exception was recorded. You suspect a filter is excluding DELIVERY_SECONDARY addresses, but you have not yet opened the transformation logic.</p>
+ <div class="callout experience"><div class="callout-label">10:25</div><p>The project manager messages: \u201cAny update on the address problem? I have a call at 11.\u201d</p></div>
+ <h3>What do you send?</h3>`,
+ options:[
+   {label:"\u201cWe found the root cause. DELIVERY_SECONDARY addresses are being filtered out.\u201d", correct:false, feedback:"This is the most tempting option and the most damaging. You have a strong hypothesis and no proof. If the PM repeats it on an 11am call and the mechanism turns out to be different, the correction costs far more than the delay would have."},
+   {label:"\u201cStill investigating, nothing confirmed yet. I will come back to you when I know more.\u201d", correct:false, feedback:"Nothing here is untrue, and nothing here is useful. You have genuinely established something firm, and withholding it leaves the PM to guess at the severity before their call."},
+   {label:"\u201cSeven addresses are missing. It is probably a filter issue but I cannot confirm yet, so treat that as unconfirmed for now.\u201d", correct:false, feedback:"Closer, and the hedge is honest. But the useful part, the bounding evidence that rules out source absence, is missing, so the PM gets a guess with a disclaimer rather than a fact."},
+   {label:"\u201cThe seven reported addresses exist in raw staging but are absent from transformed output, with no exception recorded. That bounds the failure to transformation or its immediate controls. A filter condition is the leading hypothesis and is being checked now. I will confirm the affected population once the mechanism is proven.\u201d", correct:true, feedback:"Correct. This is not evasive. It gives the PM proven evidence, a bounded failure, a clearly labelled hypothesis and a next step, which is more than enough for an 11am call."}
+ ]
+},
+{
+ id:"b12",nav:"Proven root cause",title:"Communicate root cause only when you can prove it",type:"content",
+ html:`<p class="lead">Later that morning the implemented filter is inspected and compared against the approved rule. Now the evidence supports a different kind of message.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Finding</th></tr></thead><tbody>
+ <tr><td>Approved intent</td><td>Exclude BILLING_ONLY</td></tr>
+ <tr><td>Implemented logic</td><td>Retain DELIVERY_PRIMARY only</td></tr>
+ <tr><td>Affected example</td><td>C10482-DEL-02 = DELIVERY_SECONDARY</td></tr>
+ <tr><td>Raw stage</td><td>Present</td></tr>
+ <tr><td>Transformed stage</td><td>Absent</td></tr>
+ <tr><td>Exception</td><td>None</td></tr>
+ </tbody></table></div>
+ <div class="quote">\u201cRoot cause is confirmed. The address transformation implemented the approved rule incorrectly: it retained only DELIVERY_PRIMARY rather than excluding BILLING_ONLY. That silently removed valid DELIVERY_SECONDARY addresses, including C10482-DEL-02. We are now calculating the full affected population from the faulty mechanism, correcting the rule, and preparing regression tests to prove BILLING_ONLY remains excluded and previously correct addresses remain stable.\u201d</div>
+ <p class="small">Same investigation, ninety minutes apart. The language changed because the evidence changed, not because the tone needed lifting.</p>`
+},
+{
+ id:"b13",nav:"Why are you sending it?",title:"Every finding should lead to a decision, an action or controlled awareness",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Purpose</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Decision</td><td>Approve the target treatment for a source code</td></tr>
+ <tr><td>Action</td><td>Correct authoritative source values</td></tr>
+ <tr><td>Investigation</td><td>Provide evidence or access needed to test a hypothesis</td></tr>
+ <tr><td>Awareness</td><td>Tell the Data Migration Lead a material issue exists and what is being done</td></tr>
+ <tr><td>Confirmation</td><td>Verify that an agreed business rule has been understood correctly</td></tr>
+ <tr><td>Closure</td><td>Show that cause, correction and proof are complete</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Copying people in feels diligent and often is not. If you send a finding without knowing why that recipient needs it, you have created noise and added your name to it. Decide what response you need before you write.</p></div>`
+},
+{
+ id:"b14",nav:"One answerable question",title:"Ask one answerable question, and do not ask the business to approve your guess",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">Asking an SME about CustomerGroup</div>
+ <div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cCan you confirm the customer-group mapping?\u201d</p></div>
+ <div class="quote">\u201cFor source CustomerGroup 99 we have 18 German customer records and no approved final target mapping. Which target CustomerGroup should these records use, or should they remain outside the migration-ready population until a decision is made?\u201d</div>
+ <ul class="framework-checks">
+   <li>Names the source value.</li>
+   <li>States the affected context and population.</li>
+   <li>States what is currently unresolved.</li>
+   <li>Asks for a decision the SME is qualified to make.</li>
+   <li>Does not steer them toward a convenient technical answer.</li>
+ </ul>
+ </div>
+ <div class="visual-card"><div class="visual-title">Source Terms = 45E</div>
+ <p>Several target payment terms look plausible. One of them would make your load work today.</p>
+ <div class="callout misconception"><div class="callout-label">Leading</div><p>\u201c45E looks like NET30. Can you confirm we should use NET30?\u201d</p></div>
+ <div class="quote">\u201cSource payment term 45E has no approved target equivalent in the current mapping. The target contains several plausible terms, but the migration team cannot infer the intended business treatment. What target payment term should represent 45E, and is that decision valid for all customers using it or only a defined subset?\u201d</div>
+ </div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>The leading question usually gets a yes. That is exactly the problem with it. An SME who agrees with your suggestion has not made a decision, they have accepted one, and the difference becomes visible the first time somebody asks who approved NET30.</p></div></div>`
+},
+{
+ id:"b15",nav:"Choosing a channel",title:"Teams message, email, defect or meeting?",type:"expandableList",
+ layout:"grid",
+ html:`<p class="lead">Channel follows purpose. Explore each one, including what it quietly costs you.</p>`,
+ items: channelOptions,
+ takeawayHtml:`<div class="principle"><strong>Channel follows purpose</strong><br>Use the lightest channel that still preserves the evidence and decision trail you need. Lightest, not fastest.</div>`
+},
+{
+ id:"b16",nav:"Defect note vs update",title:"A technical defect note is not a stakeholder update",type:"content",
+ html:`<p class="lead">For the address defect, the technical work item might contain this.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Defect work item</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Entity:               CustomerAddress
+Observed:             C10482-DEL-02 present raw, absent transformed, no exception
+Source purpose:       DELIVERY_SECONDARY
+Approved rule:        exclude BILLING_ONLY
+Implemented condition: AddressPurpose = 'DELIVERY_PRIMARY'
+Root cause:           transformation eligibility logic implements rule incorrectly
+Impact query:         attached
+Build fix:            &lt;version&gt;
+Regression:           DELIVERY_PRIMARY stable; BILLING_ONLY excluded
+Recovery population:  &lt;controlled reference&gt;</code></pre></div>
+ <p>The project manager does not need that block in a status message. The developer does. Sending the wrong one to either person wastes their time in a different way.</p>`
+},
+{
+ id:"b17",nav:"Five-line update",title:"The five-line consultant update",type:"content",
+ html:`<p class="lead">When time is short, five questions in order will carry almost any migration update.</p>
+ <ol class="framework-checks">
+   <li>What happened?</li>
+   <li>How many, and which population?</li>
+   <li>What do we know about cause?</li>
+   <li>What is the impact?</li>
+   <li>What happens next, by whom, by when?</li>
+ </ol>
+ <div class="quote">\u201cSeven key accounts are currently missing delivery addresses in target. The source and raw records exist, so this is not presently a source-missing-data issue. The failure has been bounded to transformation and the filter logic is under review. Orders referencing the missing addresses may be affected; the full downstream impact is not yet established. I will confirm root cause and affected population after the transformation check, then provide the recovery plan.\u201d</div>
+ <p class="small">Five sentences. Every one of them does a different job, and none of them claims more than the evidence supports.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Five-Line-Update-Template.docx</strong><p class="small">The five-question shape with prompts, ready to fill in under time pressure.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Five-Line-Update-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b18",nav:"Rewrite clinic",title:"The rewrite clinic",type:"selectAll",
+ html:`<p class="lead">Seven phrases that come out of consultants' mouths every week on every programme. Explore each one to see precisely what it costs the recipient before you use it yourself.</p>`,
+ options: rewriteClinicItems,
+ coaching: rewriteClinicCoaching,
+ hint:"Explore every phrase before continuing.",
+ closingHtml:`<div class="principle"><strong>What these seven have in common</strong><br>Not one of them is a lie. Each replaces a population, a boundary or a consequence with a verdict, and the recipient has to come back to you to get the missing piece.</div>`
+},
+{
+ id:"b19",nav:"Conversion exercise",title:"Build it \u2013 Turn one evidence pack into four communications",type:"reflection",
+ html:`<p class="lead">This is the desk work. You receive the following raw technical note from a Run C2 CustomerGroup profile.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Run C2 technical note</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CustomerGroup profile:
+  STANDARD     14,982
+  KEY           1,936
+  EXPORT        1,244
+  INTERNAL        260
+  STD              61
+  'STANDARD '      29
+  99               18
+
+Cross-reference:
+  STANDARD    -> approved
+  KEY         -> approved
+  EXPORT      -> approved
+  INTERNAL    -> approved
+  STD         -> no approval recorded
+  'STANDARD ' -> controlled whitespace rule
+  99          -> unresolved
+
+Action needed before release.</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Watch this</div><p>STD looks like STANDARD. It is 61 records away from a tidy answer. There is no approved treatment recorded for STD, so asking the SME to confirm a mapping you have already chosen would be asking them to approve your guess. Expose the decision instead.</p></div>
+ <h3>Produce four outputs from this one evidence pack</h3>
+ <ol class="framework-checks">
+   <li><strong>Developer message:</strong> specify the technical evidence you need back.</li>
+   <li><strong>SME question:</strong> only the business decision they need to make.</li>
+   <li><strong>Data Migration Lead update:</strong> scale, risk and next action.</li>
+   <li><strong>Defect or decision-register note:</strong> preserving evidence and approval status.</li>
+ </ol>
+ <p class="lead">Write all four below, labelled. Then compare against the model.</p>
+ <textarea id="reflection" placeholder="DEVELOPER: ...&#10;&#10;SME: ...&#10;&#10;DML: ...&#10;&#10;REGISTER: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Finding-Message-Canvas.docx</strong><p class="small">Four labelled panels for the same finding, so the evidence stays fixed while the level changes.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Finding-Message-Canvas.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/61|STD/i, strength:"You handled the 61 STD records as their own case rather than folding them into STANDARD.", gap:"Address the 61 STD records explicitly. They have no approved treatment recorded, which makes them a decision rather than a mapping." },
+   { test:/18|99/i, strength:"You separated the 18 unresolved CustomerGroup 99 records as a business decision.", gap:"Name the 18 records on source value 99 and say plainly that no approved final target mapping exists for them." },
+   { test:/whitespace|trailing|29/i, strength:"You treated the 29 trailing-space rows as already covered by a controlled rule.", gap:"Say that the 29 trailing-space STANDARD rows are covered by the controlled whitespace treatment, so nobody spends a decision on them." },
+   { test:/do not (apply|default)|no default|without default|similarity/i, strength:"You told the developer not to apply a similarity or default mapping.", gap:"Instruct the developer explicitly not to apply a similarity or default mapping to unresolved values." },
+   { test:/ready|outside|pending|unresolved/i, strength:"You stated what happens to the unresolved populations in the meantime.", gap:"Say what status the unresolved records hold until a decision is recorded, rather than leaving it implied." }
+ ],
+   modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Developer.</strong> Three CustomerGroup source values need distinct treatment and must not be collapsed. The 29 rows carrying a trailing space fall under the controlled whitespace rule. The 18 rows on value 99 are unresolved. The 61 rows on STD have no approved treatment recorded. For STD and 99 separately, confirm the transformed value and the reference-match status and version. Apply no similarity or default mapping to either.</div>
+ <div class="quote"><strong>SME.</strong> Eighteen German customer records carry source CustomerGroup 99, and no approved final target mapping exists for that value. Which target CustomerGroup should represent 99, or should those records stay outside the ready population until a decision is recorded? A separate 61 records use source value STD, and there is no approved treatment recorded for that value either.</div>
+ <div class="quote"><strong>Data Migration Lead.</strong> CustomerGroup exceptions have reduced materially, but two source values remain decision-dependent: 18 records on 99 and 61 on STD. The 29 trailing-space rows are covered by a controlled normalisation rule and need no decision. Both unresolved populations stay outside ready status until an approved treatment is recorded.</div>
+ <div class="quote"><strong>Decision register.</strong> Open entry, CustomerGroup target treatment. Source values awaiting decision: 99 (18 records, German customers) and STD (61 records). Approved values in scope: STANDARD, KEY, EXPORT, INTERNAL. Controlled rule already applied: trailing-space STANDARD, 29 records. Required on approval: the agreed target value, whether it applies to the whole population or a defined subset, the approver, and the date and version from which it applies.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is the real skill of the lesson: one evidence pack, four recipients, nothing invented and nothing quietly resolved on the way through. The STD trap in particular is where most consultants hand the business a guess to rubber-stamp.":"You have the structure. Check that STD and 99 stayed separate decisions rather than one, and that you asked the SME what the value should be rather than whether your suggestion is acceptable."}</div>`
+},
+{
+ id:"b20",nav:"Pushback",title:"Consultant situations \u2013 Five moments of pushback",type:"situations",
+ html:`<p class="lead">Five moments where the pressure is not technical. Each one is a real conversation you will have on a programme, and in each the tempting answer is the one that costs you later.</p>`,
+ items: pushbackSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Number That Needed a Verb", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/lesson1-fromfield-priya.mp3",
+   reflection:"Think of the last count you sent to a stakeholder. Did it tell them whether to decide, investigate, accept or simply be aware?"
+ })}</div>`
+},
+{
+ id:"b21",nav:"Quality checklist",title:"The communication quality checklist",type:"content",
+ html:`<p class="lead">Run this before sending anything that carries a migration finding.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Check</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Truth</td><td>Have I said only what the evidence supports?</td></tr>
+ <tr><td>Audience</td><td>Does this person have the detail they need, not the detail I happen to have?</td></tr>
+ <tr><td>Purpose</td><td>Do I know what I want them to decide, do or understand?</td></tr>
+ <tr><td>Population</td><td>Have I stated the relevant count, keys or context?</td></tr>
+ <tr><td>Movement</td><td>If I mention a trend, have I avoided assuming cohort identity?</td></tr>
+ <tr><td>Uncertainty</td><td>Have I separated proven fact from hypothesis?</td></tr>
+ <tr><td>Ownership</td><td>Am I asking the right person to act on the right problem?</td></tr>
+ <tr><td>Decision</td><td>Is the question specific enough to answer?</td></tr>
+ <tr><td>Evidence</td><td>Can the recipient inspect the supporting detail?</td></tr>
+ <tr><td>Timing</td><td>Is the required response linked to a real migration dependency?</td></tr>
+ <tr><td>Tone</td><td>Is it clear, neutral and useful rather than blaming or defensive?</td></tr>
+ <tr><td>Record</td><td>Does an important decision need to be captured somewhere more durable than chat?</td></tr>
+ </tbody></table></div>
+ <div class="visual-card"><div class="visual-title">Write for action, not self-protection</div>
+ <div class="callout misconception"><div class="callout-label">Defensive</div><p>\u201cBased on the information currently available and subject to further validation, it appears possible that there may be an issue affecting a subset of customer addresses, although further analysis is required before any definitive conclusion can be reached.\u201d</p></div>
+ <div class="quote">\u201cSeven key accounts are missing delivery addresses in target. Their raw-stage rows exist and no exception was recorded. I am checking transformation next because that is the first unproven checkpoint.\u201d</div>
+ <p class="small">The first message protects the writer. The second protects the migration. Precision is safer than padding.</p>
+ </div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Communication-Quality-Checklist.pdf</strong><p class="small">The twelve checks on one page, for the thirty seconds before you press send.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Communication-Quality-Checklist.pdf" download>Download</a></div>`
+},
+{
+ id:"b22",nav:"Reflection",title:"Reflection \u2013 What do people need from you?",type:"reflection",
+ html:`<p class="lead">Think of a technically strong consultant who is difficult to work with. Not incompetent, not unpleasant. Just hard work. What do they make other people do that they should have done themselves?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Typical answers: interpreting raw output, working out what the actual question is, finding the affected records, separating fact from guess, chasing missing context, translating technical detail for somebody else. Each one is a small tax, paid by somebody else, every time.</p></div></div>
+ <textarea id="reflection" placeholder="The consultant I am thinking of..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/interpret|work out|translate|decipher|figure out/i, strength:"You identified interpretation work being pushed onto the recipient.", gap:"Name at least one thing the recipient had to work out for themselves that the consultant could have done." },
+   { test:/question|ask|chase|follow.?up|come back/i, strength:"You noticed the follow-up round-trips that a better message would have avoided.", gap:"Consider what follow-up question people always had to ask this consultant, and why." },
+   { test:/guess|assum|fact|evidence|certain/i, strength:"You touched on the fact-versus-guess separation, which is where trust is actually won.", gap:"Think about whether that consultant made it clear which parts of what they said were proven and which were inference." },
+   { test:/me|myself|I (do|did|have|am|catch|notice)/i, strength:"You turned the question back on your own practice, which is the harder half of it.", gap:"Name one of these behaviours you recognise in your own recent communication, however small." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The consultant I have in mind was rarely wrong, which made it harder to raise. Every message was a raw output with a sentence on top, so somebody else worked out the population, the question and whether it was even theirs. Nothing was labelled as proven or suspected, so we treated everything as provisional, including the parts that were solid. The round-trip cost was two messages on average before anyone could act. I recognise a version of it in myself when I am busy: I send the count and leave the meaning to the reader, which is exactly the tax I am describing.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The useful move here is the last one: naming the same behaviour in your own recent work. Everyone can see it in somebody else.":"Push one step further and name a recent message of your own that left interpretation work for the recipient. That is where this lesson turns into practice."}</div>`
+},
+{
+ id:"b23",nav:"Summary",title:"Summary \u2013 Make the evidence usable",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Separate fact, movement, impact, decision or action, and evidence.</li>
+   <li>Distinguish facts from inference and from recommendations.</li>
+   <li>Change the communication for the recipient, never the truth.</li>
+   <li>Use headline, detail and evidence as three layers.</li>
+   <li>Give counts their denominators and their context.</li>
+   <li>Do not turn a net improvement into a false story about individual records.</li>
+   <li>State uncertainty precisely: what is known, what is not, what evidence comes next.</li>
+   <li>Never communicate a hypothesis as a proven root cause.</li>
+   <li>Ask an SME one answerable business question.</li>
+   <li>Do not ask the business to approve the guess that suits your load.</li>
+   <li>Use the right channel for clarification, decisions, defects and status.</li>
+   <li>Keep technical defect detail out of the stakeholder headline.</li>
+   <li>Lead with the fact most likely to change the recipient's next action.</li>
+   <li>Protect stakeholders from work that does not belong to them.</li>
+   <li>Write for action, not for self-protection.</li>
+   <li>Preserve important decisions in a controlled record.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>Your technical finding is not finished when you understand it. It is finished when the right person can understand the evidence, make the right decision or action, and later see exactly what was agreed.</div>`
+},
+{
+ id:"b24",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Communicating migration findings.</strong></p>
+ <p>You can now turn technical migration evidence into communication another person can act on: separating fact, inference, recommendation and prediction; choosing the level for a developer, SME, Data Migration Lead or project manager; stating uncertainty precisely rather than vaguely; asking for a decision without hiding the evidence or steering the answer; and producing written updates that preserve the truth of the finding.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Getting useful answers from SMEs</strong></p>
+ <p>You will learn how to turn vague business conversations into precise migration decisions, without leading the SME, drowning them in technical detail, or leaving the room with an answer that cannot actually be implemented.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you are about to send a number with no verb attached.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 1: Communicating migration findings",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Turning technical migration evidence into something another person can act on",
+  storageKey: "tp_dmc4_lesson1_v1",
+  lessonId: "dmc4-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

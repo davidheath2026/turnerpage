@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Getting useful answers from SMEs</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 2 - "Getting useful answers from SMEs".
+   Built as an SME decision clinic per the manuscript's own
+   authoring notes: the learner chooses the next question and can
+   stop too early with an incomplete answer.
+
+   Source: DMC4_Lesson2_Getting_Useful_Answers_from_SMEs_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session,
+   not the manuscript's own header.
+
+   ONE MANUSCRIPT INCONSISTENCY, resolved deliberately: Section 1
+   opens on the supplier-classification conflict (73 suppliers,
+   S20418 Nordvik Components AS, STRATEGIC in the legacy ERP
+   versus STANDARD in SupplierClass.accdb) but then quotes the
+   consultant asking "What should CustomerGroup 99 map to?" - a
+   leftover from the pre-revision version. The authoring notes are
+   explicit that the opening now uses supplier-classification
+   evidence, so the opening block here is supplier throughout.
+   CustomerGroup 99 and payment term 45E still appear later as the
+   recurring unresolved examples the notes ask for.
+
+   Bramwell facts used: 73 active suppliers with classification
+   conflicts between the legacy ERP and SupplierClass.accdb;
+   S20418 Nordvik Components AS unresolved; 18 German customer
+   records on CustomerGroup 99, no approved target treatment;
+   payment term 45E unresolved with NET30 an incorrect fallback
+   rather than an approved answer; CustomerGroup source
+   distribution STANDARD 14,982 / KEY 1,936 / EXPORT 1,244 /
+   INTERNAL 260 / STD 61 / trailing-space STANDARD 29 / 99 18;
+   the address rule (approved intent exclude BILLING_ONLY,
+   faulty implementation retained DELIVERY_PRIMARY only).
+
+   STD to STANDARD is NOT approved anywhere here. Section 26's
+   "Map STD to STANDARD for UK customers" appears only as a
+   worked example of an 80 percent complete decision, which is
+   the point of that section - it stays visibly incomplete.
+   Section 30's dialogue uses a deliberately abstract "source
+   code X" on 43 records rather than a real Bramwell value, so
+   no new mapping is implied.
+
+   Section 32's independent practical is synthetic training
+   material.
+
+   Persona: Farah, Data Migration Consultant, Telecoms ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section. Farah's first DMC4 appearance and her first since
+   DMC2.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=1, b6=3, b21
+   items A-E = 0,2,1,3,2. Full sequence 1,3,0,2,1,3,2 - no run
+   of three, no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3. None built yet.
+============================================================== */
+
+const followUpLadder = [
+ { title:"Does that apply to all of them?",
+   short:"Test whether one answer covers the whole population, or just the familiar part of it.",
+   detail:"The SME says 99 means standard customer. Ask: does that apply to all 18 German customers currently using 99, or are there exceptions within that population? If the answer is \u201call of them\u201d, do not stop. Check whether the 18 share the expected country and legal-entity context, whether any attribute divides them into different business behaviours, whether inactive or historical records are governed differently, and whether another source system uses 99 with a different meaning.",
+   ask:"Could the SME be describing the common case rather than the whole population?" },
+ { title:"What makes a record belong to that rule?",
+   short:"A rule without a deterministic condition cannot be implemented reliably.",
+   detail:"The SME says export customers should be INTERNATIONAL. That is a business statement, not yet a migration rule. Ask what identifies an export customer in the source data: CustomerGroup = EXPORT, a country outside the domestic market, an account flag, or some other business attribute? Until there is a condition a developer can evaluate row by row, there is nothing to build and nothing to test.",
+   ask:"Could a developer write this rule from what you have, without asking you what counts?" },
+ { title:"Examples are evidence, not rules",
+   short:"Three confirmed rows are a starting point for analysis, not an approved mapping.",
+   detail:"An SME points at three rows and says these should all be KEY. What you have: three confirmed examples, useful business context, candidate characteristics. What you do not yet have: a rule for the entire population, proof that every similar row follows the same treatment, or the authoritative condition. The right response is to accept them as confirmed examples, compare them with the rest of the population, and come back with the attributes that appear to define the group so the full rule can be confirmed.",
+   ask:"Are you about to generalise from three rows to several thousand?" },
+ { title:"Turn the SME's language into testable conditions",
+   short:"Business language is where the rule lives. Deterministic conditions are where it gets implemented.",
+   detail:"Key customers: which field, value or combination identifies them? Old accounts: created before what date, or identified by which status? Norway deliveries: country of customer, of delivery address, of site, or legal entity? Inactive suppliers: which authoritative status and effective date? Invoice-only address: which source AddressPurpose values correspond to billing-only? If you decide what old, key, active or Norway means without confirmation, you have created a business rule rather than discovered one.",
+   ask:"Which word in the SME's sentence are you about to define for them, quietly?" }
+];
+
+const dangerousAnswers = [
+ "\u201cProbably...\u201d",
+ "\u201cUsually...\u201d",
+ "\u201cWe normally...\u201d",
+ "\u201cJust use...\u201d",
+ "\u201cIt does not matter...\u201d",
+ "\u201cIt is always X.\u201d"
+];
+const dangerousCoaching = [
+ "<strong>Why it is dangerous:</strong> the SME is signalling uncertainty and you are about to record it as a decision. <strong>Next move:</strong> ask what evidence would confirm it, and who could confirm it authoritatively.",
+ "<strong>Why it is dangerous:</strong> usually means exceptions exist and have not been named. <strong>Next move:</strong> ask directly when the rule does not apply, rather than asking whether exceptions exist, which invites a no.",
+ "<strong>Why it is dangerous:</strong> this often describes an operational process rather than a data rule, and processes leave no deterministic condition behind. <strong>Next move:</strong> ask how that condition is represented in the data itself.",
+ "<strong>Why it is dangerous:</strong> just use is the sound of convenience, not authority. It may be a workaround that has never been approved for anything. <strong>Next move:</strong> confirm meaning, scope and who authorises it.",
+ "<strong>Why it is dangerous:</strong> it may genuinely not matter to the SME's process while mattering a great deal downstream. <strong>Next move:</strong> explain the migration consequence concretely, then confirm the treatment.",
+ "<strong>Why it is dangerous:</strong> always is testable, and untested absolutes are how scope errors reach a cycle. <strong>Next move:</strong> do not challenge it in the room. Test every current record against the relevant attributes and bring back any exceptions."
+];
+
+const smeSituations = [
+ { title:"A. The answer that arrives too quickly",
+   question:"You ask what a source classification means. The SME answers confidently in under a minute, and the answer is plausible. What do you do?",
+   options:[
+     {label:"Ask what business condition makes that treatment correct, then test the stated condition against the affected population before recording anything.", correct:true, feedback:"Correct. A fast answer is often the answer to a broader question than the one you meant to ask. The condition behind the answer is what tells you which records it actually governs."},
+     {label:"Record the answer and move on, since the SME is the recognised authority for this field and has answered without hesitation.", correct:false, feedback:"Authority establishes who may decide, not that the decision covers every record. Confidence and scope are different things."},
+     {label:"Ask the SME to put the same answer in writing, so that the decision has a durable record attached to their name.", correct:false, feedback:"Writing it down preserves an incomplete answer very reliably. Get the scope right first, then record it."},
+     {label:"Accept the answer provisionally and flag it for review at the next workshop when more stakeholders will be present.", correct:false, feedback:"Deferring to a larger meeting turns a one-question clarification into an agenda item, and the scope gap travels with it unexamined."}
+   ]
+ },
+ { title:"B. Two SMEs, two answers",
+   question:"A Procurement SME and a Finance SME give you conflicting meanings for the same supplier field. What is the right move?",
+   options:[
+     {label:"Take the answer from whichever SME has been on the programme longest, since they will have seen how the field behaves over more cycles.", correct:false, feedback:"Tenure is not authority. The longest-serving person may be describing a historical meaning that no longer drives downstream behaviour."},
+     {label:"Record both answers in the decision log as alternatives and let the Data Migration Lead pick one at the next governance checkpoint.", correct:false, feedback:"Passing an unresolved semantic conflict upward without establishing who owns the field just relocates the problem to a busier person."},
+     {label:"Ask which policy, system configuration, master-data owner or business process is authoritative for this field, and capture the conflict itself for resolution.", correct:true, feedback:"Correct. The question is not who is right but who owns the field, where the rule is maintained, which system drives downstream behaviour and who is authorised to approve the target treatment."},
+     {label:"Choose the answer that matches the data distribution you have already profiled, since the evidence effectively settles it.", correct:false, feedback:"The distribution shows what the data does, not what the business intends it to mean. Using it to break a tie quietly makes you the decision-maker."}
+   ]
+ },
+ { title:"C. \u201cI cannot answer that\u201d",
+   question:"The SME genuinely does not know the answer and says so. What is the strong consultant response?",
+   options:[
+     {label:"Apply a provisional mapping so the pipeline keeps moving, and mark it clearly for revision once the business decision arrives.", correct:false, feedback:"A provisional mapping is a real value in the target with a note attached, and notes do not survive cycles as reliably as values do. This is how defaults become de facto decisions."},
+     {label:"Keep the records in the unresolved decision population, then ask who the right owner is and what evidence would help them decide.", correct:true, feedback:"Correct. Do not punish uncertainty by creating a default. An honest unresolved population is a better project artefact than an invented complete rule."},
+     {label:"Escalate immediately to the Data Migration Lead, since an SME unable to answer indicates the wrong person was engaged.", correct:false, feedback:"Sometimes the right person genuinely does not know yet, and escalating on that basis burns goodwill. Find the owner first."},
+     {label:"Leave the question open and revisit it in a later cycle, when more of the surrounding data will have been profiled and cleansed.", correct:false, feedback:"Waiting without naming an owner or the evidence needed means the same conversation happens again later with nothing added."}
+   ]
+ },
+ { title:"D. \u201cWhat would you recommend?\u201d",
+   question:"The SME turns the question back on you and asks what you would do. How do you answer?",
+   options:[
+     {label:"Decline to give any view, explaining that business mapping decisions sit outside the migration consultant's remit entirely.", correct:false, feedback:"Refusing to help is not neutrality, it is unhelpfulness. You have a legitimate migration-control view and withholding it wastes your expertise."},
+     {label:"Give your preferred mapping, since you have seen the full distribution and are better placed than anyone to judge which target value fits.", correct:false, feedback:"Seeing the distribution tells you what exists, not what the business intends. Selecting the mapping makes you the unauthorised decision-maker."},
+     {label:"Suggest the mapping that most other customers in this industry use, so the decision has an external reference point behind it.", correct:false, feedback:"An industry norm is not evidence about this business. It is a plausible answer dressed up as authority, which is the trap this lesson keeps returning to."},
+     {label:"Give a labelled migration-control recommendation, such as keeping unresolved records outside Ready status, while saying you have no evidence to select the business mapping for them.", correct:true, feedback:"Correct. Technical and process recommendations are part of the consultant role. Unauthorised business decisions are not, and the distinction should be audible in the sentence."}
+   ]
+ },
+ { title:"E. The decision that is 80 percent complete",
+   question:"The SME says: map STD to STANDARD for UK customers. Six scope questions remain unanswered. What do you record?",
+   options:[
+     {label:"Record the rule as given and resolve the remaining scope questions during implementation, when the data will make most of them obvious.", correct:false, feedback:"Implementation is where scope gaps become defaults, silently. Resolving them there means the developer decides what the SME did not."},
+     {label:"Record nothing until every scope question is answered, since a partial decision cannot safely be implemented in any form.", correct:false, feedback:"Discarding the answered part wastes a real decision and makes you ask the SME the same question twice. Partial clarity has value if its boundary is visible."},
+     {label:"Record the answered scope and leave the unanswered scope explicitly visible, so nobody mistakes the gap for an agreement.", correct:true, feedback:"Correct. Do not fill the remaining 20 percent yourself. Partial clarity with a marked boundary is better, and far more defensible, than an invented complete rule."},
+     {label:"Record the rule with your own best assumption filled in for each open question, clearly marked as assumptions for the SME to correct later.", correct:false, feedback:"Assumptions marked for correction are rarely corrected. You have written the rule and handed back a proofreading task."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"The quick answer",title:"The answer that solves nothing",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>73 active Bramwell suppliers have a classification that conflicts between the legacy ERP and SupplierClass.accdb. One of them is S20418, Nordvik Components AS: STRATEGIC in the ERP, STANDARD in SupplierClass.accdb. No approved treatment has been established.</p>
+ </div>
+ <p>You ask the business SME what supplier classification should apply to the conflicting population.</p>
+ <div class="quote">\u201cThose are probably standard suppliers.\u201d</div>
+ <p>A weaker consultant writes the decision down. S20418 becomes STANDARD, the conflict count drops by one, and the day feels productive.</p>
+ <h3>What have you actually got?</h3>`,
+ options:[
+   {label:"A usable decision. The SME is the business authority for supplier classification, so their answer is the approved treatment by definition.", correct:false, feedback:"Authority establishes who may decide. It does not turn an uncertain sentence into an approved decision, and \u201cprobably\u201d is doing a lot of work in that answer."},
+   {label:"Not a decision at all. \u201cProbably\u201d signals uncertainty, the scope of the 73 is untested, no authoritative source is established, and nothing has been approved.", correct:true, feedback:"Correct. Your job is not to get an answer. It is to get an answer precise enough to implement, scoped enough to apply safely and evidenced enough to defend later."},
+   {label:"A reasonable working assumption, which can be implemented now and revisited if the supplier data shows it was wrong in a later cycle.", correct:false, feedback:"A working assumption implemented into a target is indistinguishable from a decision once the cycle runs. Later revisits find the value already in use."},
+   {label:"Enough to proceed for S20418 specifically, since the SME was asked about a population that includes it and gave a direct answer.", correct:false, feedback:"The SME may be describing the usual supplier process rather than this conflict population. S20418 is exactly the record most likely to be an exception."}
+ ]
+},
+{
+ id:"b2",nav:"Why it fails",title:"Seven things missing from a single-sentence answer",type:"content",
+ html:`<ul class="framework-checks">
+   <li><strong>\u201cProbably\u201d</strong> signals uncertainty, and uncertainty is not approval.</li>
+   <li>The SME may be describing <strong>the usual supplier process</strong>, not the 73-record conflict population.</li>
+   <li>STANDARD is <strong>a source classification value</strong>, not proof that SupplierClass.accdb is authoritative for this attribute.</li>
+   <li>Nothing establishes <strong>which source is authoritative</strong> for supplier classification.</li>
+   <li>Nothing establishes whether the conflicting values have <strong>one meaning or several</strong>.</li>
+   <li><strong>No evidence has been tested</strong> against the proposed treatment.</li>
+   <li>There is <strong>no explicit approval</strong> to implement a mapping.</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>Your job is not to get an answer. Your job is to get an answer that is precise enough to implement, scoped enough to apply safely, and evidenced enough to defend later.</p></div></div>`
+},
+{
+ id:"b3",nav:"Two kinds of knowledge",title:"SMEs know the business. You know the migration question",type:"content",
+ html:`<p class="lead">An SME may know exactly how customers, suppliers, products or finance processes work, without knowing what your pipeline needs from them. That gap is your job, not theirs.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>The SME may say</th><th>You must translate that into</th></tr></thead><tbody>
+ <tr><td>\u201cThose are old export accounts.\u201d</td><td>Which source records? Which identifying condition? What target treatment?</td></tr>
+ <tr><td>\u201cWe never use that code any more.\u201d</td><td>Can historical records contain it? Are they in migration scope?</td></tr>
+ <tr><td>\u201c45 days is fine.\u201d</td><td>Which exact target payment term is approved?</td></tr>
+ <tr><td>\u201cThat address is just for invoices.\u201d</td><td>Which source value identifies billing-only addresses?</td></tr>
+ <tr><td>\u201cGermany does it differently.\u201d</td><td>Which rule differs, for which legal entity and population, and from when?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The division of labour</strong><br>The SME provides business knowledge. The Data Migration Consultant turns that knowledge into a controlled, testable migration rule, without inventing the missing parts.</div>`
+},
+{
+ id:"b4",nav:"Prepare first",title:"Prepare before you ask",type:"content",
+ html:`<p class="lead">Do not arrive with a spreadsheet of 214 rows and ask what to do with these. Reduce the problem first.</p>
+ <ol class="framework-checks">
+   <li>Define the migration question in one sentence.</li>
+   <li>Identify the affected population and business context.</li>
+   <li>Group repeated patterns so the SME is not reviewing duplicate questions.</li>
+   <li>Separate known facts from hypotheses.</li>
+   <li>Check existing mapping, rule and decision records first.</li>
+   <li>Prepare two or three representative examples.</li>
+   <li>Identify edge cases that could break an apparently simple rule.</li>
+   <li>Know exactly what decision you need.</li>
+   <li>Know where the decision will be recorded.</li>
+   <li>Know how you will test the answer before implementing it.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Sending the raw exception list feels like transparency. A consultant who asks the business to rediscover information already present in the data, the mapping workbook or a previous decision log is transferring migration work to the client and calling it collaboration.</p></div>`
+},
+{
+ id:"b5",nav:"Question pack",title:"Build an SME question pack",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><caption>One decision, one pack</caption><thead><tr><th>Field</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Decision ID</td><td>DEC-CUST-014</td></tr>
+ <tr><td>Entity and field</td><td>Customer / CustomerGroup</td></tr>
+ <tr><td>Source value</td><td>99</td></tr>
+ <tr><td>Affected population</td><td>18 German customer records</td></tr>
+ <tr><td>Current approved treatment</td><td>None</td></tr>
+ <tr><td>Representative keys</td><td>Selected examples from the affected population</td></tr>
+ <tr><td>Evidence</td><td>Source distribution and current reference coverage</td></tr>
+ <tr><td>Question</td><td>What target treatment represents source 99 for this defined population?</td></tr>
+ <tr><td>Scope to confirm</td><td>All German records using 99? Any exceptions?</td></tr>
+ <tr><td>Implementation consequence</td><td>Reference mapping and ready-status treatment</td></tr>
+ <tr><td>Required evidence after answer</td><td>Population test and target validation</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>One pack, one decision</strong><br>If the page contains five unrelated business questions, split it. Decisions are easier to answer, record, implement and retest when their scope is clear.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_SME-Question-Pack.xlsx</strong><p class="small">The eleven fields above as a single-decision template, ready to send.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_SME-Question-Pack.xlsx" download>Download</a></div>`
+},
+{
+ id:"b6",nav:"Neutral opening",title:"Start with evidence, not your preferred answer",type:"mcq",
+ _correctIndex:3,
+ html:`<p class="lead">You have 18 German customer records carrying source CustomerGroup 99. The migration mapping has no approved target treatment for 99. The target contains a value called STANDARD, and 99 looks very much like it should be one.</p>
+ <h3>How do you open the conversation?</h3>`,
+ options:[
+   {label:"\u201cThese 18 CustomerGroup 99 records look like STANDARD. Can we map them to STANDARD?\u201d", correct:false, feedback:"This will very likely get a yes, which is exactly the problem. Offer a plausible answer early and people validate your suggestion rather than retrieving the actual business rule."},
+   {label:"\u201cWe have 18 records on CustomerGroup 99 with no approved mapping. Which of the existing target values would you like us to use?\u201d", correct:false, feedback:"Better, but it still skips meaning and jumps to target selection. The SME is being asked to pick from your list rather than explain what 99 represents."},
+   {label:"\u201cWe have 18 unmapped CustomerGroup 99 records blocking readiness. Can you let us know how to treat them before the next cycle?\u201d", correct:false, feedback:"This communicates urgency and no content. The SME cannot answer it without asking you what 99 is and which records are affected, which is work you have already done."},
+   {label:"\u201cWe have 18 German customer records with source CustomerGroup 99. The current migration mapping has no approved target treatment for 99. Could you explain what 99 represents in the source business process?\u201d", correct:true, feedback:"Correct. The neutral question establishes meaning first. Only once meaning is established should the conversation move to target treatment, because mapping without meaning is guesswork with a paper trail."}
+ ]
+},
+{
+ id:"b7",nav:"Meaning before mapping",title:"Ask for meaning before mapping",type:"content",
+ html:`<p class="lead">The common mistake is jumping straight from source code to target code. The middle steps are where the migration actually gets decided.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The chain</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SOURCE VALUE
+  -&gt; BUSINESS MEANING
+  -&gt; TARGET BUSINESS TREATMENT
+  -&gt; TARGET CODE</code></pre></div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>What does source value 99 mean?</td><td>Establish business semantics</td></tr>
+ <tr><td>Does it mean the same thing for every record?</td><td>Test consistency</td></tr>
+ <tr><td>Is the meaning different by country, legal entity or date?</td><td>Test context</td></tr>
+ <tr><td>How should that business meaning be represented in the target?</td><td>Establish target treatment</td></tr>
+ <tr><td>Which exact target value implements that treatment?</td><td>Create an implementable mapping</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Similar labels mean similar things. Two systems can use nearly identical labels for different concepts, and quite different labels for the same concept. Migration mapping is semantic before it is technical.</p></div>`
+},
+{
+ id:"b8",nav:"The follow-up ladder",title:"The four follow-ups that turn an answer into a rule",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">The SME has answered. These are the four questions that decide whether you leave with something implementable. Explore each one, and read the test underneath it.</p>`,
+ items: followUpLadder,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>Each of these four feels like an extra question you are imposing on a busy person. Each one is cheaper than the defect it prevents, and the SME almost always finds the fourth one more interesting than the first.</p></div></div>`
+},
+{
+ id:"b9",nav:"Edge cases",title:"Ask about edge cases before they become defects",type:"content",
+ html:`<p class="lead">Suppose the SME confirms: exclude billing-only addresses. That sounds complete. It is not.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Edge case</th><th>Question</th></tr></thead><tbody>
+ <tr><td>DELIVERY_PRIMARY</td><td>Included?</td></tr>
+ <tr><td>DELIVERY_SECONDARY</td><td>Included?</td></tr>
+ <tr><td>BILLING_ONLY</td><td>Excluded?</td></tr>
+ <tr><td>Blank AddressPurpose</td><td>Include, exclude or exception?</td></tr>
+ <tr><td>Unknown future purpose</td><td>What should happen?</td></tr>
+ <tr><td>Multiple delivery addresses</td><td>Are all valid, or only a preferred one?</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">What this cost at Bramwell</div><p>The address defect happened because \u201cexclude BILLING_ONLY\u201d was implemented as \u201cinclude DELIVERY_PRIMARY only\u201d. One question about valid secondary delivery addresses, asked in the original conversation, would have exposed the difference before the rule ever reached a migration cycle.</p></div></div>`
+},
+{
+ id:"b10",nav:"The null question",title:"The null question",type:"content",
+ html:`<p class="lead">Blank and NULL values are where apparently clear rules quietly become unsafe.</p>
+ <div class="quote">\u201cAnything that is not BILLING_ONLY should migrate.\u201d</div>
+ <p>In SQL, that invites:</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The tempting predicate</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WHERE AddressPurpose &lt;&gt; 'BILLING_ONLY'</code></pre></div>
+ <p>NULL does not satisfy that predicate. The technical behaviour therefore differs from the conversational rule, and nobody in the original meeting would recognise the difference from the words they agreed.</p>
+ <div class="quote">\u201cHow should an address with no AddressPurpose be treated? Is blank a valid business state, a data-quality exception, or something we should infer from another field?\u201d</div>`
+},
+{
+ id:"b11",nav:"Global or contextual",title:"Ask whether the rule is global or contextual",type:"content",
+ html:`<p class="lead">A mapping that is correct in one company or country may be wrong elsewhere, and the wrongness will not announce itself.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dimension to test</th><th>Example question</th></tr></thead><tbody>
+ <tr><td>Legal entity</td><td>Does this treatment apply in UK, Belgium, Norway and Germany?</td></tr>
+ <tr><td>Country</td><td>Does source code 99 mean the same thing in every country?</td></tr>
+ <tr><td>Source system</td><td>Is the code shared across ERP and CRM?</td></tr>
+ <tr><td>Date or effective period</td><td>Has the meaning changed historically?</td></tr>
+ <tr><td>Customer type</td><td>Does it differ for internal, key or export customers?</td></tr>
+ <tr><td>Status</td><td>Are inactive records treated differently?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Mapping grain</strong><br>If context changes the meaning, context belongs in the mapping key. Do not force a one-column cross-reference to represent a multi-dimensional business rule.</div>`
+},
+{
+ id:"b12",nav:"Let the data help",title:"\u201cIt depends\u201d is a useful answer, and distributions make it answerable",type:"content",
+ html:`<p class="lead">The SME says it depends on the country. That is not obstruction. It is the second dimension of the rule arriving.</p>
+ <div class="quote">\u201cGood. Let us make that explicit. For each country where 99 occurs, what business meaning does it have and what target treatment applies? I can give you the current distribution by country so we only discuss combinations that actually exist.\u201d</div>
+ <p>Now the data reduces the conversation rather than enlarging it. Instead of asking an SME to reason about thousands of rows, show the pattern.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Source CustomerGroup distribution</caption><thead><tr><th>Source value</th><th>Count</th></tr></thead><tbody>
+ <tr><td>STANDARD</td><td>14,982</td></tr>
+ <tr><td>KEY</td><td>1,936</td></tr>
+ <tr><td>EXPORT</td><td>1,244</td></tr>
+ <tr><td>INTERNAL</td><td>260</td></tr>
+ <tr><td>STD</td><td>61</td></tr>
+ <tr><td>STANDARD with trailing space</td><td>29</td></tr>
+ <tr><td>99</td><td>18</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Evidence compresses the problem</strong><br>A good consultant turns tens of thousands of records into the smallest set of genuine business decisions, without hiding important variation on the way.</div>`
+},
+{
+ id:"b13",nav:"Protect SME attention",title:"Do not make the SME review technical noise",type:"content",
+ html:`<p class="lead">Before involving the business, remove everything that is already a migration-team responsibility.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Issue</th><th>Who should handle it first?</th></tr></thead><tbody>
+ <tr><td>Trailing whitespace with an approved normalisation rule</td><td>Migration team</td></tr>
+ <tr><td>Duplicate approved cross-reference causing row multiplication</td><td>Migration team</td></tr>
+ <tr><td>Unresolved business meaning of source 99</td><td>SME</td></tr>
+ <tr><td>Stale reference version used by a package</td><td>Migration team</td></tr>
+ <tr><td>Which target payment term represents 45E</td><td>Business SME or authorised decision-maker</td></tr>
+ <tr><td>SQL parse failure caused by a malformed transformation</td><td>Migration team</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Labelling everything unresolved as a data issue and sending it to the business looks like thoroughness. It reads as an inability to tell your own problems from theirs, and it costs you the attention you will need for the questions that genuinely are theirs.</p></div>`
+},
+{
+ id:"b14",nav:"The 45E conversation",title:"The 45E conversation",type:"content",
+ html:`<p class="lead">Source payment term 45E has no approved target equivalent. The target contains several plausible terms. You open properly.</p>
+ <div class="quote">\u201cWe have source payment term 45E with no approved target equivalent. Can you explain what 45E means commercially: due-date calculation, end-of-month behaviour and any special conditions?\u201d</div>
+ <div class="visual-card"><div class="visual-title">The Finance SME replies</div><p>\u201cIt is 45 days.\u201d</p></div>
+ <p>Still not enough, and the gap is entirely in the calculation.</p>
+ <ul class="framework-checks">
+   <li>45 days from invoice date, or from month end?</li>
+   <li>Calendar days, or another convention?</li>
+   <li>Does the target term reproduce the same calculation?</li>
+   <li>Does the treatment apply to every customer using 45E?</li>
+   <li>Is there an approved target term already used operationally?</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Where this one stands</div><p>45E is still unresolved at Bramwell. NET30 was an incorrect fallback that reached a pipeline, not an approved answer. The questioning process is what this section teaches; the mapping itself has not been decided and should not be assumed.</p></div></div>`
+},
+{
+ id:"b15",nav:"Rule, not ETL",title:"Ask the SME to explain the rule, not design the ETL",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Poor</div><p>\u201cShould I use a CASE statement and map blank status to 1?\u201d</p></div>
+ <div class="quote">\u201cWhat does a blank status mean in the business, and how should a record in that state be represented in the target?\u201d</div>
+ <p>The SME owns business meaning. The migration team owns implementation. Blurring that line makes the SME responsible for decisions they cannot evaluate, and quietly relieves you of ones you can.</p>
+ <div class="principle"><strong>The boundary</strong><br>Do not ask the SME to choose SQL, join type, staging design or error-handling behaviour. Do ask them to confirm business semantics, applicability, exceptions and authorised treatment.</div>`
+},
+{
+ id:"b16",nav:"Dangerous answers",title:"The six answers that need another question",type:"selectAll",
+ html:`<p class="lead">Six things SMEs say that sound like answers. Explore each one to see what it is hiding and what your next question should be.</p>`,
+ options: dangerousAnswers,
+ coaching: dangerousCoaching,
+ hint:"Explore every answer before continuing.",
+ closingHtml:`<div class="principle"><strong>Listen for the qualifier</strong><br>Usually, normally, mostly, generally, probably, should. Every one of them is an invitation to ask the next question, and the SME is usually happy to be asked.</div>`
+},
+{
+ id:"b17",nav:"Authority and timing",title:"Who is authoritative, and which version of the truth are you asking about?",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">When two SMEs disagree</div>
+ <div class="callout misconception"><div class="callout-label">Wrong move</div><p>Take the answer from the more senior or more confident person.</p></div>
+ <p>Ask instead which policy, system configuration, master-data owner or business process is authoritative, and capture the conflict itself for resolution.</p>
+ <ul class="framework-checks">
+   <li>Who owns the field operationally?</li>
+   <li>Where is the rule maintained today?</li>
+   <li>Which system actually drives downstream behaviour?</li>
+   <li>Is there documented policy or configuration?</li>
+   <li>Who is authorised to approve the target treatment?</li>
+ </ul>
+ </div>
+ <div class="visual-card"><div class="visual-title">Today or tomorrow?</div>
+ <p>Migration workshops often expose a process the business wants to change. Four questions keep the two apart.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>What does the source value mean today?</td><td>Migration interpretation</td></tr>
+ <tr><td>How is it used operationally today?</td><td>Current business behaviour</td></tr>
+ <tr><td>What should the target do at go-live?</td><td>Target treatment</td></tr>
+ <tr><td>Is that a migration mapping or a new business-process decision?</td><td>Scope and ownership</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>A new business rule can be smuggled into a migration under the word \u201cmapping\u201d, and it usually is not deliberate. If the business wants something different in the target, record it as a change, not as an equivalence that does not exist.</p></div>
+ </div>`
+},
+{
+ id:"b18",nav:"Two conversations",title:"The same conversation, badly and well",type:"content",
+ html:`<p class="lead">Read both. The difference is four questions and about ninety seconds.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">How it goes wrong</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Consultant: What should code X map to?
+SME:        STANDARD.
+Consultant: Great, thanks.
+
+Later:
+Developer:  Is that all countries?
+Consultant: I think so.
+Developer:  What about inactive records?
+Consultant: Probably the same.
+Developer:  Is blank treated the same as X?
+Consultant: I will ask.
+DML:        Who approved STANDARD?
+Consultant: The SME said it in the call.</code></pre></div>
+ <p class="small">The consultant obtained a value. They did not establish meaning, scope, exceptions, authority, an implementation condition or a durable approval. Every gap surfaces later, in front of somebody else.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">How it goes right</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Consultant: We have source code X on 43 records. Before we discuss
+            target mapping, what does X mean in the current
+            business process?
+SME:        It means a standard domestic account.
+Consultant: Does that apply to all 43? I can see 39 UK and
+            4 Belgian records.
+SME:        No. In Belgium X was reused for something else.
+Consultant: Good. For the 39 UK records, does active or inactive
+            status change the treatment?
+SME:        No.
+Consultant: And the approved target treatment for a standard
+            domestic UK account is which target CustomerGroup?
+SME:        STANDARD.
+Consultant: I will record X to STANDARD for the UK context only,
+            test the 39-record population, and keep the four
+            Belgian records unresolved. I will send the decision
+            record back for confirmation.</code></pre></div>
+ <div class="principle"><strong>What the second conversation produced</strong><br>An implementable scoped rule, and an unresolved population that is visible rather than buried. Both are deliverables.</div>`
+},
+{
+ id:"b19",nav:"Record and test",title:"Confirm it back, record it, then test it against the population",type:"content",
+ html:`<p class="lead">Before the SME leaves the call, play the rule back in implementable language. This catches misunderstandings while the person who can correct them is still there.</p>
+ <div class="quote">\u201cLet me confirm what I have recorded. For the defined German customer population, source value X means [business meaning]. The approved target treatment is [target value]. The rule applies when [conditions] and does not apply when [exceptions]. Blank and unknown values will [agreed treatment]. Is that correct?\u201d</div>
+ <h3>A verbal answer is not yet a migration control</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Decision field</th><th>What to capture</th></tr></thead><tbody>
+ <tr><td>Decision ID</td><td>Stable identifier</td></tr>
+ <tr><td>Date</td><td>When agreed</td></tr>
+ <tr><td>Decision owner or approver</td><td>Who authorised it</td></tr>
+ <tr><td>Source entity, field, value</td><td>What triggers the rule</td></tr>
+ <tr><td>Context</td><td>Country, legal entity, system, status, date as relevant</td></tr>
+ <tr><td>Business meaning</td><td>What the source actually represents</td></tr>
+ <tr><td>Target treatment</td><td>Approved target meaning and value</td></tr>
+ <tr><td>Exceptions</td><td>Where the rule does not apply</td></tr>
+ <tr><td>Unknown or null treatment</td><td>Explicit if relevant</td></tr>
+ <tr><td>Evidence</td><td>Examples, distribution, reference</td></tr>
+ <tr><td>Implementation owner</td><td>Who changes the mapping or rule</td></tr>
+ <tr><td>Validation</td><td>How the implemented rule will be proven</td></tr>
+ <tr><td>Version or effective cycle</td><td>When it becomes active</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Chat is where the answer was obtained, so chat is where the answer lives. Teams threads and meetings can produce a decision. They cannot retrieve one six weeks later when somebody asks who approved it.</p></div>
+ <h3>Approval does not replace testing</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Pattern: test the population governed by an approved decision</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+    ContextCode,
+    SourceValue,
+    COUNT(*) AS Records
+FROM stage.SourceEntity
+WHERE SourceValue = @DecisionSourceValue
+GROUP BY ContextCode, SourceValue;</code></pre></div>
+ <p>Then inspect whether the approved scope covers every context returned. The SME can approve the intended business treatment. You still have to prove the implemented population matches the approved scope.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Decision-Record.xlsx</strong><p class="small">The thirteen decision fields above, structured so a decision survives the meeting it was made in.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Decision-Record.xlsx" download>Download</a></div>`
+},
+{
+ id:"b20",nav:"Decision clinic",title:"Build it \u2013 The SME decision clinic",type:"reflection",
+ html:`<p class="lead">A synthetic evidence pack lands on your desk with five unresolved migration questions. None of them is a technical problem.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>#</th><th>The unresolved question</th></tr></thead><tbody>
+ <tr><td>1</td><td>A source code whose meaning differs by country</td></tr>
+ <tr><td>2</td><td>A payment term with a plausible but unapproved target equivalent</td></tr>
+ <tr><td>3</td><td>A status rule with blank values</td></tr>
+ <tr><td>4</td><td>Three confirmed examples but no population rule</td></tr>
+ <tr><td>5</td><td>Two SMEs who give conflicting answers</td></tr>
+ </tbody></table></div>
+ <h3>For each question, work through all ten</h3>
+ <ol class="framework-checks">
+   <li>Prepare the evidence and affected population before contacting the SME.</li>
+   <li>Write the opening neutral question.</li>
+   <li>Identify at least two likely scope or edge-case follow-ups.</li>
+   <li>Separate business meaning from target implementation.</li>
+   <li>Identify what would constitute explicit approval.</li>
+   <li>Write the implementable decision if enough evidence is supplied.</li>
+   <li>Refuse to complete the rule if material scope remains unanswered.</li>
+   <li>Define the population test that will validate the decision.</li>
+   <li>State where the decision should be recorded.</li>
+   <li>Write the confirmation message back to the SME.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">How this is judged</div><p>You score for reducing ambiguity and for preserving unresolved scope. You do not score for forcing every scenario to a completed mapping. At least two of these five should end without a finished rule, and saying so is the skill.</p></div></div>
+ <p class="lead">Pick the two you find hardest and work them through in full below.</p>
+ <textarea id="reflection" placeholder="QUESTION 1 - evidence I would prepare...&#10;Opening question...&#10;Follow-ups...&#10;Decision or unresolved..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_SME-Conversation-Planner.docx</strong><p class="small">Evidence, opening question, follow-ups, approval test and confirmation, on one page per decision.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_SME-Conversation-Planner.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/meaning|represent|what .*mean/i, strength:"Your opening question asks for business meaning rather than target mapping.", gap:"Make at least one opening question ask what the source value means, before anything about target treatment." },
+   { test:/country|entity|context|scope|all of them|apply to/i, strength:"You tested scope across a real dimension rather than assuming one rule covers the population.", gap:"Name a scope dimension you would test: country, legal entity, source system, status or effective date." },
+   { test:/blank|null|unknown|empty/i, strength:"You addressed blank or unknown values explicitly rather than leaving them to the predicate.", gap:"Say how blank or unknown values should be treated in at least one of your two questions." },
+   { test:/unresolved|cannot|not enough|insufficient|remain open|outside ready/i, strength:"You left at least one decision genuinely unresolved instead of forcing a mapping.", gap:"At least one of these five should end without a complete rule. Say which, and what is still missing." },
+   { test:/approv|authoris|authoriz|owner|record|register/i, strength:"You identified what approval looks like and where the decision would be recorded.", gap:"State what would count as explicit approval, and where the decision record would live." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>The code that differs by country.</strong> Before contacting anyone I would produce the distribution of the code by country and legal entity, so the conversation covers only combinations that exist. Opening question: what does this code represent in the current business process? Follow-ups: does that meaning hold in every country where it appears, and does record status change the treatment? This one can produce a scoped rule for the dominant context and an explicitly unresolved population for the others. Approval means a named business owner confirming the target treatment per context, recorded with the context in the mapping key rather than flattened into one row. Validation is a population test grouped by context, checking the approved scope covers every value returned.</div>
+ <div class="quote"><strong>The two conflicting SMEs.</strong> This one should not produce a rule at all, and that is the correct outcome. I would record both stated meanings without choosing between them, then ask which policy, configuration or master-data ownership is authoritative for the field, which system drives downstream behaviour, and who is authorised to approve the target treatment. The affected records stay outside Ready status while the ownership question is open. The confirmation message back would state the conflict plainly, name the evidence each position rests on, and ask the owner rather than the participants to resolve it.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The marker of a strong answer here is the refusal: at least one question left open, with the gap named precisely rather than apologised for. That is a harder thing to write than a mapping.":"Check whether you completed all five. If every scenario produced a finished rule, at least one of them was finished by you rather than by the business."}</div>`
+},
+{
+ id:"b21",nav:"SME situations",title:"Consultant situations \u2013 Five moments in the conversation",type:"situations",
+ html:`<p class="lead">Five points where the conversation could go either way. In each one the easy move is available and costs something later.</p>`,
+ items: smeSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Answer Behind the Answer", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/lesson2-fromfield-farah.mp3",
+   reflection:"When did you last accept an answer because it was plausible, rather than because you knew the condition that made it true?"
+ })}</div>`
+},
+{
+ id:"b22",nav:"Quality checklist",title:"The SME question quality checklist",type:"content",
+ html:`<p class="lead">Twelve checks, run before the conversation and again before the decision is recorded.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Check</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Prepared</td><td>Have I checked existing evidence and decisions first?</td></tr>
+ <tr><td>Population</td><td>Can I state how many records and which context are affected?</td></tr>
+ <tr><td>Neutral</td><td>Have I avoided suggesting my preferred answer?</td></tr>
+ <tr><td>Meaning</td><td>Do I understand what the source value means?</td></tr>
+ <tr><td>Condition</td><td>Can the rule be expressed as a deterministic condition?</td></tr>
+ <tr><td>Scope</td><td>Have I tested country, entity, system, status and date dimensions?</td></tr>
+ <tr><td>Exceptions</td><td>Have I asked when the rule does not apply?</td></tr>
+ <tr><td>Nulls</td><td>Have blank and unknown values been addressed where relevant?</td></tr>
+ <tr><td>Target</td><td>Is the target treatment exact rather than approximate?</td></tr>
+ <tr><td>Authority</td><td>Is the person authorised to make or approve the decision?</td></tr>
+ <tr><td>Record</td><td>Will the decision survive beyond the meeting or chat?</td></tr>
+ <tr><td>Test</td><td>Can I prove the implemented rule against the population?</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_SME-Confirmation-Template.docx</strong><p class="small">The play-it-back pattern with the twelve checks alongside, for the last two minutes of the call.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_SME-Confirmation-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b23",nav:"Reflection",title:"Reflection \u2013 Asking questions, or outsourcing analysis?",type:"reflection",
+ html:`<p class="lead">Think about your next SME conversation, or your last one. What could you determine from the data and the migration evidence before consuming that person's time? What part genuinely requires business knowledge or authority?</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The best SME question is usually the one left over after the consultant has already done the analytical work. That is also why it tends to be short, and why the SME answers it quickly.</p></div></div>
+ <textarea id="reflection" placeholder="The conversation I am thinking about..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/distribution|profile|count|population|data (shows|says)|evidence/i, strength:"You identified analysis you could complete yourself from the evidence first.", gap:"Name one specific thing you could establish from the data before asking, rather than asking about it." },
+   { test:/authority|approve|owner|decide|business (knowledge|rule|meaning)/i, strength:"You separated out the part that genuinely needs business authority.", gap:"Name the part of your question that only a business person can answer, and say why." },
+   { test:/shorter|one question|narrow|reduce|specific/i, strength:"You noticed how much shorter the remaining question becomes.", gap:"Consider how much shorter your question would be once the analysis is already done." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Last time I sent the SME the full exception list and asked how to treat it. Almost everything in that list I could have settled myself: the distribution by country, which values already had approved mappings, which were whitespace variants covered by an existing rule, and which records were inactive. What actually needed her was one thing: whether a single source code carried two different business meanings in two countries. If I had done the analysis first the message would have been three sentences instead of a spreadsheet, and I suspect I would have had an answer the same day rather than the following week.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The useful test is length. When the analysis is genuinely done first, the remaining question is almost always short, and short questions get answered fast.":"Try rewriting your last SME message as a single question, assuming all the analysis was already complete. What is left is the question you should have asked."}</div>`
+},
+{
+ id:"b24",nav:"Summary",title:"Summary \u2013 Leave with an implementable decision",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Prepare the evidence before asking the SME anything.</li>
+   <li>Reduce row-level noise into genuine business decisions.</li>
+   <li>Ask about business meaning before target mapping.</li>
+   <li>Do not lead the SME with a plausible answer.</li>
+   <li>Treat examples as examples until the population rule is established.</li>
+   <li>Turn business language into deterministic conditions.</li>
+   <li>Ask when the rule does not apply, not whether exceptions exist.</li>
+   <li>Test NULL, blank and unknown behaviour explicitly.</li>
+   <li>Check whether the rule changes by country, entity, system, status or time.</li>
+   <li>Protect SMEs from technical issues the migration team should solve.</li>
+   <li>Listen for qualifiers: usually, probably, normally.</li>
+   <li>Test absolute statements such as \u201calways\u201d against the data, quietly.</li>
+   <li>Resolve authority when SMEs disagree, rather than picking a side.</li>
+   <li>Separate current-state meaning from future-state business change.</li>
+   <li>Play the rule back in implementable language before the call ends.</li>
+   <li>Record important decisions with scope, approver and version.</li>
+   <li>Test the approved decision against the full governed population.</li>
+   <li>Preserve unresolved scope rather than inventing the missing answer.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A useful SME answer is not merely something you can type into a mapping table. It is a business decision whose meaning, scope, exceptions and authority are clear enough that the migration team can implement it and prove it was applied to the right records.</div>`
+},
+{
+ id:"b25",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Getting useful answers from SMEs.</strong></p>
+ <p>You can now prepare for and conduct a focused conversation that produces an implementable migration decision: presenting evidence without leading, asking precise questions, exposing scope and edge cases, separating business rules from examples, testing whether an answer applies to the full population, and recording the decision so another consultant or developer can implement and validate it.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Running effective data workshops</strong></p>
+ <p>You will move from one-to-one decision conversations to multi-person sessions, where evidence, competing viewpoints, unresolved scope and real-time decisions all have to be controlled without the workshop becoming a spreadsheet-reading exercise.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time an SME gives you a confident answer in under a minute.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 2: Getting useful answers from SMEs",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Turning a business conversation into a decision you can implement and prove",
+  storageKey: "tp_dmc4_lesson2_v1",
+  lessonId: "dmc4-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

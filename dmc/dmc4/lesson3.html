@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Running effective data workshops</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner - the shared kit has no built-in
+   styling for this, so every lesson using TPKit.fromField needs
+   its own scoped copy until the clip is recorded, at which point
+   this block and the wrapper markup around the fromField call
+   both come back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 4 - LESSON 3 - "Running effective data workshops".
+   Built as a meeting-like lesson per the manuscript's own
+   authoring notes: a decision board, a running clock through the
+   45-minute design, and repeated learner choices about whether to
+   probe, park, decide, escalate or test.
+
+   Source: DMC4_Lesson3_Running_Effective_Data_Workshops_v3.docx.
+
+   moduleTitle: "Communication & Professional Practice" per the
+   alignment doc's module-title table, read directly this session,
+   not the manuscript's own header.
+
+   Bramwell facts used: the opening failed workshop uses the
+   fixed-asset exception population (14,380 active assets, 126
+   depreciation-category exceptions, FA-009871 at UK01 with DEP-07
+   unresolved - no target category invented anywhere). The
+   decision-board and simulation material uses the customer set:
+   18 German CustomerGroup 99 records with no approved final
+   mapping; 61 STD records with no approved treatment recorded; 29
+   trailing-space STANDARD records covered by the established
+   controlled normalisation rule from DMC2; payment term 45E with
+   no approved target equivalent and NET30 an incorrect historical
+   fallback rather than an approved mapping; 214 payment-term
+   exceptions; the 7 observed missing delivery addresses, which
+   appear here only as the technical item that gets parked away
+   from business discussion.
+
+   GOV appears in section 11 as a rare CustomerGroup value with
+   six records - used exactly as the manuscript does, to make the
+   point that its existence elsewhere does NOT prove anything
+   about the 18 value-99 records.
+
+   Nothing here approves CustomerGroup 99, STD or 45E. Section
+   32's simulated workshop is synthetic training material built
+   from the established evidence.
+
+   Persona: Marcus, Data Migration Consultant, Logistics ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process), designed on
+   paper before any option text was written: b1=0, b9=2, b22 items
+   A-E = 3,1,0,2,3. Full sequence 0,2,3,1,0,2,3 - no run of three,
+   no position above 29 percent of the seven.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3. None built yet.
+============================================================== */
+
+const workshopTraps = [
+ { title:"Trap 1: somebody gives the convenient answer",
+   short:"A qualifier slides past and becomes a recorded decision.",
+   detail:"Regional SME: 99 is basically STANDARD. Consultant: does \u201cbasically\u201d mean all 18 records should receive the same business treatment? SME: I think so. Consultant: what would make one of these records an exception? SME: if it was a government account. Consultant: do we have an authoritative field or rule that identifies that? The consultant never rejected the answer. They exposed the qualifier, asked for the exception condition, and moved the conversation toward something implementable.",
+   ask:"Which word in that first answer were you about to let through?" },
+ { title:"Trap 2: the technical rabbit hole",
+   short:"Implementation design starts before the rule it would implement exists.",
+   detail:"Developer: the reference join is currently keyed only on SourceValue. We could add LegalEntity and maybe Country, but then the cache component... Consultant: that is useful implementation context. Let us park the cache design. First we need to establish whether the business meaning actually differs by legal entity or country. Once that is confirmed, we can design the lookup grain. The move is to separate \u201cwhat rule is required?\u201d from \u201chow will we build it?\u201d. Both matter, in that order.",
+   ask:"Is the room designing a solution to a rule nobody has stated yet?" },
+ { title:"Trap 3: seniority substitutes for evidence",
+   short:"Direction arrives from the most senior voice, and the evidence question quietly closes.",
+   detail:"Senior manager: we have always treated 99 as STANDARD, let us just do that. Consultant: understood, I can record STANDARD as the proposed treatment. Before we activate it, I need to close the exception question we just identified and confirm the decision applies to the full 18-record German population. Who can authoritatively confirm that? You can accept direction while still making the evidence and approval boundary visible. Respect without surrender.",
+   ask:"Have you just been given a decision, or an instruction to stop asking?" },
+ { title:"Trap 4: the room wants to read the spreadsheet",
+   short:"Row-by-row review replaces population thinking, and feels rigorous while doing it.",
+   detail:"Someone asks to scroll through all 214 payment-term exceptions. The response: we can open individual rows when they test a rule, but reviewing 214 records one by one will not resolve the underlying treatments. Let us stay with the grouped decision patterns, then use the full population to validate what we agree. Rows support rules. They do not replace them, and forty minutes of scrolling produces a tired room and no decision.",
+   ask:"Will opening this row test the rule, or just demonstrate that the row exists?" }
+];
+
+const antiPatterns = [
+ "Read the spreadsheet row by row",
+ "Invite everybody",
+ "Start with thirty slides",
+ "Ask \u201cany thoughts?\u201d",
+ "Accept \u201cprobably\u201d",
+ "Force every item closed",
+ "Take private notes only",
+ "Treat attendance as approval"
+];
+const antiPatternCoaching = [
+ "<strong>Better:</strong> group the exceptions into decision patterns before the meeting. Rows are for testing a rule in the room, not for establishing one.",
+ "<strong>Better:</strong> invite decision and evidence roles. For every attendee, finish the sentence \u201cI need this person because...\u201d. If you cannot, consider removing them.",
+ "<strong>Better:</strong> start with the outcome and the evidence. If the first decision has not started by minute ten, the session has become a presentation.",
+ "<strong>Better:</strong> ask a precise decision question. \u201cAny thoughts?\u201d produces thoughts, which is not what the migration needs from these people.",
+ "<strong>Better:</strong> probe scope and exceptions. Probably is a signal, not an answer, and the SME will usually be glad to be asked the follow-up.",
+ "<strong>Better:</strong> control unresolved items. A workshop that correctly exposes an unresolved business decision is more valuable than one that manufactures agreement.",
+ "<strong>Better:</strong> capture the decision wording visibly. When people can see what is being recorded, vague agreement gets challenged before it becomes a bad mapping.",
+ "<strong>Better:</strong> record explicit authorised approval. Being in the room is not the same as approving, and six weeks later nobody will remember which it was."
+];
+
+const workshopSituations = [
+ { title:"A. Minute 12, and the evidence is still being explained",
+   question:"You planned to start decisions at minute ten. You are at twelve and still walking the room through profiling history. What do you do?",
+   options:[
+     {label:"Continue, since a room that does not understand the evidence cannot make a sound decision about it in any case.", correct:false, feedback:"The pre-read existed for this. Re-explaining it in the room converts a decision session into a presentation, which is the specific failure this design guards against."},
+     {label:"Ask the room whether they would prefer more context or to move on, so the group owns the choice about how the time is spent.", correct:false, feedback:"Groups asked this question almost always choose more context, because it is comfortable. Facilitation is your job, not theirs."},
+     {label:"Cut the remaining evidence, drop one decision item from the board, and give the remaining item the full time it needs.", correct:false, feedback:"Dropping an item may become necessary, but not yet and not silently. The first move is to stop presenting, not to shrink the agenda."},
+     {label:"Stop narrating, state the first decision question directly, and offer the detailed evidence for anyone who wants to inspect it afterwards.", correct:true, feedback:"Correct. The workshop should begin at the decision point. The detail stays available, it just stops consuming the one resource the room actually has."}
+   ]
+ },
+ { title:"B. Two SMEs contradict each other on the same code",
+   question:"SME A says 99 means STANDARD. SME B says that in Germany it was used for special accounts. How do you handle it?",
+   options:[
+     {label:"Ask the authorised business owner in the room to adjudicate, since they hold the decision rights for this field and the meeting needs to move.", correct:false, feedback:"Adjudicating a semantic conflict is not the same as deciding a treatment. The owner would be picking between two accounts of history without the evidence to do it."},
+     {label:"Decompose the disagreement: same period, same legal entity, same source system, all records or a subset, which process uses the code, where the rule is maintained.", correct:true, feedback:"Correct. Do not ask who is right. Conflicting answers usually reveal a missing mapping dimension, a historical change or an ownership problem, and each of those is useful."},
+     {label:"Record both positions in the minutes and continue with the other decision items, returning to this one only if time allows at the end.", correct:false, feedback:"Deferring loses the one moment when both people are present and can be asked the decomposing questions directly."},
+     {label:"Test both claims against the data during the meeting and let the distribution settle which of the two accounts is correct.", correct:false, feedback:"The distribution shows what the data contains, not what the business intended. It can test a stated condition, but it cannot arbitrate meaning."}
+   ]
+ },
+ { title:"C. The target configuration does not exist",
+   question:"Halfway through, the group discovers that the target configuration needed for the proposed treatment has not been built. What now?",
+   options:[
+     {label:"State the new dependency, decide whether the original decision can still complete, and record a conditional decision or an unresolved item with the configuration question assigned to its owner.", correct:true, feedback:"Correct. The one thing not to do is improvise a substitute target value to finish the agenda. The dependency is real and belongs on the record, not in a workaround."},
+     {label:"Select the closest available target value as an interim treatment, flagging it clearly so it can be corrected once the configuration exists.", correct:false, feedback:"An interim target value is a real value in a real load. This is precisely how NET30 became an incorrect fallback rather than a decision anybody made."},
+     {label:"End the workshop early, since the decision the session was convened to make can no longer be completed as originally planned.", correct:false, feedback:"Much of the decision may still be completable, and the room is assembled. Ending wastes the scope that can still be closed today."},
+     {label:"Continue as though the configuration exists and raise the gap separately with the target team after the session finishes.", correct:false, feedback:"That records a decision whose precondition is known to be missing, which is worse than recording no decision at all."}
+   ]
+ },
+ { title:"D. \u201cJust map it and move on\u201d",
+   question:"A senior participant is losing patience and wants the mapping settled now. What is the right response?",
+   options:[
+     {label:"Explain that migration mapping decisions require formal approval and cannot be settled inside a workshop of this kind.", correct:false, feedback:"This is both procedurally shaky and needlessly confrontational. Workshops can absolutely produce approved decisions when the authority and the evidence are both present."},
+     {label:"Agree, record the mapping, and address the outstanding exception question separately with the migration team afterwards.", correct:false, feedback:"Once it is recorded as a mapping it is a decision. The exception question then has to overturn something rather than inform it."},
+     {label:"Record it as the proposed treatment, then say what has to close before it can be activated and ask who can authoritatively confirm the scope.", correct:true, feedback:"Correct. You accept the direction and keep the boundary visible. Proposed is not approved, and naming who confirms it turns impatience into a next step."},
+     {label:"Ask the Data Migration Lead to intervene, since pressure to shortcut an approval boundary is a governance matter rather than a facilitation one.", correct:false, feedback:"Escalating a moment you can handle yourself in one sentence costs you standing in the room, and the Lead will ask why you did not just say it."}
+   ]
+ },
+ { title:"E. Five minutes left, one decision unresolved",
+   question:"DEC-01 will not close today. How do you use the last five minutes?",
+   options:[
+     {label:"Push for a provisional position so the item can be recorded as decided, with a note that it may be revisited if evidence emerges.", correct:false, feedback:"Forcing green is the failure mode this entire lesson is about. A provisional position recorded as a decision will be implemented as one."},
+     {label:"Read back the approved decisions, then name the unresolved item, its owner, the evidence gap, the date and the fact that the records stay outside Ready status.", correct:false, feedback:"This is nearly right and it is the order that lets it down: the unresolved item is the thing most likely to be missed, so it should not be read back last with the clock running out."},
+     {label:"Extend the meeting by ten minutes, since leaving a decision open means the session has not achieved what it was convened to do.", correct:false, feedback:"An unresolved item, properly controlled, is a legitimate output. Overrunning to manufacture closure trades a good outcome for a worse one plus resentment."},
+     {label:"Read back the unresolved item first with its owner, evidence gap and date, then the approved decisions, the populations outside Ready status and where the record will be published.", correct:true, feedback:"Correct. An unresolved item is a valid output when it is controlled: named owner, named gap, named date, and an explicit statement that no default mapping will be implemented meanwhile."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"90 wasted minutes",title:"The workshop that feels productive but achieves nothing",type:"mcq",
+ _correctIndex:0,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Nine people spend 90 minutes reviewing a spreadsheet of Bramwell fixed-asset exceptions: 126 depreciation-category exceptions across 14,380 active assets. There is lively discussion about legacy depreciation categories. Someone shares their screen. Two side issues are discovered. The meeting finishes five minutes late.</p>
+ </div>
+ <p>Afterwards, you have:</p>
+ <ul class="framework-checks">
+   <li>no approved treatment for legacy depreciation category DEP-07</li>
+   <li>no confirmed treatment for the wider 126-exception population</li>
+   <li>three new questions</li>
+   <li>six pages of notes</li>
+   <li>no clear owners</li>
+   <li>no decision dates</li>
+ </ul>
+ <p>FA-009871 at UK01, the asset that prompted the meeting, is exactly where it was this morning.</p>
+ <h3>What went wrong?</h3>`,
+ options:[
+   {label:"The workshop had no defined output, so discussion could not converge on anything. A busy workshop is not an effective one; the test is what controlled migration output exists when it ends.", correct:true, feedback:"Correct. If you cannot state what should exist at the end of the workshop, you are not ready to invite people. Everything else in this lesson follows from that one discipline."},
+   {label:"Ninety minutes is too long for a data workshop, and the length itself allowed the discussion to spread beyond what the group needed to settle.", correct:false, feedback:"Length is a symptom. A well-designed 45-minute session works because of what it is trying to produce, not because of the number on the calendar invitation."},
+   {label:"Nine attendees is too many for a decision session, and the group size prevented any individual from taking responsibility for an outcome.", correct:false, feedback:"Attendance matters and is covered shortly, but three people with no defined output would have produced the same six pages of notes."},
+   {label:"The evidence was presented as a spreadsheet rather than as grouped decision patterns, which made the exceptions hard for attendees to reason about.", correct:false, feedback:"A real problem, and also downstream of the first one. You cannot group evidence into decision patterns until you know which decisions the session exists to make."}
+ ]
+},
+{
+ id:"b2",nav:"Output, not agenda",title:"Start with the output, not the agenda",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak purpose</th><th>Strong workshop outcome</th></tr></thead><tbody>
+ <tr><td>Review customer data issues</td><td>Resolve or explicitly assign the remaining customer payment-term and CustomerGroup decisions required for the next migration release.</td></tr>
+ <tr><td>Discuss supplier mapping</td><td>Agree the business meaning, scope and target treatment for five unresolved supplier reference values.</td></tr>
+ <tr><td>Look at data quality</td><td>Confirm ownership and treatment of the exception populations that cannot be resolved by existing migration rules.</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page principle</div><p>If you cannot state what should exist at the end of the workshop, you are not ready to invite people. The left-hand column is not a weaker version of the right. It is a different activity that happens to use the same hour.</p></div></div>`
+},
+{
+ id:"b3",nav:"Do you need one?",title:"Decide whether you need a workshop at all",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Situation</th><th>Best route</th></tr></thead><tbody>
+ <tr><td>One SME, one clear decision</td><td>A focused message or call may be enough</td></tr>
+ <tr><td>Several functions own parts of the rule</td><td>Workshop may be appropriate</td></tr>
+ <tr><td>Two SMEs disagree on business meaning</td><td>Workshop with the authoritative owner can help</td></tr>
+ <tr><td>Technical defect already proven</td><td>Developer session, not a business workshop</td></tr>
+ <tr><td>Large exception file, only three repeated patterns</td><td>Analyse first, then workshop the three decisions</td></tr>
+ <tr><td>No evidence prepared</td><td>Do the analysis before booking anything</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Booking the workshop is progress. It is a calendar entry, and it can quietly become a way of doing analysis in front of an audience. The room should resolve questions that require people, not perform work the consultant could have done beforehand.</p></div>`
+},
+{
+ id:"b4",nav:"Invite roles",title:"Invite roles, not spectators",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Role</th><th>Why they are there</th></tr></thead><tbody>
+ <tr><td>Decision owner or authorised SME</td><td>Can approve business treatment</td></tr>
+ <tr><td>Operational SME</td><td>Explains how source values and processes actually work</td></tr>
+ <tr><td>Data Migration Consultant</td><td>Presents evidence, tests scope, records implementable decisions</td></tr>
+ <tr><td>Technical consultant or developer</td><td>Only when implementation constraints or evidence need technical input</td></tr>
+ <tr><td>Data Migration Lead</td><td>When material scope, readiness or cross-functional escalation warrants it</td></tr>
+ <tr><td>Observer</td><td>Only if there is a real reason</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The attendance test</strong><br>For every attendee, finish the sentence: \u201cI need this person because...\u201d. If you cannot finish it, consider removing them. Nobody has ever complained about being uninvited from a meeting.</div>`
+},
+{
+ id:"b5",nav:"Pre-read",title:"Send the evidence before the meeting",type:"content",
+ html:`<p class="lead">Do not reveal a 200-row workbook for the first time on screen. Send, in advance:</p>
+ <ul class="framework-checks">
+   <li>a one-page purpose and the decisions required</li>
+   <li>an exception summary by pattern, not a raw row dump</li>
+   <li>representative examples</li>
+   <li>current approved mappings and rules</li>
+   <li>known unknowns</li>
+   <li>the questions requiring business authority</li>
+   <li>a link to the detailed evidence for anyone who wants to inspect it</li>
+ </ul>
+ <div class="principle"><strong>The pre-read rule</strong><br>The workshop should begin at the decision point, not with twenty minutes explaining what everybody could have read beforehand.</div>`
+},
+{
+ id:"b6",nav:"45-minute design",title:"A useful 45-minute workshop design",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><caption>The clock</caption><thead><tr><th>Time</th><th>Activity</th><th>Output</th></tr></thead><tbody>
+ <tr><td>0 to 5</td><td>Purpose, scope, decision authority</td><td>Everyone knows what must be achieved</td></tr>
+ <tr><td>5 to 10</td><td>Evidence summary and what is already known</td><td>Shared factual baseline</td></tr>
+ <tr><td>10 to 30</td><td>Decision items, one at a time</td><td>Decision, unresolved or action per item</td></tr>
+ <tr><td>30 to 37</td><td>Edge cases and population-scope test</td><td>Rules made implementable</td></tr>
+ <tr><td>37 to 42</td><td>Read back decisions and owners</td><td>Misunderstandings exposed</td></tr>
+ <tr><td>42 to 45</td><td>Confirm next evidence, actions and dates</td><td>Controlled close</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Timebox the evidence</strong><br>If the first decision has not started by minute ten, the session is probably becoming a presentation.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Data-Workshop-Planner.docx</strong><p class="small">Outcome, attendees, evidence pack and the six-block clock on one page.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Data-Workshop-Planner.docx" download>Download</a></div>`
+},
+{
+ id:"b7",nav:"Decision board",title:"Build a decision board, not a slide deck",type:"content",
+ html:`<p class="lead">Four items, visible to the room, updated live. This is the artefact the workshop exists to fill in.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>ID</th><th>Question</th><th>Population</th><th>Status</th><th>Decision or next action</th></tr></thead><tbody>
+ <tr><td>DEC-01</td><td>What target treatment represents CustomerGroup 99?</td><td>18 German customers</td><td>OPEN</td><td>Business decision required</td></tr>
+ <tr><td>DEC-02</td><td>What target treatment represents 45E?</td><td>Affected customers using 45E</td><td>OPEN</td><td>Finance meaning and treatment required</td></tr>
+ <tr><td>DEC-03</td><td>How should trailing-space STANDARD be treated?</td><td>29 records</td><td>CONTROLLED</td><td>Existing normalisation rule</td></tr>
+ <tr><td>DEC-04</td><td>Why are 7 delivery addresses missing?</td><td>7 observed key accounts</td><td>TECHNICAL</td><td>Not a business decision; handled by the migration team</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>DEC-03 and DEC-04 earn their place on the board precisely because they are not for this room. Showing an item and immediately explaining why it is already handled stops it being raised three times by three different people.</p></div></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Live-Decision-Board.xlsx</strong><p class="small">The five-column board, shaped for sharing on screen while the room watches the wording change.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Live-Decision-Board.xlsx" download>Download</a></div>`
+},
+{
+ id:"b8",nav:"Open and present",title:"Open the meeting like a consultant, present evidence in 60 seconds",type:"content",
+ html:`<div class="quote">\u201cThanks. The purpose today is to resolve two customer-data decisions needed before the next release: CustomerGroup 99 and payment term 45E. I will show the evidence for each, confirm the business meaning and scope, and record either an approved treatment or an explicit unresolved action. We are not reviewing every customer exception today. Technical defects will be parked with the migration team unless they affect a business decision.\u201d</div>
+ <p class="small">Sixty seconds that tell the room what success looks like and, just as usefully, what the meeting is not for.</p>
+ <div class="visual-card"><div class="visual-title">Then the evidence, for CustomerGroup 99</div>
+ <ul class="framework-checks">
+   <li>18 records</li>
+   <li>all currently identified in the German context</li>
+   <li>no approved final target mapping</li>
+   <li>source value is 99</li>
+   <li>the migration process therefore cannot treat these records as ready on an approved mapping basis</li>
+ </ul>
+ <p>Then ask: \u201cbefore we discuss the target value, what does 99 mean in the source business process for these German customers?\u201d</p>
+ </div>
+ <p>Do not narrate the entire profiling history unless it becomes relevant. It almost never becomes relevant.</p>`
+},
+{
+ id:"b9",nav:"\u201cBasically STANDARD\u201d",title:"Minute 14 \u2013 The convenient answer arrives",type:"mcq",
+ _correctIndex:2,
+ html:`<p class="lead">You have asked what 99 means. A regional SME answers quickly.</p>
+ <div class="quote">\u201c99 is basically STANDARD.\u201d</div>
+ <p>The authorised business owner is nodding. The Data Migration Lead looks relieved. It is minute 14 and you have another decision item to reach.</p>
+ <h3>What is your next question?</h3>`,
+ options:[
+   {label:"\u201cCan I record that as the approved treatment for all 18 records?\u201d", correct:false, feedback:"This converts a qualifier straight into an approval and invites a yes from a room that wants to move on. \u201cBasically\u201d has not been examined at all."},
+   {label:"\u201cAre you confident about that, or would you like to check before we record it?\u201d", correct:false, feedback:"Asking someone to rate their own confidence puts them on the spot socially without producing anything implementable. Most people will say they are confident."},
+   {label:"\u201cDoes \u2018basically\u2019 mean all 18 records should receive the same business treatment?\u201d", correct:true, feedback:"Correct. You have not rejected the answer, which matters in a room. You have picked up the qualifier and turned it into a scope question, which is the next thing that has to be true."},
+   {label:"\u201cThe distribution shows GOV as a separate source value, so should we assume 99 excludes government accounts?\u201d", correct:false, feedback:"This offers the SME your inference to agree with, and the inference is unsound: GOV existing elsewhere does not prove no government account sits inside the 18."}
+ ]
+},
+{
+ id:"b10",nav:"Test, do not win",title:"Use the data to test statements, and capture the decision live",type:"content",
+ html:`<p class="lead">The SME says an exception would be a government account. You know GOV exists as a rare CustomerGroup value with six records elsewhere in the data. That is interesting and it proves nothing about the 18.</p>
+ <div class="quote">\u201cWe do have GOV as a separate source value elsewhere, but I will not assume that rules out government accounts within 99. I will test the 18 records against the attributes you identify and bring back any exceptions before the mapping is activated.\u201d</div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Reaching for a convenient piece of evidence to close a discussion feels like rigour, and it is the opposite. Use evidence to test the rule, not to win the room.</p></div>
+ <h3>Capture it where everyone can see</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Live record</th></tr></thead><tbody>
+ <tr><td>Decision</td><td>Provisional business meaning recorded; target treatment not yet approved</td></tr>
+ <tr><td>Scope</td><td>18 German records currently using source 99</td></tr>
+ <tr><td>Exception condition</td><td>Government-account possibility to test</td></tr>
+ <tr><td>Owner</td><td>Authorised business owner to confirm treatment</td></tr>
+ <tr><td>Migration action</td><td>Run attribute test before implementation</td></tr>
+ <tr><td>Status</td><td>OPEN, pending evidence</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Visible capture changes behaviour</strong><br>When people can see the wording being recorded, vague agreement is far more likely to be challenged before it becomes a bad mapping.</div>`
+},
+{
+ id:"b11",nav:"The four traps",title:"The four things that will happen in the room",type:"expandableList",
+ layout:"loop",
+ html:`<p class="lead">Every data workshop contains some of these. Explore each one, including the move that keeps the session useful, and the question underneath that tells you it is happening.</p>`,
+ items: workshopTraps,
+ takeawayHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>None of these four is handled by being firmer. Each is handled by asking one more specific question than the room expected, which is why they work even when the person on the other side outranks you.</p></div></div>`
+},
+{
+ id:"b12",nav:"Parking",title:"Parking is not ignoring",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Parked item</th><th>Owner</th><th>Return condition</th></tr></thead><tbody>
+ <tr><td>Reference-table technical design</td><td>Migration developer</td><td>After mapping grain is confirmed</td></tr>
+ <tr><td>Address transformation defect</td><td>Migration team</td><td>Separate defect and recovery process</td></tr>
+ <tr><td>Historical inactive-customer scope</td><td>Data Migration Lead or scope owner</td><td>If it changes the decision population</td></tr>
+ <tr><td>Target configuration question</td><td>Relevant target owner</td><td>Before final mapping approval if required</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Writing \u201cparking lot\u201d on a whiteboard counts as handling it. It does not. A real parking lot has an owner per item and a condition that brings it back, otherwise it is a polite way of dropping things.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Parking-Lot.xlsx</strong><p class="small">Item, owner, return condition and whether any live decision depends on it.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Parking-Lot.xlsx" download>Download</a></div>`
+},
+{
+ id:"b13",nav:"Disagreement",title:"Manage disagreement by locating the disagreement",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">In the room</div><p>SME A: 99 means STANDARD.</p><p>SME B: No, in Germany it was used for special accounts.</p></div>
+ <p>Do not ask who is right. Start decomposing.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>What it tests</th></tr></thead><tbody>
+ <tr><td>Are you describing the same period?</td><td>Historical change</td></tr>
+ <tr><td>The same legal entity?</td><td>Context</td></tr>
+ <tr><td>The same source system?</td><td>System semantics</td></tr>
+ <tr><td>All records or a subset?</td><td>Population</td></tr>
+ <tr><td>Which operational process uses the code?</td><td>Authority and evidence</td></tr>
+ <tr><td>Where is the rule maintained?</td><td>Authoritative source</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Disagreement is data</strong><br>Conflicting answers usually reveal a missing mapping dimension, a historical change or an ownership problem. Two people who disagree have just told you your one-column cross-reference is the wrong shape.</div>`
+},
+{
+ id:"b14",nav:"When it cannot decide",title:"When the workshop cannot decide",type:"content",
+ html:`<p class="lead">An unresolved item is a valid output, provided it is controlled.</p>
+ <div class="callout misconception"><div class="callout-label">Bad close</div><p>\u201cWe need to investigate 99 further.\u201d</p></div>
+ <div class="quote">\u201cDEC-01 remains unresolved. The Regional Customer Service Manager will confirm whether 99 has multiple German business meanings and provide the authoritative rule by Thursday. The 18 records remain outside Ready status. The migration team will not implement a default mapping.\u201d</div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Do not force green</div><p>A workshop that correctly exposes an unresolved business decision is worth more than one that manufactures agreement. The second kind produces a clean status report and a defect eight weeks later.</p></div></div>`
+},
+{
+ id:"b15",nav:"45E and anchoring",title:"Move to 45E without carrying assumptions across",type:"content",
+ html:`<div class="visual-card"><div class="visual-title">Minute 26</div>
+ <p>Consultant: What commercial behaviour does 45E represent in the source?</p>
+ <p>Finance SME: It is 45 days.</p>
+ <p>Consultant: Forty-five days from invoice date, or an end-of-month calculation?</p>
+ <p>Finance SME: I need to check that.</p>
+ </div>
+ <p>That is the correct outcome for this item. Do not choose a plausible target term to fill the gap. Record the precise unanswered business-semantic question instead.</p>
+ <div class="principle"><strong>Keep target options from anchoring the answer</strong><br>The target contains several plausible payment terms. Showing them too early turns discovery into multiple choice. Establish source business meaning, then required target behaviour, and only then compare available target configuration.</div>
+ <p class="small">NET30 remains an incorrect historical fallback in the Bramwell case, not an approved mapping for 45E.</p>`
+},
+{
+ id:"b16",nav:"Exceptions and read-back",title:"Ask for exceptions, then read the rule back",type:"content",
+ html:`<p class="lead">After a rule appears settled, deliberately ask the room for the conditions that would break it.</p>
+ <ul class="framework-checks">
+   <li>When would this not be true?</li>
+   <li>Which records would you expect to behave differently?</li>
+   <li>Does another country or legal entity use the same code differently?</li>
+   <li>Has the meaning changed historically?</li>
+   <li>What happens when the source value is blank or unknown?</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">The anti-defect question</div><p>\u201cWhen does this rule not apply?\u201d is worth more than asking three times whether everyone agrees. Agreement questions gather nods. Exception questions gather information.</p></div></div>
+ <h3>Then read it back</h3>
+ <div class="quote">\u201cLet me read this back. We have not yet approved a target mapping for 45E. Finance will confirm the exact commercial calculation represented by 45E and whether it applies consistently to all customers using it. Until that is confirmed, those records remain unresolved and the migration will not apply a default. Is that an accurate record of where we are?\u201d</div>
+ <div class="principle"><strong>Silence is not approval</strong><br>Ask for explicit confirmation from the decision owner wherever approval is actually required.</div>`
+},
+{
+ id:"b17",nav:"Four kinds of output",title:"Distinguish decision, action, information and technical task",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Type</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Decision</td><td>Approved target treatment for a defined source population</td></tr>
+ <tr><td>Action</td><td>Finance to confirm the commercial calculation for 45E</td></tr>
+ <tr><td>Information</td><td>18 records currently use CustomerGroup 99</td></tr>
+ <tr><td>Technical task</td><td>Developer to change lookup grain after scope approval</td></tr>
+ <tr><td>Risk or unresolved</td><td>Records remain outside Ready status pending decision</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Common trap</div><p>Good notes capture everything that was said. Mixed together, actions masquerade as decisions and information gets mistaken for approval, which is how a week later somebody implements a mapping nobody approved.</p></div>
+ <h3>Controlling the room while you do it</h3>
+ <div class="visual-card"><div class="visual-title">The loudest voice</div><p>\u201cThat is helpful context. I want to hear from the person who owns this field operationally before we record the treatment. Maria, can you confirm how this value is used in the supplier process?\u201d</p><p class="small">The goal is not equal airtime. It is authoritative evidence and decisions.</p></div>`
+},
+{
+ id:"b18",nav:"Closing",title:"Close item by item, and mean the last five minutes",type:"content",
+ html:`<p class="lead">A 30-second read-back after each item prevents a 30-minute argument after the meeting.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Before moving on, confirm</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Status</td><td>Approved, unresolved or pending evidence</td></tr>
+ <tr><td>Exact wording</td><td>What rule or question is recorded</td></tr>
+ <tr><td>Scope</td><td>Which population and context it applies to</td></tr>
+ <tr><td>Exceptions</td><td>Known exclusions and edge cases</td></tr>
+ <tr><td>Owner</td><td>Who acts or approves</td></tr>
+ <tr><td>Date or dependency</td><td>When it is needed</td></tr>
+ <tr><td>Validation</td><td>How the migration team will test it</td></tr>
+ </tbody></table></div>
+ <h3>The last five minutes</h3>
+ <ol class="framework-checks">
+   <li>Read back approved decisions.</li>
+   <li>Read back unresolved items.</li>
+   <li>Confirm owners and dates.</li>
+   <li>State which populations remain outside Ready status.</li>
+   <li>Confirm technical actions separately.</li>
+   <li>Explain what the migration team will test next.</li>
+   <li>State where the decision and action record will be published.</li>
+ </ol>
+ <div class="principle"><strong>No surprise minutes</strong><br>Nobody should discover a week later that the meeting notes describe a decision differently from what they thought they agreed.</div>`
+},
+{
+ id:"b19",nav:"Output and testing",title:"The output pack, and what happens when testing contradicts it",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Artefact</th><th>Contents</th></tr></thead><tbody>
+ <tr><td>Decision register</td><td>Approved, provisional and unresolved decisions with scope and approver</td></tr>
+ <tr><td>Action register</td><td>Owner, action, due date, dependency</td></tr>
+ <tr><td>Evidence pack</td><td>Distributions, examples, affected keys, existing rules</td></tr>
+ <tr><td>Parking lot</td><td>Technical and out-of-scope items with owners</td></tr>
+ <tr><td>Population status</td><td>Ready, exception and pending-decision impact</td></tr>
+ <tr><td>Validation plan</td><td>How each approved rule will be tested</td></tr>
+ <tr><td>Concise summary</td><td>What changed because the workshop happened</td></tr>
+ </tbody></table></div>
+ <p class="small">These may be tabs in one workbook rather than seven files. The point is controlled output, not paperwork.</p>
+ <h3>Then test before implementation</h3>
+ <ul class="framework-checks">
+   <li>Does the agreed rule cover every affected context?</li>
+   <li>Do any records contradict the SME's stated condition?</li>
+   <li>Are blank and unknown values accounted for?</li>
+   <li>Does the proposed mapping create ambiguity or duplicate reference matches?</li>
+   <li>Are there records outside the agreed scope that the implementation would change?</li>
+ </ul>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">When testing contradicts the workshop</div><p>The SME said the rule applies to all records; your population test finds three with a different business characteristic. Do not silently exclude them. Return with evidence: the approved rule covers 15 of the 18 as expected, three have attribute X which the workshop identified as a possible exception, and those three are held unresolved pending confirmation.</p></div></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Post-Workshop-Validation-Plan.xlsx</strong><p class="small">One row per approved rule: the population it governs, the test that proves it, and what a failing result means.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Post-Workshop-Validation-Plan.xlsx" download>Download</a></div>`
+},
+{
+ id:"b20",nav:"Anti-patterns",title:"Workshop anti-patterns",type:"selectAll",
+ html:`<p class="lead">Eight habits that survive because they look like diligence. Explore each one to see the behaviour that replaces it.</p>`,
+ options: antiPatterns,
+ coaching: antiPatternCoaching,
+ hint:"Explore every anti-pattern before continuing.",
+ closingHtml:`<div class="principle"><strong>What they have in common</strong><br>Every one of these makes the meeting feel more thorough and the migration less decided. That is why they persist, and why nobody objects to them at the time.</div>`
+},
+{
+ id:"b21",nav:"Run the workshop",title:"Build it \u2013 Run the 45-minute customer-data workshop",type:"reflection",
+ html:`<p class="lead">You are facilitating. In the room: an authorised business owner, two regional SMEs, a migration developer and the Data Migration Lead.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><caption>Your evidence pack</caption><thead><tr><th>Item</th><th>Status</th></tr></thead><tbody>
+ <tr><td>18 German CustomerGroup 99 records</td><td>No approved final mapping</td></tr>
+ <tr><td>61 STD records</td><td>No approved treatment recorded</td></tr>
+ <tr><td>29 trailing-space STANDARD records</td><td>Covered by a controlled normalisation rule</td></tr>
+ <tr><td>Payment term 45E</td><td>No approved target equivalent</td></tr>
+ <tr><td>7 missing delivery addresses</td><td>Already identified as a technical migration issue</td></tr>
+ </tbody></table></div>
+ <h3>What happens during the 45 minutes</h3>
+ <ol class="framework-checks">
+   <li>A regional SME says 99 is \u201cbasically STANDARD\u201d.</li>
+   <li>Another SME says Germany used 99 differently for some accounts.</li>
+   <li>The developer begins discussing lookup-cache implementation.</li>
+   <li>A senior participant says to just map it and move on.</li>
+   <li>Finance says 45E is 45 days but cannot confirm the calculation.</li>
+   <li>Someone asks to review all 61 STD rows individually.</li>
+   <li>You reach the final five minutes with one decision still unresolved.</li>
+ </ol>
+ <h3>Produce these</h3>
+ <ol class="framework-checks">
+   <li>The workshop objective, in one sentence.</li>
+   <li>Your attendee list, with a reason for each.</li>
+   <li>The four-item decision board.</li>
+   <li>Your opening 60-second facilitation script.</li>
+   <li>Your next question after \u201cbasically STANDARD\u201d.</li>
+   <li>How you manage the conflicting German evidence.</li>
+   <li>How you park the developer's discussion without losing it.</li>
+   <li>Your response to the pressure to just map it.</li>
+   <li>The 45E outcome, without inventing a target mapping.</li>
+   <li>How you prevent row-by-row STD review while preserving the decision.</li>
+   <li>The final read-back: decisions, actions, unresolved populations.</li>
+   <li>The post-workshop population tests.</li>
+ </ol>
+ <p class="lead">Write your objective, your opening script and your final read-back below, then work through whichever of the seven moments you find hardest.</p>
+ <textarea id="reflection" placeholder="OBJECTIVE: ...&#10;&#10;OPENING SCRIPT: ...&#10;&#10;FINAL READ-BACK: ..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC4_Workshop-Decision-Register.xlsx</strong><p class="small">Decisions, actions, parked items and population status, as tabs in one controlled output.</p></div><a class="btn secondary" href="/assets/downloads/DMC4_Workshop-Decision-Register.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/objective|resolve|decide|approve|assign/i, strength:"Your objective states what should exist when the meeting ends, not what will be discussed.", gap:"Write the objective as an output: what decisions should exist at 45 minutes that do not exist now?" },
+   { test:/not (reviewing|for)|will be parked|out of scope|we are not/i, strength:"Your opening tells the room what the meeting is not for, which is half of what an opening does.", gap:"Say explicitly in your opening what the session will not cover, so the technical item does not consume it." },
+   { test:/unresolved|outside ready|no default|not approved|pending/i, strength:"You preserved at least one unresolved population rather than forcing closure.", gap:"At least one item should close unresolved. Name it, its owner, the evidence gap and the fact that no default will be implemented." },
+   { test:/park|owner|return|come back/i, strength:"You parked the technical discussion with an owner and a return condition rather than just deferring it.", gap:"Say who owns the parked technical item and what brings it back, rather than only that it is parked." },
+   { test:/test|validat|population|attribute|prove/i, strength:"You defined what happens after the workshop, which is where the decision gets proven.", gap:"State at least one population test you would run afterwards to prove an agreed rule was applied to the right records." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote"><strong>Objective.</strong> By the end of this session, either an approved target treatment or an explicitly owned unresolved action exists for CustomerGroup 99 and for payment term 45E, with the population scope of each stated.</div>
+ <div class="quote"><strong>Opening.</strong> Thank you all for coming. We are here to settle two customer-data decisions needed before the next release: CustomerGroup 99, affecting 18 German records, and payment term 45E. For each I will show the evidence, confirm the business meaning and the scope it applies to, and record either an approved treatment or an unresolved action with an owner. Two things we are not doing today. The trailing-space records are already covered by a controlled rule and need no decision. The seven missing delivery addresses are a migration defect and sit with my team, so I will park anything technical unless it changes a business decision in front of us.</div>
+ <div class="quote"><strong>Final read-back.</strong> One item stays open. DEC-01 is unresolved: the Regional Customer Service Manager will confirm by Thursday whether 99 carries more than one German business meaning, and provide the authoritative rule. The 18 records stay outside Ready status and no default mapping will be implemented meanwhile. DEC-02 is also unresolved: Finance will confirm whether 45E calculates from invoice date or month end. On the approved side, we confirmed the trailing-space treatment needs no further decision. The lookup-grain question is parked with the developer, returning once the mapping grain is confirmed. I will publish the decision and action record this afternoon, and I will run an attribute test across the 18 records so any exception is on the table before anything is activated.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"Two unresolved items and a parked technical question is the right shape for this evidence pack. A version of this answer that closed everything would have invented at least one mapping.":"Check your read-back against the evidence pack. If every item closed, at least one of them closed because you decided it rather than the business."}</div>`
+},
+{
+ id:"b22",nav:"In the room",title:"Consultant situations \u2013 Five moments in the room",type:"situations",
+ html:`<p class="lead">Five points in a live session where the clock, the room and your own instinct to be helpful all pull the same way, and the wrong way.</p>`,
+ items: workshopSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Workshop With One Decision", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/lesson3-fromfield-marcus.mp3",
+   reflection:"Think about your last recurring data meeting. How many decisions was it actually designed to produce?"
+ })}</div>`
+},
+{
+ id:"b23",nav:"Checklist",title:"The consultant workshop checklist",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Before</th><th>During</th><th>After</th></tr></thead><tbody>
+ <tr><td>Outcome defined</td><td>State purpose and boundaries</td><td>Publish the controlled decision and action record</td></tr>
+ <tr><td>Right attendees</td><td>Present evidence briefly</td><td>Test approved rules against the population</td></tr>
+ <tr><td>Evidence grouped</td><td>Ask neutral decision questions</td><td>Return contradictions to the decision owner</td></tr>
+ <tr><td>Existing decisions checked</td><td>Probe scope and exceptions</td><td>Update reference or rule version only after approval</td></tr>
+ <tr><td>Decision board prepared</td><td>Capture wording visibly</td><td>Link decisions to implementation and validation</td></tr>
+ <tr><td>Authority known</td><td>Park technical rabbit holes</td><td>Keep unresolved records controlled</td></tr>
+ </tbody></table></div>
+ <div class="visual-card"><div class="visual-title">The difference it makes</div>
+ <p><strong>A strong consultant</strong> keeps the session centred on business meaning and decision scope, does not let plausible mappings become approvals, uses distributions to reduce discussion, probes exceptions deliberately, separates technical tasks from business decisions, makes disagreement visible, preserves unresolved populations, captures wording live, and leaves with decisions that can be implemented and tested.</p>
+ <p><strong>A weak consultant</strong> gets through the agenda, records values without scope, lets seniority or convenience settle ambiguous mappings, spends time scrolling rows or discussing ETL design, and afterwards has to ask what the meeting actually decided.</p>
+ </div>`
+},
+{
+ id:"b24",nav:"Reflection",title:"Reflection \u2013 What are you there to control?",type:"reflection",
+ html:`<p class="lead">In a data workshop, are you primarily controlling the people, the agenda, the conversation, or the migration decision? Write a short answer, then name two facilitation behaviours that follow from it.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The strongest answers usually centre on controlling the path from evidence to a usable decision. People and agenda are managed in service of that, which is also why heavy-handed facilitation rarely helps: it controls the wrong thing.</p></div></div>
+ <textarea id="reflection" placeholder="What I am actually there to control is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/decision|evidence|output|outcome/i, strength:"You centred your answer on the decision path rather than on managing the room.", gap:"Say what the workshop is meant to produce, and let that define what you are controlling." },
+   { test:/behaviour|I would|I will|two things|first|second/i, strength:"You named concrete facilitation behaviours rather than a principle alone.", gap:"Name two specific things you would do differently in your next session as a result." },
+   { test:/people|agenda|time|room|voice/i, strength:"You addressed how people and agenda get managed in service of the decision.", gap:"Say how you would handle the room and the clock without those becoming the point of the meeting." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">What I control is the path from evidence to a decision somebody can implement and I can prove. Everything else is in service of that. Two behaviours follow. First, I stop narrating evidence at minute ten whether or not I have finished, because the pre-read exists and the decision does not. Second, when someone gives me a qualifier, I ask the scope question immediately rather than at the end, because by the end the room has moved on and the qualifier has quietly become an approval. Controlling the people is not the job and does not work anyway; the only real authority I have in the room is the evidence and the fact that I am the one writing down what we agreed.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"The second half is what makes it real: two behaviours specific enough that someone could watch your next workshop and tell whether you did them.":"Push for two concrete behaviours. \u201cStay focused on decisions\u201d is a value; \u201cask the scope question the moment a qualifier appears\u201d is something you can be held to."}</div>`
+},
+{
+ id:"b25",nav:"Summary",title:"Summary \u2013 Make the meeting produce migration value",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Define the workshop output before booking it.</li>
+   <li>Use workshops only for questions that genuinely require multiple people or authority.</li>
+   <li>Invite roles with a reason to be there.</li>
+   <li>Send evidence in advance and start at the decision point.</li>
+   <li>Use a live decision board, visible to the room.</li>
+   <li>Present evidence briefly and neutrally.</li>
+   <li>Probe qualifiers, exceptions and scope.</li>
+   <li>Use data to test statements rather than to win arguments.</li>
+   <li>Separate business-rule discussion from technical implementation.</li>
+   <li>Park out-of-scope items with owners and return conditions.</li>
+   <li>Treat disagreement as evidence of missing context or authority.</li>
+   <li>Allow unresolved decisions to remain unresolved, under control.</li>
+   <li>Ask what would make an agreed rule false.</li>
+   <li>Read back implementable wording before moving on.</li>
+   <li>Separate decisions, actions, information and technical tasks.</li>
+   <li>Control dominant voices by returning to authoritative ownership.</li>
+   <li>Do not review large exception populations row by row.</li>
+   <li>Close each item with status, scope, owner, timing and validation.</li>
+   <li>Use the final minutes to confirm what the meeting actually achieved.</li>
+   <li>Test workshop decisions against the full data population afterwards.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A successful data workshop is not one where everybody talked and the agenda was completed. It is one where evidence became controlled decisions, unresolved questions became owned actions, and the migration team left the room knowing exactly what it can implement and how it will prove it.</div>`
+},
+{
+ id:"b26",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Running effective data workshops.</strong></p>
+ <p>You can now prepare and run a focused data migration workshop that converts evidence and differing stakeholder knowledge into usable decisions, actions and controlled unresolved items: defining the outcome, inviting the right people, structuring the evidence, challenging vague answers, managing disagreement, preventing technical rabbit holes, and closing with decisions that can be implemented and tested.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Explaining defects, delays and bad news</strong></p>
+ <p>You will practise communicating problems without hiding them, exaggerating them, blaming people, or drowning stakeholders in technical detail, including what to say when the cause is still unknown.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you are about to book a meeting before doing the analysis.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 4",
+  moduleTitle: "Communication & Professional Practice",
+  lessonLabel: "Lesson 3: Running effective data workshops",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Turning a room full of evidence and opinion into decisions you can implement and prove",
+  storageKey: "tp_dmc4_lesson3_v1",
+  lessonId: "dmc4-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
