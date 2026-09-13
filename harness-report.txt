@@ -1,0 +1,188 @@
+
+========================================================================
+  TURNER PAGE ESTATE HARNESS
+  24 lessons read
+========================================================================
+
+A. CORRECT ANSWER TOO OBVIOUS  (96)
+------------------------------------------------------------------------
+  ! dmc1/lesson1 b1 "The mapping is “signed off”, but you still cannot build it" - correct option 304% of distractor average length
+  ! dmc1/lesson1 b1 "The mapping is “signed off”, but you still cannot build it" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson1 b1 "The mapping is “signed off”, but you still cannot build it" - correct option has 6 clauses, every distractor has 1
+  ! dmc1/lesson1 b6 "C11001" - correct option 153% of distractor average length
+  ! dmc1/lesson1 b12 "Situation 3: One reference value maps twice" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson2 b1 "The number has changed" - correct option 210% of distractor average length
+  ! dmc1/lesson2 b1 "The number has changed" - correct option has 4 clauses, every distractor has 1
+  ! dmc1/lesson2 b1 "The number has changed" - distractor uses an absolute ("never"), a common giveaway
+  ! dmc1/lesson2 b8 "Situation 2: Your clean count fell by 214" - distractor uses an absolute ("always"), a common giveaway
+  ! dmc1/lesson3 b1 "The scripts work. The migration process does not." - correct option 233% of distractor average length
+  ! dmc1/lesson3 b1 "The scripts work. The migration process does not." - correct option has 5 clauses, every distractor has 1
+  ! dmc1/lesson3 b7 "Failure drill — Transformation succeeded, output failed" - correct option 170% of distractor average length
+  ! dmc1/lesson3 b7 "Failure drill — Transformation succeeded, output failed" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson3 b9 "Situation 1: 214 payment-term exceptions" - correct option 152% of distractor average length
+  ! dmc1/lesson3 b9 "Situation 1: 214 payment-term exceptions" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson3 b9 "Situation 5: The hard one — run completes but reconciliation flag was never evaluated" - correct option 157% of distractor average length
+  ! dmc1/lesson4 b1 "A clean file that should worry you" - correct option 152% of distractor average length
+  ! dmc1/lesson4 b12 "Situation 1: The helpful default" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc1/lesson4 b12 "Situation 4: Clean output after a rule change" - correct option 153% of distractor average length
+  ! dmc1/lesson4 b12 "Situation 5: The hard one — first-match routing" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc1/lesson5 b1 "The package failed at 02:17" - correct option 205% of distractor average length
+  ! dmc1/lesson5 b1 "The package failed at 02:17" - correct option has 3 clauses, every distractor has 1
+  ! dmc1/lesson5 b10 "Scenario 2: 9,200 rows were written before failure" - correct option 156% of distractor average length
+  ! dmc1/lesson5 b10 "Scenario 2: 9,200 rows were written before failure" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson5 b10 "Scenario 3: 214 controlled customer exceptions" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson5 b10 "Scenario 3: 214 controlled customer exceptions" - distractor uses an absolute ("everyone"), a common giveaway
+  ! dmc1/lesson5 b10 "Scenario 5: Output succeeded; completion log failed" - correct option 159% of distractor average length
+  ! dmc1/lesson5 b10 "Scenario 5: Output succeeded; completion log failed" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc1/lesson5 b10 "Scenario 6: The hard one — reference data changed during recovery" - correct option 152% of distractor average length
+  ! dmc1/lesson5 b10 "Scenario 6: The hard one — reference data changed during recovery" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc1/lesson6 b1 "It works, but will it survive the cycle?" - correct option 347% of distractor average length
+  ! dmc1/lesson6 b1 "It works, but will it survive the cycle?" - correct option has 5 clauses, every distractor has 1
+  ! dmc1/lesson6 b6 "Diagnose it — Why did the lookup slow down?" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc1/lesson6 b6 "Diagnose it — Why did the lookup slow down?" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc1/lesson6 b13 "Situation 6: The hard one — 33 minutes in a 35-minute lab window" - distractor uses an absolute ("never"), a common giveaway
+  ! dmc2/lesson1 b1 "The handover — “Here's the customer file”" - correct option 181% of distractor average length
+  ! dmc2/lesson1 b1 "The handover — “Here's the customer file”" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ! dmc2/lesson1 b11 "Rows exceed distinct CustNo" - correct option 152% of distractor average length
+  ! dmc2/lesson1 b11 "Status contains 0, X and blank in an “active customers” file" - distractor uses an absolute ("entirely"), a common giveaway
+  ! dmc2/lesson1 b11 "20 customer records with a 1899 creation date" - only the correct option reasons (because/although/rather than); distractors are flat assertions
+  ... and 56 more
+
+B. AUTHOR-FACING TEXT IN LEARNER CONTENT  (225)
+------------------------------------------------------------------------
+  ! dmc1/lesson1 b1 - em dash in learner text
+  ! dmc1/lesson1 b10 - "synthetic" in learner text: ...You now receive a synthetic supplier mapping extract, independent of the ...
+  ! dmc1/lesson1 b10 - "do not invent (author instruction)" in learner text: ... only approved references for this exercise. Do not invent missing reference values: if a value is n...
+  ! dmc1/lesson1 b10 - em dash in learner text
+  ! dmc1/lesson1 b12 - "does not create/establish" in learner text: ...Correct. Technical determinism does not create business authority. Record the proposed...
+  ! dmc1/lesson1 b12 - "does not create/establish" in learner text: ...Technical determinism does not create business authority. A clean, determinis...
+  ! dmc1/lesson2 b2 - em dash in learner text
+  ! dmc1/lesson2 b3 - em dash in learner text
+  ! dmc1/lesson2 b4 - em dash in learner text
+  ! dmc1/lesson2 b5 - em dash in learner text
+  ! dmc1/lesson2 b6 - em dash in learner text
+  ! dmc1/lesson2 b7 - "synthetic" in learner text: ...t site UK01, depreciation category DEP-07. A synthetic "previous cycle" extract is supplied so you c...
+  ! dmc1/lesson2 b7 - em dash in learner text
+  ! dmc1/lesson2 b8 - em dash in learner text
+  ! dmc1/lesson2 b9 - em dash in learner text
+  ! dmc1/lesson2 b10 - em dash in learner text
+  ! dmc1/lesson2 b11 - em dash in learner text
+  ! dmc1/lesson3 b1 - em dash in learner text
+  ! dmc1/lesson3 b2 - em dash in learner text
+  ! dmc1/lesson3 b3 - em dash in learner text
+  ! dmc1/lesson3 b4 - "synthetic" in learner text: ...package failure Imagine a lab run with 1,000 synthetic customer rows. 986 are load-ready and 14 cont...
+  ! dmc1/lesson3 b4 - em dash in learner text
+  ! dmc1/lesson3 b5 - em dash in learner text
+  ! dmc1/lesson3 b6 - em dash in learner text
+  ! dmc1/lesson3 b7 - em dash in learner text
+  ! dmc1/lesson3 b8 - em dash in learner text
+  ! dmc1/lesson3 b9 - em dash in learner text
+  ! dmc1/lesson3 b10 - em dash in learner text
+  ! dmc1/lesson3 b11 - em dash in learner text
+  ! dmc1/lesson4 b2 - "do not invent (author instruction)" in learner text: ...e. Name &gt; 60 characters: expose conflict; do not invent truncation....
+  ! dmc1/lesson4 b2 - em dash in learner text
+  ! dmc1/lesson4 b4 - em dash in learner text
+  ! dmc1/lesson4 b5 - em dash in learner text
+  ! dmc1/lesson4 b6 - em dash in learner text
+  ! dmc1/lesson4 b7 - em dash in learner text
+  ! dmc1/lesson4 b9 - em dash in learner text
+  ! dmc1/lesson4 b10 - em dash in learner text
+  ! dmc1/lesson4 b11 - "synthetic" in learner text: ...You are given a synthetic supplier dataset and a controlled lab rule pa...
+  ! dmc1/lesson4 b11 - em dash in learner text
+  ! dmc1/lesson4 b12 - em dash in learner text
+  ... and 185 more
+
+C. INTERACTIVITY  (107)
+------------------------------------------------------------------------
+  ! dmc1/lesson1 b2 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson1 b3 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson1 b4 (guidedSteps) - framing says "build" but the block only reveals text
+  ! dmc1/lesson1 b5 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson1 b11 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson1 b14 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson2 b4 (guidedSteps) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson2 b5 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson3 b4 (guidedSteps) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson3 b6 (content) - framing says "decide" but the block only reveals text
+  ! dmc1/lesson4 - 5 content blocks in a row; learner can click straight through
+  ! dmc1/lesson4 b3 (content) - framing says "produce" but the block only reveals text
+  ! dmc1/lesson4 b7 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson4 b9 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson5 b5 (guidedSteps) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson5 b11 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson6 - 5 content blocks in a row; learner can click straight through
+  ! dmc1/lesson6 b2 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson6 b3 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson6 b5 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson6 b8 (content) - framing says "build" but the block only reveals text
+  ! dmc1/lesson6 b9 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson6 b11 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson6 b14 (content) - framing says "Build" but the block only reveals text
+  ! dmc1/lesson6 b16 (content) - framing says "build" but the block only reveals text
+  ! dmc2/lesson1 - 6 content blocks in a row; learner can click straight through
+  ! dmc2/lesson2 b6 (guidedSteps) - framing says "Build" but the block only reveals text
+  ! dmc2/lesson2 b8 (content) - framing says "Build" but the block only reveals text
+  ! dmc2/lesson2 b13 (content) - framing says "Build" but the block only reveals text
+  ! dmc2/lesson3 - 70% content blocks (14/20); norm is around 40%
+  ! dmc2/lesson3 - 11 content blocks in a row; learner can click straight through
+  ! dmc2/lesson3 b8 (content) - framing says "Build" but the block only reveals text
+  ! dmc2/lesson3 b9 (content) - framing says "Build" but the block only reveals text
+  ! dmc2/lesson4 - 6 content blocks in a row; learner can click straight through
+  ! dmc2/lesson4 b5 (content) - framing says "draft" but the block only reveals text
+  ! dmc2/lesson4 b22 (content) - framing says "draft" but the block only reveals text
+  ! dmc2/lesson5 - 71% content blocks (15/21); norm is around 40%
+  ! dmc2/lesson5 - 12 content blocks in a row; learner can click straight through
+  ! dmc2/lesson5 b2 (content) - framing says "build" but the block only reveals text
+  ! dmc2/lesson5 b3 (content) - framing says "Build" but the block only reveals text
+  ... and 67 more
+
+D. ONLY VISIBLE ACROSS LESSONS  (6)
+------------------------------------------------------------------------
+  ! "payment-term exception" appears with 5 different numbers: 214 (dmc1/lesson3, dmc4/lesson1, dmc4/lesson3) | 23 (dmc2/lesson2, dmc2/lesson5, dmc4/lesson1, dmc4/lesson4) | 34 (dmc2/lesson6) | 760 (dmc4/lesson1) | 7, (dmc4/lesson1)
+  ! "CustomerGroup 99" appears with 2 different numbers: 18 (dmc1/lesson4, dmc3/lesson2, dmc3/lesson5, dmc4/lesson1, dmc4/lesson2, dmc4/lesson3, dmc4/lesson4, dmc4/lesson6) | 27 (dmc2/lesson6)
+  ! "STD" appears with 4 different numbers: 1,244 (dmc2/lesson1, dmc4/lesson1, dmc4/lesson2) | 05 (dmc2/lesson3) | 61 (dmc2/lesson3, dmc4/lesson1, dmc4/lesson3) | 99 (dmc2/lesson4, dmc4/lesson1)
+  ! "delivery address" appears with 7 different numbers: 91 (dmc2/lesson5) | 10482, (dmc3/lesson1) | 78452 (dmc3/lesson4) | 94 (dmc4/lesson1) | 31 (dmc4/lesson1) | 18, (dmc4/lesson1) | 04 (dmc4/lesson3)
+  ! "accepted" appears with 6 different numbers: 18,612 (dmc2/lesson6) | 18,573 (dmc2/lesson6, dmc3/lesson3, dmc4/lesson4, dmc4/lesson5, dmc4/lesson6) | 18,387 (dmc3/lesson2) | 12,094 (dmc3/lesson2) | 12,406 (dmc3/lesson2) | 185,000 (dmc3/lesson3)
+  ! "submitted" appears with 3 different numbers: 18,573 (dmc3/lesson2, dmc4/lesson1, dmc4/lesson5, dmc4/lesson6) | 190 (dmc3/lesson2) | 12,406 (dmc3/lesson2)
+
+LESSON SHAPE TABLE
+------------------------------------------------------------------------
+  dmc1/lesson1           15 blocks   47% content   8 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc1/lesson2           12 blocks   42% content   7 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc1/lesson3           12 blocks   25% content   9 gating  expandableList,guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc1/lesson4           15 blocks   53% content   7 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc1/lesson5           16 blocks   63% content   6 gating  guidedSteps,mcq,reflection,situations,valuable
+  dmc1/lesson6           17 blocks   59% content   7 gating  guidedSteps,mcq,reflection,situations,valuable
+  dmc2/lesson1           17 blocks   59% content   7 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+  dmc2/lesson2           19 blocks   58% content   8 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc2/lesson3           20 blocks   70% content   6 gating  mcq,reflection,selectAll,situations,valuable
+  dmc2/lesson4           23 blocks   61% content   9 gating  mcq,reflection,selectAll,situations,valuable
+  dmc2/lesson5           21 blocks   71% content   6 gating  guidedSteps,mcq,reflection,selectAll,valuable
+  dmc2/lesson6           16 blocks   50% content   8 gating  guidedSteps,mcq,reflection,selectAll,valuable
+  dmc3/lesson1           20 blocks   70% content   6 gating  guidedSteps,mcq,reflection,selectAll,valuable
+  dmc3/lesson2           22 blocks   68% content   7 gating  guidedSteps,mcq,reflection,situations,valuable
+  dmc3/lesson3           20 blocks   65% content   7 gating  guidedSteps,mcq,reflection,situations,valuable
+  dmc3/lesson4           22 blocks   68% content   7 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc3/lesson5           24 blocks   75% content   6 gating  mcq,reflection,selectAll,situations,valuable
+  dmc3/lesson6           27 blocks   74% content   7 gating  mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson1           24 blocks   58% content  10 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson2           25 blocks   68% content   8 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson3           26 blocks   69% content   8 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson4           27 blocks   70% content   8 gating  guidedSteps,mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson5           24 blocks   67% content   8 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+  dmc4/lesson6           22 blocks   64% content   8 gating  expandableList,mcq,reflection,selectAll,situations,valuable
+
+PERSONA USE
+------------------------------------------------------------------------
+  Elena    2x  dmc3/lesson4, dmc4/lesson5
+  Farah    3x  dmc1/lesson4, dmc2/lesson4, dmc4/lesson2
+  Marcus   4x  dmc1/lesson2, dmc2/lesson2, dmc3/lesson3, dmc4/lesson3
+  Nadia    3x  dmc1/lesson6, dmc2/lesson6, dmc3/lesson5
+  Owen     4x  dmc1/lesson5, dmc2/lesson5, dmc3/lesson6, dmc4/lesson6
+  Priya    4x  dmc1/lesson1, dmc2/lesson1, dmc3/lesson2, dmc4/lesson1
+  Sam      4x  dmc1/lesson3, dmc2/lesson3, dmc3/lesson1, dmc4/lesson4
+
+========================================================================
+  434 findings across 24 lessons
+========================================================================
+
