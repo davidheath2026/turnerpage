@@ -122,17 +122,25 @@ Nadia, Elena — never the DML Lead cast)
 
 | Lesson # | DMC1 | DMC2 | DMC3 | DMC4 | DMC5 |
 |---|---|---|---|---|---|
-| 1 | Priya (Healthcare ERP) | Priya (Healthcare ERP) | Sam (Energy ERP) | | |
-| 2 | Marcus (Logistics ERP) | Marcus (Logistics ERP) | Priya (Healthcare ERP) | | |
-| 3 | Sam (Energy ERP) | Sam (Energy ERP) | Marcus (Logistics ERP) | | |
-| 4 | Farah (Telecoms ERP) | Farah (Telecoms ERP) | Elena (Utilities ERP) | | |
-| 5 | Owen (Insurance ERP) | Owen (Insurance ERP) | Nadia (Public Sector ERP) | | |
-| 6 | Nadia (Public Sector ERP) | Nadia (Public Sector ERP) | Owen (Insurance ERP) | | |
+| 1 | Priya (Healthcare ERP) | Priya (Healthcare ERP) | Sam (Energy ERP) | Priya (Healthcare ERP) | |
+| 2 | Marcus (Logistics ERP) | Marcus (Logistics ERP) | Priya (Healthcare ERP) | Farah (Telecoms ERP) | |
+| 3 | Sam (Energy ERP) | Sam (Energy ERP) | Marcus (Logistics ERP) | Marcus (Logistics ERP) | |
+| 4 | Farah (Telecoms ERP) | Farah (Telecoms ERP) | Elena (Utilities ERP) | Sam (Energy ERP) | |
+| 5 | Owen (Insurance ERP) | Owen (Insurance ERP) | Nadia (Public Sector ERP) | Elena (Utilities ERP) | |
+| 6 | Nadia (Public Sector ERP) | Nadia (Public Sector ERP) | Owen (Insurance ERP) | Owen (Insurance ERP) | |
 
 **DMC3 complete.** Rotation for DMC3: Sam, Priya, Marcus, Elena, Nadia,
 Owen — a fully different order from DMC1/DMC2's identical
 Priya-Marcus-Sam-Farah-Owen-Nadia pattern. Farah is the only Consultant
 persona not used anywhere in DMC3; worth bringing in early for DMC4.
+
+**DMC4 complete.** Rotation for DMC4: Priya, Farah, Marcus, Sam, Elena,
+Owen — every persona named directly in its own manuscript's "From the
+Field" section, so no authoring discretion was exercised. Farah does
+return early (Lesson 2), as hoped above, though by manuscript choice
+rather than ours. Nadia is the only Consultant persona unused in DMC4.
+Across DMC1-4 every one of the seven has now appeared at least twice
+except Elena (DMC3 L4, DMC4 L5).
 
 **Correction from earlier:** persona is manuscript-specified, not an
 authoring choice — every DMC3 Lesson 1 manuscript's own "From the Field"
@@ -152,19 +160,38 @@ lesson by lesson, don't assume.
 Bramwell throughout — this ledger is only for the "Do it yourself" /
 "Independent lab" blocks)
 
-| Lesson # | DMC1 | DMC2 | DMC3 | DMC4 | DMC5 |
+| Lesson # | DMC1 | DMC2 | DMC3 | DMC4 (artefact, with data object) | DMC5 |
 |---|---|---|---|---|---|
-| 1 | Supplier | Supplier (Vendor_Extract_A) | Sales Orders (open orders, disappearing-orders case) | | |
-| 2 | Fixed Assets (FA-009871/DEP-07) | Product | Supplier (312 rejected suppliers) | | |
-| 3 | Supplier | Supplier | Product (185,000 products, 97 defects) | | |
-| 4 | Supplier | Supplier (S20418 classification conflict) | Sales Orders/multi-entity graph (customers, addresses, products, sites, warehouses, orders) | | |
-| 5 | generic/abstract (no named entity) | Supplier | Product (four-cycle RCA case) | | |
-| 6 | Product | Fixed Assets (opening scenario) + generic rounds | Supplier (recovery: draft mapping, tax field, 74 partial commits) | | |
+| 1 | Supplier | Supplier (Vendor_Extract_A) | Sales Orders (open orders, disappearing-orders case) | Four-recipient findings pack (Customer) | |
+| 2 | Fixed Assets (FA-009871/DEP-07) | Product | Supplier (312 rejected suppliers) | SME decision clinic, five decisions (Supplier/S20418, Customer) | |
+| 3 | Supplier | Supplier | Product (185,000 products, 97 defects) | 45-minute workshop decision pack (Fixed Assets opener, Customer board) | |
+| 4 | Supplier | Supplier (S20418 classification conflict) | Sales Orders/multi-entity graph (customers, addresses, products, sites, warehouses, orders) | Three bad-news message sequences (Product-site, Customer) | |
+| 5 | generic/abstract (no named entity) | Supplier | Product (four-cycle RCA case) | Simulated project week: stand-up, handoff, Friday status (Supplier, Customer) | |
+| 6 | Product | Fixed Assets (opening scenario) + generic rounds | Supplier (recovery: draft mapping, tax field, 74 partial commits) | Thursday readiness view + 8-artefact operating pack (Supplier, Product-site, Customer) | |
 
 **DMC3 complete.** Entity spread across DMC3: Sales Orders x2, Supplier
 x2, Product x2 — genuinely balanced, no entity dominates. Zero position
 violations across all six DMC3 lessons after L2's one slip; the
 inline-annotation discipline held for L3 through L6 without exception.
+
+**DMC4 reads differently on purpose.** DMC4 is a communication module:
+its hands-on exercises produce messages, question packs, decision
+boards, update sequences and readiness views, not mappings or defect
+traces. Recording only the data object would have shown Supplier and
+Customer recurring and looked like over-concentration, when the
+artefacts are in fact all different. So the DMC4 column records the
+artefact first with the data object in brackets. The variety question
+for a module like this is "did the learner build six different things?"
+(yes) rather than "did they touch six different entities". Apply the
+same treatment to any future module whose deliverable is communication
+rather than data; keep the plain entity form for DMC5, which is
+execution and cutover.
+
+**DMC4 complete.** Zero position violations across all six lessons.
+Three distractor-length warnings were caught by the linter (L1 b20-B,
+L5 b20-E, L6 b16 Day 2 and Day 5) and fixed before shipping — the
+up-front ~20% discipline still needs the linter as a backstop when a
+correct answer has to carry four clauses.
 
 ---
 
@@ -255,11 +282,60 @@ title check must mean actually reading the alignment doc's title for
 that module in this session, not recalling it — cheap to do, and this
 is exactly the failure mode it exists to prevent.
 
+### DMC4 module-boundary review — completed
+
+- [x] Ledgers re-read. Persona rotation for DMC4 (Priya, Farah, Marcus,
+      Sam, Elena, Owen) is manuscript-specified throughout, so there
+      was nothing to vary; recorded rather than chosen. Entity spread
+      recorded in the new artefact-first form (see §2) because the
+      module's deliverables are communications, not data objects.
+- [x] Lesson 6 completion page uses the module-final variant: the
+      module-note banner is present and the button points to
+      `assessment.html`, matching the DMC2/DMC3 Lesson 6 template.
+- [ ] Alignment document NOT yet updated for DMC4. Needs: the "Not
+      started" bullet corrected from "DMC Modules 4–5" to "DMC Module
+      5" (it goes stale the moment DMC4 finishes, exactly as it did
+      after DMC2 and DMC3), and a "Done" bullet covering the DMC4
+      build. Carried into §5.
+- [ ] `tp-lesson-playbook.md` / `tp-html-build-guide.md` — still NOT
+      edited directly. The DMC3 candidates remain outstanding, plus
+      three new ones found this module (see §5).
+
+**The DMC4 title catch, and why the standing rule worked.** All six DMC4
+manuscripts head themselves "Module 4 — Working with Clients as a Data
+Migration Consultant". The alignment doc says "Communication &
+Professional Practice". This is the identical failure shape to DMC3's,
+and this time it was caught before a single lesson was built, by
+actually opening the alignment doc's module-title table in session
+rather than recalling it. The standing rule added after DMC3 is doing
+its job; keep it.
+
+**A second manuscript conflict, resolved deliberately.** DMC4 Lesson 2
+§1 opens on the supplier-classification conflict (73 suppliers, S20418
+Nordvik Components AS, STRATEGIC in the legacy ERP versus STANDARD in
+SupplierClass.accdb) but then quotes the consultant asking "What should
+CustomerGroup 99 map to?" — a leftover from the pre-revision version.
+The manuscript's own authoring notes are explicit that the opening now
+uses supplier evidence, so the built lesson is supplier throughout its
+opening and keeps CustomerGroup 99 and 45E as the later recurring
+unresolved examples. Recorded here because the next person reading that
+manuscript will hit the same inconsistency.
+
+**One kit limitation flagged, not silently worked around.** DMC4 Lesson
+6's capstone asks (per its manuscript) for the learner's earlier
+choices to affect later trust and readiness indicators. The kit has no
+branching or cross-block state, so this is approximated by carrying
+consequences forward in the feedback text: Day 5's wrong-reference
+mistake is explicitly the one Day 1's orientation step would have
+prevented. Same root cause as DMC2 L1's drag/reorder gap and DMC3 L4's
+node-linking gap — the kit has no stateful/branching block type.
+
 ---
 
 ## 5. Open items (flat list, not prose)
 
-- No `assessment.html` for DMC1, DMC2 or DMC3 yet.
+- No `assessment.html` for DMC1, DMC2, DMC3 or DMC4 yet. All four
+  module-final completion pages now link to a file that does not exist.
 - No browser/click-through testing has ever been performed on any lesson
   — all verification so far is static (linter, tag balance, JS syntax,
   em-dash sweep).
@@ -286,5 +362,30 @@ is exactly the failure mode it exists to prevent.
   been confirmed — every lesson references both repeatedly.
 - DMC1 Lesson 5's hands-on exercise has no named entity (generic
   "failed-run evidence pack") — lower-priority cleanup candidate.
-- DMC4 and DMC5 manuscripts have not been uploaded yet — needed before
-  either module can start.
+- DMC5 manuscripts have not been uploaded yet — needed before DMC5 can
+  start. (DMC4's six were uploaded and the module is now built.)
+- Alignment doc not yet updated for DMC4: "Not started" still reads
+  "DMC Modules 4–5" and should read "DMC Module 5"; no "Done" bullet
+  for the DMC4 build yet.
+- `lint-lesson.js` expects a `persona-cast.json` alongside it, which
+  did not exist. Without it every lesson throws a "new persona" warning
+  and the zero-warnings bar becomes meaningless. One was written this
+  session with all seven Consultants and the four DML Leads, keyed by
+  name with `project` and `group`. It is NOT in the repo — it lives
+  only in this session's container, so re-create or re-upload it
+  alongside the linter next time.
+- `tp-lesson-playbook.md` §3 is WRONG about the `mcq` shape. It says
+  flat `options` (strings) plus a parallel `feedback` array. The actual
+  renderer in `turner-page-kit.js`, and every shipped DMC lesson, uses
+  `options` as objects with `label` / `correct` / `feedback`. Checked
+  against the real files rather than the playbook, but the playbook
+  should be corrected before it misleads somebody.
+- `tp-html-build-guide.md` §4 says "never a raw `<table>` — the kit has
+  no table styling". That was true once. `.tp-table` has lived in
+  `turner-page-kit.css` §13 since DMC1 and is used heavily throughout
+  DMC1-4. The guide contradicts §1 of this file and should be fixed.
+- DMC1-3 lesson files contain em dashes in learner-facing text
+  (`\u2014` in block titles and option labels), despite the standing
+  no-em-dash rule. DMC4 has zero across all twelve files. Worth a sweep
+  of the earlier modules, or an explicit decision that the rule applies
+  going forward only.
