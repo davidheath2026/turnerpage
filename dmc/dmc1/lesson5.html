@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Logging, errors and restartability</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 1 — LESSON 5 — "Logging, errors and restartability".
+   A failure-and-recovery lab, structurally different from Lessons
+   1-4, per the manuscript's own authoring notes — the learner
+   breaks the Bramwell pipeline deliberately, reconstructs state
+   from evidence, and proves a controlled rerun rather than working
+   through another build.
+
+   Source: DMC1_Lesson5_Logging_Errors_and_Restartability_v3.docx.
+   The RunLog/step/exception values throughout (RunId C2-CUST-003,
+   the 18,612/18,398/9,200 figures, timestamps) are explicitly
+   illustrative lab evidence per the manuscript, not new Bramwell
+   case-study counts. ZZZ and 45E remain unresolved, consistent with
+   every earlier lesson.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with Lessons 1-4.
+============================================================== */
+
+const runLogBuildSteps = [
+{html:`<h4>Create a migration RunLog</h4>
+ <p>The SQL below is one workable training pattern. Adapt names and types to the project architecture.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: run and step tables</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE TABLE ctl.MigrationRun (
+  RunId varchar(50) NOT NULL PRIMARY KEY,
+  CycleId varchar(20) NOT NULL,
+  EntityName varchar(50) NOT NULL,
+  AttemptNo int NOT NULL,
+  SourceIdentity varchar(260) NULL,
+  ReferenceVersion varchar(50) NULL,
+  BuildVersion varchar(50) NULL,
+  StartTime datetime2 NOT NULL,
+  EndTime datetime2 NULL,
+  RunStatus varchar(40) NOT NULL,
+  RecoveryOfRunId varchar(50) NULL
+);
+
+CREATE TABLE ctl.MigrationStep (
+  RunId varchar(50) NOT NULL,
+  StepName varchar(100) NOT NULL,
+  AttemptNo int NOT NULL,
+  StartTime datetime2 NOT NULL,
+  EndTime datetime2 NULL,
+  StepStatus varchar(30) NOT NULL,
+  RowsIn int NULL,
+  RowsOut int NULL,
+  Checkpoint varchar(50) NULL,
+  Message varchar(1000) NULL
+);</code></pre></div>
+ <p class="small">Do not treat this schema as sacred. What matters is whether it supports the recovery decisions your process will need.</p>
+ <h4>Log start, success and failure deliberately</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: log a run start and a step completion</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Run starts
+INSERT ctl.MigrationRun
+  (RunId, CycleId, EntityName, AttemptNo, SourceIdentity,
+   ReferenceVersion, BuildVersion, StartTime, RunStatus)
+VALUES
+  (@RunId, @CycleId, 'Customer', @AttemptNo, @SourceIdentity,
+   @ReferenceVersion, @BuildVersion, sysdatetime(), 'Running');
+
+-- Step completes
+UPDATE ctl.MigrationStep
+SET EndTime = sysdatetime(),
+    StepStatus = 'Success',
+    RowsOut = @RowsOut,
+    Checkpoint = 'TRANSFORM_COMPLETE'
+WHERE RunId = @RunId
+  AND StepName = 'TransformCustomer'
+  AND AttemptNo = @AttemptNo;</code></pre></div>
+ <p class="small">In SSIS this may be implemented through Execute SQL Tasks, variables, Row Count transforms, event handlers and controlled failure paths. Other orchestration tools provide equivalent mechanisms.</p>`},
+{html:`<h4>Capture row exceptions separately</h4>
+ <p>The exception store needs enough context for somebody to understand and fix the condition without opening the package.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: exception table</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CREATE TABLE err.CustomerException (
+  RunId varchar(50) NOT NULL,
+  CustomerNo varchar(30) NULL,
+  StageName varchar(100) NOT NULL,
+  MappingId varchar(30) NULL,
+  ExceptionCode varchar(100) NOT NULL,
+  SourceField varchar(100) NULL,
+  SourceValue varchar(500) NULL,
+  ExceptionText varchar(1000) NULL,
+  LoggedAt datetime2 NOT NULL DEFAULT sysdatetime()
+);</code></pre></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example evidence</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RunId: C2-CUST-003
+CustomerNo: C11987
+StageName: CountryLookup
+MappingId: CUS-006
+ExceptionCode: COUNTRY_CODE_UNRESOLVED
+SourceField: Country
+SourceValue: ZZZ</code></pre></div>
+ <p class="small">ZZZ is an established Bramwell unresolved country example. Likewise, 45E remains an unresolved payment-term value. Neither should be hidden by a default.</p>
+ <div class="callout misconception"><div class="callout-label">Business exception versus technical error</div><p>A controlled no-match routed to <code>err.CustomerException</code> may be correct pipeline behaviour. A lookup component crashing because its reference connection is unavailable is a technical failure. The evidence and recovery are different.</p></div>`}
+];
+
+const failureScenarios = [
+ { title:"Scenario 1: Connection failed before any output rows were written",
+   question:"Transformation and reconciliation are proven. Destination evidence confirms zero rows/files were created. What's the right recovery?",
+   options:[
+     {label:"Fix the destination and rerun from the output boundary if the design proves the staged baseline is unchanged and safe to reuse.", correct:true, feedback:"Correct. Fix the destination and rerun from the output boundary if the design proves the staged baseline is unchanged and safe to reuse."},
+     {label:"Rerun the entire pipeline from raw landing, since any failure means starting over is the safest option.", correct:false, feedback:"That discards transformation and reconciliation work that's already proven valid, with nothing gained by redoing it."},
+     {label:"Since no rows were written, the run can simply be marked complete once the destination is back online.", correct:false, feedback:"Marking it complete without actually producing the output confuses \u201cthe destination is fixed\u201d with \u201cthe output was created.\u201d"},
+     {label:"Wait for the next scheduled cycle rather than attempting a targeted recovery now.", correct:false, feedback:"There's a proven, reusable transformed state sitting right there. Waiting for the next cycle throws that evidence away for no reason."}
+   ]
+ },
+ { title:"Scenario 2: 9,200 rows were written before failure",
+   question:"The output contains a partial attempt. What's the right recovery?",
+   options:[
+     {label:"Let the next run simply append its rows to the existing 9,200, since more data arriving can only help.", correct:false, feedback:"Appending on top of a partial, unproven output risks duplicating whichever customers were already written."},
+     {label:"Leave the partial 9,200 rows as the final output, since most of the intended population is already there.", correct:false, feedback:"\u201cMost of it\u201d is not the same as a proven, complete population. A partial output should never be mistaken for the accepted result."},
+     {label:"Delete the entire raw and transformed population for this cycle and start again from the source extract.", correct:false, feedback:"That discards transformation and reconciliation work that's already proven, when only the output stage actually failed."},
+     {label:"Do not append a second attempt. Isolate, remove or replace the partial output using the project's controlled method, then regenerate from a proven upstream state.", correct:true, feedback:"Correct. Do not append a second attempt. Isolate, remove or replace the partial output using the project's controlled method, then regenerate from a proven upstream state."}
+   ]
+ },
+ { title:"Scenario 3: 214 controlled customer exceptions",
+   question:"The pipeline completes technically and exposes 214 exception customers. What's the right status?",
+   options:[
+     {label:"214 exceptions means the technical run should be marked Failed until every one of them is resolved.", correct:false, feedback:"That conflates technical execution status with data readiness. The pipeline ran correctly; it's the data that isn't fully ready."},
+     {label:"Do not mark the technical run Failed merely because controlled exceptions exist. Report technical completion and data-readiness status separately.", correct:true, feedback:"Correct. Do not mark the technical run Failed merely because controlled exceptions exist. Report technical completion and data-readiness status separately."},
+     {label:"Since the pipeline completed, the 214 exception customers can be treated as ready for load alongside everyone else.", correct:false, feedback:"That would load unresolved records as if they were approved, exactly the hidden-decision pattern earlier lessons warn against."},
+     {label:"Exceptions at this volume mean the whole cycle should be abandoned and rescheduled from the start.", correct:false, feedback:"214 controlled, visible exceptions out of a much larger population is the pipeline working as designed, not a reason to abandon the cycle."}
+   ]
+ },
+ { title:"Scenario 4: Everything is green but counts do not reconcile",
+   question:"Raw, clean, exception and exclusion controls leave an unexplained gap. What's the right response?",
+   options:[
+     {label:"Since every task shows green, the unexplained gap is most likely just a reporting artefact and can be noted, not chased.", correct:false, feedback:"Task-level green tells you tasks finished, not that the population is accounted for. That's exactly what this scenario is testing."},
+     {label:"A small unexplained gap in the reconciliation can be accepted as within normal tolerance for a run this size.", correct:false, feedback:"Reconciliation isn't a tolerance band exercise. An unexplained gap means some records aren't accounted for, whatever the run's overall size."},
+     {label:"The migration is not complete. Technical success cannot override a failed population control.", correct:true, feedback:"Correct. The migration is not complete. Technical success cannot override a failed population control."},
+     {label:"The reconciliation check itself should be disabled if it keeps disagreeing with an otherwise fully green run.", correct:false, feedback:"That removes the one control designed to catch exactly this kind of silent gap, rather than investigating what it's telling you."}
+   ]
+ },
+ { title:"Scenario 5: Output succeeded; completion log failed",
+   question:"The file exists with expected count and checksum, but the final log update failed. What's the right response?",
+   options:[
+     {label:"Do not recreate the file reflexively. Prove the artefact, repair the control state using an auditable recovery process, and preserve evidence of the incident.", correct:true, feedback:"Correct. Do not recreate the file reflexively. Prove the artefact, repair the control state using an auditable recovery process, and preserve evidence of the incident."},
+     {label:"Since the completion log failed, the safest response is to regenerate the output file from scratch just in case.", correct:false, feedback:"Regenerating a file that's already proven correct, by count and checksum, creates risk (a second, possibly different artefact) for no benefit."},
+     {label:"Ignore the failed log update entirely, since the file itself already has the expected count and checksum.", correct:false, feedback:"Ignoring it leaves the control record wrong, which breaks the evidence trail for anyone checking this run later."},
+     {label:"Manually edit the log record to say Success without checking anything else first.", correct:false, feedback:"Editing the record to say what you want it to say, without an auditable process behind the edit, is itself a control failure."}
+   ]
+ },
+ { title:"Scenario 6: The hard one \u2014 reference data changed during recovery",
+   question:"Output failed after transformation. While fixing the incident, Finance approves a previously unresolved payment-term mapping. What's the right response?",
+   options:[
+     {label:"Since the transformation already succeeded before the rule change happened, the existing checkpoint is still perfectly safe to reuse as-is.", correct:false, feedback:"The checkpoint was proven valid against the old reference baseline. A newly approved mapping can make that same checkpoint stale."},
+     {label:"The rule change should wait until the next cycle entirely, since changing anything mid-recovery is too risky to consider.", correct:false, feedback:"That's one reasonable option to consider, but it's a decision to make deliberately, not a rule to apply automatically without weighing it."},
+     {label:"Rerun only the output stage, since that's specifically where the failure happened and the rule change seems entirely unrelated to it.", correct:false, feedback:"The rule change affects the transformation layer, not the output stage. Restarting only at output would ship data built against a now-outdated reference."},
+     {label:"The previous transformed checkpoint may now be stale. Decide whether the approved rule change belongs in this recovery or cycle. If it does, rerun from the transformation boundary, not merely output.", correct:true, feedback:"Correct. The previous transformed checkpoint may now be stale. Decide whether the approved rule change belongs in this recovery or cycle. If it does, rerun from the transformation boundary, not merely output."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"The package failed at 02:17",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Bramwell Cycle 2 is running overnight. At 02:17 the customer process fails while writing the load-ready output. You are called and asked a question that sounds simple: \u201cCan we just rerun it?\u201d</p>
+ <p>The raw extract was landed. Transformation ran for several minutes. The output task is red.</p>
+ </div>
+ <h3>What is your first move?</h3>`,
+ options:[
+   {label:"Rerun the whole package immediately. ETL packages are designed to be repeatable.", correct:false, feedback:"Repeatable doesn't mean safe to repeat blindly. If any stage already committed data, an unconditional full rerun can duplicate it."},
+   {label:"Delete all Cycle 2 customer data and start again from the source.", correct:false, feedback:"That discards potentially valid, already-proven work before you even know whether it needs discarding."},
+   {label:"Use run evidence to establish which stages completed, what committed, what was partially written and whether repeating any stage would duplicate or overwrite data.", correct:true, feedback:"Correct. A red task proves that something failed. It does not prove the state of every upstream or downstream data store. Safe recovery begins by reconstructing the execution state."},
+   {label:"Restart only the failed output task because everything before a red task must have succeeded.", correct:false, feedback:"A red task tells you where it failed, not that everything before it is proven safe to build on without checking."}
+ ]
+},
+{
+ id:"b2",nav:"The evidence changes it",title:"The evidence changes the question",type:"content",
+ html:`<p class="lead">You open the migration RunLog. Instead of a wall of engine messages, you find a small number of migration-specific records. The values below are illustrative lab evidence, not new Bramwell case-study counts.</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>RunId</th><th>Step</th><th>Status</th><th>Rows in</th><th>Rows out</th><th>Message</th></tr></thead><tbody>
+ <tr><td>C2-CUST-003</td><td>LoadRaw</td><td><span class="tp-tag tp-tag--good">Success</span></td><td>18,612</td><td>18,612</td><td>Raw population landed</td></tr>
+ <tr><td>C2-CUST-003</td><td>Transform</td><td><span class="tp-tag tp-tag--good">Success</span></td><td>18,612</td><td>18,612</td><td>Transformation completed</td></tr>
+ <tr><td>C2-CUST-003</td><td>Validate</td><td><span class="tp-tag tp-tag--good">Success</span></td><td>18,612</td><td>18,612</td><td>Population control passed</td></tr>
+ <tr><td>C2-CUST-003</td><td>WriteOutput</td><td><span class="tp-tag tp-tag--bad">Failed</span></td><td>18,398</td><td>9,200</td><td>Destination write failed</td></tr>
+ <tr><td>C2-CUST-003</td><td>CompleteRun</td><td><span class="tp-tag tp-tag--warn">Not run</span></td><td>\u2014</td><td>\u2014</td><td>Dependency not satisfied</td></tr>
+ </tbody></table></div>
+ <p>Now the useful questions are different. Did 9,200 rows actually commit? Is the destination append-only, replaceable or transactional? Is the transformed population still a valid recovery baseline? Did the failed output leave a partial file? Can the same output step be repeated safely?</p>
+ <div class="principle"><strong>Consultant habit</strong><br>Do not diagnose from task colour. Diagnose from state: input identity, run identity, last proven stage, committed data, partial artefacts, counts and destination behaviour.</div>`
+},
+{
+ id:"b3",nav:"Three levels of evidence",title:"Teach \u2014 Three levels of migration evidence",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Level</th><th>What it tells you</th><th>Typical evidence</th></tr></thead><tbody>
+ <tr><td>Run</td><td>Which execution is this and what was its overall outcome?</td><td>RunId, CycleId, entity, input identity, start/end, final status, attempt</td></tr>
+ <tr><td>Step</td><td>Which controlled stages ran and what did they process?</td><td>Step name, start/end, status, rows in/out, checkpoint, message</td></tr>
+ <tr><td>Row / exception</td><td>Which individual records could not proceed and why?</td><td>Business key, MappingID/RuleID, source value, exception code, stage, RunId</td></tr>
+ </tbody></table></div>
+ <p>Do not confuse the levels. A rejected customer row is not the same thing as a failed ETL task. A successful ETL task can legitimately produce controlled business exceptions. A technical task failure can affect thousands of rows without making those rows bad data.</p>
+ <div class="callout misconception"><div class="callout-label">Two truths can coexist</div><p>The pipeline can be technically successful while 214 customers remain business exceptions. Conversely, every task can appear technically successful while a population reconciliation proves the migration output is not acceptable.</p></div>
+ <h3>Status needs more than one dimension</h3>
+ <ul class="framework-checks">
+   <li><strong>Did the technical execution complete as designed?</strong> Completed / Failed / Recovered.</li>
+   <li><strong>Did the data meet readiness rules?</strong> Ready / Completed with business exceptions / Not ready.</li>
+   <li><strong>Did population controls reconcile?</strong> Passed / Failed / Not evaluated.</li>
+   <li><strong>Was the output released?</strong> Yes / No / Superseded.</li>
+ </ul>
+ <p class="small">Projects may use different status labels. The important control is not to force all four questions into a single green/red flag.</p>`
+},
+{
+ id:"b4",nav:"Design logging first",title:"Design the logging before the failure",type:"content",
+ html:`<p class="lead">A useful log answers a future operational question. If you cannot say which decision an entry supports, it may be noise.</p>
+ <ul class="framework-checks">
+   <li><strong>Run starts</strong> \u2014 yes. Establishes execution identity, cycle, entity and input.</li>
+   <li><strong>Major stage starts/ends</strong> \u2014 yes. Shows execution state and duration.</li>
+   <li><strong>Rows entering/leaving key stages</strong> \u2014 yes. Supports population control and diagnosis.</li>
+   <li><strong>Controlled business exception</strong> \u2014 yes, at row/exception level. Supports remediation and traceability.</li>
+   <li><strong>Technical stage failure</strong> \u2014 yes. Needed for diagnosis and recovery.</li>
+   <li><strong>Output artefact created</strong> \u2014 yes. Ties file/table/output identity to the run.</li>
+   <li><strong>Recovery attempt starts</strong> \u2014 yes. Distinguishes original failure from recovery.</li>
+   <li><strong>Every internal engine event</strong> \u2014 usually not in the business RunLog. Diagnostic noise unless currently needed.</li>
+   <li><strong>Every successfully processed row</strong> \u2014 usually no. High volume, low operational value unless audit requires it.</li>
+ </ul>
+ <div class="principle"><strong>Turner Page principle</strong><br>Log the migration state routinely. Turn on deeper technical diagnostics when you need to investigate the engine.</div>
+ <h3>A practical run record</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example run record</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RunId: C2-CUST-003
+CycleId: C2
+Entity: Customer
+AttemptNo: 1
+SourceFile: Customer_20260904.csv
+ReferenceVer: REF-C2-04
+BuildVersion: CUST-1.7
+StartTime: 02:05:11
+EndTime: NULL
+RunStatus: Running</code></pre></div>
+ <p class="small">The identifiers above are lab implementation values. The important design is that the execution can later be tied to the exact input, transformation build and controlled reference baseline.</p>
+ <h3>A practical step record</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example step record</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>RunId: C2-CUST-003
+StepName: TransformCustomer
+AttemptNo: 1
+StartTime: 02:08:42
+EndTime: 02:14:19
+Status: Success
+RowsIn: 18612
+RowsOut: 18612
+Checkpoint: TRANSFORM_COMPLETE</code></pre></div>
+ <p class="small">A checkpoint is not merely a message saying a task ended. It represents a state that the recovery design is prepared to trust.</p>`
+},
+{
+ id:"b5",nav:"Build it",title:"Build it \u2014 The RunLog and the exception store",type:"guidedSteps",
+ html:`<p class="lead">Two tables, working together: one records what the pipeline did, the other records what it couldn't resolve.</p>`,
+ steps: runLogBuildSteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_MigrationRun-and-MigrationStep.sql</strong><p class="small">The run and step table definitions and logging patterns shown above.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_MigrationRun-and-MigrationStep.sql" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_CustomerException.sql</strong><p class="small">The exception table definition shown above.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_CustomerException.sql" download>Download</a></div>`
+},
+{
+ id:"b6",nav:"Failure lab",title:"Failure lab \u2014 Break the output deliberately",type:"content",
+ html:`<p class="lead">Use the customer pipeline from Lesson 3. Allow raw landing, transformation, exception routing and reconciliation to complete. Then make the load-ready output destination unavailable.</p>
+ <ol class="framework-checks">
+   <li>Start the run and record its RunId.</li>
+   <li>Confirm raw and transformed checkpoints complete.</li>
+   <li>Trigger the output failure.</li>
+   <li>Do not rerun anything yet.</li>
+   <li>Capture the run log, step log, transformed count, exception count and destination state.</li>
+   <li>Write a one-sentence statement of the last state you can prove.</li>
+   <li>Only then choose a recovery boundary.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Lab rule</div><p>The learner must inspect evidence before the interface enables a recovery choice. The purpose is to break the habit of treating rerun as the first diagnostic action.</p></div>
+ <h3>The evidence pack</h3>
+ <ul class="framework-checks">
+   <li><strong>Run record</strong> \u2014 which execution failed?</li>
+   <li><strong>Step records</strong> \u2014 what was the last successful controlled stage?</li>
+   <li><strong>Raw/stage RunId counts</strong> \u2014 what data exists for this execution?</li>
+   <li><strong>Reconciliation result</strong> \u2014 was the transformed population proven before failure?</li>
+   <li><strong>Destination row/file state</strong> \u2014 was output empty, partial or complete?</li>
+   <li><strong>Error detail</strong> \u2014 what failed technically?</li>
+   <li><strong>Input/reference/build identity</strong> \u2014 has the upstream baseline changed since the failure?</li>
+ </ul>`
+},
+{
+ id:"b7",nav:"What actually committed?",title:"Diagnose \u2014 What actually committed?",type:"content",
+ html:`<p class="lead">A task can fail after performing some work. Whether that work remains depends on component, transaction, destination and package design. Never infer commit state from the error message alone.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Observed state</th><th>Recovery implication</th></tr></thead><tbody>
+ <tr><td>Transformation committed; output empty</td><td>Output may be rerunnable from proven transformed state</td></tr>
+ <tr><td>Transformation committed; output partial</td><td>Partial output must be isolated, removed or replaced using a controlled method before regeneration</td></tr>
+ <tr><td>Transformation rolled back; no stage rows committed</td><td>Transformation must be rerun from a known upstream baseline</td></tr>
+ <tr><td>Output complete but completion logging failed</td><td>Do not regenerate output until you prove the existing artefact is valid</td></tr>
+ <tr><td>State cannot be proven</td><td>Re-establish a known baseline; do not guess</td></tr>
+ </tbody></table></div>
+ <h3>Queries that help prove state</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: prove what exists for this run</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- What exists for this run?
+SELECT RunId, COUNT(*) AS StageRows
+FROM stage.Customer
+WHERE RunId = @RunId
+GROUP BY RunId;
+
+-- What exception population exists?
+SELECT
+  COUNT(*) AS ExceptionEvents,
+  COUNT(DISTINCT CustomerNo) AS ExceptionCustomers
+FROM err.CustomerException
+WHERE RunId = @RunId;
+
+-- What did the controlled steps report?
+SELECT StepName, AttemptNo, StepStatus,
+  RowsIn, RowsOut, Checkpoint, StartTime, EndTime
+FROM ctl.MigrationStep
+WHERE RunId = @RunId
+ORDER BY StartTime;</code></pre></div>
+ <p class="small">The destination needs its own evidence too. A CSV, SQL table, API target and ERP import staging area have different ways of proving partial versus committed output.</p>`
+},
+{
+ id:"b8",nav:"Choosing the boundary",title:"Teach \u2014 Recovery boundary and restart point are decisions",type:"content",
+ html:`<p class="lead">The safest restart point is the earliest stage that must be repeated, not automatically the beginning of the package and not automatically the failed task.</p>
+ <ul class="framework-checks">
+   <li><strong>Is the upstream checkpoint proven?</strong> Defines whether it can be reused.</li>
+   <li><strong>Has the input changed?</strong> A changed source may invalidate all downstream state.</li>
+   <li><strong>Has mapping or reference logic changed?</strong> A rule change may invalidate transformed output.</li>
+   <li><strong>Did the failed stage write anything?</strong> Determines the clean-up or isolation requirement.</li>
+   <li><strong>Is the stage safe to repeat?</strong> Prevents duplicate or conflicting state.</li>
+   <li><strong>What downstream evidence becomes obsolete?</strong> Old outputs or logs must not masquerade as current.</li>
+   <li><strong>How will recovery be identified?</strong> Creates traceability between failed and recovered attempts.</li>
+ </ul>
+ <div class="principle"><strong>Recovery principle</strong><br>Reuse a proven state only while the evidence that made it valid is still true.</div>
+ <h3>Same RunId or new RunId?</h3>
+ <p>There is no universal answer. Two common designs:</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Pattern</th><th>Advantages</th><th>Risk / control needed</th></tr></thead><tbody>
+ <tr><td>Same RunId + AttemptNo</td><td>Keeps one business execution grouped together</td><td>Every step/output must distinguish attempts and superseded artefacts</td></tr>
+ <tr><td>New RunId + RecoveryOfRunId</td><td>Very clear execution separation</td><td>Reporting must link recovery run to original failure</td></tr>
+ </tbody></table></div>
+ <p class="small">Choose one model and use it consistently. The unsafe design is to rerun under the same identifiers while overwriting evidence so nobody can tell that a recovery occurred.</p>`
+},
+{
+ id:"b9",nav:"Restartability patterns",title:"Restartability patterns",type:"content",
+ html:`<h3>Replace a run-scoped stage</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: controlled replace</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>BEGIN TRANSACTION;
+
+DELETE FROM stage.Customer
+WHERE RunId = @RunId;
+
+INSERT stage.Customer (...)
+SELECT ...
+FROM raw.Customer
+WHERE RunId = @RunId;
+
+COMMIT;</code></pre></div>
+ <p class="small">This can be a useful pattern when the stage is explicitly run-scoped and the project design supports controlled replace behaviour. It is not permission to delete migration data casually.</p>
+ <h3>Version output rather than append blindly</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Output naming</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Customers_C2_C2-CUST-003_Attempt01.csv
+Customers_C2_C2-CUST-003_Attempt02.csv</code></pre></div>
+ <p class="small">The second artefact should be marked as the recovery output and the first as failed or superseded. Whether final handoff uses these exact names is project-specific.</p>
+ <h3>Checkpoint-based restart</h3>
+ <p>If <code>TRANSFORM_COMPLETE</code> is proven, the output stage may be able to restart there. If a reference-table correction was made after the failure, that checkpoint may no longer be valid because the transformation baseline changed.</p>
+ <div class="principle"><strong>Non-obvious decision</strong><br>A technical failure does not automatically mean the earliest safe restart is unchanged. A business or mapping fix made during the incident can move the recovery boundary upstream.</div>`
+},
+{
+ id:"b10",nav:"Failure scenarios",title:"Failure scenarios \u2014 Decide before revealing the mentor view",type:"situations",
+ html:`<p class="lead">Six moments where recovery isn't as simple as pressing rerun. Decide your response before checking the mentor view.</p>`,
+ items: failureScenarios,
+ takeawayHtml:`<div class="principle"><strong>The pattern across all six</strong><br>None of these are solved by looking at whether the run is green or red. Each one needs its own specific evidence: what committed, what changed, and whether the exception population is expected or a sign something's actually broken.</div>`
+},
+{
+ id:"b11",nav:"Prove the rerun",title:"Prove the rerun",type:"content",
+ html:`<p class="lead">A recovery is not finished when the rerun turns green. You must prove that the final migration state is correct and that failed or partial attempts cannot be mistaken for the accepted result.</p>
+ <ul class="framework-checks">
+   <li><strong>Input identity</strong> \u2014 recovery used the intended source baseline.</li>
+   <li><strong>Build/reference identity</strong> \u2014 correct transformation and approved reference versions ran.</li>
+   <li><strong>Population reconciliation</strong> \u2014 raw equals accounted load-ready, exception and approved exclusion populations at the correct grain.</li>
+   <li><strong>Duplicate control</strong> \u2014 no duplicate business keys or output caused by the rerun.</li>
+   <li><strong>Output identity</strong> \u2014 the accepted artefact or table is clearly distinguishable from the failed attempt.</li>
+   <li><strong>Exception continuity</strong> \u2014 expected unresolved records remain visible; none disappeared through recovery.</li>
+   <li><strong>Run lineage</strong> \u2014 the recovery attempt links to the original failure.</li>
+   <li><strong>Final status</strong> \u2014 technical, reconciliation, readiness and release states are all recorded.</li>
+ </ul>
+ <h3>A practical duplicate check</h3>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: duplicate check on the recovered output</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustomerNumber, COUNT(*) AS RowCount
+FROM output.Customer
+WHERE RunId = @RecoveryRunId
+GROUP BY CustomerNumber
+HAVING COUNT(*) > 1;</code></pre></div>
+ <p class="small">A zero-row result is useful evidence, but only if CustomerNumber is the correct output grain for the entity. Always reconcile at the intended grain.</p>
+ <div class="principle"><strong>Practical deliverable</strong><br>The candidate breaks the process, reconstructs the state, documents the recovery decision, performs the controlled rerun and produces evidence that the accepted output has no missing or duplicated customer population attributable to the recovery.</div>`
+},
+{
+ id:"b12",nav:"Do it yourself",title:"Do it yourself \u2014 Recovery decision challenge",type:"reflection",
+ html:`<p class="lead">You're given a failed-run evidence pack: a RunLog extract, step log, row counts, destination evidence and error message. Work through the challenge below before writing your incident update.</p>
+ <ol class="framework-checks">
+   <li>State the last proven checkpoint.</li>
+   <li>State what you still cannot prove.</li>
+   <li>Classify the incident: business exception, technical failure, reconciliation failure or mixed incident.</li>
+   <li>Choose the earliest stage that must be repeated.</li>
+   <li>Identify any partial state that must be isolated or removed first.</li>
+   <li>Decide whether the recovery uses the same RunId with a new attempt or a linked new RunId.</li>
+   <li>List the evidence that would invalidate your chosen checkpoint.</li>
+   <li>Define the post-rerun proof required before release.</li>
+   <li>Write a concise incident update for the Data Migration Lead.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Model incident update</div><p>\u201cCustomer output failed after 9,200 rows were written. Raw landing, transformation and reconciliation are proven for Run C2-CUST-003; the output is partial and must not be appended to. We will isolate the failed output, regenerate from the proven transformed checkpoint under a controlled recovery attempt, then repeat population, duplicate and output-identity checks before release.\u201d</p></div></div>
+ <p class="lead">Write your own incident update below.</p>
+ <textarea id="reflection" placeholder="Customer output failed after..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Recovery-Decision-Worksheet.xlsx</strong><p class="small">The nine-question challenge above, ready to work through for any failed run.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Recovery-Decision-Worksheet.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Restartability-Checklist.xlsx</strong><p class="small">The eight proof points from "Prove the rerun", ready to check off before release.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Restartability-Checklist.xlsx" download>Download</a></div>`,
+ minLength:50,
+ checks:[
+   { test:/checkpoint|last proven|committed/i, strength:"You named the last proven checkpoint rather than assuming from task colour.", gap:"State exactly which checkpoint is proven, and what evidence proves it." },
+   { test:/business exception|technical failure|reconciliation failure|mixed/i, strength:"You classified the incident type explicitly.", gap:"Classify the incident: is it a business exception, a technical failure, a reconciliation failure, or a mix?" },
+   { test:/partial|isolate|remove|replace/i, strength:"You addressed isolating or removing partial state before regenerating anything.", gap:"State what partial state, if any, needs to be isolated or removed before you rerun anything." },
+   { test:/runid|attempt/i, strength:"You addressed whether recovery uses the same RunId or a new linked one.", gap:"State whether your recovery would use the same RunId with a new attempt, or a new RunId linked to the original failure." },
+   { test:/reconcil|duplicate|proof|prove/i, strength:"You named specific post-rerun proof required before release.", gap:"State what you'd check after the rerun, before releasing the output, to prove it's correct." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Customer output failed after 9,200 rows were written. Raw landing, transformation and reconciliation are proven for Run C2-CUST-003; I cannot yet prove whether the destination file is genuinely partial or corrupted, so that's the first thing to check. This is a technical failure, not a business exception or reconciliation failure. The earliest stage that must be repeated is output, not transformation, since the transformed checkpoint is proven. The partial 9,200-row output must be isolated and not appended to. I'd use the same RunId with a new AttemptNo, since this is a continuation of one business execution. A change to the reference version or transformation build between now and the rerun would invalidate this checkpoint. Before release, I'd re-run population reconciliation, a duplicate-key check on the recovered output, and confirm the accepted artefact is clearly distinguishable from the failed attempt.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine incident update a Data Migration Lead could act on immediately \u2014 specific, evidence-led, and honest about what's still unproven.":"You have the right structure. Make sure you're naming specific evidence for each answer, not just describing the general shape of a good recovery plan."}</div>`
+},
+{
+ id:"b13",nav:"Deeper diagnostics",title:"Deeper diagnostics \u2014 Useful when the operational log is not enough",type:"content",
+ html:`<p class="lead">Operational migration logging should remain readable. When the failure itself is unclear, turn on the diagnostic detail appropriate to the tool.</p>
+ <ul class="framework-checks">
+   <li><strong>SSIS Event Handlers / OnError detail</strong> \u2014 capture technical failure context and controlled error actions.</li>
+   <li><strong>SSIS execution/catalog messages</strong> \u2014 investigate task/component execution detail.</li>
+   <li><strong>Data Viewers / row sampling</strong> \u2014 inspect data moving through a problematic flow during development or test.</li>
+   <li><strong>Provider/database error detail</strong> \u2014 connection, transaction, constraint or destination problems.</li>
+   <li><strong>Performance counters / execution-tree diagnostics</strong> \u2014 performance or memory/buffer investigation.</li>
+   <li><strong>Target/import logs</strong> \u2014 prove what the destination accepted or rejected.</li>
+ </ul>
+ <div class="callout misconception"><div class="callout-label">Do not confuse logging with debugging</div><p>The RunLog tells you what migration state was reached. Detailed engine diagnostics help explain why a technical component behaved as it did. You often need both, but they serve different audiences and decisions.</p></div>
+ <div class="to-record">${TPKit.fromField({
+   title:"The Rerun That Doubled the Output", name:"Owen", role:"Data Migration Consultant", project:"Insurance ERP",
+   src:"/assets/audio/RerunThatDoubledOutput-Owen.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Reflection \u2014 You are called during cutover",type:"reflection",
+ html:`<p class="lead">Someone says: \u201cCustomers failed. Can you rerun them?\u201d</p>
+ <p>Write the first five pieces of evidence you would request before answering, then add the one piece of evidence that would make you most reluctant to approve a quick rerun.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers include RunId/attempt, last proven checkpoint, committed row counts or state, destination state, input/build/reference identity, error detail and whether the affected stages are safe to repeat.</p></div></div>
+ <textarea id="reflection" placeholder="Before answering, I would want to know..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/runid|attempt/i, strength:"You asked for RunId/attempt identity.", gap:"Name the RunId and attempt number as one of the first things you'd ask for." },
+   { test:/checkpoint|last proven|committed/i, strength:"You asked for the last proven checkpoint or committed state.", gap:"Ask specifically what the last proven checkpoint is, not just whether the run failed." },
+   { test:/destination|output state|partial/i, strength:"You asked about the destination or output state.", gap:"Ask whether the destination is empty, partial or complete." },
+   { test:/reference|build|input.*(changed|identity)/i, strength:"You asked whether the input, build or reference identity has changed.", gap:"Ask whether anything upstream, like the input file or a reference version, has changed since the failure." },
+   { test:/reluctant|most concern|would make me/i, strength:"You named a specific piece of evidence that would make you most reluctant to approve a quick rerun.", gap:"Name the one specific thing that would make you say no to a quick rerun, not just a general note of caution." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before answering, I'd want: the RunId and attempt number; the last proven checkpoint; the committed row counts at each stage; the destination's current state, empty, partial or complete; and whether the input file, transformation build or reference version has changed since the failure. The one piece of evidence that would make me most reluctant to approve a quick rerun: proof that the output already contains a partial write. Rerunning on top of an unproven partial output is exactly how a failure turns into a duplicate-data incident.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the right instinct under pressure: ask for evidence first, and know which single fact would actually change your answer.":"You have good instincts. Make sure your five pieces of evidence are specific enough that someone could actually hand them to you, not general categories."}</div>`
+},
+{
+ id:"b15",nav:"Summary",title:"Summary \u2014 Know what happened before you fix it",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Give every execution and recovery attempt a traceable identity.</li>
+   <li>Log major stages, checkpoints and useful row counts rather than indiscriminate technical noise.</li>
+   <li>Keep row-level business exceptions separate from process-level technical failures.</li>
+   <li>Record enough evidence to determine what committed and what is partial.</li>
+   <li>Do not infer state from task colour or a single error message.</li>
+   <li>Choose recovery boundaries from proven state and current input/rule/reference identity.</li>
+   <li>Design repeated execution so it does not duplicate or overwrite evidence silently.</li>
+   <li>Treat partial output explicitly.</li>
+   <li>Reconcile again after recovery.</li>
+   <li>Prove accepted output identity, duplicate control and run lineage.</li>
+   <li>Use deeper tool diagnostics when the operational evidence does not explain the technical cause.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>Restartability begins with evidence. If you cannot prove what completed, what committed, what changed and what remains safe to repeat, you are not ready to rerun the migration.</div>`
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Logging, errors and restartability.</strong></p>
+ <p>You can now instrument a migration process so a failed execution can be reconstructed from evidence, distinguish business exceptions from technical failures, determine what committed, choose a safe recovery boundary, execute a controlled rerun and prove that recovery created neither missing nor duplicated data.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Making migration processes production-ready</strong></p>
+ <p>You will take the working Bramwell pipeline and prepare it for repeated cycles, multiple environments, controlled configuration, performance demands and real project operation.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time someone asks you \u201cCan we just rerun it?\u201d at 2am.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 1",
+  moduleTitle: "Building Migration Solutions",
+  lessonLabel: "Lesson 5: Logging, errors and restartability",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Reconstructing execution state from evidence and recovering safely",
+  storageKey: "tp_dmc1_lesson5_v1",
+  lessonId: "dmc1-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6.html",
+  finalButtonLabel: "Finish Lesson 5",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
