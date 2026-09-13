@@ -41,9 +41,12 @@
    approved to STANDARD; the STANDARD-space variant as a proposed,
    not-yet-approved syntactic rule; rare CustomerGroup GOV with six
    customers; the S20418 Nordvik Components AS STRATEGIC/STANDARD
-   classification conflict) are taken directly from the manuscript
-   and story bible, and stay exactly as unresolved or approved as
-   stated. The poisoned workbook's twelve defects are synthetic
+   classification conflict, the 73 conflicting active suppliers in
+   SupplierClass.accdb, 6,420 in-scope active suppliers, 1,184 with
+   bank-payment details, and the Procurement/Finance authority
+   boundary, used in the new independent-lab block for entity
+   variety) are taken directly from the manuscript and story bible,
+   and stay exactly as unresolved or approved as stated. The poisoned workbook's twelve defects are synthetic
    training material and do not create new Bramwell canon.
 
    Downloadable assets referenced below are assumed to live at
@@ -474,7 +477,47 @@ FROM raw.Customer;</code></pre></div>
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuine release note: grain stated, defects separated by severity and type, evidence preserved, and the row-count proof that closes the loop.":"You have the right structure. Make sure you're separating which defects actually block release from which are lower-severity, and that you can prove the row count didn't move."}</div>`
 },
 {
- id:"b18",nav:"SQL toolkit",title:"SQL controls worth keeping in your toolkit",type:"content",
+ id:"b18",nav:"Independent lab",title:"Independent lab \u2014 The supplier classification conflict",type:"reflection",
+ html:`<p class="lead">Not every reference conflict is yours to resolve into a lookup. Bramwell's supplier population gives you a real one to practise on.</p>
+ <div class="callout experience">
+ <div class="callout-label">The evidence</div>
+ <p>SupplierClass.accdb, maintained by Procurement, contains 73 active suppliers whose classification conflicts with the legacy ERP value. One of them is named: Supplier S20418, Nordvik Components AS, active in Norway, appears in both systems. In the legacy ERP its classification is STRATEGIC. In SupplierClass.accdb it is STANDARD.</p>
+ </div>
+ <p>6,420 active suppliers are in scope for the migration; 1,184 of them have bank-payment details required for the target operating model. No blanket "winning source" has been established between the legacy ERP and SupplierClass.accdb for classification conflicts generally.</p>
+ <h3>Your task</h3>
+ <ol class="framework-checks">
+   <li>State the mapping grain a SupplierClassification cross-reference would need, given that the same supplier can carry two different classifications from two different systems.</li>
+   <li>Write the SQL you'd use to find every supplier where the two sources disagree, not just confirm S20418 is one of them.</li>
+   <li>Decide whether S20418's conflict is a lookup problem, a cleansing problem, or something else entirely \u2014 and say why.</li>
+   <li>Identify who actually has authority to resolve it, and who does not.</li>
+   <li>Write the one-sentence question you'd put to that authority, tied to the specific evidence above.</li>
+   <li>State what the migration team should do with all 73 conflicting suppliers in the meantime, including S20418.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">The trap this exercise sets</div><p>It would be technically easy to write <code>COALESCE(ERPClassification, SupplierClassAccdbValue)</code> and call the conflict resolved. Doing so would silently pick one business authority's answer over another's, on a question neither the migration team nor either single source owns outright.</p></div>
+ <p class="lead">Write your answer below \u2014 particularly the question you'd put to the right authority.</p>
+ <textarea id="reflection" placeholder="The mapping grain this reference needs is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/grain/i, strength:"You stated the mapping grain this reference would need.", gap:"State what grain a SupplierClassification cross-reference needs, given the same supplier can carry two source classifications." },
+   { test:/73|every supplier|all.*conflict/i, strength:"You addressed finding all 73 conflicting suppliers, not just S20418.", gap:"Describe how you'd find every supplier where the two sources disagree, not just confirm the one named example." },
+   { test:/procurement|finance|authority|owner/i, strength:"You identified who actually has authority over supplier-classification meaning.", gap:"Name who owns supplier-classification meaning (Procurement) versus who doesn't (the migration team, or Finance)." },
+   { test:/coalesce|pick one|choose|arbitrar/i, strength:"You explicitly avoided picking one source's answer over the other's.", gap:"State explicitly that you would not default or pick one source's classification over the other's without approval." },
+   { test:/question|ask/i, strength:"You wrote a specific question tied to the evidence.", gap:"Write the actual one-sentence question you'd put to Procurement, referencing S20418 specifically." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The mapping grain would need to be Supplier + SourceSystem, since the same SupplierNo can legitimately carry two different classification values depending on which system is asked. Finding every conflict means joining the legacy ERP classification to SupplierClass.accdb on SupplierNo and returning every row where the values differ, not just checking S20418 individually. This isn't a lookup problem or a cleansing problem \u2014 it's a business classification conflict between two systems, and Procurement owns supplier-classification meaning, not the migration team and not Finance. The question to Procurement: "For supplier S20418, Nordvik Components AS, the legacy ERP shows STRATEGIC and SupplierClass.accdb shows STANDARD \u2014 which is the approved classification, and does the same rule apply to the other 72 conflicting suppliers?" Until that's answered, all 73 stay visible as a controlled exception, not defaulted to either source.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the discipline the S20418 case demands: a real conflict between two legitimate authorities, routed to the right owner rather than resolved by whoever happened to write the query.":"You have the right instinct. Make sure you've named who actually owns this decision, and that your question is specific enough Procurement could actually answer it."}</div>`
+},
+{
+ id:"b19",nav:"SQL toolkit",title:"SQL controls worth keeping in your toolkit",type:"content",
  html:`<h3>Duplicate approved mappings</h3>
  <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT ReferenceSet, LegalEntity, SourceValue, COUNT(*) AS Cnt
 FROM ref.MigrationCrossReference
@@ -507,7 +550,7 @@ WHERE x.ReferenceSet = @ReferenceSet
  <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_Reference-Integrity-Checks.sql</strong><p class="small">The three checks above, ready to adapt to any reference set.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_Reference-Integrity-Checks.sql" download>Download</a></div>`
 },
 {
- id:"b19",nav:"When to stop the run",title:"Consultant judgement \u2014 When should a missing mapping stop the run?",type:"situations",
+ id:"b20",nav:"When to stop the run",title:"Consultant judgement \u2014 When should a missing mapping stop the run?",type:"situations",
  html:`<p class="lead">Not every unresolved lookup has the same operational consequence. Six conditions, six different treatments.</p>`,
  items: stopTheRunSituations,
  takeawayHtml:`<div class="to-record">${TPKit.fromField({
@@ -518,7 +561,7 @@ WHERE x.ReferenceSet = @ReferenceSet
  <div class="callout misconception"><div class="callout-label">Important distinction</div><p>\u2018No match because the source value is unresolved\u2019 and \u2018no match because the reference service failed to load\u2019 are not the same incident.</p></div>`
 },
 {
- id:"b20",nav:"Reflection",title:"Reflection \u2014 The most dangerous lookup",type:"reflection",
+ id:"b21",nav:"Reflection",title:"Reflection \u2014 The most dangerous lookup",type:"reflection",
  html:`<p class="lead">Which is more dangerous: a lookup that returns NULL for an unresolved value, or a lookup that always returns something? Explain the conditions under which your answer could change.</p>
  <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers recognise that visible failure is often safer than plausible wrong data, while also considering mandatory relationships, controlled defaults and the quality of the reference itself.</p></div></div>
  <textarea id="reflection" placeholder="I think the more dangerous lookup is..."></textarea>
@@ -541,7 +584,7 @@ WHERE x.ReferenceSet = @ReferenceSet
  mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This captures the real nuance: it's not NULL versus a value that matters, it's whether the result is traceable to an approved decision.":"You have good instincts. Make sure you're naming the specific condition that would flip your answer, not just picking one side as always safer."}</div>`
 },
 {
- id:"b21",nav:"Summary",title:"Summary \u2014 A lookup is a controlled decision engine",type:"content",
+ id:"b22",nav:"Summary",title:"Summary \u2014 A lookup is a controlled decision engine",type:"content",
  html:`<ul class="framework-checks lesson-outcomes">
    <li>Define the mapping grain before building the lookup.</li>
    <li>Store context when the same source code can mean different things.</li>
@@ -561,7 +604,7 @@ WHERE x.ReferenceSet = @ReferenceSet
  <div class="principle"><strong>The one thing to remember</strong><br>The purpose of a cross-reference is not to make every source value match. It is to make every approved mapping explicit, deterministic and traceable, while making every unresolved or ambiguous value impossible to hide.</div>`
 },
 {
- id:"b22",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ id:"b23",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
  html:`<div class="complete"><div class="tick">\u2713</div>
  <p class="lead"><strong>You have completed Reference data, lookups and cross-references.</strong></p>
  <p>You can now design and operate controlled migration cross-references: define the mapping grain, build versioned reference structures, detect missing and ambiguous matches, preserve unresolved values, apply legal-entity and effective-date context, prove coverage before loading, and manage reference changes without turning lookup tables into uncontrolled spreadsheets.</p>

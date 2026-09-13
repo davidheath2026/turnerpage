@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building your consultant data toolkit</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 2 — LESSON 6 — "Building your consultant data
+   toolkit". The DMC2 culmination: a compressed first-48-hours
+   simulation, per the manuscript's own authoring notes — not a
+   conventional recap. The learner assembles their toolkit in
+   response to pressure, moment by moment.
+
+   Source: DMC2_Lesson6_Building_Your_Consultant_Data_Toolkit_v3.docx.
+   moduleTitle follows the alignment doc, not the manuscript's own
+   header text, per the standing rule from Lesson 1.
+
+   Section 16's reconciliation (18,573 accepted + 34 approved
+   pre-load exceptions + 5 approved exclusions = 18,612 accounted)
+   is the later canonical Bramwell figure the manuscript explicitly
+   withheld from Lesson 5's earlier quality board — this lesson is
+   the deliberately-labelled later-cycle point it belongs to. The
+   earlier 18,530 and later 18,612 populations are kept as distinct
+   case-study moments throughout, never merged. 45E, CustomerGroup
+   99, ZZZ and the 27 overlength names all stay unresolved. The
+   fixed-asset opening brief (14,380 records, 126 exceptions) and
+   the Round 1-4 practical assessment are explicitly synthetic
+   capstone material and create no new Bramwell canon.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC2 Lessons 1-5.
+============================================================== */
+
+const mondaySteps = [
+{html:`<h4>09:05 \u2014 You have joined the project</h4>
+ <p>You have access to a SQL staging database, a SharePoint folder containing extracts and spreadsheets, Excel, Power Query and the project's mapping documents. The Data Migration Lead gives you a short briefing.</p>
+ <div class="quote">\u201cTake fixed assets. We have 14,380 active records in scope and 126 depreciation-category exceptions. I need to know by Wednesday what we actually have, what the exceptions mean technically, what still needs Finance authority, and whether analysis can safely move forward. Don't spend two days making a presentation. Bring me evidence.\u201d</div>
+ <p>You could begin by opening files at random. A stronger consultant creates a small working structure immediately.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Workspace</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>00_Control</td><td>Scope, source identity, cycle/run notes, assumptions</td></tr>
+ <tr><td>01_SQL</td><td>Reusable interrogation and reconciliation queries</td></tr>
+ <tr><td>02_Profile</td><td>Profile outputs and field-level findings</td></tr>
+ <tr><td>03_Rules</td><td>Approved cleansing/transformation rule catalogue</td></tr>
+ <tr><td>04_References</td><td>Cross-reference coverage and integrity</td></tr>
+ <tr><td>05_Exceptions</td><td>Record/rule evidence and decision queue</td></tr>
+ <tr><td>06_Release</td><td>Readiness, reconciliation and handover</td></tr>
+ <tr><td>07_Investigation</td><td>Questions, hypotheses, evidence and conclusions</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The toolkit principle</strong><br>Organise around migration questions and evidence, not around software products.</div>`},
+{html:`<h4>09:30 \u2014 The first ten queries</h4>
+ <p>You do not need hundreds of clever SQL scripts. You need a small set of patterns that answer the questions you repeatedly face.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Pattern</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Population</td><td>How many rows and distinct business keys?</td></tr>
+ <tr><td>Blank/null</td><td>Where is required information missing?</td></tr>
+ <tr><td>Duplicate key</td><td>Does the assumed grain hold?</td></tr>
+ <tr><td>Distribution</td><td>What values dominate or look unusual?</td></tr>
+ <tr><td>Length</td><td>What may violate target constraints?</td></tr>
+ <tr><td>Type/parse</td><td>What cannot be converted safely?</td></tr>
+ <tr><td>Reference coverage</td><td>What does not resolve, or resolves more than once?</td></tr>
+ <tr><td>Relationship coverage</td><td>Which children have no valid parent?</td></tr>
+ <tr><td>Cycle comparison</td><td>What is new, missing or changed?</td></tr>
+ <tr><td>Reconciliation</td><td>Can every input record be accounted for?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Your starter SQL file</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- 01 Population
+SELECT COUNT(*) AS Rows,
+  COUNT(DISTINCT &lt;BusinessKey&gt;) AS DistinctKeys
+FROM &lt;ControlledSource&gt;
+WHERE &lt;ScopeCondition&gt;;
+
+-- 02 Duplicate keys
+SELECT &lt;BusinessKey&gt;, COUNT(*) AS Rows
+FROM &lt;ControlledSource&gt;
+WHERE &lt;ScopeCondition&gt;
+GROUP BY &lt;BusinessKey&gt;
+HAVING COUNT(*) > 1;
+
+-- 03 Distribution
+SELECT &lt;Field&gt;, COUNT(*) AS Rows
+FROM &lt;ControlledSource&gt;
+WHERE &lt;ScopeCondition&gt;
+GROUP BY &lt;Field&gt;
+ORDER BY Rows DESC;
+
+-- 04 Affected records
+SELECT &lt;BusinessKey&gt;, &lt;Field&gt;
+FROM &lt;ControlledSource&gt;
+WHERE &lt;IssueCondition&gt;;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not make it generic forever</div><p>The placeholders are a starting point. Once you understand the project, create entity-specific queries with explicit scope, keys and field names. A toolkit accelerates thinking; it does not replace it.</p></div>`},
+{html:`<h4>10:15 \u2014 Build a Dataset Control Card</h4>
+ <p>Before deep analysis, capture enough metadata that you can prove what you analysed.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Example of what to record</th></tr></thead><tbody>
+ <tr><td>Entity</td><td>Customer</td></tr>
+ <tr><td>Source system</td><td>Named source</td></tr>
+ <tr><td>Extract/file/table</td><td>Exact identity</td></tr>
+ <tr><td>Received/extracted</td><td>Timestamp/date</td></tr>
+ <tr><td>Cycle</td><td>Project cycle identifier</td></tr>
+ <tr><td>Expected grain</td><td>One row per customer, if proven</td></tr>
+ <tr><td>Candidate key</td><td>Source business key</td></tr>
+ <tr><td>Scope rule</td><td>Approved in-scope condition</td></tr>
+ <tr><td>Row count</td><td>Measured</td></tr>
+ <tr><td>Distinct key count</td><td>Measured</td></tr>
+ <tr><td>Known dependencies</td><td>References/parents needed</td></tr>
+ <tr><td>Analyst</td><td>Who ran the profile</td></tr>
+ <tr><td>Notes/assumptions</td><td>Explicit, temporary and reviewable</td></tr>
+ </tbody></table></div>
+ <p class="small">This card can be a worksheet, Markdown file, database control table or project form. Keep it small enough that you actually maintain it.</p>`},
+{html:`<h4>11:00 \u2014 Build the Field Profile selectively</h4>
+ <p>Do not profile all 80 fields with identical depth. Prioritise fields that influence: business key/grain, scope, mandatory target data, references and relationships, target constraints, financial/legal meaning, derivations, downstream transactions, and known source-quality risk.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field profile column</th><th>What it tells you</th></tr></thead><tbody>
+ <tr><td>Field</td><td>What you are measuring</td></tr>
+ <tr><td>Business meaning</td><td>Why it matters</td></tr>
+ <tr><td>Population applicable</td><td>Correct denominator</td></tr>
+ <tr><td>Null/blank</td><td>Completeness</td></tr>
+ <tr><td>Distinct values</td><td>Cardinality</td></tr>
+ <tr><td>Top/rare values</td><td>Distribution</td></tr>
+ <tr><td>Min/max length</td><td>Constraint risk</td></tr>
+ <tr><td>Invalid/unresolved</td><td>Rule/reference risk</td></tr>
+ <tr><td>Affected keys</td><td>Evidence population</td></tr>
+ <tr><td>Trend</td><td>Improving/regressing</td></tr>
+ <tr><td>Action/owner</td><td>What happens next</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Toolkit discipline</strong><br>A 200-column profiler output is not automatically useful. Curate the fields that can change migration decisions.</div>`},
+{html:`<h4>13:00 \u2014 Your first finding needs an evidence note</h4>
+ <p>You find an unfamiliar source code. Do not write: \u201cBad data. Needs cleansing.\u201d Use a compact evidence pattern instead.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence note field</th><th>Example structure</th></tr></thead><tbody>
+ <tr><td>Finding</td><td>Observed source value/code/pattern</td></tr>
+ <tr><td>Population</td><td>Count + distinct affected records</td></tr>
+ <tr><td>Where</td><td>Entity, field, source/cycle</td></tr>
+ <tr><td>Evidence</td><td>Query/output reference</td></tr>
+ <tr><td>Migration impact</td><td>Load, mapping, relationship, validation or readiness</td></tr>
+ <tr><td>What is known</td><td>Facts only</td></tr>
+ <tr><td>What is not known</td><td>Missing meaning/authority</td></tr>
+ <tr><td>Hypothesis</td><td>Optional, clearly labelled</td></tr>
+ <tr><td>Decision/question</td><td>What you need from whom</td></tr>
+ <tr><td>Next check</td><td>Immediate technical investigation</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Evidence before opinion</div><p>A consultant can have a hypothesis. The problem begins when the hypothesis is written as though it were a source-system fact.</p></div>`},
+{html:`<h4>14:00 \u2014 Create a Decision Queue, not a list of complaints</h4>
+ <p>Your profile produces 17 questions. If you send them as a long email, you may get three answers and twelve new questions.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Decision queue column</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Decision ID</td><td>Stable reference</td></tr>
+ <tr><td>Entity/field</td><td>Context</td></tr>
+ <tr><td>Question</td><td>One answerable question</td></tr>
+ <tr><td>Evidence summary</td><td>Enough to understand impact</td></tr>
+ <tr><td>Affected records</td><td>Prioritisation</td></tr>
+ <tr><td>Options</td><td>Where useful, not fabricated certainty</td></tr>
+ <tr><td>Recommended technical position</td><td>What you will do until decision</td></tr>
+ <tr><td>Owner</td><td>Who has authority/knowledge</td></tr>
+ <tr><td>Needed by</td><td>Dependency date</td></tr>
+ <tr><td>Status</td><td>Open / answered / superseded</td></tr>
+ <tr><td>Decision</td><td>Exact agreed outcome</td></tr>
+ <tr><td>Evidence reference</td><td>Meeting/ticket/sign-off</td></tr>
+ </tbody></table></div>
+ <p class="small">The queue becomes input to later SME communication and workshop skills. Here, the focus is making the technical question precise enough to answer.</p>`}
+];
+
+const tuesdaySteps = [
+{html:`<h4>Tuesday 08:30 \u2014 Your rules need a catalogue</h4>
+ <p>Yesterday's decisions begin to arrive. Do not scatter approved rules across emails, SQL comments and workbook tabs.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Rule catalogue field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Rule ID</td><td>Traceability</td></tr>
+ <tr><td>Entity/field</td><td>Scope</td></tr>
+ <tr><td>Rule type</td><td>Direct / normalise / lookup / derive / validate / exclude</td></tr>
+ <tr><td>Input condition</td><td>When it applies</td></tr>
+ <tr><td>Treatment</td><td>Exact approved logic</td></tr>
+ <tr><td>Exception behaviour</td><td>What happens when it cannot resolve</td></tr>
+ <tr><td>Owner/approval</td><td>Authority</td></tr>
+ <tr><td>Version/effective cycle</td><td>Baseline</td></tr>
+ <tr><td>Implementation location</td><td>SQL / Power Query / ETL / reference data</td></tr>
+ <tr><td>Test reference</td><td>Evidence</td></tr>
+ <tr><td>Status</td><td>Draft / approved / superseded</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Rule catalogue test</strong><br>If a developer asks \u201cWhat should happen to this value?\u201d you should be able to point to a controlled rule, not search yesterday's Teams chat.</div>`},
+{html:`<h4>Tuesday 09:30 \u2014 Your reference pack needs two tests</h4>
+ <p>Every important cross-reference should be tested from both directions.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Test</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Source coverage</td><td>Which source values have zero approved matches?</td></tr>
+ <tr><td>Reference integrity</td><td>Which source values have more than one approved match?</td></tr>
+ <tr><td>Target validity</td><td>Do approved target values exist in the target domain?</td></tr>
+ <tr><td>Context integrity</td><td>Is legal entity/source/effective context complete?</td></tr>
+ <tr><td>Version control</td><td>Which baseline did this analysis use?</td></tr>
+ <tr><td>Impact</td><td>How many source records are affected by each unresolved value?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The two shapes that should become muscle memory</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Unresolved source values
+SELECT s.&lt;SourceValue&gt;, COUNT(*) AS AffectedRecords
+FROM &lt;SourcePopulation&gt; s
+LEFT JOIN &lt;ApprovedReference&gt; x
+  ON x.&lt;SourceValue&gt; = s.&lt;SourceValue&gt;
+WHERE x.&lt;SourceValue&gt; IS NULL
+GROUP BY s.&lt;SourceValue&gt;;
+
+-- Ambiguous approved reference
+SELECT &lt;SourceValue&gt;, COUNT(*) AS ApprovedMatches
+FROM &lt;ApprovedReference&gt;
+GROUP BY &lt;SourceValue&gt;
+HAVING COUNT(*) > 1;</code></pre></div>`},
+{html:`<h4>Tuesday 11:00 \u2014 Build an Exception Register that can survive a cycle</h4>
+ <p>An exception register is not simply a list of rows that failed.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Column</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Run/Cycle</td><td>Ties exception to execution</td></tr>
+ <tr><td>Entity</td><td>Context</td></tr>
+ <tr><td>BusinessKey</td><td>Affected record</td></tr>
+ <tr><td>Rule/Mapping ID</td><td>What failed</td></tr>
+ <tr><td>ExceptionCode</td><td>Stable classification</td></tr>
+ <tr><td>Field</td><td>Where relevant</td></tr>
+ <tr><td>SourceValue</td><td>Evidence</td></tr>
+ <tr><td>Normalised/Candidate value</td><td>Useful diagnostic context</td></tr>
+ <tr><td>ReferenceVersion</td><td>Lookup baseline where relevant</td></tr>
+ <tr><td>Status</td><td>Open / resolved / accepted / superseded</td></tr>
+ <tr><td>Owner</td><td>Next action</td></tr>
+ <tr><td>Resolution reference</td><td>Decision/fix evidence</td></tr>
+ </tbody></table></div>
+ <p>Keep event grain and affected-record grain separate. One record can have several exception events.</p>
+ <div class="principle"><strong>Useful summary</strong><br>Always be able to show: exception events, distinct affected records, top exception codes, new exceptions, persistent exceptions and resolved exceptions.</div>`},
+{html:`<h4>Tuesday 13:00 \u2014 Build a small investigation log</h4>
+ <p>When something looks wrong, record the path you took.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Investigation field</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Issue</td><td>What appears wrong</td></tr>
+ <tr><td>Expected</td><td>What should have happened</td></tr>
+ <tr><td>Observed</td><td>What actually happened</td></tr>
+ <tr><td>Scope</td><td>Affected population</td></tr>
+ <tr><td>Hypotheses</td><td>Possible causes</td></tr>
+ <tr><td>Evidence checked</td><td>Queries/logs/files/rules</td></tr>
+ <tr><td>Findings</td><td>What evidence proved/disproved</td></tr>
+ <tr><td>Root cause</td><td>Only when supported</td></tr>
+ <tr><td>Fix</td><td>Controlled change</td></tr>
+ <tr><td>Retest</td><td>Proof</td></tr>
+ <tr><td>Residual risk</td><td>Anything still unknown</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Why keep this?</strong><br>It stops circular troubleshooting, helps another consultant continue your work, and gives you a factual basis for explaining the issue to the project.</div>`},
+{html:`<h4>Tuesday 15:00 \u2014 Your release controls need to be boring</h4>
+ <p>The best release control sheet is not impressive. It is clear enough that you can use it at 02:00 during a migration cycle.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Expected</th></tr></thead><tbody>
+ <tr><td>Input population</td><td>Known</td></tr>
+ <tr><td>Ready population</td><td>Known</td></tr>
+ <tr><td>Exception population</td><td>Known at record grain</td></tr>
+ <tr><td>Approved exclusions</td><td>Known</td></tr>
+ <tr><td>Blocked population</td><td>Known if used</td></tr>
+ <tr><td>Unaccounted</td><td>Zero</td></tr>
+ <tr><td>Ready key duplicates</td><td>Zero unless grain says otherwise</td></tr>
+ <tr><td>Reference integrity failures</td><td>Zero for released baseline</td></tr>
+ <tr><td>Input identity</td><td>Recorded</td></tr>
+ <tr><td>Rule/build version</td><td>Recorded</td></tr>
+ <tr><td>Reference version</td><td>Recorded</td></tr>
+ <tr><td>Release status</td><td>Explicit</td></tr>
+ </tbody></table></div>`}
+];
+
+const declutterItems = [
+ "A 40-tab workbook for every entity",
+ "A huge generic SQL library with unknown assumptions",
+ "Macros nobody else can inspect",
+ "Hard-coded project codes in reusable scripts",
+ "A template that requires every field to be completed",
+ "Screenshots as primary evidence",
+ "Personal local files as the only copy",
+ "An unversioned cross-reference workbook",
+ "Tool-specific cleverness with no handover"
+];
+const declutterCoaching = [
+ "<strong>Why it's a problem:</strong> too heavy to maintain. A 40-tab workbook per entity becomes something you dread opening, not something you actually keep current.",
+ "<strong>Why it's a problem:</strong> dangerous copy/paste. A huge generic library invites reusing a query whose assumptions you no longer remember.",
+ "<strong>Why it's a problem:</strong> fragile and opaque. If nobody else can inspect a macro, nobody else can trust or maintain it either.",
+ "<strong>Why it's a problem:</strong> creates silent errors. A hard-coded project code copied into a new context can quietly produce a wrong result nobody notices.",
+ "<strong>Why it's a problem:</strong> encourages invented information. A form that demands every field filled in tempts people to make something up rather than leave it honestly blank.",
+ "<strong>Why it's a problem:</strong> hard to rerun or query. A screenshot is a picture of evidence, not evidence you can actually interrogate.",
+ "<strong>Why it's a problem:</strong> no team continuity. If the only copy lives on your laptop, the toolkit dies the day you're unavailable.",
+ "<strong>Why it's a problem:</strong> cannot reproduce results. Without a version, nobody can prove which reference baseline actually produced a given output.",
+ "<strong>Why it's a problem:</strong> makes you indispensable in the wrong way. Clever tool-specific tricks with no handover mean the work stops the moment you're not there to explain it."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"09:05 Monday",title:"09:05 Monday \u2014 You have joined the project",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Your first assignment</div>
+ <p>The Data Migration Lead gives you a short briefing: \u201cTake fixed assets. We have 14,380 active records in scope and 126 depreciation-category exceptions. I need to know by Wednesday what we actually have, what the exceptions mean technically, what still needs Finance authority, and whether analysis can safely move forward. Don't spend two days making a presentation. Bring me evidence.\u201d</p>
+ <p>You have access to a SQL staging database, a SharePoint folder of extracts and spreadsheets, Excel, Power Query and the project's mapping documents.</p>
+ </div>
+ <h3>What's the stronger first move?</h3>`,
+ options:[
+   {label:"Open whatever files look most relevant and start reading, since time is short.", correct:false, feedback:"Reading at random with a Wednesday deadline is exactly how two days disappear into unstructured exploration with nothing reusable to show for it."},
+   {label:"Ask the Data Migration Lead for a more detailed brief before doing anything else.", correct:false, feedback:"The brief is already specific: what you have, what the exceptions mean, what needs Finance, whether analysis can proceed. Asking for more detail delays starting on a question that's already answerable."},
+   {label:"Create a small working structure immediately, organised around migration questions and evidence rather than software products.", correct:true, feedback:"Correct. A stronger consultant creates a small working structure immediately, organised around migration questions and evidence, not around software products."},
+   {label:"Build a comprehensive 40-tab workbook covering every possible angle on fixed assets before reporting back.", correct:false, feedback:"That's exactly the kind of toolkit clutter this lesson warns against \u2014 heavy to build, heavier to maintain, and not what a Wednesday deadline calls for."}
+ ]
+},
+{
+ id:"b2",nav:"Monday",title:"Monday \u2014 Building the toolkit under pressure",type:"guidedSteps",
+ html:`<p class="lead">Six moments across your first day. Work through them in order \u2014 each one adds a piece you'll still be using on Tuesday.</p>`,
+ steps: mondaySteps,
+ firstLabel:"09:05 \u2014 Start the day"
+},
+{
+ id:"b3",nav:"Tuesday",title:"Tuesday \u2014 Decisions start arriving",type:"guidedSteps",
+ html:`<p class="lead">Five more moments, same discipline. Yesterday's questions are becoming today's approved rules \u2014 if you've built somewhere controlled for them to land.</p>`,
+ steps: tuesdaySteps,
+ firstLabel:"08:30 \u2014 Continue the day"
+},
+{
+ id:"b4",nav:"Wednesday: pressure test",title:"Wednesday 08:00 \u2014 The toolkit gets tested under pressure",type:"content",
+ html:`<p class="lead">The DML asks four questions in ten minutes.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Where your answer should come from</th></tr></thead><tbody>
+ <tr><td>How many customers are actually in scope?</td><td>Dataset Control Card + population query</td></tr>
+ <tr><td>What are the three biggest unresolved issues?</td><td>Profile Summary + Exception Register</td></tr>
+ <tr><td>What decisions are blocking us?</td><td>Decision Queue</td></tr>
+ <tr><td>Can the current output enter the build?</td><td>Release Control Sheet + readiness tests</td></tr>
+ </tbody></table></div>
+ <p>If answering requires opening twelve workbooks and reconstructing yesterday's reasoning, your toolkit is not helping enough.</p>
+ <div class="principle"><strong>The goal</strong><br>Fast, evidence-led answers without pretending certainty you do not have.</div>`
+},
+{
+ id:"b5",nav:"What not to keep",title:"What not to put in your toolkit",type:"selectAll",
+ html:`<p class="lead">Consultants accumulate templates. Most eventually become clutter. Explore each one below to see exactly why.</p>`,
+ options: declutterItems,
+ coaching: declutterCoaching,
+ hint:"Explore every item before continuing.",
+ closingHtml:`<div class="principle"><strong>A consultant toolkit should reduce dependence on you</strong><br>If only you can operate it, you have built a personal trick box, not a professional working system.</div>`
+},
+{
+ id:"b6",nav:"Safe SQL",title:"Make your SQL safe to reuse",type:"content",
+ html:`<p class="lead">A reusable query should advertise its assumptions.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">A well-documented reusable query</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>/*
+Purpose: Duplicate business-key check
+Entity: Adapt per project
+Required inputs:
+ - controlled source table/view
+ - explicit cycle/run filter
+ - approved business key/grain
+Output:
+ - duplicated key
+ - row count
+Do NOT use SELECT DISTINCT to 'fix' duplicates.
+*/
+
+SELECT &lt;BusinessKey&gt;, COUNT(*) AS Rows
+FROM &lt;ControlledSource&gt;
+WHERE &lt;CycleOrRunFilter&gt;
+GROUP BY &lt;BusinessKey&gt;
+HAVING COUNT(*) > 1;</code></pre></div>
+ <ul class="framework-checks">
+   <li>Parameterise cycle/run where practical.</li>
+   <li>Never leave an old legal entity or date filter hidden in copied SQL.</li>
+   <li>Return business keys, not only aggregate counts.</li>
+   <li>Comment the expected grain and purpose.</li>
+   <li>Keep destructive UPDATE/DELETE statements out of profiling scripts.</li>
+   <li>Use read-only access for analysis where possible.</li>
+ </ul>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC2_SQL-Profile-Starter.sql</strong><p class="small">The ten reusable patterns from Monday's first hour, documented and ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC2_SQL-Profile-Starter.sql" download>Download</a></div>`
+},
+{
+ id:"b7",nav:"Safe Excel & Power Query",title:"Make Excel and Power Query safe to reuse",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Practical habit</th></tr></thead><tbody>
+ <tr><td>Input identity</td><td>README/control sheet records source and refresh instructions</td></tr>
+ <tr><td>Raw evidence</td><td>Imported/query result not manually corrected</td></tr>
+ <tr><td>Refreshability</td><td>Power Query or controlled import replaces copy/paste where useful</td></tr>
+ <tr><td>Formula control</td><td>Structured tables, visible formulas, limited manual overrides</td></tr>
+ <tr><td>Pivots</td><td>Refresh before reporting; show filters/scope</td></tr>
+ <tr><td>Exceptions</td><td>Separate view with business keys and issue codes</td></tr>
+ <tr><td>Decisions</td><td>Dedicated controlled table, not cell comments</td></tr>
+ <tr><td>Outputs</td><td>Timestamp/version/cycle in metadata, not only filename</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Excel is not the problem</strong><br>Uncontrolled manual state is the problem. Excel can be an excellent consultant tool when the evidence trail and refresh process are clear.</div>`
+},
+{
+ id:"b8",nav:"The 30-minute challenge",title:"The Bramwell 30-minute challenge",type:"reflection",
+ html:`<p class="lead">You are given only the established Bramwell facts below. You have 30 minutes to create a one-page consultant control view.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Established fact</th></tr></thead><tbody>
+ <tr><td>Earlier active customer population</td><td>18,530</td></tr>
+ <tr><td>Later customer population</td><td>18,612</td></tr>
+ <tr><td>Later accepted population</td><td>18,573</td></tr>
+ <tr><td>Approved pre-load exceptions</td><td>34</td></tr>
+ <tr><td>Approved exclusions</td><td>5</td></tr>
+ <tr><td>Payment-term exceptions progression</td><td>760 \u2192 214, including 23 new later exceptions</td></tr>
+ <tr><td>Blank tax classification</td><td>94 \u2192 91</td></tr>
+ <tr><td>Missing key-account delivery addresses</td><td>31 \u2192 7 before later transformation-rule fix</td></tr>
+ <tr><td>Unrecognised CustomerGroup</td><td>108 \u2192 18</td></tr>
+ <tr><td>Overlength customer names</td><td>27</td></tr>
+ <tr><td>CustomerGroup 99</td><td>18 German records unresolved</td></tr>
+ <tr><td>Country ZZZ</td><td>Unresolved</td></tr>
+ </tbody></table></div>
+ <p>Your page must contain:</p>
+ <ol class="framework-checks">
+   <li>Population/cycle context so figures from different moments are not mixed.</li>
+   <li>Three highest-priority unresolved items and why.</li>
+   <li>One trend that looks positive but needs qualification.</li>
+   <li>One reconciliation statement for the later 18,612 population.</li>
+   <li>Two decisions/questions that still require authority.</li>
+   <li>A note identifying which figures cannot safely be added because populations may overlap.</li>
+ </ol>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Model reconciliation</div><p>18,573 accepted + 34 approved pre-load exceptions + 5 approved exclusions = 18,612 total accounted.</p></div></div>
+ <div class="callout misconception"><div class="callout-label">Do not rewrite history</div><p>The earlier 18,530 population and later 18,612 population are different case-study moments. Your control view should make cycle context visible enough that nobody accidentally treats them as the same baseline.</p></div>
+ <p class="lead">Write your one-page control view below.</p>
+ <textarea id="reflection" placeholder="Population/cycle context:..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/18,?530|18,?612|cycle|different.*(moment|point)/i, strength:"You kept the earlier and later populations as distinct cycle moments rather than merging them.", gap:"State explicitly that the 18,530 and 18,612 populations belong to different case-study moments, not one cycle." },
+   { test:/45e|zzz|99|27|overlength/i, strength:"You named a specific unresolved priority item.", gap:"Name at least one specific unresolved item, like ZZZ, 45E, CustomerGroup 99 or the overlength names, as a priority." },
+   { test:/760|214|23 new|regress/i, strength:"You addressed the payment-term trend and its qualification.", gap:"Name the payment-term trend (760 to 214) and the qualification that 23 of those exceptions are new." },
+   { test:/18,?573|34|reconcil|accounted/i, strength:"You produced a reconciliation statement for the later population.", gap:"State the reconciliation: how 18,573 accepted, 34 pre-load exceptions and 5 exclusions account for 18,612." },
+   { test:/overlap|cannot.*(add|sum)|not.*(add|sum)/i, strength:"You flagged which figures cannot safely be added together.", gap:"Note which issue populations cannot be added together because they may overlap." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Population/cycle context: figures below span two distinct moments \u2014 an earlier 18,530 population and a later 18,612 population; they are not the same baseline. Three priorities: CustomerGroup 99 (18 German records, no approved mapping), country ZZZ (unresolved, no target), and the 27 overlength names (known constraint, no approved treatment). Positive trend needing qualification: payment-term exceptions fell from 760 to 214, but 23 of the later exceptions are new \u2014 remediation and regression are both happening at once. Reconciliation: 18,573 accepted + 34 approved pre-load exceptions + 5 approved exclusions = 18,612 accounted. Two open decisions: what target treatment (if any) applies to CustomerGroup 99, and whether overlength names should be truncated, held as exceptions, or corrected at source. Note: the tax classification, delivery-address and CustomerGroup issue counts cannot be added together, since the affected populations may overlap.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly a one-page control view: cycle context kept clean, priorities named, the reconciliation stated precisely, and the overlap caveat included rather than assumed.":"You have the right structure. Make sure your reconciliation statement is exact, and that you've flagged which figures can't simply be summed."}</div>`
+},
+{
+ id:"b9",nav:"Choose your twelve",title:"Personal toolkit build \u2014 Choose what earns a permanent place",type:"content",
+ html:`<p class="lead">Choose a maximum of twelve reusable artefacts. The limit is deliberate.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Candidate artefact</th><th>Keep? Why?</th></tr></thead><tbody>
+ <tr><td>Dataset Control Card</td><td>Fast control of unfamiliar data</td></tr>
+ <tr><td>SQL Profile Starter</td><td>Core interrogation patterns</td></tr>
+ <tr><td>Field Profile</td><td>Focused field evidence</td></tr>
+ <tr><td>Cycle Comparison SQL</td><td>New/missing/changed populations</td></tr>
+ <tr><td>Decision Queue</td><td>Precise unresolved questions</td></tr>
+ <tr><td>Rule Catalogue</td><td>Approved logic baseline</td></tr>
+ <tr><td>Reference Integrity SQL</td><td>Coverage + ambiguity</td></tr>
+ <tr><td>Exception Register</td><td>Record/rule evidence</td></tr>
+ <tr><td>Investigation Log</td><td>Structured diagnosis</td></tr>
+ <tr><td>Release Control Sheet</td><td>Readiness/reconciliation</td></tr>
+ <tr><td>Field Lineage Sheet</td><td>Explain target values</td></tr>
+ <tr><td>Handover Note</td><td>Operational transfer</td></tr>
+ <tr><td>Generic 40-page profiling report</td><td>Probably not</td></tr>
+ <tr><td>Personal macro collection</td><td>Only if transparent, safe and useful</td></tr>
+ <tr><td>Screenshot folder</td><td>Not as primary control</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The one-sentence test</strong><br>For each chosen artefact, write one sentence: \u201cI use this when\u2026\u201d If that sentence is vague, the artefact may not deserve a place.</div>`
+},
+{
+ id:"b10",nav:"The toolkit folder",title:"Build the toolkit folder",type:"content",
+ html:`<div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Folder structure</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>DMC_Data_Toolkit/
+  00_README/
+  01_Control/
+  02_SQL/
+  03_Profile/
+  04_Rules_and_References/
+  05_Exceptions_and_Investigation/
+  06_Release_and_Handover/
+  99_Examples/</code></pre></div>
+ <p>Keep project-specific examples separate from clean reusable templates. Remove client data before carrying anything to another engagement.</p>
+ <div class="callout misconception"><div class="callout-label">Confidentiality</div><p>Never reuse another client's data, credentials, connection strings, commercially sensitive mappings or internal documents as part of your personal toolkit. Reuse patterns and blank templates, not client information.</p></div>`
+},
+{
+ id:"b11",nav:"The practical assessment",title:"The toolkit practical assessment",type:"reflection",
+ html:`<p class="lead">A synthetic project pack is released in four rounds. You work with the toolkit rather than following a prescribed sequence. This is training material and creates no new Bramwell canon.</p>
+ <h3>Round 1 \u2014 Unknown data</h3>
+ <p>Receive three extracts with inconsistent filenames and no reliable row-count statement. Establish identity, grain, scope questions and first-pass profile.</p>
+ <h3>Round 2 \u2014 Business decisions</h3>
+ <p>Receive partial SME answers, one contradictory answer and an updated reference workbook. Update the Decision Queue, Rule Catalogue and reference controls without overwriting earlier evidence.</p>
+ <h3>Round 3 \u2014 Quality movement</h3>
+ <p>Receive a second-cycle extract. Show resolved, persistent and new defects, and identify one headline metric that hides regression.</p>
+ <h3>Round 4 \u2014 Release pressure</h3>
+ <p>The PM asks for a load-ready output by 16:00. One reference is ambiguous and one target constraint remains unresolved. Produce the release decision and handover evidence.</p>
+ <div class="callout misconception"><div class="callout-label">Assessment rule</div><p>You are not scored for making everything green. You are scored for producing controlled evidence, making defensible technical decisions, preserving uncertainty and refusing unsafe shortcuts.</p></div>
+ <p class="lead">Pick one round and write how you'd actually handle it, toolkit in hand.</p>
+ <textarea id="reflection" placeholder="For Round..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/round/i, strength:"You identified which round you're responding to.", gap:"State clearly which round you're addressing." },
+   { test:/evidence|control card|decision queue|exception register|release control/i, strength:"You named a specific toolkit artefact you'd use.", gap:"Name a specific artefact from your toolkit \u2014 the Decision Queue, Exception Register, Release Control Sheet \u2014 and how you'd use it here." },
+   { test:/uncertain|unresolved|preserve|do not/i, strength:"You preserved uncertainty rather than manufacturing a clean answer.", gap:"State what you'd deliberately leave visibly unresolved, rather than forcing a clean-looking answer." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">For Round 4: I would not silently resolve the ambiguous reference or invent a treatment for the unresolved target constraint. The Release Control Sheet would show the release as "ready with controlled exceptions" \u2014 the affected records routed to the exception population, not the ready output. The handover note tells the PM exactly which records are held back and why, with the reference ambiguity and constraint issue named specifically, so the 16:00 deadline is met without quietly shipping an unapproved decision.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly what the assessment rewards: controlled evidence and an honest exception population, not a forced green light.":"You have good instincts. Make sure you're naming a specific toolkit artefact and being explicit about what stays unresolved, rather than describing the round in general terms."}</div>`
+},
+{
+ id:"b12",nav:"Self-review",title:"Consultant self-review",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Strong answer looks like</th></tr></thead><tbody>
+ <tr><td>Can I reproduce yesterday's result?</td><td>Input/rule/reference baseline recorded</td></tr>
+ <tr><td>Can another consultant follow my work?</td><td>Queries, evidence and decisions are readable</td></tr>
+ <tr><td>Can I show affected records?</td><td>Not just counts/screenshots</td></tr>
+ <tr><td>Can I separate fact from hypothesis?</td><td>Investigation notes do so explicitly</td></tr>
+ <tr><td>Can I explain why a value changed?</td><td>Source + rule/reference lineage</td></tr>
+ <tr><td>Can I show what remains unresolved?</td><td>Exception/decision queues</td></tr>
+ <tr><td>Can I compare cycles?</td><td>Persistent/resolved/new populations</td></tr>
+ <tr><td>Can I prove release population?</td><td>Counts + keys + statuses reconcile</td></tr>
+ <tr><td>Can I hand over without a meeting?</td><td>Pack contains enough operational context</td></tr>
+ <tr><td>Am I carrying unnecessary machinery?</td><td>Toolkit remains small and purposeful</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b13",nav:"First-week rhythm",title:"Your first-week operating rhythm",type:"content",
+ html:`<p class="lead">A toolkit becomes useful through routine.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Moment</th><th>Habit</th></tr></thead><tbody>
+ <tr><td>New extract arrives</td><td>Record identity \u2192 population/key checks \u2192 refresh profile</td></tr>
+ <tr><td>New issue appears</td><td>Evidence note \u2192 affected population \u2192 investigation/decision</td></tr>
+ <tr><td>SME answers question</td><td>Update decision/rule/reference \u2192 version \u2192 retest affected population</td></tr>
+ <tr><td>Rule changes</td><td>Update catalogue \u2192 implementation \u2192 regression tests</td></tr>
+ <tr><td>Cycle changes</td><td>Compare old/new populations and issue movement</td></tr>
+ <tr><td>Output proposed</td><td>Run release controls before handover</td></tr>
+ <tr><td>Work handed to colleague</td><td>Give evidence, baseline and next action, not just files</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Professional habit</strong><br>Close the loop. A decision is not complete until the controlled rule/reference is updated and the affected data has been retested.</div>
+ <div class="to-record">${TPKit.fromField({
+   title:"The Toolkit That Survived My Holiday", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/ToolkitThatSurvivedMyHoliday-Nadia.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b14",nav:"Reflection",title:"Reflection \u2014 What would you actually use?",type:"reflection",
+ html:`<p class="lead">Choose the five toolkit items you expect to use most often on a real migration project. For each, describe one situation where it would save you time or prevent an error.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The strongest answer is personal and practical. There is no prize for choosing the most technical five. A good DMC combines interrogation, control, decisions, exceptions and handover.</p></div></div>
+ <textarea id="reflection" placeholder="The five items I expect to use most often are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/control card|profile|decision queue|rule catalogue|exception register|investigation log|release control|lineage|handover/i, strength:"You named specific toolkit artefacts, not just general categories.", gap:"Name specific artefacts from the toolkit \u2014 not just \u2018profiling tools\u2019 or \u2018decision tracking\u2019 in general." },
+   { test:/save time|prevent|error|situation|when/i, strength:"You tied each choice to a concrete situation where it would help.", gap:"Describe one concrete situation for each item where it would save time or catch an error, not just why it sounds useful." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The five I'd reach for most: the Dataset Control Card, the moment any new extract lands and I need to prove what I'm actually looking at; the SQL Profile Starter, for the first hour on any new entity; the Decision Queue, whenever a profiling pass produces more open questions than I can track in my head; the Exception Register, to keep resolved, persistent and new defects visible across cycles rather than collapsed into one number; and the Release Control Sheet, the one document I'd want in front of me at 2am during a migration cycle if something needs a fast, evidence-backed answer.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is genuinely personal and practical \u2014 exactly what the coaching note asks for, not a list of the most technically impressive five.":"You have good instincts. Make sure each choice comes with a real situation attached, not just a description of what the artefact does."}</div>`
+},
+{
+ id:"b15",nav:"DMC2 synthesis",title:"DMC2 module synthesis \u2014 What you can now do",type:"content",
+ html:`<p class="lead">Across DMC2, you have moved from receiving unfamiliar data to producing a controlled migration-ready output.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The DMC2 arc</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>UNFAMILIAR DATA
+  -> CONTROL THE DATASET
+  -> PROFILE WHAT MATTERS
+  -> CLASSIFY + CLEANSE APPROVED ISSUES
+  -> CONTROL REFERENCES + LOOKUPS
+  -> ACCOUNT FOR READY + EXCEPTION POPULATIONS
+  -> HAND OVER MIGRATION-READY EVIDENCE</code></pre></div>
+ <p>That is a practical consultant capability, not a collection of data-quality definitions.</p>`
+},
+{
+ id:"b16",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building your consultant data toolkit \u2014 and with it, DMC Module 2.</strong></p>
+ <p>You can now assemble and operate a compact, reusable Data Migration Consultant toolkit for taking control of unfamiliar data: query patterns, profiling controls, cleansing-rule structures, cross-reference checks, release controls, investigation notes and handover artefacts. More importantly, you can choose what to use, adapt it to a project, and avoid turning a toolkit into a pile of templates nobody trusts.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>What's next</h3>
+ <p>You have completed DMC2 \u2014 Profiling, Cleansing & Reference Data. DMC3 moves from building controlled evidence to troubleshooting with it: diagnosing rejected records, successful-but-wrong loads, relationship failures and root causes without jumping straight to fixes.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you're tempted to build a 40-tab workbook instead of a small, purposeful toolkit.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 2",
+  moduleTitle: "Profiling, Cleansing & Reference Data",
+  lessonLabel: "Lesson 6: Building your consultant data toolkit",
+  lessonShortLabel: "Lesson 6",
+  lessonTagline: "Assembling a compact, reusable toolkit under real project pressure",
+  storageKey: "tp_dmc2_lesson6_v1",
+  lessonId: "dmc2-lesson6",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson6-complete.html",
+  finalButtonLabel: "Finish Lesson 6",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
