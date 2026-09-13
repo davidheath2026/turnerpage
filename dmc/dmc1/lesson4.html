@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Building robust transformations</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 1 — LESSON 4 — "Building robust transformations".
+   Built to the Teach → Work through → Conditional logic → Lookups
+   → Derivations → Diagnose it → Do it yourself → Consultant
+   situations → Reflection → Summary standard established for DMC
+   in Lessons 1-3.
+
+   Source: DMC1_Lesson4_Building_Robust_Transformations_v3.docx.
+   All Bramwell facts (UK/NOR/BEL/GER approved country codes; ZZZ
+   and 45E unresolved; 27 overlength names; 18 German CustomerGroup
+   99 records unresolved; the 214 payment-term exception figure)
+   are taken directly from that manuscript and stay unresolved here
+   as instructed. The supplier transformation lab (VEN-001 to
+   VEN-007) is explicitly synthetic training material per the
+   manuscript, not new Bramwell canon.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with Lessons 1-3.
+============================================================== */
+
+const transformationSteps = [
+{html:`<h4>Build the country transformation properly</h4>
+ <p>Bramwell has an established country cross-reference: UK \u2192 GB, NOR \u2192 NO, BEL \u2192 BE and GER \u2192 DE. ZZZ remains unresolved.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL implementation pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo,
+  c.Country AS SourceCountry,
+  NULLIF(LTRIM(RTRIM(c.Country)), '') AS NormalisedCountry,
+  x.TargetCountryCode,
+  CASE
+    WHEN NULLIF(LTRIM(RTRIM(c.Country)), '') IS NULL THEN 'COUNTRY_BLANK'
+    WHEN x.SourceCountryCode IS NULL THEN 'COUNTRY_UNRESOLVED'
+    ELSE NULL
+  END AS CountryException
+FROM raw.Customer c
+LEFT JOIN ref.CountryCrossRef x
+  ON x.SourceCountryCode = NULLIF(LTRIM(RTRIM(c.Country)), '')
+  AND x.ApprovalStatus = 'Approved'
+  AND x.ReferenceVersion = @ReferenceVersion
+WHERE c.CycleId = @CycleId;</code></pre></div>
+ <p class="small">The important behaviour is not the exact SQL syntax. The source row survives when the reference does not match. The transformation does not substitute GB, blank or any other target value.</p>
+ <h4>SSIS implementation pattern</h4>
+ <ol class="framework-checks">
+   <li>OLE DB Source or controlled staging source supplies CustNo, Country, RunId and source evidence.</li>
+   <li>Derived Column creates a normalised lookup key if approved syntactic cleaning is required. Do not replace the raw Country column.</li>
+   <li>Lookup uses the approved country reference and redirects no-match rows rather than failing the whole flow or silently ignoring them.</li>
+   <li>Conditional Split or equivalent distinguishes blank-key exceptions, no-match exceptions and successful mappings where useful.</li>
+   <li>Clean path retains SourceCountry and receives TargetCountryCode.</li>
+   <li>Exception path writes CustNo, source value, rule/mapping ID, exception code, RunId and relevant reference version.</li>
+ </ol>
+ <div class="principle"><strong>Component choice is secondary</strong><br>The same controlled behaviour could be implemented in SQL, Power Query, Python, ADF/Fabric dataflows or another ETL tool. The DMC must be able to describe the rule and failure behaviour without saying \u201cbecause that is how the component works.\u201d</div>
+ <h4>Test the lookup, including the failure path</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Input</th><th>Expected result</th><th>Why</th></tr></thead><tbody>
+ <tr><td>UK</td><td>GB, clean</td><td>Approved mapping exists</td></tr>
+ <tr><td>NOR</td><td>NO, clean</td><td>Approved mapping exists</td></tr>
+ <tr><td>ZZZ</td><td>No CountryCode; COUNTRY_UNRESOLVED</td><td>No approved mapping exists</td></tr>
+ <tr><td>NULL</td><td>No CountryCode; COUNTRY_BLANK</td><td>No source value to map</td></tr>
+ <tr><td>'UK ' (trailing space)</td><td>GB only if trim is an approved syntactic rule</td><td>Tests normalisation before lookup</td></tr>
+ <tr><td>UK with two approved reference rows</td><td>Stop/flag reference ambiguity</td><td>More than one approved answer is not deterministic</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Failure-path test</div><p>A lookup has not been properly tested because four known codes mapped successfully. You must deliberately test no-match and multi-match behaviour.</p></div>`},
+{html:`<h4>Payment terms: do not turn uncertainty into a default</h4>
+ <p>The source customer C10482, Harrison Trade Supplies Ltd, has Terms = 45E. The current Bramwell canon deliberately does not provide an approved target equivalent for 45E. NET30 was an earlier wrong staging value, not an approved treatment.</p>
+ <p>A robust transformation therefore has a simple responsibility: expose 45E as unresolved until an authorised decision changes the reference or rule.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: expose, don't default</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CASE
+  WHEN p.TargetPaymentTerm IS NOT NULL THEN p.TargetPaymentTerm
+  ELSE NULL
+END AS PaymentTerms,
+CASE
+  WHEN p.TargetPaymentTerm IS NULL THEN 'PAYMENT_TERM_UNRESOLVED'
+END AS PaymentTermException</code></pre></div>
+ <div class="principle"><strong>What changes when 45E is finally approved?</strong><br>Update the controlled mapping or reference through the project decision process, version it, rerun the affected population and retest. Do not patch individual customer rows or edit the transformation to make one example pass.</div>
+ <h4>Defaults are business rules, not developer conveniences</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Default situation</th><th>Safe?</th><th>Reason</th></tr></thead><tbody>
+ <tr><td>Target requires a value and business has approved a specific default under defined conditions</td><td><span class="tp-tag tp-tag--good">Potentially, yes</span></td><td>The default is an explicit rule that can be traced and tested</td></tr>
+ <tr><td>Lookup fails, so use the most common target value</td><td><span class="tp-tag tp-tag--bad">No</span></td><td>Frequency is not approval</td></tr>
+ <tr><td>Source blank, so copy the previous cycle value</td><td><span class="tp-tag tp-tag--warn">Only with an approved carry-forward rule</span></td><td>Otherwise stale data is manufactured</td></tr>
+ <tr><td>Unknown country, so use legal-entity country</td><td><span class="tp-tag tp-tag--bad">No, unless explicitly approved</span></td><td>Creates plausible but potentially false geography</td></tr>
+ <tr><td>Optional target field with approved blank treatment</td><td><span class="tp-tag tp-tag--good">Yes</span></td><td>Blank is itself the approved outcome</td></tr>
+ </tbody></table></div>`},
+{html:`<h4>Target constraints without silent data loss</h4>
+ <p>Bramwell has 27 customer names longer than the target 60-character limit. The target constraint is known; the business treatment is not. This makes the rule a validation problem, not a truncation problem.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: expose the constraint conflict</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CustNo, Name AS SourceCustomerName, LEN(Name) AS SourceLength,
+  60 AS TargetLimit,
+  CASE WHEN LEN(Name) > 60 THEN 'CUSTOMER_NAME_TOO_LONG' END AS ExceptionCode
+FROM raw.Customer
+WHERE CycleId = @CycleId
+  AND LEN(Name) > 60;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Why LEFT(Name,60) is dangerous</div><p>It converts a known constraint conflict into an apparently valid value and discards source characters. The load may succeed while the migration has made an unapproved business decision.</p></div>
+ <h4>Type conversion should fail visibly too</h4>
+ <p>Data types create similar risks. A date, quantity or numeric identifier that cannot be converted should not automatically become zero, today's date or NULL unless that treatment is approved.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: generic conversion pattern</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  SourceKey, SourceDateText,
+  TRY_CONVERT(date, SourceDateText, 23) AS ConvertedDate,
+  CASE
+    WHEN SourceDateText IS NOT NULL
+     AND TRY_CONVERT(date, SourceDateText, 23) IS NULL
+    THEN 'DATE_CONVERSION_FAILED'
+  END AS ExceptionCode
+FROM raw.Example;</code></pre></div>
+ <p class="small"><code>TRY_CONVERT</code> is one SQL Server technique for keeping the row visible when conversion fails. In SSIS, error outputs or explicit validation can serve the same purpose. The design objective is controlled visibility, not loyalty to one function.</p>`}
+];
+
+const transformationDefects = [
+ "Silently truncates overlength names to 60 characters with LEFT(...,60)",
+ "Invents 'NET30' for unresolved payment terms, including 45E, via COALESCE",
+ "Classifies every non-'1' Status as 'Inactive', including unknown values",
+ "Invents 'GB' for unresolved countries such as ZZZ, via COALESCE",
+ "Forces unknown CustomerGroup values to 'STANDARD', potentially hiding the unresolved German 99 population",
+ "Does not constrain either join to approved reference status or reference version",
+ "Does not detect duplicate reference matches on either lookup",
+ "Does not preserve normalised-versus-raw evidence anywhere in the output",
+ "Carries no Rule or Mapping traceability for any transformed value",
+ "Provides no explicit exception output anywhere in the query"
+];
+const transformationDefectsCoaching = [
+ "<strong>Real defect.</strong><br>This is the same CUS-002 problem from Lesson 1 and the same trap from Lesson 3's diagnostic: a known constraint conflict is silently converted into a valid-looking value.",
+ "<strong>Real defect.</strong><br>NET30 has never been an approved substitute for 45E. COALESCE hides an unresolved payment term exactly as ISNULL did in the Lesson 2 and 3 diagnostics.",
+ "<strong>Real defect.</strong><br>Collapsing every non-1 value into Inactive destroys the distinction the Status field is actually making, and manufactures a status nobody approved.",
+ "<strong>Real defect.</strong><br>ZZZ, and any other unapproved country code, disappears into GB. Nobody reviewing the output would ever know it happened.",
+ "<strong>Real defect.</strong><br>Forcing unrecognised CustomerGroup values to STANDARD would quietly reclassify the 18 unresolved German 99 records into an approved-looking group, exactly the invented classification Section 9 warns against.",
+ "<strong>Real defect.</strong><br>Without an approval-status or version filter, a draft or superseded reference row can silently affect the result on either lookup.",
+ "<strong>Real defect.</strong><br>If either reference table contains a duplicate approved mapping for one source code, this query has no way of noticing \u2014 it just picks whichever row the join happens to return.",
+ "<strong>Real defect.</strong><br>With no separate normalised or raw fields retained, nobody could later prove what the source actually sent versus what the transformation assumed.",
+ "<strong>Real defect.</strong><br>None of the six transformed fields here can be traced back to an approved MappingID or RuleID \u2014 if a rule changes, nobody can find every place it was applied.",
+ "<strong>Real defect.</strong><br>Every one of the defects above fails silently. There is no exception output anywhere, so nothing here would ever surface as a problem to investigate."
+];
+
+const transformationSituations = [
+ { title:"Situation 1: The helpful default",
+   question:"Only three rows have an unknown country. A senior developer suggests defaulting them to GB and documenting it later. What's the right response?",
+   options:[
+     {label:"Do not. Small volume does not reduce the need for authority. Route the three rows visibly and obtain a decision.", correct:true, feedback:"Correct. Small volume does not reduce the need for authority. Route the three rows visibly and obtain a decision."},
+     {label:"Since only three rows are affected, defaulting them to GB and documenting it later is a reasonable, low-risk shortcut.", correct:false, feedback:"Volume isn't the test here. Three unapproved decisions are still three unapproved decisions, however small the population looks."},
+     {label:"Ask the developer to pick a different default that sounds more neutral than GB.", correct:false, feedback:"Changing which unapproved value gets manufactured doesn't fix the underlying problem: it's still a decision nobody with authority has made."},
+     {label:"Leave the three rows out of this cycle's output entirely, without recording anywhere why they were excluded.", correct:false, feedback:"An unrecorded, silent exclusion is just a different way of hiding the same unresolved decision."}
+   ]
+ },
+ { title:"Situation 2: Duplicate lookup values",
+   question:"The payment-term lookup returns two approved-looking rows for the same source code. What's the right response?",
+   options:[
+     {label:"Since both rows are approved, either one is a safe choice to use going forward.", correct:false, feedback:"Two approved rows for one source code means the reference itself is ambiguous at this grain \u2014 neither row is safely \u201cthe\u201d answer."},
+     {label:"Pick whichever row was added to the reference table most recently.", correct:false, feedback:"Recency isn't an approval mechanism. That's an invented tiebreaker standing in for an actual decision."},
+     {label:"Average the two target values together so neither approved row is unfairly favoured over the other.", correct:false, feedback:"Payment terms aren't a quantity that can be meaningfully averaged, and this still avoids raising the real reference-quality problem."},
+     {label:"Treat the reference as ambiguous at the applicable grain. Do not choose the first row returned by the engine.", correct:true, feedback:"Correct. Treat the reference as ambiguous at the applicable grain. Do not choose the first row returned by the engine."}
+   ]
+ },
+ { title:"Situation 3: The giant Script Component",
+   question:"One custom component performs cleansing, five lookups, status mapping, defaults, validation and exception formatting. It works. What's the right response?",
+   options:[
+     {label:"Since it works and produces correct output today, there's no real reason to look at it any further right now.", correct:false, feedback:"Working is not the only criterion. A component nobody can safely change or test is a risk even when today's output looks correct."},
+     {label:"Working is not the only criterion. Assess readability, testability and change isolation, and split logic where that improves control.", correct:true, feedback:"Correct. Working is not the only criterion. Assess readability, testability, change isolation and supportability. Split logic where that improves control; retain custom code only where it genuinely adds clarity."},
+     {label:"All custom script components should be broken apart into standard, off-the-shelf components, regardless of what they actually do.", correct:false, feedback:"That overcorrects. Custom code isn't automatically bad; the standard is whether it's readable, testable and maintainable, not whether it's custom."},
+     {label:"As long as one developer understands the component well enough to maintain it, it's fine to leave it exactly as it is.", correct:false, feedback:"Relying on one person's knowledge is exactly the hidden-knowledge risk this module keeps warning about, whether it's a manual process or a single opaque component."}
+   ]
+ },
+ { title:"Situation 4: Clean output after a rule change",
+   question:"A new reference file reduces exceptions from 214 to 12 overnight. What's the right response?",
+   options:[
+     {label:"A drop from 214 to 12 overnight is straightforwardly good news and can be reported as an improvement immediately.", correct:false, feedback:"Reporting it as good news before checking anything skips exactly the verification this scenario is testing for."},
+     {label:"Since the exception count fell, the new reference file must be correct and doesn't need any further checking.", correct:false, feedback:"A falling count is also exactly what a new default or a join defect would produce. The count alone can't tell you which one happened."},
+     {label:"Good news only after you prove which reference version was used, which records changed and that the reduction reflects approved mappings rather than a new default or join defect.", correct:true, feedback:"Correct. Good news only after you prove which reference version was used, which records changed and that the reduction reflects approved mappings rather than a new default or join defect."},
+     {label:"The most likely explanation is that the missing 202 customers were quietly excluded from the run rather than actually resolved.", correct:false, feedback:"That jumps to a specific conclusion without checking anything, the same problem as assuming the result is good news outright \u2014 just pessimistic instead of optimistic."}
+   ]
+ },
+ { title:"Situation 5: The hard one \u2014 first-match routing",
+   question:"A customer has both ZZZ country and 45E payment terms, but the exception table records only COUNTRY_UNRESOLVED. What's the right response?",
+   options:[
+     {label:"Decide whether the design should capture the first blocking reason or all rule failures, and redesign evaluation if remediation needs every defect.", correct:true, feedback:"Correct. Decide whether the design is intended to capture first blocking reason or all rule failures. If downstream remediation needs all defects, redesign evaluation so multiple exception events can be retained."},
+     {label:"Since COUNTRY_UNRESOLVED was already captured for this customer, the payment-term issue can safely be ignored entirely.", correct:false, feedback:"That's exactly the gap this scenario is exposing: a real second defect exists but the current design has no way of surfacing it."},
+     {label:"This is simply a bug in the exception table and should be fixed by adding a second column to hold a second issue code.", correct:false, feedback:"That treats the symptom rather than the design decision underneath it: whether the routing model captures one blocking reason or every rule failure."},
+     {label:"The customer should be excluded from the cycle entirely, since they have more than one unresolved problem.", correct:false, feedback:"Excluding the record doesn't fix the underlying question of whether the exception design can see all its defects. It just hides both issues instead of one."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"A clean file that should worry you",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The Bramwell customer pipeline from Lesson 3 completes. Every submitted row is target-shaped. There are no country-code exceptions, no payment-term exceptions and no customer names longer than 60 characters.</p>
+ <p>That sounds excellent until you compare the result with the evidence established earlier. Bramwell still has unresolved source country code ZZZ. Payment term 45E still has no approved target equivalent. Twenty-seven customer names exceed the target 60-character limit.</p>
+ <p>You inspect the transformation and find three rules:</p>
+ </div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The three suspicious rules</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CountryCode = ISNULL(CountryLookup.TargetCode, 'GB')
+PaymentTerms = ISNULL(PaymentTermLookup.TargetTerm, 'NET30')
+CustomerName = LEFT(LTRIM(RTRIM(Name)), 60)</code></pre></div>
+ <h3>What is the most important conclusion?</h3>`,
+ options:[
+   {label:"The transformation is efficient because it prevents load failures.", correct:false, feedback:"Preventing load failures isn't the goal on its own. A transformation that never rejects anything can simply be hiding every problem instead of solving one."},
+   {label:"The rules are acceptable if the assumptions are documented after the cycle.", correct:false, feedback:"Documenting an unapproved assumption after the fact doesn't make it approved. It just adds a record of the decision nobody with authority actually made."},
+   {label:"The transformation has hidden unresolved conditions by manufacturing target-valid outcomes that were never approved.", correct:true, feedback:"Correct. A robust transformation is not one that produces the fewest rejects. It is one that applies approved logic predictably and makes everything else visible. The three expressions create plausible data, but plausibility is not authority."},
+   {label:"The only problem is that the logic should have been implemented in SSIS rather than SQL.", correct:false, feedback:"The tool isn't the issue. The exact same three defaults would be just as unsafe written in SSIS, Power Query or any other technology."}
+ ]
+},
+{
+ id:"b2",nav:"Robust means testable",title:"Teach \u2014 Robust means deterministic, visible and testable",type:"content",
+ html:`<p class="lead">A migration transformation converts source evidence into target-ready values. The consultant must be able to explain exactly why each output value exists.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Property</th><th>Question to ask</th><th>Weak behaviour</th></tr></thead><tbody>
+ <tr><td>Deterministic</td><td>Given the same controlled input and rule version, do I get the same result?</td><td>Manual fixes or hidden assumptions change outcomes</td></tr>
+ <tr><td>Approved</td><td>Can I trace the rule to an agreed mapping, reference or decision?</td><td>Developer chooses a plausible target value</td></tr>
+ <tr><td>Visible</td><td>Can I see unresolved and invalid conditions?</td><td>Defaults and joins hide them</td></tr>
+ <tr><td>Traceable</td><td>Can I relate output back to source key and rule?</td><td>Only final values survive</td></tr>
+ <tr><td>Testable</td><td>Can I construct positive, negative and boundary cases?</td><td>Rule is expressed as vague prose</td></tr>
+ <tr><td>Maintainable</td><td>Can another consultant change the rule safely?</td><td>Logic is duplicated or buried in opaque code</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>A useful test</strong><br>For any transformed value, ask: \u201cWhich source evidence and approved rule caused this value?\u201d If the answer is \u201cthe code needed something there,\u201d the transformation is not controlled.</div>
+ <h3>Recognise the transformation pattern before choosing the tool</h3>
+ <ul class="framework-checks">
+   <li><strong>Direct</strong> \u2014 source value already has approved target meaning. CustNo \u2192 CustomerNumber, subject to key/type controls.</li>
+   <li><strong>Syntactic standardisation</strong> \u2014 whitespace, casing or format changes that do not alter business meaning. Trim a lookup key in the transformation layer while preserving raw.</li>
+   <li><strong>Reference lookup</strong> \u2014 translate controlled source code to approved target code. UK \u2192 GB; NOR \u2192 NO; BEL \u2192 BE; GER \u2192 DE.</li>
+   <li><strong>Conditional mapping</strong> \u2014 output depends on an explicit source condition. Status 1 \u2192 Active; approved Status 0 \u2192 Inactive in the DMC lab.</li>
+   <li><strong>Derivation</strong> \u2014 output is calculated from multiple inputs or rules. CustomerGroup only when an approved decision matrix exists.</li>
+   <li><strong>Combine / split</strong> \u2014 target structure differs from source structure. Address or name examples where approved rules define composition.</li>
+   <li><strong>Exclusion / routing</strong> \u2014 record follows a different controlled path. Approved exclusion or exception population.</li>
+   <li><strong>Validation only</strong> \u2014 check a constraint without changing the value. Name &gt; 60 characters: expose conflict; do not invent truncation.</li>
+ </ul>`
+},
+{
+ id:"b3",nav:"Order is part of the rule",title:"Transformation order is part of the rule",type:"content",
+ html:`<p class="lead">The same individual transformations can produce different results when applied in a different order. Sequence therefore belongs in the design, not only in the ETL canvas.</p>
+ <p>Consider a country value containing trailing spaces: <code>'UK '</code>. A controlled sequence might be: preserve raw value \u2192 standardise lookup key \u2192 perform approved lookup \u2192 route no-match \u2192 write target value.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Worked example</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Raw Country: 'UK '
+Normalised lookup key: 'UK'
+Approved reference: UK -> GB
+Target CountryCode: GB
+Evidence retained: Raw='UK ', Normalised='UK', Rule=CUS-006</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not confuse standardisation with business mapping</div><p>Removing trailing whitespace may be an approved syntactic standardisation. Converting UK to GB is a business or reference translation. Keeping those concepts separate makes testing and change control much clearer.</p></div>
+ <h3>A transformation sequence for Bramwell customers</h3>
+ <ol class="framework-checks">
+   <li>Read controlled raw/staging values and retain source key/run context.</li>
+   <li>Create any approved syntactic normalisations needed for comparison or conversion.</li>
+   <li>Apply controlled reference lookups.</li>
+   <li>Apply approved conditional mappings and derivations.</li>
+   <li>Evaluate target constraints and business rules.</li>
+   <li>Route unresolved/invalid conditions to exception evidence.</li>
+   <li>Produce load-ready values only for records that meet the required rules.</li>
+   <li>Reconcile clean, exception and approved-exclusion populations.</li>
+ </ol>`
+},
+{
+ id:"b4",nav:"Work through it",title:"Work through it \u2014 Country, payment terms and constraints",type:"guidedSteps",
+ html:`<p class="lead">Three worked examples, in order. Each one is a different transformation pattern hitting the same underlying rule: expose uncertainty, never manufacture it away.</p>`,
+ steps: transformationSteps,
+ firstLabel:"Walk through Step 1",
+ closingHtml:`<div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Turner Page insight</div><p>All three examples end the same way: an unresolved value stays visible instead of becoming a plausible-looking default. Country, payment terms and name length are different rules, but the same discipline.</p></div></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Rule-to-Build-Traceability-Template.xlsx</strong><p class="small">Links each transformed field back to its MappingID/RuleID, source evidence and exception code.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Rule-to-Build-Traceability-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Conditional logic",title:"Conditional logic \u2014 Make every branch explicit",type:"content",
+ html:`<p class="lead">Bramwell customer status is a useful small example. In the DMC lab, Status 1 \u2192 Active and Status 0 \u2192 Inactive are explicit treatments. Other values must not be swept into Inactive by an ELSE clause.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: explicit branches</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>CASE
+  WHEN Status = '1' THEN 'Active'
+  WHEN Status = '0' THEN 'Inactive'
+  ELSE NULL
+END AS CustomerStatus</code></pre></div>
+ <p>The NULL above is not the final business treatment. It is a technical way to prevent an unapproved status from being manufactured. The row should also carry an exception code.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Source Status</th><th>Expected transformed status</th><th>Exception</th></tr></thead><tbody>
+ <tr><td>1</td><td>Active</td><td>None</td></tr>
+ <tr><td>0</td><td>Inactive</td><td>None</td></tr>
+ <tr><td>NULL</td><td>None</td><td>STATUS_UNRESOLVED</td></tr>
+ <tr><td>2</td><td>None</td><td>STATUS_UNRESOLVED</td></tr>
+ <tr><td>X</td><td>None</td><td>STATUS_UNRESOLVED</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">The dangerous ELSE</div><p><code>CASE WHEN Status='1' THEN 'Active' ELSE 'Inactive' END</code> is short, readable and wrong if values other than 0 and 1 exist. Robustness often means refusing to collapse unknown conditions into a valid-looking category.</p></div>
+ <h3>Conditional Split design</h3>
+ <p>In SSIS, a Conditional Split evaluates outputs in order. If conditions overlap, an earlier branch can capture a row before a later branch sees it. That makes branch order part of the transformation logic.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example conceptual routes, in order</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>1. MissingCustomerKey
+2. InvalidStatus
+3. UnresolvedCountry
+4. UnresolvedPaymentTerm
+5. TargetConstraintFailure
+6. Clean</code></pre></div>
+ <p>This design raises an important question: what if one customer has both an unresolved country and an unresolved payment term? A first-match-only split may record only one issue.</p>
+ <div class="principle"><strong>Non-obvious design decision</strong><br>Decide whether your exception model is record-routing or rule-evaluation. If the business needs all defects per record, evaluate rules independently or create multiple exception events rather than relying on one first-match route. This is why exception-event count can differ from exception-customer count.</div>`
+},
+{
+ id:"b6",nav:"Lookups",title:"Lookups \u2014 Zero matches and multiple matches are both failures of certainty",type:"content",
+ html:`<p class="lead">Lookup design often focuses on no-match rows. Duplicate reference keys can be just as dangerous because the transformation no longer has one authoritative answer.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: detect ambiguous references</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT SourceCountryCode, COUNT(*) AS ApprovedRows
+FROM ref.CountryCrossRef
+WHERE ApprovalStatus = 'Approved'
+  AND ReferenceVersion = @ReferenceVersion
+GROUP BY SourceCountryCode
+HAVING COUNT(*) <> 1;</code></pre></div>
+ <p>For source values actually present in the migration population, you want exactly one applicable approved mapping unless the reference design explicitly includes additional dimensions such as legal entity or effective date.</p>
+ <h3>Reference dimensions matter</h3>
+ <ul class="framework-checks">
+   <li><strong>Is mapping global or legal-entity specific?</strong> The same source code may legitimately map differently by target context.</li>
+   <li><strong>Is it effective-dated?</strong> The applicable mapping may depend on migration date or source period.</li>
+   <li><strong>Is approval/version controlled?</strong> A later business decision should not silently change an earlier run.</li>
+   <li><strong>Are keys normalised before match?</strong> Whitespace or case may create false no-matches if syntactic treatment is approved.</li>
+   <li><strong>Is uniqueness enforced at the correct grain?</strong> A table can be unique on the wrong columns and still be ambiguous for the transformation.</li>
+ </ul>`
+},
+{
+ id:"b7",nav:"Derivations",title:"Derivations \u2014 Convert prose into a decision table",type:"content",
+ html:`<p class="lead">Derivations are where transformation logic becomes difficult to review. A sentence such as \u201cderive CustomerGroup from customer type and country\u201d is not build-ready.</p>
+ <p>Before implementation, turn the rule into an explicit matrix containing inputs, precedence, output, exceptions and approval. Bramwell still has 18 German CustomerGroup 99 records with no approved final mapping, so this lesson must not invent their target classification.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Rule row</th><th>Input condition</th><th>Output</th><th>Status</th></tr></thead><tbody>
+ <tr><td>CG-01</td><td>Approved condition A</td><td>Approved target group A</td><td>Only if supplied in controlled lab matrix</td></tr>
+ <tr><td>CG-02</td><td>Approved condition B</td><td>Approved target group B</td><td>Only if supplied in controlled lab matrix</td></tr>
+ <tr><td>CG-XX</td><td>CustomerGroup = 99 for affected German population</td><td>No target value</td><td>Unresolved business decision</td></tr>
+ <tr><td>Fall-through</td><td>No approved condition matched</td><td>No target value</td><td>Exception, not default</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Decision-table test</strong><br>Every possible input combination should either reach one approved output or an explicit unresolved/invalid outcome. Overlapping rows, missing fall-through behaviour and hidden precedence are defects in the rule design.</div>`
+},
+{
+ id:"b8",nav:"Custom code",title:"When should you use custom code?",type:"content",
+ html:`<p class="lead">The original DMC material correctly warned against putting everything into an SSIS Script Component. The stronger rule is not \u201cnever script.\u201d It is \u201cuse custom code when it makes genuinely complex logic clearer and more maintainable than standard components, and make its inputs, outputs, tests and ownership explicit.\u201d</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Good reason to consider custom code</th><th>Weak reason</th></tr></thead><tbody>
+ <tr><td>Complex parsing or algorithm not expressible clearly with standard transformations</td><td>Developer prefers C# to configuring components</td></tr>
+ <tr><td>Reusable specialised validation with strong automated tests</td><td>One-off two-value code translation</td></tr>
+ <tr><td>External library or function required and approved by architecture</td><td>Avoid creating a controlled reference table</td></tr>
+ <tr><td>Native expression becomes opaque and difficult to test</td><td>Hide many unrelated rules in one place</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Consultant standard</strong><br>A Script Component is not automatically bad. Opaque, untested and over-broad custom logic is bad. The same criticism applies to a 300-line SQL expression or a Power Query step nobody can explain.</div>`
+},
+{
+ id:"b9",nav:"The test matrix",title:"Build the Bramwell transformation test matrix",type:"content",
+ html:`<p class="lead">A transformation is not complete when the happy path works. Build test cases from the rule specification before declaring the data flow ready.</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Test ID</th><th>Rule</th><th>Input</th><th>Expected output / evidence</th></tr></thead><tbody>
+ <tr><td>T01</td><td>CUS-006 Country</td><td>UK</td><td>CountryCode=GB; no country exception</td></tr>
+ <tr><td>T02</td><td>CUS-006 Country</td><td>ZZZ</td><td>CountryCode blank; COUNTRY_UNRESOLVED</td></tr>
+ <tr><td>T03</td><td>CUS-006 Country</td><td>NULL</td><td>CountryCode blank; COUNTRY_BLANK</td></tr>
+ <tr><td>T04</td><td>CUS-003 Terms</td><td>45E</td><td>PaymentTerms blank; PAYMENT_TERM_UNRESOLVED</td></tr>
+ <tr><td>T05</td><td>Name constraint</td><td>61-character name</td><td>No silent truncation; CUSTOMER_NAME_TOO_LONG</td></tr>
+ <tr><td>T06</td><td>Status</td><td>1</td><td>CustomerStatus=Active</td></tr>
+ <tr><td>T07</td><td>Status</td><td>0</td><td>CustomerStatus=Inactive</td></tr>
+ <tr><td>T08</td><td>Status</td><td>X</td><td>CustomerStatus blank; STATUS_UNRESOLVED</td></tr>
+ <tr><td>T09</td><td>Reference uniqueness</td><td>two approved UK mappings</td><td>Reference ambiguity detected; output blocked/excepted</td></tr>
+ <tr><td>T10</td><td>Multiple defects</td><td>ZZZ + 45E on same customer</td><td>Customer remains traceable and required exception evidence is retained</td></tr>
+ </tbody></table></div>
+ <h3>Positive, negative and boundary tests</h3>
+ <ul class="framework-checks">
+   <li><strong>Positive</strong> \u2014 approved input produces expected target result. UK \u2192 GB.</li>
+   <li><strong>Negative</strong> \u2014 unapproved or invalid input does not manufacture a result. ZZZ remains unresolved.</li>
+   <li><strong>Boundary</strong> \u2014 test the exact target or rule edge. Name length 60 vs 61.</li>
+   <li><strong>Null/blank</strong> \u2014 test absence explicitly. NULL Terms, blank Country.</li>
+   <li><strong>Ambiguity</strong> \u2014 test more than one possible answer. Duplicate approved lookup key.</li>
+   <li><strong>Combination</strong> \u2014 test interacting rules. One record fails country and terms.</li>
+   <li><strong>Regression</strong> \u2014 ensure a rule fix does not break previously correct rows. New payment-term mapping leaves UK\u2192GB behaviour unchanged.</li>
+ </ul>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC1_Transformation-Test-Matrix-Template.xlsx</strong><p class="small">The ten-test structure above, ready to extend for any new transformation rule.</p></div><a class="btn secondary" href="/assets/downloads/DMC1_Transformation-Test-Matrix-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Diagnose it",title:"Diagnose it \u2014 Find the hidden data manufacture",type:"selectAll",
+ html:`<p class="lead">A developer presents this \u201cproduction-ready\u201d customer transformation.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: submitted for review</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo AS CustomerNumber,
+  LEFT(LTRIM(RTRIM(c.Name)),60) AS CustomerName,
+  COALESCE(p.TargetTerm,'NET30') AS PaymentTerms,
+  CASE WHEN c.Status='1' THEN 'Active' ELSE 'Inactive' END AS CustomerStatus,
+  COALESCE(x.TargetCountryCode,'GB') AS CountryCode,
+  CASE
+    WHEN c.CustomerGroup IN ('KEY','STANDARD','INTERNAL') THEN c.CustomerGroup
+    ELSE 'STANDARD'
+  END AS CustomerGroup
+FROM raw.Customer c
+LEFT JOIN ref.PaymentTerms p ON p.SourceTerm=c.Terms
+LEFT JOIN ref.CountryCrossRef x ON x.SourceCountryCode=c.Country;</code></pre></div>
+ <p>Select every assumption, hidden exception and traceability weakness you can find before reading the mentor review.</p>`,
+ options: transformationDefects,
+ coaching: transformationDefectsCoaching,
+ hint:"Explore every defect before continuing.",
+ closingHtml:`<div class="principle"><strong>Repair strategy</strong></div>
+ <ol class="framework-checks">
+   <li>Remove every unapproved default and silent truncation.</li>
+   <li>Constrain lookups to the approved reference context and validate uniqueness.</li>
+   <li>Separate raw source values, normalised comparison keys and target outputs.</li>
+   <li>Return NULL or controlled unresolved output when no approved result exists.</li>
+   <li>Create explicit exception codes and evidence fields.</li>
+   <li>Make conditional mappings enumerate approved cases rather than absorb unknowns in ELSE.</li>
+   <li>Implement CustomerGroup only from an approved decision matrix; leave unresolved 99 records unresolved.</li>
+   <li>Run the transformation test matrix, including failure and combination cases.</li>
+   <li>Reconcile affected records and exception events before releasing output.</li>
+ </ol>`
+},
+{
+ id:"b11",nav:"Do it yourself",title:"Do it yourself \u2014 Supplier transformation lab",type:"reflection",
+ html:`<p class="lead">You are given a synthetic supplier dataset and a controlled lab rule pack. These are training artefacts, not new Bramwell facts. Your task is to build a robust transformation layer, not merely a CSV that passes target validation.</p>
+ <h3>Lab rules</h3>
+ <ul class="framework-checks">
+   <li><strong>VEN-001</strong> \u2014 VendorNumber is sourced directly from VendorNo; blank key is blocking.</li>
+   <li><strong>VEN-002</strong> \u2014 VendorName target maximum is 80 characters; lab does not authorise truncation.</li>
+   <li><strong>VEN-003</strong> \u2014 CountryCode uses the supplied approved country reference; unmatched and ambiguous values are exceptions.</li>
+   <li><strong>VEN-004</strong> \u2014 TaxRegistrationNumber is mandatory for active EU suppliers unless the supplied exception table contains an approved exception.</li>
+   <li><strong>VEN-005</strong> \u2014 VendorGroup is derived from VendorType + Country using the supplied approved decision matrix.</li>
+   <li><strong>VEN-006</strong> \u2014 PaymentTerms uses the supplied controlled payment-term reference; no fallback default.</li>
+   <li><strong>VEN-007</strong> \u2014 LegacyBlocked: Y \u2192 Blocked; N \u2192 Active; all other values unresolved.</li>
+ </ul>
+ <h3>Required work</h3>
+ <ol class="framework-checks">
+   <li>Classify each rule as direct, validation, lookup, conditional mapping, derivation or routing.</li>
+   <li>Draw the transformation order and explain why the order matters.</li>
+   <li>Build the clean and exception paths in SQL, SSIS or the supplied simulated environment.</li>
+   <li>Preserve source values and create normalised keys separately where needed.</li>
+   <li>Demonstrate zero-match and multi-match lookup behaviour.</li>
+   <li>Create explicit treatment for NULL, blank and unexpected LegacyBlocked values.</li>
+   <li>Prove that an 81-character VendorName is not silently truncated.</li>
+   <li>Test the VendorGroup decision matrix for overlap and fall-through.</li>
+   <li>Create at least 12 transformation tests covering positive, negative, boundary, ambiguity and combined-defect cases.</li>
+   <li>Produce a transformation evidence extract for one clean supplier and one supplier with at least two exceptions.</li>
+   <li>Write a short developer handover explaining where the rules live, how references are versioned and what must happen when a business rule changes.</li>
+ </ol>
+ <h3>What a strong solution contains</h3>
+ <ul class="framework-checks">
+   <li><strong>Rule fidelity</strong> \u2014 no target value appears without an approved rule or reference.</li>
+   <li><strong>Exception visibility</strong> \u2014 unresolved rows remain traceable with specific reasons.</li>
+   <li><strong>Lookup control</strong> \u2014 no-match and multi-match behaviour tested.</li>
+   <li><strong>Constraints</strong> \u2014 length, type and mandatory rules expose conflicts without inventing treatment.</li>
+   <li><strong>Decision logic</strong> \u2014 derivations use complete, non-overlapping controlled conditions.</li>
+   <li><strong>Testing</strong> \u2014 happy paths plus negative, boundary and combination cases.</li>
+   <li><strong>Maintainability</strong> \u2014 logic is readable and not unnecessarily duplicated or hidden.</li>
+   <li><strong>Traceability</strong> \u2014 source key, run context and rule/reference identity survive into evidence.</li>
+ </ul>
+ <p class="lead">Write your developer handover below.</p>
+ <textarea id="reflection" placeholder="The supplier transformation rules live in..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:60,
+ checks:[
+   { test:/direct|validation|lookup|conditional|derivation|routing/i, strength:"You classified at least one rule by its transformation pattern.", gap:"Classify at least one VEN rule as direct, validation, lookup, conditional mapping, derivation or routing." },
+   { test:/order|sequence/i, strength:"You addressed transformation order and why it matters.", gap:"State why the order you'd apply these rules in actually matters, not just what the order is." },
+   { test:/truncat|80 char|81/i, strength:"You addressed the VendorName length constraint without inventing truncation.", gap:"State how an 81-character VendorName is exposed as a conflict rather than silently truncated." },
+   { test:/zero.match|multi.match|ambigu|duplicate/i, strength:"You addressed both zero-match and multi-match lookup behaviour.", gap:"State what happens on both a zero-match and a multi-match lookup result, not just one of them." },
+   { test:/legacyblocked|unresolved/i, strength:"You addressed unexpected LegacyBlocked values as unresolved rather than defaulted.", gap:"State what happens to a LegacyBlocked value that's neither Y nor N." },
+   { test:/handover|version|reference change|business rule chang/i, strength:"You wrote this as a genuine developer handover, addressing what happens when a rule changes.", gap:"Say what should happen when a business rule or reference changes, not just how today's version works." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The supplier transformation rules live in the VEN rule pack, applied in this order: preserve raw values, normalise comparison keys, apply the VendorGroup and country lookups, evaluate the TaxRegistrationNumber and VendorName constraints, then route exceptions. VendorNo drives VendorNumber directly; a blank key blocks the row rather than being defaulted. An 81-character VendorName is exposed as VENDOR_NAME_TOO_LONG, not truncated. The country and payment-term lookups both test for zero-match and multi-match conditions separately, routing each to its own exception code rather than picking a default or the first row returned. LegacyBlocked values other than Y or N are routed as LEGACY_STATUS_UNRESOLVED. When a business rule or reference changes: update the controlled reference, version it, rerun the affected population and retest \u2014 never patch an individual supplier row.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine handover a developer could actually work from \u2014 rule fidelity, exception visibility and what happens when something changes are all covered.":"You have the right structure. Make sure every VEN rule's exception behaviour is explicit, and that your handover says what happens when a rule or reference changes, not just how today's version works."}</div>`
+},
+{
+ id:"b12",nav:"Consultant situations",title:"Consultant situations \u2014 Transformation judgement",type:"situations",
+ html:`<p class="lead">Five moments where a transformation's behaviour needs a judgement call.</p>`,
+ items: transformationSituations,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Default That Looked Sensible", name:"Farah", role:"Data Migration Consultant", project:"Telecoms ERP",
+   src:"/assets/audio/DefaultThatLookedSensible-Farah.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>
+ <div class="principle"><strong>Field lesson</strong><br>A plausible default can be more dangerous than an obvious error because it manufactures confidence as well as data.</div>`
+},
+{
+ id:"b13",nav:"Reflection",title:"Reflection \u2014 What would make you distrust a perfect load?",type:"reflection",
+ html:`<p class="lead">A migration load reports 100% technical success after a cycle that previously contained known unresolved mappings and target-constraint conflicts. Write the evidence you would inspect before accepting the result as an improvement.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers look for changes in rule or reference versions, defaults, join behaviour, filters, exception counts, key populations and transformed values. \u201cNo rejects\u201d is an outcome to explain, not automatically a quality measure.</p></div></div>
+ <textarea id="reflection" placeholder="Before accepting this as an improvement, I would check..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:50,
+ checks:[
+   { test:/reference version|rule version|which version/i, strength:"You addressed checking which reference or rule version was actually used.", gap:"State how you'd confirm which reference or rule version produced this result." },
+   { test:/default|coalesce|isnull/i, strength:"You addressed checking for a new or hidden default.", gap:"Name what you'd check for a newly introduced default that could be manufacturing clean-looking data." },
+   { test:/join|filter/i, strength:"You addressed checking join or filter behaviour.", gap:"State how you'd check whether a join or filter change, rather than a genuine improvement, explains the result." },
+   { test:/key|population|records changed/i, strength:"You addressed checking which specific records changed, not just the total.", gap:"State how you'd confirm which specific records changed, not just that the exception count went down." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before accepting a sudden 100% technical success as an improvement, I'd check which reference and rule versions actually ran this cycle, and diff them against the previous version to see what changed. I'd check every join for a new default or a change from INNER to LEFT that could be silently dropping or defaulting rows. I'd pull the specific records that were previously exceptions and confirm each one now has a genuine approved mapping, not just an absence of a rejection. And I'd re-run the reconciliation control to confirm the population is still fully accounted for, not just smaller.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the right instinct: treat a perfect result as a claim to verify, not a result to celebrate.":"You have good instincts here. Make sure you're naming specific things to check \u2014 versions, joins, individual records \u2014 rather than a general sense that you'd 'look into it'."}</div>`
+},
+{
+ id:"b14",nav:"Summary",title:"Summary \u2014 Robust transformations do not guess",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Recognise the transformation pattern before choosing a technical component.</li>
+   <li>Treat transformation order as part of the rule.</li>
+   <li>Preserve raw evidence and create transformed values separately.</li>
+   <li>Use controlled lookups with explicit zero-match and multi-match behaviour.</li>
+   <li>Treat defaults as approved business rules, never convenient fallbacks.</li>
+   <li>Expose target-constraint conflicts instead of silently truncating or coercing data.</li>
+   <li>Enumerate approved conditional cases and make fall-through behaviour explicit.</li>
+   <li>Convert derivation prose into a complete decision table.</li>
+   <li>Use custom code deliberately, not as a hiding place for unrelated rules.</li>
+   <li>Test positive, negative, boundary, ambiguity, combination and regression cases.</li>
+   <li>Retain enough evidence to explain why each target value exists.</li>
+   <li>Remember that a perfectly clean output can be a warning sign when known exceptions have simply disappeared.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>The job of a transformation is not to make source data look valid. It is to apply approved logic faithfully and make everything else impossible to miss.</div>`
+},
+{
+ id:"b15",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Building robust transformations.</strong></p>
+ <p>You can now implement transformation rules without hiding uncertainty: choose an appropriate transformation pattern, control sequencing, preserve source evidence, use lookups safely, handle conversions explicitly, route exceptions, test boundary and failure cases, and prove that the output is the result of approved logic rather than convenient assumptions.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Logging, errors and restartability</strong></p>
+ <p>You will make the pipeline explain what happened during each execution, capture useful failure evidence and recover without blindly rerunning everything.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a transformation comes back looking suspiciously clean.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 1",
+  moduleTitle: "Building Migration Solutions",
+  lessonLabel: "Lesson 4: Building robust transformations",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Implementing transformation rules that expose uncertainty instead of hiding it",
+  storageKey: "tp_dmc1_lesson4_v1",
+  lessonId: "dmc1-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5.html",
+  finalButtonLabel: "Finish Lesson 4",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
