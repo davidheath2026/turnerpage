@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Relationship and dependency failures</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 3 — LESSON 4 — "Relationship and dependency
+   failures". Built around a dependency graph, per the manuscript's
+   own authoring notes — deliberately different in feel from
+   Lessons 1-3.
+
+   Source: DMC3_Lesson4_Relationship_and_Dependency_Failures_v3.docx.
+   moduleTitle: "Diagnosing & Fixing Defects" per the alignment
+   doc — the manuscript's own header says "Troubleshooting Data
+   Migration Issues" instead; corrected during the DMC3
+   module-boundary review (see STATE.md).
+
+   Genuine, deliberate cross-lesson payoff: SO-78452's delivery
+   address C10482-DEL-02 IS the exact DELIVERY_SECONDARY address
+   from Lesson 1's incident (C10482, 18 King Street, Bristol, BS1
+   4AB, UK, excluded by the incorrect DELIVERY_PRIMARY-only filter).
+   This lesson shows the downstream consequence of that same defect
+   on an open sales order. Canonical facts carried over exactly:
+   SO-78452 / C10482 / C10482-DEL-02 / PRD-44781 / Site UK01 /
+   Warehouse WH-BRI / GBP / 45E / STDROAD. 45E stays unresolved;
+   NET30 is still not approved. The exact downstream impact of the
+   seven observed missing delivery addresses is deliberately NOT
+   established — don't invent a total.
+
+   Section 22 (the dependency maze) and Section 23 (the independent
+   lab, 8,400 customers etc.) are both synthetic per the manuscript.
+   The maze wants true node-connecting interactivity ("allow the
+   learner to connect nodes... reward causal grouping"); the kit has
+   no graph/node-linking block type, so it's built here as a
+   selectAll exploring each observed failure's hidden upstream
+   cause — a real substitute, not the same exercise, flagged per
+   STATE.md's standing note on kit limitations (same category as
+   DMC2 L1's dependency-map gap).
+
+   Persona: Elena, Data Migration Consultant, Utilities ERP — first
+   use of Elena in any DMC module so far, per the persona ledger.
+
+   Position-sequence discipline (STATE.md process): b1=1 (fixed,
+   manuscript answer B); b19 items A-F = 3,0,2,1,3,0 — annotated
+   here and cross-checked against the actual written options before
+   linting, not just held separately.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3 so far.
+============================================================== */
+
+const traceSteps = [
+{html:`<h4>Evidence panel \u2014 Is the address really missing?</h4>
+ <p>For SO-78452, the source order correctly references C10482-DEL-02. The target contains customer C10482, but does not contain delivery address C10482-DEL-02. You now know the order error is real, but not why the address is absent.</p>
+ <div class="callout misconception"><div class="callout-label">Do not patch the order</div><p>The order is pointing to the intended address. Replacing it with another valid address would make the load pass by changing business meaning.</p></div>`},
+{html:`<h4>Follow the failed dependency upstream</h4>
+ <p>Trace C10482-DEL-02 through its own migration chain.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Checkpoint</th><th>C10482-DEL-02</th></tr></thead><tbody>
+ <tr><td>Source/raw</td><td>Present</td></tr>
+ <tr><td>Raw staging</td><td>Present</td></tr>
+ <tr><td>Transformed stage</td><td>Absent</td></tr>
+ <tr><td>Exception</td><td>None</td></tr>
+ <tr><td>Target</td><td>Absent</td></tr>
+ </tbody></table></div>
+ <p>This connects to the established Bramwell address defect: DELIVERY_SECONDARY addresses were excluded by an incorrectly narrow transformation filter \u2014 the same defect from Module 3, Lesson 1.</p>
+ <div class="principle"><strong>Causal chain</strong><br>Incorrect address rule \u2192 valid address omitted \u2192 target address absent \u2192 sales order dependency fails.</div>
+ <p class="small">The order failure is a downstream symptom. Fixing only the order cannot repair the chain.</p>`},
+{html:`<h4>Find the earliest failed prerequisite</h4>
+ <p>When several nodes fail, start upstream.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The upstream check sequence</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Customer accepted?
+  No  --> investigate customer first
+  Yes
+   |
+   v
+Address accepted?
+  No  --> investigate address first
+  Yes
+   |
+   v
+Order submitted?
+  No  --> investigate release/package
+  Yes
+   |
+   v
+Order accepted?</code></pre></div>
+ <div class="principle"><strong>Troubleshooting rule</strong><br>The earliest failed prerequisite is usually the best place to correct the chain. Downstream errors may disappear automatically after the upstream cause is fixed.</div>`},
+{html:`<h4>Measure the blast radius</h4>
+ <p>One missing address may affect multiple downstream records. After proving the address mechanism, identify every dependent record that references the affected population.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: find dependent orders</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  o.SalesOrderNo, o.CustNo, o.DeliveryAddressId
+FROM raw.OpenSalesOrder o
+JOIN ctl.AffectedAddress a ON a.AddressId = o.DeliveryAddressId
+WHERE o.RunId = @RunId;</code></pre></div>
+ <p>Then extend the impact search to other entities that consume the same address relationship if applicable.</p>
+ <div class="callout misconception"><div class="callout-label">Do not invent the Bramwell total</div><p>The case establishes seven observed missing delivery addresses, but not the exact total number of downstream orders or other records affected. Calculate it from project data when available.</p></div>`},
+{html:`<h4>Dependency failure versus source-data failure</h4>
+ <p>SO-78452 contains a valid intended address key. The source order is not wrong merely because the target cannot resolve it.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Answer in this incident</th></tr></thead><tbody>
+ <tr><td>Does source order reference expected address?</td><td>Yes</td></tr>
+ <tr><td>Does address exist in source?</td><td>Yes</td></tr>
+ <tr><td>Did address survive transformation?</td><td>No</td></tr>
+ <tr><td>Is order relationship itself wrong?</td><td>No evidence of that</td></tr>
+ <tr><td>Where is the cause?</td><td>Upstream address transformation</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Ownership follows cause, not error location</strong><br>The target reports an order/address error, but the correction belongs in the address migration rule.</div>`}
+];
+
+const mazeItems = [
+ "23 orders: customer not found",
+ "61 lines: product not found",
+ "14 lines: invalid warehouse",
+ "9 addresses: parent customer not found",
+ "17 orders: delivery address not found",
+ "8 duplicate order headers on rerun"
+];
+const mazeCoaching = [
+ "<strong>Hidden evidence: the customer load batch committed late.</strong><br>These 23 orders aren't 23 separate customer defects \u2014 they're one sequencing failure. The orders started before their parent customers were actually committed.",
+ "<strong>Hidden evidence: one product failed reference validation.</strong><br>61 order-line rejects collapse into a single upstream cause: one product prerequisite, not 61 independent product defects.",
+ "<strong>Hidden evidence: the warehouse exists, but not for the supplied site.</strong><br>This is a context-dependency failure \u2014 two individually valid codes forming an invalid combination, not 14 separate warehouse problems.",
+ "<strong>Hidden evidence: customer keys were transformed under the wrong reference version.</strong><br>These aren't 9 separate missing parents \u2014 they're the downstream effect of one stale reference baseline being used during transformation.",
+ "<strong>Hidden evidence: addresses were excluded upstream.</strong><br>This is the same DELIVERY_SECONDARY filter defect from Lesson 1, now showing up as 17 separate-looking order failures. One upstream cause, not 17.",
+ "<strong>Hidden evidence: a previous attempt already committed those headers.</strong><br>This is a restart-state collision, not 8 genuine duplicate-data problems \u2014 the rerun is colliding with its own earlier partial commit."
+];
+
+const consultantSituationsD = [
+ { title:"A. A child fails because the parent is missing",
+   question:"What's the right response?",
+   options:[
+     {label:"Create the parent record automatically from whatever child data is available, so the load can proceed.", correct:false, feedback:"Manufacturing a parent from child data invents a record nobody approved, and doesn't establish why the real parent is actually missing."},
+     {label:"Skip the child for this cycle and revisit it once the parent eventually appears on its own.", correct:false, feedback:"That defers investigation instead of establishing why the parent is missing \u2014 it might be excluded legitimately, failed, or simply mapped to a different identity."},
+     {label:"Change the child's reference to point at a different, existing parent that seems close enough.", correct:false, feedback:"That silently changes business meaning to make a load pass, exactly the kind of patch this module warns against."},
+     {label:"Prove why the parent is missing before touching the child. The parent may be excluded legitimately, failed, loaded late or mapped to another identity.", correct:true, feedback:"Correct. Prove why the parent is missing before touching the child. The parent may be excluded legitimately, failed, loaded late or mapped to another identity."}
+   ]
+ },
+ { title:"B. The parent exists but the child still says \u2018not found\u2019",
+   question:"What's the right response?",
+   options:[
+     {label:"Check target identity, legal entity/context, commit timing and the exact key submitted by the child.", correct:true, feedback:"Correct. Check target identity, legal entity/context, commit timing and the exact key submitted by the child."},
+     {label:"Conclude the target system has a bug, since the parent is clearly present.", correct:false, feedback:"That jumps to blaming the platform before checking the more common causes: context, timing, or a key mismatch between what the child submitted and what the parent's actual identity is."},
+     {label:"Rerun the child repeatedly until the error stops appearing.", correct:false, feedback:"Reproducing the result blindly doesn't explain why the parent that clearly exists isn't being recognised."},
+     {label:"Delete and recreate the parent record so the relationship resolves cleanly.", correct:false, feedback:"Recreating an existing, valid parent is a destructive, unnecessary step before you've even established what's actually mismatched."}
+   ]
+ },
+ { title:"C. The project wants parent and child loads in parallel to save time",
+   question:"What's the right response?",
+   options:[
+     {label:"Refuse parallelisation entirely, since any parent-child relationship is inherently too risky to run concurrently.", correct:false, feedback:"That overstates the risk. Genuinely independent or properly controlled dependencies can be parallelised safely \u2014 the point is to check first, not refuse categorically."},
+     {label:"Only parallelise when dependencies are genuinely independent or controlled. Measure the risk against available commit/visibility behaviour.", correct:true, feedback:"Correct. Only parallelise when dependencies are genuinely independent or controlled. Measure the risk against available commit/visibility behaviour."},
+     {label:"Allow parallelisation for every entity, since modern systems can usually handle concurrent execution.", correct:false, feedback:"That assumes commit and visibility behaviour without actually checking it \u2014 exactly the kind of sequencing failure this lesson demonstrates."},
+     {label:"Let each entity owner independently decide whether their load can run in parallel.", correct:false, feedback:"That distributes a decision that needs the full dependency picture to individual entity owners who may not see the whole graph."}
+   ]
+ },
+ { title:"D. One missing master record creates 500 child rejects",
+   question:"What's the right response?",
+   options:[
+     {label:"Report one root cause and 500 affected records. Prioritise the upstream correction and preserve all child keys for retest.", correct:true, feedback:"Correct. Report one root cause and 500 affected records. Prioritise the upstream correction and preserve all child keys for retest."},
+     {label:"Report 500 separate defects so the scale of the problem is fully visible to the project.", correct:false, feedback:"That exaggerates the actual number of root causes and can trigger disproportionate panic or effort, when one correction resolves all 500."},
+     {label:"Fix each of the 500 child records individually, since each one is technically still rejected.", correct:false, feedback:"Fixing 500 records individually when one upstream correction would resolve all of them wastes enormous effort and risks missing the actual cause."},
+     {label:"Wait until all 500 child rejects have been fully investigated before touching the master record.", correct:false, feedback:"That delays the one correction that would resolve the whole cluster, for no benefit \u2014 the master record is already the identified cause."}
+   ]
+ },
+ { title:"E. The rerun creates duplicates",
+   question:"What's the right response?",
+   options:[
+     {label:"Add a deduplication step that removes the extra records after each rerun automatically.", correct:false, feedback:"That treats the symptom repeatedly rather than the actual restart-state cause creating duplicates in the first place."},
+     {label:"Assume the source data contains genuine duplicate records and investigate the source system.", correct:false, feedback:"That points at the wrong layer. A rerun creating duplicates is a strong signal of a restart/commit-state issue, not a source-data quality problem."},
+     {label:"Reduce future reruns to only once per cycle, to limit how often duplicates can be created.", correct:false, feedback:"That avoids the actual investigation rather than establishing why reruns are colliding with previously committed state."},
+     {label:"Check previous commit state and whether downstream packages were regenerated after the parent fix.", correct:true, feedback:"Correct. Check previous commit state and whether downstream packages were regenerated after the parent fix."}
+   ]
+ },
+ { title:"F. A relationship passes existence checks but looks wrong to the business",
+   question:"What's the right response?",
+   options:[
+     {label:"Validate intended parent identity from approved source/mapping evidence, not merely target referential integrity.", correct:true, feedback:"Correct. Validate intended parent identity from approved source/mapping evidence, not merely target referential integrity."},
+     {label:"Trust the existence check, since referential integrity already confirms the relationship is technically valid.", correct:false, feedback:"Existence proves the parent is real, not that it's the intended parent. Both records existing doesn't mean the relationship is correct."},
+     {label:"Ask the business to simply get used to how the relationship currently appears in the target.", correct:false, feedback:"That dismisses a genuine business signal instead of checking whether the relationship actually matches the source's intended identity."},
+     {label:"Rebuild the relationship using whichever parent the target's own suggestion or lookup feature proposes.", correct:false, feedback:"A target-side suggestion isn't validated against the approved source relationship \u2014 it could easily be just as wrong."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"16:25 \u2014 The order looks perfect",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Open sales order SO-78452 fails during migration.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+ <tr><td>Sales order</td><td>SO-78452</td></tr>
+ <tr><td>Customer</td><td>C10482</td></tr>
+ <tr><td>Delivery address</td><td>C10482-DEL-02</td></tr>
+ <tr><td>Product</td><td>PRD-44781</td></tr>
+ <tr><td>Site</td><td>UK01</td></tr>
+ <tr><td>Warehouse</td><td>WH-BRI</td></tr>
+ <tr><td>Currency</td><td>GBP</td></tr>
+ <tr><td>Payment term</td><td>45E</td></tr>
+ <tr><td>Delivery method</td><td>STDROAD</td></tr>
+ </tbody></table></div>
+ <p>The order header passes the consultant's field checks. The target message says: "Delivery address not found."</p>
+ <h3>What should you investigate first?</h3>`,
+ options:[
+   {label:"Change the order to use the customer's primary address.", correct:false, feedback:"That silently changes what the order was actually asking for, and doesn't establish why the intended secondary address is unavailable."},
+   {label:"Check whether C10482-DEL-02 should exist, whether it migrated successfully and whether the order is referencing the correct target identity.", correct:true, feedback:"Correct. A child record can be perfectly valid and still fail because a prerequisite is absent, wrong or unavailable at the time of load. Investigate the dependency before changing the child."},
+   {label:"Ask Sales to recreate the order after go-live.", correct:false, feedback:"That defers the problem to a later date without investigating whether it's actually fixable now, and abandons a record that may well be correct as-is."},
+   {label:"Reload the order until the address becomes available.", correct:false, feedback:"Retrying without understanding why the address is unavailable risks reproducing the same failure indefinitely, or masking a timing issue as a data issue."}
+ ]
+},
+{
+ id:"b2",nav:"Think in a graph",title:"Stop thinking in rows. Think in a dependency graph.",type:"content",
+ html:`<p class="lead">Many migration entities are not independent. An order is a node connected to other nodes.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SO-78452's dependency graph</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SO-78452
+  +-- Customer C10482
+  +-- Delivery address C10482-DEL-02
+  +-- Product PRD-44781
+  +-- Site UK01
+  +-- Warehouse WH-BRI
+  +-- Currency GBP
+  +-- Payment term 45E
+  +-- Delivery method STDROAD</code></pre></div>
+ <p>Some dependencies are parent-child relationships. Others are reference/master-data prerequisites. Some are conditional: warehouse may only be valid within a particular site or legal entity.</p>
+ <div class="principle"><strong>Dependency question</strong><br>What must already be correct and available for this record to be valid in the target?</div>`
+},
+{
+ id:"b3",nav:"Four failure types",title:"Four common dependency failure types",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Type</th><th>What happened</th><th>Typical symptom</th></tr></thead><tbody>
+ <tr><td>Missing prerequisite</td><td>Required parent/reference did not migrate</td><td>Parent not found; invalid reference</td></tr>
+ <tr><td>Wrong relationship</td><td>Child points to an existing but incorrect parent</td><td>Load may succeed but business result is wrong</td></tr>
+ <tr><td>Sequencing/timing</td><td>Prerequisite is valid but not available when child loads</td><td>Intermittent or batch-specific reject</td></tr>
+ <tr><td>Context dependency</td><td>Combination is invalid in entity/site/company context</td><td>Each code exists separately, combination fails</td></tr>
+ </tbody></table></div>
+ <p>A fifth pattern is cascading failure: one upstream defect causes many apparently unrelated downstream failures.</p>`
+},
+{
+ id:"b4",nav:"The dependency matrix",title:"Build a dependency matrix before chasing errors",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Child entity</th><th>Dependency</th><th>Required before child?</th><th>Validation question</th></tr></thead><tbody>
+ <tr><td>Customer address</td><td>Customer</td><td>Usually yes</td><td>Does intended customer exist?</td></tr>
+ <tr><td>Sales order</td><td>Customer</td><td>Yes</td><td>Was customer accepted and committed?</td></tr>
+ <tr><td>Sales order</td><td>Delivery address</td><td>Where target requires it</td><td>Does intended address exist under intended customer?</td></tr>
+ <tr><td>Sales order line</td><td>Order header</td><td>Yes</td><td>Was header accepted?</td></tr>
+ <tr><td>Sales order line</td><td>Product</td><td>Yes</td><td>Does intended product exist in context?</td></tr>
+ <tr><td>Sales order line</td><td>Site/Warehouse</td><td>Usually</td><td>Is combination valid?</td></tr>
+ <tr><td>Supplier transaction</td><td>Supplier</td><td>Yes</td><td>Was supplier accepted?</td></tr>
+ <tr><td>Employee assignment</td><td>Employee / organisation</td><td>Depends on design</td><td>Are required parent identities available?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>The matrix is operational</strong><br>It tells you what to load first, what to validate before loading a child, and where to look when a child fails.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Dependency-Matrix-Template.xlsx</strong><p class="small">The eight-row structure above, ready to extend for any entity set.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Dependency-Matrix-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b5",nav:"Trace the incident",title:"Trace the SO-78452 incident",type:"guidedSteps",
+ html:`<p class="lead">Five moments in the trace. Work through them in order.</p>`,
+ steps: traceSteps,
+ firstLabel:"Open the first evidence panel"
+},
+{
+ id:"b6",nav:"Wrong-parent failures",title:"Wrong-parent failures are different",type:"content",
+ html:`<p class="lead">Now imagine C10482-DEL-02 exists in the target but is linked to customer C10999. The order can still fail, or worse, it can load against the wrong relationship.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: expected versus actual parent</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  e.AddressId, e.ExpectedCustomerNumber, a.ActualCustomerNumber
+FROM ctl.ExpectedAddressParent e
+JOIN audit.TargetAddress a ON a.RunId=e.RunId AND a.AddressId=e.AddressId
+WHERE e.RunId=@RunId AND e.ExpectedCustomerNumber <> a.ActualCustomerNumber;</code></pre></div>
+ <div class="principle"><strong>Relationship identity</strong><br>A dependency is not valid merely because both records exist. The intended relationship must exist.</div>`
+},
+{
+ id:"b7",nav:"Sequencing failures",title:"Sequencing failure \u2014 Everything is correct, just not yet",type:"content",
+ html:`<p class="lead">A sales order rejects because customer C10482 is not found. Fifteen minutes later, the customer is visible in target. Possible explanation: the order batch started before the customer load committed.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence to inspect</th><th>Why</th></tr></thead><tbody>
+ <tr><td>Customer step start/end</td><td>Was parent processing complete?</td></tr>
+ <tr><td>Commit state</td><td>Was accepted data actually committed?</td></tr>
+ <tr><td>Order step start</td><td>Did child begin too early?</td></tr>
+ <tr><td>Batch parallelism</td><td>Were parent and child allowed to overlap?</td></tr>
+ <tr><td>Target visibility delay</td><td>Does target expose committed data immediately?</td></tr>
+ <tr><td>Retry behaviour</td><td>Did later records succeed because parent became available?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: check parent/child step timing</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT Entity, StepName, StartedAt, CompletedAt, CommitState
+FROM ctl.MigrationStep
+WHERE RunId=@RunId AND Entity IN ('Customer','SalesOrder')
+ORDER BY StartedAt;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Sequencing diagnosis</div><p>Do not change customer or order data when the defect is execution timing.</p></div>
+ <h3>Detect sequencing from the rejection pattern</h3>
+ <p>Suppose the first 800 orders show a high "customer not found" rate and later orders mostly succeed. Plot or group rejects by submission time/batch.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: rejects by batch over time</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  BatchNo, MIN(SubmittedAt) AS FirstSubmitted, MAX(SubmittedAt) AS LastSubmitted,
+  COUNT(*) AS Orders,
+  SUM(CASE WHEN RejectCode='CUSTOMER_NOT_FOUND' THEN 1 ELSE 0 END) AS ParentRejects
+FROM audit.OrderLoadResult
+WHERE RunId=@RunId
+GROUP BY BatchNo
+ORDER BY BatchNo;</code></pre></div>
+ <div class="principle"><strong>Pattern clue</strong><br>A failure rate that changes sharply with time can indicate dependency availability rather than different data quality.</div>`
+},
+{
+ id:"b8",nav:"Context & reference dependency",title:"Context dependency \u2014 Site and warehouse; reference dependency \u2014 Payment terms",type:"content",
+ html:`<p class="lead">SO-78452 uses Site UK01 and Warehouse WH-BRI. Both codes may exist in the target, yet the combination can still be invalid.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Check</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Site exists</td><td>Is UK01 valid in the target context?</td></tr>
+ <tr><td>Warehouse exists</td><td>Does WH-BRI exist?</td></tr>
+ <tr><td>Relationship</td><td>Is WH-BRI assigned to UK01?</td></tr>
+ <tr><td>Legal entity</td><td>Are both valid in the order's legal entity?</td></tr>
+ <tr><td>Effective status</td><td>Are they active for migration date?</td></tr>
+ <tr><td>Product relationship</td><td>Can PRD-44781 use the site/warehouse if target requires setup?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: valid combination check</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT o.SalesOrderNo
+FROM stage.OrderTransformed o
+LEFT JOIN ref.ValidSiteWarehouse sw
+  ON sw.LegalEntity=o.LegalEntity AND sw.Site=o.Site AND sw.Warehouse=o.Warehouse
+WHERE o.RunId=@RunId AND sw.Warehouse IS NULL;</code></pre></div>
+ <div class="principle"><strong>Two valid codes can form an invalid pair</strong><br>Reference validation must sometimes test combinations, not individual domains.</div>
+ <h3>Reference dependency \u2014 Payment terms</h3>
+ <p>SO-78452 has source payment term 45E. Bramwell has no approved target equivalent established for 45E. That means order readiness may depend on a customer/reference decision even if every other order field is valid.</p>
+ <div class="callout misconception"><div class="callout-label">Do not default the dependency</div><p>If the order requires an approved target payment term, unresolved 45E remains a controlled exception until the required decision exists. NET30 is not an approved solution.</p></div>
+ <p class="small">Dependency mapping should include business-decision prerequisites as well as technical parent records.</p>`
+},
+{
+ id:"b9",nav:"Cascading failures",title:"Cascading failures can distort defect counts",type:"content",
+ html:`<p class="lead">One failed product can cause hundreds of order-line rejects. Counting every child reject as a separate root cause exaggerates the problem.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Observed</th><th>Root-cause view</th></tr></thead><tbody>
+ <tr><td>1 missing product</td><td>1 upstream prerequisite defect</td></tr>
+ <tr><td>286 rejected order lines</td><td>286 downstream affected records</td></tr>
+ <tr><td>Several target messages</td><td>Potentially one causal chain</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Separate cause count from impact count</strong><br>One cause can have a large blast radius. Your defect reporting should show both.</div>`
+},
+{
+ id:"b10",nav:"Upstream failure index",title:"Build an upstream failure index",type:"content",
+ html:`<p class="lead">For a failed child population, summarise dependencies by missing or failed parent.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  l.ProductNumber, COUNT(*) AS AffectedOrderLines
+FROM err.OrderLineReject l
+LEFT JOIN ctl.AcceptedProduct p ON p.RunId=l.RunId AND p.ProductNumber=l.ProductNumber
+WHERE l.RunId=@RunId AND p.ProductNumber IS NULL
+GROUP BY l.ProductNumber
+ORDER BY AffectedOrderLines DESC;</code></pre></div>
+ <p>Repeat for customer, order header, site/warehouse and other relevant dependencies. The largest concentrations tell you where upstream correction may remove the most downstream noise.</p>`
+},
+{
+ id:"b11",nav:"Status board",title:"Build a dependency status board",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Entity</th><th>Prerequisite</th><th>Expected</th><th>Accepted/available</th><th>Exceptions</th><th>Status</th></tr></thead><tbody>
+ <tr><td>Customer address</td><td>Customer</td><td>All required parents</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ <tr><td>Sales order</td><td>Customer</td><td>All referenced customers</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ <tr><td>Sales order</td><td>Delivery address</td><td>All required addresses</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ <tr><td>Order line</td><td>Order header</td><td>All referenced headers</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ <tr><td>Order line</td><td>Product</td><td>All referenced products</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ <tr><td>Order line</td><td>Site/Warehouse</td><td>All valid combinations</td><td>Measured</td><td>Measured</td><td>Green/Amber/Red</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>This is not a management dashboard</strong><br>It is a consultant control that tells you whether a child entity is technically ready to be attempted and where exceptions are concentrated.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Dependency-Status-Board-Template.xlsx</strong><p class="small">The six-row structure above, ready to fill in for any migration entity set.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Dependency-Status-Board-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"Pre-load validation",title:"Pre-load dependency validation",type:"content",
+ html:`<p class="lead">Do not wait for target rejects to discover obvious missing parents.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: orders referencing unready customers</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT o.SalesOrderNo, o.CustNo
+FROM stage.OrderReady o
+LEFT JOIN ctl.CustomerAvailable c ON c.RunId=o.RunId AND c.CustNo=o.CustNo
+WHERE o.RunId=@RunId AND c.CustNo IS NULL;</code></pre></div>
+ <p>The available-parent set may mean: already present in target and approved for reuse; successfully migrated and committed in the current cycle; included in a guaranteed earlier load step; or otherwise explicitly available under the project design.</p>
+ <div class="principle"><strong>Be precise about "exists"</strong><br>Source existence is not enough. A child needs the prerequisite in the state and context required by the target.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Parent-Child-Validation.sql</strong><p class="small">The pre-load and combination-validation queries from this lesson, ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Parent-Child-Validation.sql" download>Download</a></div>`
+},
+{
+ id:"b13",nav:"The rerun boundary",title:"Decide the correct rerun boundary",type:"content",
+ html:`<p class="lead">After fixing the address transformation rule, where should you rerun?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Possible rerun</th><th>Assessment</th></tr></thead><tbody>
+ <tr><td>Only SO-78452</td><td>Too narrow: address still absent unless separately repaired</td></tr>
+ <tr><td>Only seven target addresses manually</td><td>Bypasses controlled transformation and may miss wider impact</td></tr>
+ <tr><td>Address transformation from valid checkpoint, then dependent address load, then affected downstream orders</td><td>Strong</td></tr>
+ <tr><td>Everything from source extraction</td><td>May work, but unnecessarily broad unless upstream state changed</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Dependency-aware recovery</strong><br>Rerun from the earliest corrected prerequisite that invalidated downstream output, then replay affected dependants in order.</div>`
+},
+{
+ id:"b14",nav:"Invalidate checkpoints",title:"Invalidate downstream checkpoints when prerequisites change",type:"content",
+ html:`<p class="lead">Suppose order transformation used a reference snapshot derived before the address fix. Even if the order data itself did not change, its readiness result may now be stale.</p>
+ <p>Ask: which child outputs were calculated from the old parent/reference state? Which load packages contain stale parent identifiers? Which validation results assumed the missing prerequisite? Which checkpoints can safely be reused? Which must be regenerated?</p>
+ <div class="principle"><strong>Restartability meets dependency management</strong><br>A technically successful checkpoint is not reusable if an upstream prerequisite it depended on has changed.</div>`
+},
+{
+ id:"b15",nav:"Test matrix",title:"Dependency test matrix",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Test</th><th>Positive case</th><th>Negative case</th><th>Regression case</th></tr></thead><tbody>
+ <tr><td>Parent existence</td><td>Valid parent available</td><td>Parent absent</td><td>Unrelated parents unaffected</td></tr>
+ <tr><td>Parent identity</td><td>Child points to intended parent</td><td>Child points to wrong valid parent</td><td>Existing correct links stable</td></tr>
+ <tr><td>Sequence</td><td>Parent committed first</td><td>Child starts before commit</td><td>Parallel unrelated entity still works</td></tr>
+ <tr><td>Reference combination</td><td>Valid site/warehouse pair</td><td>Each exists but pair invalid</td><td>Other valid pairs stable</td></tr>
+ <tr><td>Exception behaviour</td><td>Missing prerequisite routed correctly</td><td>Silent child drop prohibited</td><td>Exception count reconciles</td></tr>
+ <tr><td>Rerun</td><td>Corrected parent enables child</td><td>Stale child package rejected/regenerated</td><td>No duplicate child creation</td></tr>
+ </tbody></table></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Dependency-Test-Matrix-Template.xlsx</strong><p class="small">The six-test structure above, ready to extend for any dependency.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Dependency-Test-Matrix-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b16",nav:"The dependency maze",title:"The dependency maze",type:"selectAll",
+ html:`<p class="lead">Six failures arrived together. Explore each one to find the hidden cause underneath \u2014 the point isn't treating all six as separate defects.</p>`,
+ options: mazeItems,
+ coaching: mazeCoaching,
+ hint:"Explore every failure before continuing.",
+ closingHtml:`<div class="principle"><strong>What this maze actually contains</strong><br>Six observed failures, but nowhere near six root causes. Draw the causal graph before fixing anything \u2014 several of these collapse into the same upstream mechanism.</div>`
+},
+{
+ id:"b17",nav:"Independent lab",title:"Independent lab \u2014 Restore the migration graph",type:"reflection",
+ html:`<p class="lead">This is a synthetic migration case. It contains 8,400 customers, 12,900 addresses, 3,600 products, 6 sites, 18 warehouses, 9,250 open orders and 27,600 order lines. After execution, 1,146 child records are rejected across several messages.</p>
+ <p>Evidence pack: entity load sequence and timestamps; accepted/rejected business keys by entity; source-to-target bridge tables; site/warehouse relationship reference; run/step commit states; transformation outputs; dependency exception tables; one stale load package; one deliberately misleading target message.</p>
+ <h3>Required deliverables</h3>
+ <ol class="framework-checks">
+   <li>Draw the entity dependency graph.</li>
+   <li>Identify the earliest failed prerequisite for each rejection cluster.</li>
+   <li>Separate root-cause defects from downstream affected records.</li>
+   <li>Prove the blast radius by business key.</li>
+   <li>Identify one sequencing defect.</li>
+   <li>Identify one wrong-parent defect.</li>
+   <li>Identify one invalid reference combination.</li>
+   <li>Identify one restart-state dependency defect.</li>
+   <li>Define the corrected execution order.</li>
+   <li>State which checkpoints/packages are invalidated.</li>
+   <li>Create a dependency-aware rerun plan.</li>
+   <li>Design pre-load controls that would have detected at least three failures.</li>
+   <li>Write a concise technical update explaining why 1,146 rejects do not represent 1,146 independent causes.</li>
+ </ol>
+ <p class="lead">Write your technical update below.</p>
+ <textarea id="reflection" placeholder="The child rejects group into..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Dependency-Impact-Query.sql</strong><p class="small">Blast-radius and upstream-failure-index query shapes from this lesson, ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Dependency-Impact-Query.sql" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Rerun-Dependency-Plan-Template.xlsx</strong><p class="small">Corrected execution order, invalidated checkpoints and replay sequence, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Rerun-Dependency-Plan-Template.xlsx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/1,?146|graph|cluster/i, strength:"You addressed the actual 1,146 reject population and grouped it into clusters.", gap:"Reference the actual 1,146 rejected records and how they group into a small number of causal clusters." },
+   { test:/sequenc/i, strength:"You identified a sequencing defect.", gap:"Name a specific sequencing defect you found in this dataset." },
+   { test:/wrong.parent|wrong parent/i, strength:"You identified a wrong-parent defect.", gap:"Name a specific wrong-parent defect, distinct from a missing-parent one." },
+   { test:/restart|rerun/i, strength:"You addressed a restart-state dependency issue and the rerun plan.", gap:"State the restart-state defect you found, and how your rerun plan avoids recreating it." },
+   { test:/pre-?load|control/i, strength:"You proposed pre-load controls that would have caught failures earlier.", gap:"Name at least one pre-load control that would have caught a failure before the load ran." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">The child rejects group into three upstream dependency mechanisms rather than hundreds of independent data defects. One customer batch was not committed before order submission; one product prerequisite failed reference validation and generated a large order-line blast radius; and a valid-address population was removed upstream by transformation logic. We have preserved the affected child keys, corrected each prerequisite at its causal layer, invalidated dependent packages produced from stale state, and will replay parent-to-child from the earliest corrected boundary with relationship and sequencing controls.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is the model dependency diagnosis: causal clusters named, not 1,146 individual defects, with a rerun plan that replays from the correct boundary.":"You have the right structure. Make sure you're naming distinct causal clusters, not just listing symptoms, and that your rerun plan replays parent-to-child in the correct order."}</div>`
+},
+{
+ id:"b18",nav:"A strong diagnosis",title:"What a strong dependency diagnosis sounds like",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cThe orders failed because customers, addresses and products were missing. We will fix the bad data and rerun.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201cThe child rejects group into three upstream dependency mechanisms rather than hundreds of independent data defects. One customer batch was not committed before order submission; one product prerequisite failed reference validation and generated a large order-line blast radius; and a valid-address population was removed upstream by transformation logic. We have preserved the affected child keys, corrected each prerequisite at its causal layer, invalidated dependent packages produced from stale state, and will replay parent-to-child from the earliest corrected boundary with relationship and sequencing controls.\u201d</p></div></div>`
+},
+{
+ id:"b19",nav:"Consultant situations",title:"Consultant situations",type:"situations",
+ html:`<p class="lead">Six moments where the child record isn't really the problem.</p>`,
+ items: consultantSituationsD,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Child That Wasn't Broken", name:"Elena", role:"Data Migration Consultant", project:"Utilities ERP",
+   src:"/assets/audio/ChildThatWasntBroken-Elena.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b20",nav:"Reflection",title:"Reflection \u2014 What should never be loaded alone?",type:"reflection",
+ html:`<p class="lead">Choose three migration entities from a project you know. For each, list the prerequisites that must be available before the entity can be safely loaded and one control that proves each prerequisite.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers include business/reference dependencies as well as obvious technical parent-child relationships. They also distinguish "exists in source" from "available and correct in target."</p></div></div>
+ <textarea id="reflection" placeholder="The three entities I've chosen are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/prerequisite|depend/i, strength:"You named specific prerequisites for your chosen entities.", gap:"Name the specific prerequisites each of your three entities depends on." },
+   { test:/control|prove|check/i, strength:"You named a control that proves each prerequisite, not just that it exists.", gap:"Name one control per entity that would prove the prerequisite is actually available, not just present in source." },
+   { test:/exists in source|available.*target|correct in target/i, strength:"You distinguished source existence from target availability.", gap:"State how you'd distinguish a prerequisite existing in source from it being genuinely available and correct in the target." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Three entities: sales orders depend on the customer being accepted and committed, not just present in source \u2014 proven by checking commit state, not source existence. Order lines depend on the product existing in the correct site/warehouse context \u2014 proven by validating the combination, not each code separately. Customer addresses depend on the customer record itself \u2014 proven by confirming the customer's target identity before the address load runs, not assuming source presence guarantees target availability.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This captures exactly the distinction the lesson is built around: source existence and target availability are different questions.":"You have good instincts. Make sure each control you name actually proves availability in the target, not just presence somewhere in the source."}</div>`
+},
+{
+ id:"b21",nav:"Summary",title:"Summary \u2014 Troubleshoot the graph",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Model dependent migration data as a graph, not isolated rows.</li>
+   <li>List parent, reference, sequencing and context prerequisites.</li>
+   <li>When a child fails, identify the earliest failed prerequisite.</li>
+   <li>Do not change a correct child relationship to compensate for a missing parent.</li>
+   <li>Trace dependencies through source, transformation, package, commit state and target.</li>
+   <li>Validate intended relationship identity, not merely existence.</li>
+   <li>Use timing patterns to detect sequencing failures.</li>
+   <li>Validate reference combinations such as site plus warehouse, not only individual codes.</li>
+   <li>Separate root-cause count from downstream affected-record count.</li>
+   <li>Measure the full blast radius by business key.</li>
+   <li>Run pre-load dependency checks where deterministic.</li>
+   <li>Correct the prerequisite at its causal layer.</li>
+   <li>Invalidate downstream checkpoints/packages that depend on changed upstream state.</li>
+   <li>Rerun parent-to-child from the earliest corrected boundary.</li>
+   <li>Retest relationships, sequencing, exceptions and duplicate protection.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>When a child record fails, the child may be telling you about somebody else's problem. Follow the dependency chain upstream until you find the first prerequisite that stopped being correct or available.</div>`
+},
+{
+ id:"b22",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Relationship and dependency failures.</strong></p>
+ <p>You can now diagnose migration failures caused by relationships and dependencies rather than by the individual record itself: map parent-child and reference dependencies, distinguish missing-parent, wrong-parent, sequencing and cross-reference failures, trace a dependency chain through source, transformation, load and target, identify the earliest failed prerequisite, determine the true blast radius, and rerun from the correct dependency boundary.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Finding root cause</strong></p>
+ <p>You will move beyond individual incidents and learn how to distinguish recurring symptoms from the underlying process, rule, design or control failure that keeps generating them.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a child record's error message tempts you to fix the child.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 3",
+  moduleTitle: "Diagnosing & Fixing Defects",
+  lessonLabel: "Lesson 4: Relationship and dependency failures",
+  lessonShortLabel: "Lesson 4",
+  lessonTagline: "Following a dependency chain upstream to the first broken prerequisite",
+  storageKey: "tp_dmc3_lesson4_v1",
+  lessonId: "dmc3-lesson4",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson4-complete.html",
+  finalButtonLabel: "Finish Lesson 4",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Investigating rejected records</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 3 — LESSON 2 — "Investigating rejected records". Built
+   as a rejection desk with mixed incoming cases, per the
+   manuscript's own authoring notes — not a generic catalogue of
+   error types.
+
+   Source: DMC3_Lesson2_Investigating_Rejected_Records_v3.docx.
+   moduleTitle: "Diagnosing & Fixing Defects" per the alignment
+   doc — the manuscript's own header says "Troubleshooting Data
+   Migration Issues" instead; corrected during the DMC3
+   module-boundary review (see STATE.md).
+
+   Genuine cross-module continuity: the opening training batch's
+   18,573 submitted figure (18,387 accepted + 186 rejected) is the
+   same 18,573 accepted population DMC2 Lesson 6 established as
+   reconciling to 18,612 (with 34 pre-load exceptions and 5
+   exclusions) — this lesson picks up that population at the next
+   stage, the actual target load. The rejection counts themselves
+   (186, the R101/R205/R310/R440 breakdown) are a training overlay
+   for this lesson, per the manuscript — real investigation
+   practice, not a new canonical cycle outcome, but I've kept that
+   distinction out of the learner-facing text per STATE.md and
+   phrased everything as direct, in-scenario content instead.
+
+   Bramwell facts used exactly as established: 45E unresolved, NET30
+   not an approved mapping; CustomerGroup 99, 18 unresolved German
+   records; UK→GB and NOR→NO approved; ZZZ unresolved. Section 20's
+   supplier lab (12,406 submitted, 312 rejected) is fully synthetic
+   and does not enter the Bramwell Story Bible — per the entity
+   ledger in STATE.md, Supplier is already the most-used hands-on
+   entity across DMC1-3, but this exercise is manuscript-specified,
+   not my choice to vary.
+
+   Persona: Priya, Data Migration Consultant, Healthcare ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3 so far.
+============================================================== */
+
+const rejectionClassSteps = [
+{html:`<h4>Rejection class R101 \u2014 "Payment term is invalid"</h4>
+ <p>The first rejected record has source payment term 45E. The submitted target-facing value is NET30.</p>
+ <p>What do you already know from the Bramwell case?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Position</th></tr></thead><tbody>
+ <tr><td>Source value</td><td>45E</td></tr>
+ <tr><td>Approved target equivalent</td><td>Not established</td></tr>
+ <tr><td>NET30</td><td>Previously identified as an incorrect staging value, not an approved mapping</td></tr>
+ <tr><td>Correct migration behaviour</td><td>Do not invent a plausible target payment term</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Immediate diagnosis direction</div><p>This is not evidence that Finance supplied bad source data. The migration process submitted an unapproved target value for an unresolved source term.</p></div>
+ <h4>Trace the value backwards</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The chain to trace</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>TARGET REJECT      PaymentTerms = NET30
+      ^
+LOAD PACKAGE       PaymentTerms = NET30
+      ^
+TRANSFORMED STAGE  PaymentTerms = NET30
+      ^
+REFERENCE / RULE   45E -> ?
+      ^
+SOURCE             Terms = 45E</code></pre></div>
+ <p>The useful question is: where did NET30 enter the chain?</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: investigate the mapping path</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo, c.Terms AS SourceTerms,
+  t.PaymentTerms AS TransformedTerms,
+  x.TargetPaymentTerm, x.ApprovalStatus, x.ReferenceVersion
+FROM raw.Customer c
+LEFT JOIN stage.CustomerTransformed t
+  ON t.RunId = c.RunId AND t.CustNo = c.CustNo
+LEFT JOIN ref.PaymentTermCrossRef x
+  ON x.SourcePaymentTerm = c.Terms AND x.ReferenceVersion = @ReferenceVersion
+WHERE c.RunId = @RunId AND c.CustNo = @CustNo;</code></pre></div>
+ <p>Possible findings include: NET30 was hard-coded as a fallback in transformation logic; a draft reference row was incorrectly included; the load package used an old transformed file; a manual edit introduced NET30; the target message refers to a different submitted value than expected.</p>
+ <div class="callout misconception"><div class="callout-label">Do not "fix" 45E by choosing another plausible term</div><p>The correct troubleshooting outcome may be to return the record to controlled exception until the business approves the target treatment.</p></div>
+ <h4>Compare rejected and accepted records</h4>
+ <p>A rejected record becomes more informative when compared with a similar accepted record.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Rejected</th><th>Accepted</th></tr></thead><tbody>
+ <tr><td>Source Terms</td><td>45E</td><td>30D</td></tr>
+ <tr><td>Transformed Terms</td><td>NET30</td><td>NET30</td></tr>
+ <tr><td>Reference status</td><td>Unresolved / no approved mapping</td><td>Approved mapping</td></tr>
+ <tr><td>Target result</td><td>Rejected</td><td>Accepted</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Diagnostic insight</strong><br>Two records can submit the same target value while only one is supported by an approved migration decision.</div>`},
+{html:`<h4>Rejection class R205 \u2014 "Customer group does not exist"</h4>
+ <p>All 18 rejected records have source CustomerGroup 99. This aligns with an established Bramwell unresolved population: 18 German records with CustomerGroup 99 and no approved final mapping.</p>
+ <p>A weak response is to map 99 to the most common target group so the load succeeds.</p>
+ <div class="callout misconception"><div class="callout-label">Correct response</div><p>Confirm what target-facing value, if any, was submitted. If the source value remains unresolved, these records should not have been released as though a valid target group existed. The defect may be in release gating rather than the target.</p></div>
+ <h4>Ask why unresolved data reached the load</h4>
+ <ul class="framework-checks">
+   <li>Was CustomerGroup mandatory for release?</li>
+   <li>Did the release rule check approved reference coverage?</li>
+   <li>Did the reference version contain an unapproved/draft row?</li>
+   <li>Was the exception population accidentally included in the load file?</li>
+   <li>Did a default convert NULL/unresolved to another value?</li>
+   <li>Did the load package combine Ready and Exception outputs?</li>
+ </ul>
+ <div class="principle"><strong>Root cause may sit before the load</strong><br>A target rejection can reveal a failure in the migration-ready release gate, not simply a bad target value.</div>`},
+{html:`<h4>Rejection class R310 \u2014 "Invalid country or region"</h4>
+ <p>The rejected source countries include UK, NOR and ZZZ. Bramwell has approved mappings UK\u2192GB and NOR\u2192NO. ZZZ remains unresolved. Do not treat the 51 records as one cause just because the target message is the same.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Source value</th><th>Expected investigation</th></tr></thead><tbody>
+ <tr><td>UK</td><td>Why did an approved GB mapping not result in an acceptable target value?</td></tr>
+ <tr><td>NOR</td><td>Why did an approved NO mapping not result in an acceptable target value?</td></tr>
+ <tr><td>ZZZ</td><td>Why did an unresolved source country reach the released load population?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: split by submitted value</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  SourceCountry, SubmittedCountry, COUNT(*) AS RejectedRecords
+FROM err.CustomerRejectInvestigation
+WHERE RunId = @RunId AND TargetRejectCode = 'R310'
+GROUP BY SourceCountry, SubmittedCountry
+ORDER BY RejectedRecords DESC;</code></pre></div>
+ <p>This may reveal several mechanisms under one target message: approved source mapping not applied; correct mapping applied but wrong legal-entity target context; old reference version used; unresolved source value incorrectly released; target country configuration unavailable/inactive; load file column shifted or populated from the wrong field.</p>
+ <h4>The "correct transformed value" trap</h4>
+ <p>Suppose transformed stage contains GB, but the target rejects the record as invalid country. Do not conclude the target is wrong. Check the package boundary.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Checkpoint</th><th>Evidence</th></tr></thead><tbody>
+ <tr><td>Transformed table</td><td>GB</td></tr>
+ <tr><td>Export/load file</td><td>?</td></tr>
+ <tr><td>Column mapping</td><td>?</td></tr>
+ <tr><td>Load package</td><td>?</td></tr>
+ <tr><td>Target legal entity/context</td><td>?</td></tr>
+ <tr><td>Target valid-domain state</td><td>?</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: compare transformed output with exported package staging</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  t.CustNo, t.CountryCode AS TransformedCountry, p.CountryCode AS PackagedCountry
+FROM stage.CustomerTransformed t
+JOIN load.CustomerPackageAudit p
+  ON p.RunId = t.RunId AND p.CustNo = t.CustNo
+WHERE t.RunId = @RunId
+  AND ISNULL(t.CountryCode,'<NULL>') <> ISNULL(p.CountryCode,'<NULL>');</code></pre></div>
+ <div class="principle"><strong>Boundary thinking</strong><br>"It is correct in staging" proves only that checkpoint. Data can still be corrupted, omitted or mis-mapped between staging and target.</div>`}
+];
+
+const rejectionCards = [
+ { title:"Card 1: Invalid payment term",
+   question:"Source 45E; submitted NET30. What's the best next evidence to request?",
+   options:[
+     {label:"Source/transformed lineage \u2014 trace exactly where NET30 entered the chain between source and target.", correct:true, feedback:"Correct. You already know 45E has no approved mapping and NET30 isn't one. The useful question is where NET30 was introduced, and lineage answers that directly."},
+     {label:"Target configuration by legal entity, in case the payment-term domain differs by entity.", correct:false, feedback:"Nothing here suggests a legal-entity-specific problem \u2014 the issue is that NET30 shouldn't exist for this source value at all, regardless of entity."},
+     {label:"The accepted-record comparator, to see which payment terms are accepted elsewhere.", correct:false, feedback:"You already have that comparison (30D maps and is accepted). What's missing is where NET30 itself came from, not more examples of what works."},
+     {label:"Previous attempt commit state, in case an earlier partial run is interfering.", correct:false, feedback:"Nothing in this card suggests a rerun or partial-commit issue. That's a different failure signature entirely."}
+   ]
+ },
+ { title:"Card 2: Invalid country",
+   question:"Source UK; transformed GB. What's the best next evidence to request?",
+   options:[
+     {label:"Approved reference baseline, to reconfirm UK maps to GB.", correct:false, feedback:"You already know UK\u2192GB is approved, and the transformed value already shows GB. The reference isn't the open question here."},
+     {label:"Previous attempt commit state, in case a partial run already committed a conflicting value.", correct:false, feedback:"Nothing about this card suggests a rerun history. The transformed value is already correct \u2014 the question is what happened after that."},
+     {label:"Parent acceptance result, in case a related parent record failed first.", correct:false, feedback:"There's no parent/child relationship implied by a country rejection. That's a different investigation shape."},
+     {label:"The load-package extract, to check whether GB actually made it into the exported file the target received.", correct:true, feedback:"Correct. The transformed value is already correct \u2014 \u201ccorrect in staging\u201d proves only that checkpoint. Check whether the package boundary between staging and target preserved it."}
+   ]
+ },
+ { title:"Card 3: Customer group missing",
+   question:"Source 99, an established unresolved population. What's the best next evidence to request?",
+   options:[
+     {label:"The approved reference baseline, to confirm whether 99 has any approved mapping and whether release checked it.", correct:true, feedback:"Correct. 99 is a known unresolved population. The real question is why it reached the load at all \u2014 checking release-gate coverage against the approved reference answers that."},
+     {label:"Column mapping/export definition, in case the wrong source field was exported.", correct:false, feedback:"There's no evidence of an export/column problem here \u2014 the source value 99 is exactly what's expected to be unresolved."},
+     {label:"Target configuration by legal entity, in case CustomerGroup domains differ by entity.", correct:false, feedback:"CustomerGroup 99 is unresolved everywhere in Bramwell, not a legal-entity-specific configuration question."},
+     {label:"The accepted-record comparator, to see which CustomerGroup values load successfully.", correct:false, feedback:"That doesn't address the actual question: why an unresolved value reached the load population in the first place."}
+   ]
+ },
+ { title:"Card 4: Duplicate customer",
+   question:"Unique source key; previous attempt partially failed. What's the best next evidence to request?",
+   options:[
+     {label:"Parent acceptance result, in case a related parent record is the real duplicate.", correct:false, feedback:"There's no parent/child relationship implied here \u2014 the duplicate is at the customer record itself, not a dependency."},
+     {label:"Target configuration by legal entity, in case duplicate rules vary by entity.", correct:false, feedback:"Nothing suggests an entity-specific duplicate rule. The clue is specifically the previous partial failure."},
+     {label:"Previous attempt commit state, to check whether the first attempt already committed this record before failing.", correct:true, feedback:"Correct. A unique source key plus a partially failed previous attempt points straight at a restart/state problem, not a genuine source duplicate."},
+     {label:"Source/transformed lineage, to re-trace how the key was derived.", correct:false, feedback:"The key is already confirmed unique. Lineage doesn't explain why a unique key is being flagged as a duplicate."}
+   ]
+ },
+ { title:"Card 5: Parent not found",
+   question:"Child transformed correctly. What's the best next evidence to request?",
+   options:[
+     {label:"Parent acceptance result, to check whether the parent record was itself submitted and accepted.", correct:true, feedback:"Correct. The child transformed fine, so the problem is upstream \u2014 whether the parent existed, was submitted, and was accepted before the child loaded."},
+     {label:"Column mapping/export definition for the child record's own submitted fields.", correct:false, feedback:"The child is already confirmed correctly transformed. The export definition for the child isn't the open question."},
+     {label:"Approved reference baseline for the child's own field-level mappings.", correct:false, feedback:"This card is about a missing parent, not an unresolved reference value on the child."},
+     {label:"The accepted-record comparator for other children of the same record type.", correct:false, feedback:"Comparing other children doesn't address whether this specific parent existed and was accepted in time."}
+   ]
+ },
+ { title:"Card 6: Required field blank",
+   question:"Transformed stage contains a value. What's the best next evidence to request?",
+   options:[
+     {label:"Previous attempt commit state, in case an earlier run cleared the field.", correct:false, feedback:"Nothing here suggests a rerun history \u2014 the transformed stage already has a value now, which points elsewhere."},
+     {label:"Target configuration, in case the field is mandatory only in some contexts.", correct:false, feedback:"The target says the field is blank, not that it's rejecting a populated value \u2014 the discrepancy is between transformed and what target received, not a configuration rule."},
+     {label:"Approved reference baseline for the field's source mapping.", correct:false, feedback:"The transformed stage already has a value, so the mapping clearly ran. The question is what happened after that, not the mapping itself."},
+     {label:"Column mapping/export definition, to check whether the field was actually included in the exported package.", correct:true, feedback:"Correct. Transformed stage has a value but target sees it blank \u2014 that's exactly the export/column-mapping boundary this lesson warns about."}
+   ]
+ },
+ { title:"Card 7: Generic create failure",
+   question:"Affecting one legal entity only. What's the best next evidence to request?",
+   options:[
+     {label:"Source/transformed lineage for the affected records, tracing each one back individually.", correct:false, feedback:"The records are confined to one legal entity specifically \u2014 that's a strong clue pointing at entity-specific configuration, not a lineage question."},
+     {label:"Target configuration by legal entity, since the failure is confined to one entity specifically.", correct:true, feedback:"Correct. A generic failure isolated to one legal entity is exactly the signature of an entity-specific target configuration gap."},
+     {label:"Previous attempt commit state, in case an earlier partial run is responsible.", correct:false, feedback:"Nothing here suggests a rerun history \u2014 the discriminating factor given is legal entity, not attempt history."},
+     {label:"The accepted-record comparator across every legal entity in the migration.", correct:false, feedback:"You already know the failure is isolated to one entity. The next useful step is examining that entity's configuration, not gathering more cross-entity comparisons."}
+   ]
+ },
+ { title:"Card 8: Invalid UOM",
+   question:"Affecting records loaded from one package file. What's the best next evidence to request?",
+   options:[
+     {label:"Approved reference baseline for the UOM mapping across the whole supplier population.", correct:false, feedback:"The clue here is that the records share one specific package file, not a reference-coverage gap."},
+     {label:"Parent acceptance result, in case a related parent record is actually behind this.", correct:false, feedback:"There's no parent/child relationship implied by a UOM rejection tied to a specific file."},
+     {label:"The accepted-record comparator, to confirm whether records from other package files with the same UOM were accepted.", correct:true, feedback:"Correct. If the same UOM loads fine from other packages, that confirms the discriminating factor really is this specific file, not the UOM value itself."},
+     {label:"Column mapping/export definition for every field in the package.", correct:false, feedback:"That's broader than the evidence calls for \u2014 the card already narrows the question to UOM and one file; confirm that narrowing before widening the investigation."}
+   ]
+ }
+];
+
+const consultantSituationsB = [
+ { title:"A. The business asks for the reject spreadsheet so they can fix it",
+   question:"What's the right response?",
+   options:[
+     {label:"Give them only the populations that genuinely require business/source action, with clear fields and questions. Do not send technical/package/configuration rejects as though they are source-data defects.", correct:true, feedback:"Correct. Give them only the populations that genuinely require business/source action, with clear fields and questions."},
+     {label:"Send the full reject spreadsheet as-is, since the business asked for it directly and can sort out for themselves which ones actually apply to them.", correct:false, feedback:"That hands technical, package and configuration rejects to the business as though they were source-data problems, which they aren't."},
+     {label:"Decline to send anything to the business until every single reject across all four classes has been fully root-caused.", correct:false, feedback:"That's unnecessarily slow. Genuinely business-owned exceptions can be shared as soon as they're identified as such, without waiting for every technical reject to be resolved first."},
+     {label:"Send only the total count of rejects, without any of the underlying records, so as not to overwhelm the business with detail.", correct:false, feedback:"A bare count gives the business nothing actionable. They need the specific records and questions that are genuinely theirs to answer."}
+   ]
+ },
+ { title:"B. The developer says the target error is obvious",
+   question:"What's the right response?",
+   options:[
+     {label:"Accept the developer's assessment and implement their suggested fix directly, since they know the target system best.", correct:false, feedback:"An error looking obvious to someone familiar with the target doesn't establish the actual failure mechanism upstream."},
+     {label:"Ask for the submitted value and lineage. Obvious errors still need the failure mechanism proven before correction.", correct:true, feedback:"Correct. Ask for the submitted value and lineage. Obvious errors still need the failure mechanism proven before correction."},
+     {label:"Move on to the next reject, since an obvious error doesn't need further attention.", correct:false, feedback:"Skipping it means nobody actually confirms the mechanism, or the full population affected by it."},
+     {label:"Ask a second developer to independently confirm the first developer's assessment.", correct:false, feedback:"A second opinion from someone equally unfamiliar with the submitted value and lineage doesn't add the evidence that's actually missing."}
+   ]
+ },
+ { title:"C. The target accepts a previously rejected record after a manual target setup change",
+   question:"What's the right response?",
+   options:[
+     {label:"Quietly note the manual change was made and move on, since the record now loads successfully.", correct:false, feedback:"Noting it quietly loses the traceability needed to know this change happened, and doesn't retest the full affected signature."},
+     {label:"Alter the source or transformation data to mimic whatever the manual target setup change achieved.", correct:false, feedback:"That would compensate for a target-configuration fix by changing an unrelated layer, exactly the kind of cross-layer patch this lesson warns against."},
+     {label:"Record the target-configuration change and retest the full affected signature. Do not alter source/transformation data to mimic the manual setup.", correct:true, feedback:"Correct. Record the target-configuration change and retest the full affected signature. Do not alter source/transformation data to mimic the manual setup."},
+     {label:"Revert the manual target setup change, since manual changes to the target should never be trusted.", correct:false, feedback:"That discards a legitimate finding about where the actual defect lived, without first understanding what the change corrected."}
+   ]
+ },
+ { title:"D. One reject has three error messages",
+   question:"What's the right response?",
+   options:[
+     {label:"Determine whether they are independent validations or a causal chain. Fixing the earliest cause may remove downstream messages.", correct:true, feedback:"Correct. Determine whether they are independent validations or a causal chain. Fixing the earliest cause may remove downstream messages."},
+     {label:"Treat all three messages as equally important and fix each one separately before retesting.", correct:false, feedback:"If the three messages are a causal chain, fixing all three independently wastes effort on ones that would have disappeared once the earliest cause was corrected."},
+     {label:"Fix only the last message shown, since that's presumably where validation finally stopped.", correct:false, feedback:"The last message is just where validation happened to stop this time \u2014 it isn't necessarily the earliest or most important cause."},
+     {label:"Ignore all three messages and rerun the record to see which one persists.", correct:false, feedback:"Rerunning without investigating first risks reproducing the same unexplained result, per the traps already established in this module."}
+   ]
+ },
+ { title:"E. A rejected record disappears from the retest file",
+   question:"What's the right response?",
+   options:[
+     {label:"Count it as resolved, since it no longer appears as a rejection anywhere.", correct:false, feedback:"Disappearing from the retest file isn't the same as being explained. It could just as easily mean the record silently dropped out of the population."},
+     {label:"Assume it was fixed by the same correction that resolved the other records.", correct:false, feedback:"That's an assumption standing in for evidence. You haven't actually traced where this specific record went."},
+     {label:"Do not count it as resolved. It remains unaccounted until you can explain its controlled outcome.", correct:true, feedback:"Correct. Do not count it as resolved. It remains unaccounted until you can explain its controlled outcome."},
+     {label:"Remove it from the original reject population so the reconciliation totals still balance.", correct:false, feedback:"Adjusting the record out of the population to make the arithmetic work is exactly the kind of accounting shortcut this lesson warns against."}
+   ]
+ },
+ { title:"F. The same source code is accepted in one legal entity and rejected in another",
+   question:"What's the right response?",
+   options:[
+     {label:"Change the source code to whichever value is accepted in both legal entities.", correct:false, feedback:"That treats a legal-entity-specific reference or configuration issue as a source-data problem, changing the wrong layer entirely."},
+     {label:"Accept that the code is simply invalid for the rejecting entity and exclude those records from migration.", correct:false, feedback:"Excluding the records skips investigating whether this is actually a reference-grain or configuration gap that could be properly resolved instead."},
+     {label:"Ask the source system owner to standardise the code so it behaves identically everywhere.", correct:false, feedback:"That assumes the source code itself is the problem, when the difference in outcome between entities points at target-side context, not the source value."},
+     {label:"Investigate target context, reference grain and legal-entity-specific configuration before changing the source code.", correct:true, feedback:"Correct. Investigate target context, reference grain and legal-entity-specific configuration before changing the source code."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"14:07 \u2014 The load finished with 186 rejects",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The customer load has completed. The target reports 18,387 accepted records and 186 rejected records. The project manager asks: \u201cWhat is wrong with the 186?\u201d</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Reject code</th><th>Target message</th><th>Records</th></tr></thead><tbody>
+ <tr><td>R101</td><td>Payment term is invalid</td><td>74</td></tr>
+ <tr><td>R205</td><td>Customer group does not exist</td><td>18</td></tr>
+ <tr><td>R310</td><td>Invalid country or region</td><td>51</td></tr>
+ <tr><td>R440</td><td>Customer could not be created</td><td>43</td></tr>
+ </tbody></table></div>
+ <h3>What is the strongest first response?</h3>`,
+ options:[
+   {label:"Send each message to the relevant business SME, since the target has already identified the bad field.", correct:false, feedback:"The target message names where validation stopped, not necessarily whose data or decision is at fault. Sending it straight to business risks handing them technical or packaging defects."},
+   {label:"Correct the obvious values in the load file and rerun the 186 records.", correct:false, feedback:"That patches symptoms in the load file without proving what actually caused the rejection, and risks the same defect recurring on the next cycle."},
+   {label:"Reconcile the rejected keys to the submitted population, preserve the exact target messages and target-facing values, then investigate each rejection class against accepted controls and upstream evidence.", correct:true, feedback:"Correct. The target message is evidence, not a diagnosis. First establish exactly which records failed, what was submitted, and whether the rejection categories represent one cause or several."},
+   {label:"Focus on R440 first, because it is the least specific error and therefore the most urgent.", correct:false, feedback:"Vagueness isn't the same as priority. Population control and reconciliation come before deciding which rejection class to investigate first."}
+ ]
+},
+{
+ id:"b2",nav:"Build the control first",title:"Build the rejection control before investigating causes",type:"content",
+ html:`<p class="lead">A rejection investigation starts with population control.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The control equation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Submitted
+  = Accepted
+  + Rejected
+  + any explicitly documented technical/skipped population
+
+Unaccounted = 0</code></pre></div>
+ <p>For the training batch above:</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">This cycle's reconciliation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>18,387 accepted
++  186 rejected
+= 18,573 submitted</code></pre></div>
+ <p>18,573 is the same submitted/accepted population established at the end of the release-readiness work in Module 2 \u2014 this is that population reaching the actual target load.</p>
+ <div class="callout misconception"><div class="callout-label">Why reconcile first</div><p>If 186 records are in the rejection file but 190 submitted keys are missing from the target, you do not have a 186-record problem. You have an accounting problem as well.</p></div>`
+},
+{
+ id:"b3",nav:"The working table",title:"Your rejection working table",type:"content",
+ html:`<p class="lead">Create one controlled investigation table that connects target evidence to migration evidence.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Column</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>RunId / LoadId</td><td>Execution identity</td></tr>
+ <tr><td>Entity</td><td>Customer, address, order, etc.</td></tr>
+ <tr><td>BusinessKey</td><td>Record identity</td></tr>
+ <tr><td>TargetRejectCode</td><td>Stable target code if available</td></tr>
+ <tr><td>TargetMessage</td><td>Exact message</td></tr>
+ <tr><td>TargetField</td><td>If explicitly identified</td></tr>
+ <tr><td>SubmittedValue</td><td>What the target actually received</td></tr>
+ <tr><td>SourceValue</td><td>Original evidence</td></tr>
+ <tr><td>TransformedValue</td><td>What migration logic produced</td></tr>
+ <tr><td>Mapping/Rule ID</td><td>Logic trace</td></tr>
+ <tr><td>ReferenceVersion</td><td>Where lookup-dependent</td></tr>
+ <tr><td>InvestigationStatus</td><td>Untriaged / investigating / root cause found / fixed / retested</td></tr>
+ <tr><td>RootCauseClass</td><td>Source / rule / reference / package / sequence / target / other</td></tr>
+ <tr><td>Resolution</td><td>Controlled fix</td></tr>
+ <tr><td>RetestRun</td><td>Proof</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Keep the original message</div><p>Do not replace the target message with your interpretation. Preserve both.</p></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Reject-Working-Table-Template.xlsx</strong><p class="small">The fifteen-column structure above, ready to fill in for any rejection batch.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Reject-Working-Table-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b4",nav:"Message diagnostic value",title:"Error messages have different diagnostic value",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Message type</th><th>Example</th><th>Diagnostic value</th></tr></thead><tbody>
+ <tr><td>Specific domain failure</td><td>Payment term X does not exist</td><td>Often high, but still verify submitted value/context</td></tr>
+ <tr><td>Specific field format</td><td>Date exceeds permitted range</td><td>Usually useful if target field is known</td></tr>
+ <tr><td>Relationship failure</td><td>Parent customer not found</td><td>May be child data, parent failure or sequencing</td></tr>
+ <tr><td>Generic create failure</td><td>Customer could not be created</td><td>Low without detailed logs</td></tr>
+ <tr><td>Compound validation</td><td>Invalid country or region</td><td>Could be code, legal entity, address setup or target configuration</td></tr>
+ <tr><td>Downstream consequence</td><td>Cannot create order line</td><td>May be caused by product/site/customer failure upstream</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Troubleshooting rule</strong><br>Treat the target message as a clue whose reliability must be tested against the submitted record and the target context.</div>`
+},
+{
+ id:"b5",nav:"Triage by signature",title:"Triage by rejection signature, not one row at a time",type:"content",
+ html:`<p class="lead">Before deep-diving 186 individual records, group them into signatures.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: group by signature</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  TargetRejectCode, TargetMessage, COUNT(*) AS RejectedRecords
+FROM err.LoadReject
+WHERE RunId = @RunId
+GROUP BY TargetRejectCode, TargetMessage
+ORDER BY RejectedRecords DESC;</code></pre></div>
+ <p>Then ask whether records inside a signature share: the same submitted value; the same source value; the same legal entity; the same reference mapping; the same transformation rule; the same parent/dependency; the same file/package/batch; the same target configuration context.</p>
+ <div class="principle"><strong>Why signatures matter</strong><br>One correction to a reference or rule may resolve 74 records. Seventy-four separate manual fixes may hide the real defect.</div>`
+},
+{
+ id:"b6",nav:"Three rejection classes",title:"Work through three rejection classes",type:"guidedSteps",
+ html:`<p class="lead">The 186 rejects break down into distinct classes. Work through the first three in order \u2014 each teaches a different investigation pattern.</p>`,
+ steps: rejectionClassSteps,
+ firstLabel:"Open R101"
+},
+{
+ id:"b7",nav:"Generic errors",title:"Rejection class R440 \u2014 \"Customer could not be created\"",type:"content",
+ html:`<p class="lead">Generic errors require a different approach. Start by looking for more detailed evidence: target validation/error detail; load-framework child messages; database/application logs where available; field-level error collections; dependency failures; duplicate-key/conflict messages; security/configuration errors; batch-level technical errors.</p>
+ <p>Then compare rejected and accepted records across candidate dimensions.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: compare across dimensions</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  LegalEntity, CustomerGroup, CountryCode, PaymentTerms,
+  COUNT(*) AS Rejected
+FROM err.CustomerRejectInvestigation
+WHERE RunId = @RunId AND TargetRejectCode = 'R440'
+GROUP BY LegalEntity, CustomerGroup, CountryCode, PaymentTerms
+ORDER BY Rejected DESC;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not inspect every column equally</div><p>Use the failure context and accepted/rejected comparison to identify discriminating attributes.</p></div>`
+},
+{
+ id:"b8",nav:"When the message misleads",title:"When the target message is misleading",type:"content",
+ html:`<p class="lead">A target may report the field where validation finally failed, not the earliest cause.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Reported message</th><th>Possible earlier cause</th></tr></thead><tbody>
+ <tr><td>Invalid warehouse</td><td>Site mapping missing, making warehouse invalid in context</td></tr>
+ <tr><td>Customer not found</td><td>Customer parent failed earlier</td></tr>
+ <tr><td>Invalid currency</td><td>Wrong legal entity or target context</td></tr>
+ <tr><td>Duplicate record</td><td>Previous partial run already committed record</td></tr>
+ <tr><td>Invalid date</td><td>Source parse/default/transformation error</td></tr>
+ <tr><td>Cannot create line</td><td>Header/product/site dependency missing</td></tr>
+ <tr><td>Field required</td><td>Export column omitted or column mapping wrong</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Investigate causality, not wording</strong><br>The error message tells you where the target complained. Your job is to establish why the submitted record reached that state.</div>`
+},
+{
+ id:"b9",nav:"Sequencing & dependencies",title:"Rejects caused by sequencing and dependencies",type:"content",
+ html:`<p class="lead">A child record can be perfectly transformed and still reject because its parent is not available.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">For an order line rejection</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Order Line
+  --> Customer exists?
+  --> Order header exists?
+  --> Product exists?
+  --> Site/Warehouse exists?
+  --> Required reference values exist?</code></pre></div>
+ <p>Check both data existence and load timing.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Question</th><th>Evidence</th></tr></thead><tbody>
+ <tr><td>Was parent in migration scope?</td><td>Source/release population</td></tr>
+ <tr><td>Was parent submitted?</td><td>Load package</td></tr>
+ <tr><td>Was parent accepted?</td><td>Target/load result</td></tr>
+ <tr><td>Was parent committed before child load?</td><td>Run/step timing</td></tr>
+ <tr><td>Does child reference correct target key?</td><td>Transformed/package value</td></tr>
+ <tr><td>Was the correct environment/legal entity used?</td><td>Run configuration</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b10",nav:"Partial previous execution",title:"Rejects caused by partial previous execution",type:"content",
+ html:`<p class="lead">A rerun reports duplicate-customer rejects. The source and transformed keys are unique. Before changing duplicate logic, ask whether the first attempt committed records before failing \u2014 the same restartability discipline from Module 1.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: check prior attempt state</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  RunId, Attempt, StepName, StartedAt, CompletedAt,
+  RowsSubmitted, RowsAccepted, RowsRejected, CommitState
+FROM ctl.MigrationStep
+WHERE Entity = 'Customer'
+ORDER BY StartedAt;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Possible diagnosis</div><p>The second attempt may be colliding with records committed by the first attempt. That is a restartability/state problem, not a source duplicate problem.</p></div>`
+},
+{
+ id:"b11",nav:"Root-cause classes",title:"Build a root-cause classification",type:"content",
+ html:`<p class="lead">A stable classification helps you see whether 186 rejects are really 186 data issues.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Class</th><th>Examples</th></tr></thead><tbody>
+ <tr><td>SOURCE_DATA</td><td>Incorrect/missing authoritative source value</td></tr>
+ <tr><td>UNRESOLVED_BUSINESS_DECISION</td><td>No approved treatment exists</td></tr>
+ <tr><td>TRANSFORMATION_RULE</td><td>Wrong condition/default/derivation</td></tr>
+ <tr><td>REFERENCE_DATA</td><td>Missing, stale, ambiguous or unapproved mapping</td></tr>
+ <tr><td>RELEASE_CONTROL</td><td>Exception/unready record incorrectly released</td></tr>
+ <tr><td>LOAD_PACKAGE</td><td>Wrong file/column/value/export</td></tr>
+ <tr><td>SEQUENCING_DEPENDENCY</td><td>Parent/reference not available at load time</td></tr>
+ <tr><td>TARGET_CONFIGURATION</td><td>Valid migration value not configured/active in target context</td></tr>
+ <tr><td>RESTART_STATE</td><td>Previous committed state causes rerun conflict</td></tr>
+ <tr><td>TECHNICAL_TRANSIENT</td><td>Connectivity/resource/service failure</td></tr>
+ <tr><td>INVESTIGATION_ERROR</td><td>Query/run/environment mismatch</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Why classify</strong><br>The classification is not for blame. It helps target the correction and exposes recurring failure patterns.</div>`
+},
+{
+ id:"b12",nav:"Fix at the right layer",title:"Fix at the correct layer",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Root cause</th><th>Corrective layer</th></tr></thead><tbody>
+ <tr><td>Wrong source master value</td><td>Source correction or controlled authorised correction</td></tr>
+ <tr><td>No approved 45E mapping</td><td>Business decision / controlled exception</td></tr>
+ <tr><td>Hard-coded fallback</td><td>Transformation rule</td></tr>
+ <tr><td>Draft cross-reference used</td><td>Reference release/control</td></tr>
+ <tr><td>Exception rows included in file</td><td>Release packaging</td></tr>
+ <tr><td>Correct transformed value exported wrongly</td><td>Load package/export mapping</td></tr>
+ <tr><td>Parent loaded after child</td><td>Execution sequence</td></tr>
+ <tr><td>Valid code inactive in target</td><td>Target configuration</td></tr>
+ <tr><td>Previous attempt committed rows</td><td>Restart/recovery process</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Avoid compensating fixes</div><p>Do not modify transformation logic to compensate for a target configuration defect, or edit source data to compensate for a packaging defect.</p></div>`
+},
+{
+ id:"b13",nav:"Retest without losing population",title:"Retest rejected records without losing the population",type:"content",
+ html:`<p class="lead">After correction, preserve the original rejection population and prove each key's outcome.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Original key</th><th>Original reject</th><th>Correction</th><th>Retest result</th><th>Final evidence</th></tr></thead><tbody>
+ <tr><td>Business key</td><td>Reject code/message</td><td>Rule/reference/config/package change</td><td>Accepted / still rejected</td><td>Retest RunId + target key</td></tr>
+ </tbody></table></div>
+ <p>A strong retest answers: did every originally rejected key get accounted for? Did the corrected rejection signature disappear? Did any records move to a different rejection? Did accepted control records remain accepted? Did the correction create new rejects elsewhere? Was the retest run performed under the intended build/reference/configuration baseline?</p>`
+},
+{
+ id:"b14",nav:"Don't celebrate too early",title:"Do not celebrate a lower reject count too early",type:"content",
+ html:`<p class="lead">Original run: 186 rejects. Retest: 12 rejects. That sounds good. Now compare keys.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: compare reject identities, not just counts</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- Original rejects not accepted in retest
+SELECT BusinessKey FROM err.Reject_Run_A
+EXCEPT
+SELECT BusinessKey FROM ctl.Accepted_Run_B;
+
+-- New retest rejects
+SELECT BusinessKey FROM err.Reject_Run_B
+EXCEPT
+SELECT BusinessKey FROM err.Reject_Run_A;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Reject trend needs identity</div><p>A falling count can hide unresolved original records, new failures or records that disappeared from the submitted population.</p></div>`
+},
+{
+ id:"b15",nav:"The rejection desk",title:"The rejection desk exercise",type:"situations",
+ html:`<p class="lead">Eight rejection cards arrive together. For each, choose the next best evidence \u2014 not the fix.</p>`,
+ items: rejectionCards,
+ takeawayHtml:`<div class="principle"><strong>Scoring principle</strong><br>The best answer is the evidence that most efficiently distinguishes plausible causes at the current failure boundary.</div>`
+},
+{
+ id:"b16",nav:"Independent lab",title:"Independent lab \u2014 The 312 rejected suppliers",type:"reflection",
+ html:`<p class="lead">A supplier load submits 12,406 records. 12,094 are accepted and 312 reject across six target messages. This is a synthetic case.</p>
+ <p>You receive: submitted-key file; target rejection export; raw and transformed supplier tables; approved reference sets; load-package audit extract; run/step logs; target-domain snapshot; previous-attempt state.</p>
+ <h3>Required deliverables</h3>
+ <ol class="framework-checks">
+   <li>Reconcile submitted, accepted and rejected business keys.</li>
+   <li>Group rejects into useful signatures.</li>
+   <li>Select representative records without assuming one record proves the class.</li>
+   <li>Trace submitted values to transformed and source evidence.</li>
+   <li>Compare rejected and accepted controls.</li>
+   <li>Identify at least four distinct root-cause classes.</li>
+   <li>Separate unresolved business decisions from genuine source-data defects.</li>
+   <li>Identify one misleading target message.</li>
+   <li>Identify one load-package defect.</li>
+   <li>Identify one sequencing/restart-state defect.</li>
+   <li>Recommend corrections at the correct layer.</li>
+   <li>Produce a retest plan preserving the original rejected-key population.</li>
+   <li>Write a concise rejection summary for the DML/project manager.</li>
+ </ol>
+ <p class="lead">Write your rejection summary below.</p>
+ <textarea id="reflection" placeholder="All 312 rejected supplier keys..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Reject-Signature-SQL.sql</strong><p class="small">The signature-grouping and comparison query shapes from this lesson, ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Reject-Signature-SQL.sql" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/reconcil|12,?406|12,?094|312/i, strength:"You reconciled submitted, accepted and rejected keys using the actual numbers.", gap:"State the reconciliation using the actual figures: how 12,406 submitted splits into accepted and rejected." },
+   { test:/signature|group/i, strength:"You addressed grouping rejects into signatures rather than treating them individually.", gap:"State how you'd group the 312 rejects into signatures before investigating row by row." },
+   { test:/root.cause|class/i, strength:"You named at least one specific root-cause class.", gap:"Name at least one specific root-cause class you identified, not just \u2018some rejects were data issues.\u2019" },
+   { test:/misleading|package|sequenc|restart/i, strength:"You identified at least one misleading message, package defect, or sequencing/restart-state defect.", gap:"Name the specific misleading message, package defect, or sequencing/restart-state issue you found." },
+   { test:/retest|original.*(population|keys)/i, strength:"You addressed preserving the original rejected-key population through retest.", gap:"State how your retest plan keeps track of every originally rejected key, not just the new pass/fail count." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">All 312 rejected supplier keys reconcile against the 12,406 submitted, alongside the 12,094 accepted. Grouping by signature identified four root-cause classes: an unresolved supplier-classification decision (no approved treatment), a hard-coded reference fallback in transformation, a load-package column shift affecting one export file, and a restart-state collision from a previous partial run. The "duplicate supplier" message was misleading: the real cause was the previous attempt's partial commit, not a genuine source duplicate. Corrections are being applied at the transformation, package and restart-recovery layers respectively; the classification decision remains a controlled exception pending business input. The original 312 reject keys are retained and will be individually reconciled to their final outcome after retest, not just compared by count.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine rejection summary: reconciled population, distinct root causes, a misleading message correctly unmasked, and identity-level retest tracking.":"You have the right structure. Make sure you're naming distinct root-cause classes rather than one general explanation, and that your retest plan tracks individual keys, not just a new total."}</div>`
+},
+{
+ id:"b17",nav:"The Investigation Pack",title:"The Rejection Investigation Pack",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Artefact</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Reject_Control</td><td>Submitted/accepted/rejected reconciliation</td></tr>
+ <tr><td>Reject_Working_Table</td><td>One row per rejected business key with target and lineage evidence</td></tr>
+ <tr><td>Reject_Signature_Summary</td><td>Counts by message/value/context</td></tr>
+ <tr><td>Comparator_Query</td><td>Rejected versus accepted characteristics</td></tr>
+ <tr><td>Lineage_Trace</td><td>Source \u2192 transform \u2192 package \u2192 target</td></tr>
+ <tr><td>Root_Cause_Register</td><td>Proven cause and corrective layer</td></tr>
+ <tr><td>Retest_Control</td><td>Original reject keys to final outcomes</td></tr>
+ <tr><td>Incident_Summary</td><td>What happened, impact, cause, fix, proof</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>This pack should be lightweight</strong><br>Do not create eight documents for a five-record issue. Use the artefacts proportionately, but preserve the same evidence questions.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Root-Cause-Register-Template.xlsx</strong><p class="small">Proven cause and corrective layer, one row per rejection signature.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Root-Cause-Register-Template.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Retest-Control-Template.xlsx</strong><p class="small">Original reject keys tracked through to final outcome, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Retest-Control-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b18",nav:"A strong summary",title:"A strong rejection summary",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201c186 customers rejected. Mostly bad payment terms and country codes. We fixed the data and reran.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201cAll 186 rejected keys reconcile to the submitted population and have been classified by failure mechanism. The largest payment-term class included records where unresolved source term 45E was incorrectly defaulted to NET30 in migration processing; no approved 45E target mapping exists. The 18 CustomerGroup 99 records are unresolved business-reference cases that should not have passed the release gate. Country rejects contain multiple mechanisms and are being handled separately rather than as one source-quality issue. Corrections are being applied at transformation, reference/release and package layers as appropriate, with the original reject-key population retained for retest reconciliation.\u201d</p></div></div>`
+},
+{
+ id:"b19",nav:"Consultant situations",title:"Consultant situations",type:"situations",
+ html:`<p class="lead">Six moments where the right move isn't the obvious one.</p>`,
+ items: consultantSituationsB,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Error Message That Lied", name:"Priya", role:"Data Migration Consultant", project:"Healthcare ERP",
+   src:"/assets/audio/ErrorMessageThatLied-Priya.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b20",nav:"Reflection",title:"Reflection \u2014 Which rejects belong to the business?",type:"reflection",
+ html:`<p class="lead">For the four training classes R101, R205, R310 and R440, write what evidence you would need before telling a business SME that the source data must be corrected.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>A strong answer demands proof that the submitted value correctly represents the approved migration rule and that the failure is not caused by reference, package, sequence, target configuration or release-control defects.</p></div></div>
+ <textarea id="reflection" placeholder="Before telling a business SME the source data is wrong, I would need..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/approved.*(rule|mapping)|represents/i, strength:"You addressed proving the submitted value correctly represents the approved rule.", gap:"State how you'd prove the submitted value actually reflects the approved migration rule, not just that it looks wrong." },
+   { test:/reference|package|sequence|target config|release/i, strength:"You addressed ruling out reference, package, sequence, target-configuration or release-control causes first.", gap:"Name at least one non-source-data cause you'd rule out before blaming the source." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Before telling a business SME the source data is wrong for any of R101, R205, R310 or R440, I'd need proof that the submitted target value actually reflects an approved migration rule, that the reference used was the correct approved version, that the load package genuinely carried the transformed value through unchanged, and that no sequencing or release-control defect let an unready record reach the load in the first place. Only once reference, package, sequence and release gating are ruled out does the remaining question become genuinely the business's to answer.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the discipline the lesson is built around: source data is the last explanation to reach for, not the first.":"You have good instincts. Make sure you're naming the specific things you'd rule out first, not just saying you'd 'investigate' before involving the business."}</div>`
+},
+{
+ id:"b21",nav:"Summary",title:"Summary \u2014 Work backwards from the rejection",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Reconcile submitted, accepted and rejected business keys before diagnosis.</li>
+   <li>Preserve exact target codes/messages and the exact submitted value.</li>
+   <li>Group rejects into signatures before investigating row by row.</li>
+   <li>Treat target messages as clues, not root causes.</li>
+   <li>Trace the value from target rejection back through package, transformed stage, reference/rule and source.</li>
+   <li>Compare rejected records with accepted controls.</li>
+   <li>Split identical target messages when source/submitted/context evidence differs.</li>
+   <li>Check package/export boundaries even when staging looks correct.</li>
+   <li>Investigate sequencing, dependency and previous committed state.</li>
+   <li>Classify root causes by mechanism, not by who you think owns them.</li>
+   <li>Apply the correction at the layer that caused the defect.</li>
+   <li>Preserve the original rejected-key population through retest.</li>
+   <li>Compare reject identities as well as reject counts.</li>
+   <li>Send business users only the exceptions that genuinely require business action.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A rejected record tells you that the target refused what it received. It does not tell you why the migration process produced that state. Trace the evidence backwards until the actual mechanism is proven.</div>`
+},
+{
+ id:"b22",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Investigating rejected records.</strong></p>
+ <p>You can now take a target or load rejection and trace it back to the actual failure mechanism: interpret error messages critically, isolate rejected records, compare rejected and accepted populations, reproduce the failing target-facing value, determine whether the cause sits in source data, transformation logic, reference data, load packaging, sequencing or target configuration, and produce a controlled correction and retest.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>When the load succeeds but the data is wrong</strong></p>
+ <p>You will investigate the more dangerous class of defect: records that pass technical loading and appear successful, but contain incorrect values, relationships, scope or business meaning.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a target error message looks obvious.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 3",
+  moduleTitle: "Diagnosing & Fixing Defects",
+  lessonLabel: "Lesson 2: Investigating rejected records",
+  lessonShortLabel: "Lesson 2",
+  lessonTagline: "Tracing a target rejection back to its actual failure mechanism",
+  storageKey: "tp_dmc3_lesson2_v1",
+  lessonId: "dmc3-lesson2",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson2-complete.html",
+  finalButtonLabel: "Finish Lesson 2",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

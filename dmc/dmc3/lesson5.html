@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Finding root cause</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 3 — LESSON 5 — "Finding root cause". Built as an
+   incident wall / RCA clinic, per the manuscript's own authoring
+   notes — deliberately NOT another linear single-record trace like
+   Lessons 1-4.
+
+   Source: DMC3_Lesson5_Finding_Root_Cause_v3.docx.
+   moduleTitle: "Diagnosing & Fixing Defects" per the alignment
+   doc — the manuscript's own header says "Troubleshooting Data
+   Migration Issues" instead; corrected during the DMC3
+   module-boundary review (see STATE.md).
+
+   This lesson formalises the Bramwell address defect from Lessons 1
+   and 4 into a proper RCA (Section 4): the transformation
+   implemented address eligibility more narrowly than the approved
+   rule, and the defect escaped because eligible source addresses
+   were never reconciled to transformed/excluded/exception outcomes.
+   CustomerGroup 99 (18 unresolved German records) and the 42
+   UK-into-Belgian-entity incident from Lesson 3 both reappear as
+   RCA case material — per the manuscript, the 42-customer figure is
+   canonical but its exact technical root cause is NOT established,
+   so any proposed package/context mechanism here is kept explicitly
+   hypothetical, not stated as proven fact. Section 21's independent
+   case (four product incidents) is fully synthetic and does not
+   enter the Bramwell Story Bible.
+
+   Persona: Nadia, Data Migration Consultant, Public Sector ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline (STATE.md process): b1=1 (my own
+   mcq, no manuscript-given options for this section); b21 items
+   A-F = 3,0,2,1,3,0 — annotated here and cross-checked against the
+   actual written options before linting.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3 so far.
+============================================================== */
+
+const rcaClinicItems = [
+ "\u201cSource data was bad.\u201d",
+ "\u201cDeveloper error.\u201d",
+ "\u201cTarget rejected it.\u201d",
+ "\u201cReference mapping missing.\u201d",
+ "\u201cWrong legal entity.\u201d",
+ "\u201cLoad order issue.\u201d"
+];
+const rcaClinicCoaching = [
+ "<strong>What's missing:</strong> the exact source condition, why it caused migration failure specifically, and whether the source was actually the authoritative record for this value. \u201cBad\u201d isn't a mechanism.",
+ "<strong>What's missing:</strong> the specific implementation mismatch and, just as importantly, why no control caught it. Naming a person isn't the same as naming a mechanism.",
+ "<strong>What's missing:</strong> the upstream mechanism. The target message tells you where validation stopped, not what produced the state it rejected.",
+ "<strong>What's missing:</strong> whether the unresolved value was correctly held as an exception and then released anyway, or never properly identified as unresolved in the first place \u2014 two very different failures.",
+ "<strong>What's missing:</strong> where in the pipeline the context actually diverged, and why. \u201cWrong\u201d describes the symptom, not the cause.",
+ "<strong>What's missing:</strong> which specific prerequisite was involved, and timing/commit evidence proving a sequencing mechanism rather than assuming one."
+];
+
+const consultantSituationsE = [
+ { title:"A. The PM wants a root cause before the next meeting",
+   question:"What's the right response?",
+   options:[
+     {label:"Provide a confident root cause now, and quietly adjust it later if more evidence appears.", correct:false, feedback:"Presenting an unproven conclusion as settled fact, then revising it quietly, damages credibility far more than an honest \u2018not yet established\u2019 would."},
+     {label:"Decline to give any answer at all until the investigation is completely finished.", correct:false, feedback:"That withholds genuinely useful partial evidence. You can share what's proven and what isn't without waiting for total certainty."},
+     {label:"Give the PM the weak troubleshooting fix that was already applied, and call it the root cause.", correct:false, feedback:"A containment fix isn't a root cause. Presenting one as the other will look credible right up until the same defect recurs."},
+     {label:"Give the deepest conclusion supported by evidence and state what remains unproven. Speed does not justify fiction.", correct:true, feedback:"Correct. Give the deepest conclusion supported by evidence and state what remains unproven. Speed does not justify fiction."}
+   ]
+ },
+ { title:"B. The same issue happened twice",
+   question:"What's the right response?",
+   options:[
+     {label:"Compare mechanisms before declaring recurrence. Similar symptoms can have different causes.", correct:true, feedback:"Correct. Compare mechanisms before declaring recurrence. Similar symptoms can have different causes."},
+     {label:"Treat it as automatically the same root cause, since the symptom looks identical both times.", correct:false, feedback:"Identical symptoms can come from entirely different mechanisms. Assuming recurrence without comparing causes risks fixing the wrong thing."},
+     {label:"Escalate it immediately as a crisis without first checking whether the underlying mechanism is actually the same.", correct:false, feedback:"Escalating before comparing mechanisms turns an assumption into urgency prematurely."},
+     {label:"Apply the same fix used last time without checking whether this occurrence shares the same cause.", correct:false, feedback:"Reapplying a previous fix blindly risks leaving the actual current mechanism completely unaddressed."}
+   ]
+ },
+ { title:"C. A developer fixes the code before you capture evidence",
+   question:"What's the right response?",
+   options:[
+     {label:"Ask the developer to revert the fix so the original broken state can be investigated properly first.", correct:false, feedback:"Reverting a fix to recreate a broken state can be disruptive and isn't always necessary \u2014 much of the useful evidence may already be preserved elsewhere."},
+     {label:"Accept that no RCA is now possible and close the incident without one.", correct:false, feedback:"That gives up too early. Version and change details can often still be preserved and reproduced safely even after a fix has landed."},
+     {label:"Preserve version/change details and reproduce where safe. Note that early correction may limit certainty about the original state.", correct:true, feedback:"Correct. Preserve version/change details and reproduce where safe. Note that early correction may limit certainty about the original state."},
+     {label:"Assume the developer's fix accurately reflects what the root cause must have been.", correct:false, feedback:"A fix reflects what the developer believed was wrong, not proven evidence of the actual mechanism \u2014 those can differ."}
+   ]
+ },
+ { title:"D. The business decision itself was wrong",
+   question:"What's the right response?",
+   options:[
+     {label:"Treat the decision as a migration defect and correct it in the system the same way as a coding error.", correct:false, feedback:"An authorised business decision, even one later revised, isn't a technical migration defect \u2014 conflating the two mislabels what actually happened."},
+     {label:"Record the exact approved decision and its impact. Do not relabel an authorised but later-revised business choice as a technical migration defect.", correct:true, feedback:"Correct. Record the exact approved decision and its impact. Do not relabel an authorised but later-revised business choice as a technical migration defect."},
+     {label:"Avoid mentioning the business decision anywhere in the RCA, since it wasn't a technical failure at all.", correct:false, feedback:"Omitting it removes evidence future reviewers would need to understand what actually happened and why."},
+     {label:"Focus the RCA on identifying exactly which individual made the original business decision.", correct:false, feedback:"That shifts the RCA toward blame rather than recording the decision and its impact factually."}
+   ]
+ },
+ { title:"E. A control catches the defect before load",
+   question:"What's the right response?",
+   options:[
+     {label:"Report it as a control failure, since a defect was present in the data at all.", correct:false, feedback:"A defect existing somewhere upstream doesn't mean the control failed \u2014 quite the opposite, it worked exactly as intended by catching it."},
+     {label:"Since the control caught it, conclude that no further analysis of the underlying mechanism is needed.", correct:false, feedback:"A caught defect can still recur and consume investigation time repeatedly if the underlying mechanism that keeps producing it isn't understood."},
+     {label:"Treat the successful detection as proof the whole migration process is now safe from this defect.", correct:false, feedback:"One successful catch doesn't prove the mechanism won't produce a defect the control can't catch next time, especially if conditions change."},
+     {label:"The mechanism still deserves analysis if likely to recur, but the control worked. Do not describe detection as failure.", correct:true, feedback:"Correct. The mechanism still deserves analysis if likely to recur, but the control worked. Do not describe detection as failure."}
+   ]
+ },
+ { title:"F. Root cause is outside the migration team",
+   question:"What's the right response?",
+   options:[
+     {label:"Document the external mechanism factually and still identify migration controls that can detect or contain its impact where appropriate.", correct:true, feedback:"Correct. Document the external mechanism factually and still identify migration controls that can detect or contain its impact where appropriate."},
+     {label:"Since it's not the migration team's fault, leave it out of the RCA entirely.", correct:false, feedback:"Omitting an external cause leaves future reviewers without the evidence needed to understand what actually happened."},
+     {label:"Escalate it as someone else's problem and remove it entirely from further migration analysis.", correct:false, feedback:"Even an externally-caused defect can often still be detected or contained by a migration-side control, which is worth identifying."},
+     {label:"Assume migration controls can't help here, since the cause originates outside the team's own systems.", correct:false, feedback:"That assumes the answer without checking. A detection or containment control on the migration side may well still be possible."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Monday morning",title:"Monday morning \u2014 The same problems keep coming back",type:"mcq",
+ _correctIndex:1,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>Across three migration cycles, the team has recorded the following incidents.</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Cycle</th><th>Observed incident</th><th>Immediate fix used</th></tr></thead><tbody>
+ <tr><td>Cycle A</td><td>Valid delivery addresses missing</td><td>Affected addresses reprocessed after rule correction</td></tr>
+ <tr><td>Cycle B</td><td>Unresolved reference values reached a load</td><td>Rejected records removed and load file rebuilt</td></tr>
+ <tr><td>Cycle C</td><td>A target-facing value was produced from an unapproved fallback</td><td>Fallback corrected and affected records rerun</td></tr>
+ <tr><td>Cycle C</td><td>A child load started against incomplete parent state</td><td>Child batch rerun after parent completion</td></tr>
+ </tbody></table></div>
+ <p>Each incident has a different technical mechanism. Yet a senior consultant asks a more difficult question:</p>
+ <div class="quote">\u201cWhy are defects repeatedly reaching execution before our controls stop them?\u201d</div>
+ <h3>What kind of question is this?</h3>`,
+ options:[
+   {label:"The same troubleshooting question as before, just asked about more incidents at once.", correct:false, feedback:"This question isn't asking why any one record failed. It's asking what's letting a whole class of failures through, again and again."},
+   {label:"A root-cause question: not why this record failed, but what underlying condition let this class of failure occur, escape detection or recur.", correct:true, feedback:"Correct. Troubleshooting asks why this record or batch failed. Root-cause analysis asks what underlying condition allowed this class of failure to occur, escape detection or recur."},
+   {label:"An unanswerable question, since every incident has already been separately diagnosed and closed.", correct:false, feedback:"Individual incidents being closed doesn't mean the underlying systemic condition that produced all four of them has been identified."},
+   {label:"A question only the developers can answer, since it concerns implementation detail.", correct:false, feedback:"This question is as much about process and control design as it is about code \u2014 exactly the kind of cross-cutting question a consultant is positioned to answer."}
+ ]
+},
+{
+ id:"b2",nav:"Symptom vs root cause",title:"Do not call the symptom the root cause",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>Question</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Event</td><td>What happened?</td><td>A customer address did not appear in target</td></tr>
+ <tr><td>Symptom</td><td>How did the failure present?</td><td>Order later reports delivery address not found</td></tr>
+ <tr><td>Mechanism</td><td>What directly produced the wrong state?</td><td>Transformation filter excluded a valid address purpose</td></tr>
+ <tr><td>Root cause</td><td>Why did that mechanism exist or escape?</td><td>Approved rule was implemented incorrectly and no population reconciliation detected silent exclusion</td></tr>
+ <tr><td>Contributing condition</td><td>What made impact more likely/worse?</td><td>Downstream orders depended on the missing address</td></tr>
+ <tr><td>Control failure</td><td>What should have detected/prevented it?</td><td>No eligible-address-to-output reconciliation</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Useful root cause</strong><br>A root cause should explain the mechanism and point towards a corrective action that reduces recurrence. "Bad data", "human error" and "the filter was wrong" are usually too shallow.</div>`
+},
+{
+ id:"b3",nav:"Not always one thing",title:"Root cause is not always one thing",type:"content",
+ html:`<p class="lead">Migration incidents often have a causal chain rather than a single magical cause.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The chain</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>APPROVED BUSINESS RULE
+  -> IMPLEMENTATION INTERPRETATION
+  -> TRANSFORMATION LOGIC
+  -> OUTPUT POPULATION
+  -> RELEASE / LOAD
+  -> TARGET RESULT
+  -> DOWNSTREAM DEPENDANTS</code></pre></div>
+ <p>A defect can enter at one point and escape because a second control is missing. Your RCA should distinguish the cause of the defect from the cause of non-detection.</p>
+ <div class="principle"><strong>Two questions</strong><br>Why was the defect created? Why was it not detected before it mattered? Both may deserve action.</div>`
+},
+{
+ id:"b4",nav:"The address incident, RCA'd",title:"Revisit the Bramwell address incident",type:"content",
+ html:`<p class="lead">Established evidence: C10482-DEL-02 is a valid DELIVERY_SECONDARY address. It exists in raw stage, disappears during transformation, has no exception, and is absent from target. The intended rule is to exclude BILLING_ONLY. The implemented rule retained only DELIVERY_PRIMARY.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Statement</th><th>Depth</th></tr></thead><tbody>
+ <tr><td>Seven addresses were missing</td><td>Symptom / observed population</td></tr>
+ <tr><td>DELIVERY_SECONDARY was excluded</td><td>Mechanism</td></tr>
+ <tr><td>The filter used DELIVERY_PRIMARY only</td><td>Implementation defect</td></tr>
+ <tr><td>The approved rule was implemented more narrowly than intended</td><td>Cause of wrong logic</td></tr>
+ <tr><td>No control reconciled expected eligible addresses to transformed + exception outcomes</td><td>Cause of escape / control weakness</td></tr>
+ </tbody></table></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">A defensible RCA</div><p>The transformation implemented address eligibility more narrowly than the approved business rule, silently excluding valid non-primary delivery addresses. The defect escaped because eligible source addresses were not reconciled to transformed, excluded or exception outcomes at business-key level.</p></div></div>`
+},
+{
+ id:"b5",nav:"Five whys",title:"Five whys: useful only when every answer is evidenced",type:"content",
+ html:`<p class="lead">Five whys can help deepen an investigation, but the number five is irrelevant. Stop when evidence supports an actionable causal condition. Do not invent answers to complete the chain.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Why?</th><th>Possible answer</th><th>Evidence required</th></tr></thead><tbody>
+ <tr><td>Why was C10482-DEL-02 absent?</td><td>Transformation removed it</td><td>Raw/transformed comparison</td></tr>
+ <tr><td>Why did transformation remove it?</td><td>Filter retained DELIVERY_PRIMARY only</td><td>Implemented code/rule</td></tr>
+ <tr><td>Why was that filter used?</td><td>Approved intent was interpreted/implemented incorrectly</td><td>Approved rule + implementation history</td></tr>
+ <tr><td>Why did it reach the cycle?</td><td>Testing did not expose the missing eligible population</td><td>Test evidence / population controls</td></tr>
+ <tr><td>Why did testing not expose it?</td><td>No key-level reconciliation of eligible addresses to outcomes</td><td>Validation/control design</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not fabricate organisational history</div><p>If the project evidence does not establish why the developer interpreted the rule incorrectly, say that. "Developer misunderstood requirement" is not proven merely because code is wrong.</p></div>`
+},
+{
+ id:"b6",nav:"Causal tree",title:"Build a causal tree when several explanations remain",type:"content",
+ html:`<p class="lead">For a recurring defect, start with the outcome and branch into mechanisms you can test.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example tree</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>UNRESOLVED VALUE REACHED TARGET LOAD
+  +-- Release gate did not test approved reference coverage?
+  +-- Reference status incorrectly marked approved?
+  +-- Ready and Exception outputs combined?
+  +-- Old load package reused?
+  +-- Manual edit introduced value?
+  +-- Validation ran against different reference version?</code></pre></div>
+ <p>The tree prevents a convenient narrative from becoming the conclusion before alternatives have been eliminated.</p>`
+},
+{
+ id:"b7",nav:"CustomerGroup 99 case",title:"Evidence panel \u2014 CustomerGroup 99 reaches execution; root cause versus contributing factor",type:"content",
+ html:`<p class="lead">Bramwell has 18 German records with CustomerGroup 99 and no approved final mapping. Imagine a training cycle in which those unresolved records appear in a load file. The immediate symptom is easy: unresolved data was released. The RCA requires more.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Finding</th></tr></thead><tbody>
+ <tr><td>Reference decision</td><td>99 unresolved</td></tr>
+ <tr><td>Release requirement</td><td>Approved reference coverage required for Ready</td></tr>
+ <tr><td>Record status before export</td><td>Investigate</td></tr>
+ <tr><td>Load-file source</td><td>Investigate</td></tr>
+ <tr><td>Reference version used by release control</td><td>Investigate</td></tr>
+ <tr><td>Manual/package changes</td><td>Investigate</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not jump to "release gate failed"</div><p>That is a strong hypothesis, but you must prove whether the gate logic was wrong, bypassed, run against stale data, or its output was later altered.</p></div>
+ <h3>Root cause versus contributing factor</h3>
+ <p>Suppose the release control was correct, but a user copied both Ready and Exception tabs into a combined CSV for loading.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Factor</th><th>Classification</th></tr></thead><tbody>
+ <tr><td>Unresolved 99 values exist</td><td>Known business-data condition, not itself a migration defect</td></tr>
+ <tr><td>Ready/Exception populations correctly separated</td><td>Control worked</td></tr>
+ <tr><td>Manual package assembly recombined them</td><td>Direct mechanism/root cause of release failure</td></tr>
+ <tr><td>No package-to-release reconciliation</td><td>Control weakness allowing escape</td></tr>
+ <tr><td>Target rejected the 18</td><td>Downstream symptom</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Important distinction</strong><br>A difficult source condition can expose a weak process without being the root cause of the migration incident.</div>`
+},
+{
+ id:"b8",nav:"Change comparison",title:"Use change comparison to narrow cause",type:"content",
+ html:`<p class="lead">A defect appears in Cycle 3 but not Cycle 2. Ask what changed between the last known-good and first known-bad state.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Change area</th><th>Examples</th></tr></thead><tbody>
+ <tr><td>Code/build</td><td>Transformation or export logic changed</td></tr>
+ <tr><td>Reference baseline</td><td>New mappings/status/effective dates</td></tr>
+ <tr><td>Input data</td><td>New source values or changed population</td></tr>
+ <tr><td>Configuration</td><td>Legal entity, environment, package parameter</td></tr>
+ <tr><td>Execution</td><td>Sequence, parallelism, restart path</td></tr>
+ <tr><td>Target</td><td>Configuration/domain changed</td></tr>
+ <tr><td>Process</td><td>Manual step, ownership or handover changed</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Worked example</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Last known good: Build 2.7 / Ref v12 / Cycle 2
+First known bad: Build 2.8 / Ref v12 / Cycle 3
+
+High-value question: what changed in Build 2.8 that can produce this symptom?</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Change is not proof</div><p>A change that coincides with a defect is a candidate cause. Show the causal mechanism and reproduce or eliminate it.</p></div>`
+},
+{
+ id:"b9",nav:"Timeline analysis",title:"Timeline analysis for execution defects",type:"content",
+ html:`<p class="lead">For sequencing, restart and intermittent issues, a timeline can expose causal order.</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Time</th><th>Event</th></tr></thead><tbody>
+ <tr><td>18:02</td><td>Customer load starts</td></tr>
+ <tr><td>18:35</td><td>Order load starts</td></tr>
+ <tr><td>18:38</td><td>First customer-not-found order rejects</td></tr>
+ <tr><td>18:41</td><td>Customer processing still active</td></tr>
+ <tr><td>18:49</td><td>Customer load commits</td></tr>
+ <tr><td>18:52</td><td>Later order batch succeeds</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Causal evidence</strong><br>If child failures occur before parent commit and disappear after commit without data changes, timing strongly supports a sequencing mechanism. Still verify configuration and submitted keys before closing the RCA.</div>`
+},
+{
+ id:"b10",nav:"RCA for a wrong-but-loaded defect",title:"Root cause for a successful-but-wrong defect",type:"content",
+ html:`<p class="lead">Bramwell later has 42 UK customers misclassified into the Belgian legal entity despite matching total counts. Lesson 3 bounded a training investigation to package/execution context after transformed entity was correct.</p>
+ <p>A root-cause analysis would ask: what package/configuration mechanism assigned Belgian context? What changed or differed for the affected batch? Why did package-to-target context validation not detect the mismatch? Why did total-count reconciliation appear healthy? What independent entity-context control should have existed?</p>
+ <div class="callout misconception"><div class="callout-label">Do not overstate the case</div><p>The 42-customer misclassification itself is established fact. The exact technical mechanism behind it is not. Any package-parameter explanation here is a plausible hypothesis to test, not a proven finding.</p></div>`
+},
+{
+ id:"b11",nav:"Quality test",title:"Root cause quality test",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Candidate statement</th><th>Quality</th></tr></thead><tbody>
+ <tr><td>"Bad data"</td><td>Poor: vague, often blame-based</td></tr>
+ <tr><td>"Human error"</td><td>Poor: does not explain system/process conditions</td></tr>
+ <tr><td>"The mapping was wrong"</td><td>Incomplete: what was wrong and why did it escape?</td></tr>
+ <tr><td>"Draft reference rows were included because production lookup did not filter ApprovalStatus"</td><td>Strong mechanism if evidenced</td></tr>
+ <tr><td>"The defect escaped because release validation used the same unfiltered reference view"</td><td>Strong control-failure statement if evidenced</td></tr>
+ <tr><td>"We need more testing"</td><td>Action slogan, not root cause</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Test your wording</strong><br>Could someone design a specific corrective action from the statement? Could another consultant verify it from evidence? If not, go deeper or be more precise.</div>`
+},
+{
+ id:"b12",nav:"Blame-shaped RCA",title:"Beware the blame-shaped RCA",type:"content",
+ html:`<p class="lead">Statements such as "the SME gave us the wrong answer" or "the developer made a mistake" often stop the investigation too early.</p>
+ <p>Ask instead: what exact decision or implementation was wrong? What evidence was available at the time? Was the decision recorded and versioned? Was the implementation tested against boundary/negative cases? Was there an independent control that should have caught the result? Did the process make the error easy to introduce or hard to detect?</p>
+ <div class="principle"><strong>Accountability without blame</strong><br>People make decisions and write code. RCA should still describe the technical/process mechanism precisely enough to improve the system.</div>`
+},
+{
+ id:"b13",nav:"Common control gap",title:"Repeated defects: look for the common control gap",type:"content",
+ html:`<p class="lead">Consider four different incidents: silent address exclusion, unresolved reference released, plausible default used, wrong legal-entity context. Their direct mechanisms differ. A pattern review may reveal common weaknesses.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Potential systemic weakness</th><th>Evidence you would seek</th></tr></thead><tbody>
+ <tr><td>Rules not independently tested against approved intent</td><td>Rule catalogue vs test cases</td></tr>
+ <tr><td>No key-level expected-vs-actual validation</td><td>Validation pack</td></tr>
+ <tr><td>Reference approval status not enforced consistently</td><td>Lookup/release SQL</td></tr>
+ <tr><td>Package identity/context not reconciled</td><td>Package audit</td></tr>
+ <tr><td>Exception populations can bypass release controls</td><td>Release/export process</td></tr>
+ <tr><td>Build/reference/config versions not bound to output</td><td>Run metadata</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Systemic root cause needs evidence too</div><p>Do not declare "poor governance" because several incidents occurred. Show the repeated control weakness across incidents.</p></div>`
+},
+{
+ id:"b14",nav:"Pareto",title:"Pareto helps prioritise, not diagnose",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Root-cause class</th><th>Incidents</th><th>Affected records</th></tr></thead><tbody>
+ <tr><td>Reference/release control</td><td>5</td><td>1,420</td></tr>
+ <tr><td>Transformation rules</td><td>4</td><td>318</td></tr>
+ <tr><td>Sequencing/restart</td><td>3</td><td>2,105</td></tr>
+ <tr><td>Target configuration</td><td>2</td><td>76</td></tr>
+ <tr><td>Source correction</td><td>9</td><td>94</td></tr>
+ </tbody></table></div>
+ <p>The largest affected population may deserve urgent action, but frequency and impact do not prove why the defects occur.</p>
+ <div class="principle"><strong>Use Pareto after classification</strong><br>It helps decide where prevention work may return the most value. It is not a substitute for causal evidence.</div>`
+},
+{
+ id:"b15",nav:"Corrective vs preventive",title:"Corrective action and preventive action; design against the causal layer",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Action type</th><th>Question</th><th>Address example</th></tr></thead><tbody>
+ <tr><td>Containment</td><td>How do we protect the current cycle?</td><td>Hold affected dependants / preserve keys</td></tr>
+ <tr><td>Correction</td><td>How do we repair current wrong state?</td><td>Fix approved transformation rule and reprocess</td></tr>
+ <tr><td>Corrective action</td><td>How do we remove the proven cause?</td><td>Implement correct eligibility logic with tests</td></tr>
+ <tr><td>Preventive/control action</td><td>How do we detect/prevent recurrence?</td><td>Reconcile eligible addresses to transformed + exception outcomes</td></tr>
+ <tr><td>Verification</td><td>How do we prove action works?</td><td>Regression + key-level reconciliation in next cycle</td></tr>
+ </tbody></table></div>
+ <div class="callout misconception"><div class="callout-label">Do not confuse action with cause</div><p>"Add a validation check" may be a good preventive action, but it does not explain why the original defect was created.</p></div>
+ <h3>Design actions against the causal layer</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Proven cause</th><th>Weak action</th><th>Stronger action</th></tr></thead><tbody>
+ <tr><td>Unapproved fallback in transformation</td><td>Tell developer to be careful</td><td>Remove fallback; enforce approved mapping status; add unresolved-value test</td></tr>
+ <tr><td>Stale reference version used</td><td>Re-run with right file</td><td>Bind ReferenceVersion to RunId/output and validate before release</td></tr>
+ <tr><td>Child starts before parent commit</td><td>Retry failed children</td><td>Enforce dependency gate/sequence using committed parent state</td></tr>
+ <tr><td>Manual package combines exception rows</td><td>Remind analyst</td><td>Generate package from controlled Ready view; reconcile package keys to release status</td></tr>
+ <tr><td>Wrong context parameter</td><td>Correct 42 records</td><td>Bind package/entity parameter to release metadata and validate expected vs actual context</td></tr>
+ </tbody></table></div>`
+},
+{
+ id:"b16",nav:"Prove recurrence is addressed",title:"Prove that the action addresses recurrence",type:"content",
+ html:`<p class="lead">A root-cause action is not complete when the current data passes. Create a test that would fail if the original mechanism returned.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">Example preventive test</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>Original mechanism: unapproved reference value can enter Ready output
+
+Preventive test:
+  READY records
+  LEFT JOIN approved reference baseline
+  WHERE approved match count <> 1
+
+Expected result = 0 records</code></pre></div>
+ <p>Then retain that control in subsequent cycles, not only in the incident retest.</p>`
+},
+{
+ id:"b17",nav:"The RCA evidence pack",title:"The RCA evidence pack",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Artefact</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>Incident list</td><td>Observed events and impact</td></tr>
+ <tr><td>Timeline</td><td>Order of relevant changes/execution</td></tr>
+ <tr><td>Affected-key population</td><td>Proven scope</td></tr>
+ <tr><td>Evidence links</td><td>Queries/logs/rules/builds</td></tr>
+ <tr><td>Causal tree</td><td>Competing mechanisms and eliminations</td></tr>
+ <tr><td>Root-cause statement</td><td>Evidence-backed conclusion</td></tr>
+ <tr><td>Contributing factors</td><td>Conditions that increased likelihood/impact</td></tr>
+ <tr><td>Containment/correction</td><td>Current-cycle response</td></tr>
+ <tr><td>Corrective/preventive actions</td><td>Recurrence reduction</td></tr>
+ <tr><td>Verification plan</td><td>How actions will be proven</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Keep it proportionate</strong><br>A five-minute defect does not need a ten-page RCA. A recurring migration failure affecting multiple cycles may justify a substantial evidence pack.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_RCA-Worksheet.xlsx</strong><p class="small">The ten-artefact structure above, ready to fill in proportionately for any incident.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_RCA-Worksheet.xlsx" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Causal-Tree-Template.docx</strong><p class="small">A blank causal tree structure, ready to branch out competing mechanisms.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Causal-Tree-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b18",nav:"The root-cause clinic",title:"The root-cause clinic",type:"selectAll",
+ html:`<p class="lead">Six weak RCA statements. Explore each one to see exactly what's missing before you'd ever write something like it yourself.</p>`,
+ options: rcaClinicItems,
+ coaching: rcaClinicCoaching,
+ hint:"Explore every statement before continuing.",
+ closingHtml:`<div class="principle"><strong>The honest answer is sometimes "insufficient evidence"</strong><br>Several of these statements can't be deepened into a real root cause with the evidence given \u2014 that's a legitimate conclusion, not a failure to investigate hard enough.</div>`
+},
+{
+ id:"b19",nav:"Independent case",title:"Independent case \u2014 Four incidents, one hidden weakness",type:"reflection",
+ html:`<p class="lead">This is a synthetic migration case. Across four test cycles, a product migration shows:</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Cycle</th><th>Incident</th></tr></thead><tbody>
+ <tr><td>1</td><td>42 valid category values silently defaulted</td></tr>
+ <tr><td>2</td><td>17 unresolved UOM values entered Ready output</td></tr>
+ <tr><td>3</td><td>One draft category mapping used in production</td></tr>
+ <tr><td>4</td><td>63 products loaded with a previous-cycle reference baseline</td></tr>
+ </tbody></table></div>
+ <p>The evidence pack includes code versions, reference versions, release SQL, test results, run metadata and decision records.</p>
+ <h3>Required deliverables</h3>
+ <ol class="framework-checks">
+   <li>Write a factual statement for each incident.</li>
+   <li>Separate symptom, mechanism and control failure.</li>
+   <li>Build a causal tree with at least two competing explanations for the recurring pattern.</li>
+   <li>Use change/version evidence to eliminate unsupported explanations.</li>
+   <li>Identify any common systemic weakness only if the evidence supports it.</li>
+   <li>State where evidence is insufficient rather than inventing a cause.</li>
+   <li>Write one root-cause statement per incident and one cross-incident finding if justified.</li>
+   <li>Define containment, correction, corrective action and preventive action.</li>
+   <li>Create verification tests for each preventive action.</li>
+   <li>Write a one-page RCA summary suitable for technical/project review.</li>
+ </ol>
+ <p class="lead">Write your one-page RCA summary below.</p>
+ <textarea id="reflection" placeholder="Across four cycles, this migration shows..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_RCA-Summary-Template.docx</strong><p class="small">A one-page RCA summary shape, ready to fill in for technical or project review.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_RCA-Summary-Template.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/symptom|mechanism|control failure/i, strength:"You separated symptom, mechanism and control failure rather than treating them as one thing.", gap:"Separate at least one incident's symptom, mechanism and control failure explicitly, rather than describing it as a single event." },
+   { test:/causal tree|competing|two.*(explanation|mechanism)/i, strength:"You built a causal tree with genuinely competing explanations.", gap:"State at least two competing explanations for the recurring pattern before settling on one." },
+   { test:/insufficient evidence|cannot (prove|distinguish)|not established/i, strength:"You acknowledged at least one place where evidence is insufficient, rather than inventing certainty.", gap:"Name at least one point where the evidence doesn't let you prove a specific cause, and say so." },
+   { test:/systemic|common|pattern|across/i, strength:"You addressed whether a common systemic weakness explains the pattern.", gap:"State whether a common systemic weakness explains multiple incidents, and what evidence would support or rule that out." },
+   { test:/preventive|verification|test/i, strength:"You defined a verification test for at least one preventive action.", gap:"Define a specific test that would fail if the original mechanism returned, for at least one preventive action." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Across four cycles, this migration shows a recurring pattern best explained by one systemic weakness rather than four unrelated defects: production release logic treated any populated cross-reference row as usable and did not enforce approved status or bind the reference baseline to the migration run. This allowed draft, unresolved and stale mappings to produce target-facing values across cycles 1 through 4. The same unfiltered reference view was used by release validation, so the defect could pass its own control. Evidence does not establish why the draft mapping in Cycle 3 was originally created as draft rather than approved; that remains unproven and is not asserted as fact. Corrective action: enforce exactly one approved mapping at the required context and version. Preventive action: independently reconcile every Ready record to the run-bound approved reference baseline. Verification test: READY records left-joined to the approved baseline where match count is not exactly 1 should return zero rows in every subsequent cycle.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is a genuine RCA: a systemic finding backed by evidence across cycles, an honest gap where certainty isn't available, and a verification test that would actually catch a regression.":"You have the right structure. Make sure you're distinguishing proven systemic weakness from coincidence, and that you've named at least one place where the evidence genuinely runs out."}</div>`
+},
+{
+ id:"b20",nav:"Strong vs uncertain",title:"A strong root-cause statement, and when there is no single proven cause",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cReference data problems caused bad product loads. We need better testing.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201cProduction release logic treated any populated cross-reference row as usable and did not enforce approved status or bind the reference baseline to the migration run. This allowed draft, unresolved and stale mappings to produce target-facing values across several cycles. The same unfiltered reference view was used by release validation, so the defect could pass its own control. The corrective action is to enforce exactly one approved mapping at the required context and version; the preventive control independently reconciles every Ready record to the run-bound approved reference baseline.\u201d</p></div></div>
+ <h3>When there is no single proven root cause</h3>
+ <p>Sometimes evidence supports several contributing mechanisms but cannot prove which triggered the incident.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Acceptable conclusion</div><p>\u201cThe failing state is consistent with either stale package reuse or incorrect runtime context. Available logs do not retain package identity, so the initiating mechanism cannot be distinguished retrospectively. Both are control weaknesses. We will add package identity/context logging and validation before the next cycle; current recovery uses a newly generated, verified package.\u201d</p></div></div>
+ <p class="small">That is stronger than inventing certainty.</p>`
+},
+{
+ id:"b21",nav:"Consultant situations",title:"Consultant situations",type:"situations",
+ html:`<p class="lead">Six moments where the pressure to sound certain works against the actual investigation.</p>`,
+ items: consultantSituationsE,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"The Cause Beneath the Cause", name:"Nadia", role:"Data Migration Consultant", project:"Public Sector ERP",
+   src:"/assets/audio/CauseBeneathTheCause-Nadia.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b22",nav:"Reflection",title:"Reflection \u2014 How deep is deep enough?",type:"reflection",
+ html:`<p class="lead">Choose one defect from the previous DMC3 lessons. Write three possible root-cause statements at increasing depth. Mark the point at which further "why" questions would become speculation rather than evidence.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>The goal is not to reach an organisational slogan such as "lack of governance". The goal is the deepest evidence-backed condition that is specific enough to act on and verify.</p></div></div>
+ <textarea id="reflection" placeholder="The defect I've chosen is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/statement 1|first|shallow|symptom/i, strength:"You wrote a shallow first statement to contrast against deeper ones.", gap:"Write your first, shallowest root-cause statement, even if it's closer to a symptom description." },
+   { test:/statement.*(2|3)|deeper|deepest/i, strength:"You wrote statements at increasing depth.", gap:"Write at least two more statements, each going one level deeper than the last." },
+   { test:/speculation|stop|evidence (ends|runs out)|no longer/i, strength:"You marked the point where further depth would become speculation.", gap:"Mark explicitly where you'd stop, because going deeper would mean guessing rather than following evidence." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Defect: the DELIVERY_SECONDARY filter exclusion. Statement 1 (shallow): seven delivery addresses were missing from target. Statement 2 (deeper): the transformation filter retained only DELIVERY_PRIMARY addresses, silently excluding valid DELIVERY_SECONDARY ones. Statement 3 (deepest evidence supports): the approved rule, which was meant to exclude only BILLING_ONLY, was implemented more narrowly than intended, and no reconciliation between eligible source addresses and transformed output existed to catch the gap. I'd stop there: going further to ask why the developer implemented it that way would mean guessing at intent or process history the evidence doesn't actually establish.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the discipline: three real levels of depth, and an honest stopping point where evidence, not curiosity, runs out.":"You have good instincts. Make sure your stopping point is genuinely where the evidence ends, not just where the exercise started to feel effortful."}</div>`
+},
+{
+ id:"b23",nav:"Summary",title:"Summary \u2014 Find the cause that changes the system",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Separate event, symptom, mechanism, root cause, contributing factor and control failure.</li>
+   <li>Ask why the defect was created and why it escaped detection.</li>
+   <li>Use five whys only while each answer is supported by evidence.</li>
+   <li>Use causal trees when several mechanisms remain plausible.</li>
+   <li>Compare last known-good and first known-bad builds, references, inputs, configuration and process.</li>
+   <li>Use timelines for sequencing and intermittent failures.</li>
+   <li>Do not confuse correlation with causation.</li>
+   <li>Do not use "bad data", "human error" or "poor governance" as convenient stopping points.</li>
+   <li>Look for repeated control weaknesses across incidents, but prove the pattern.</li>
+   <li>Distinguish root cause from the condition that merely exposed it.</li>
+   <li>Match corrective actions to the causal layer.</li>
+   <li>Add preventive controls that would fail if the original mechanism returned.</li>
+   <li>Verify prevention in later cycles, not only the immediate rerun.</li>
+   <li>State insufficient evidence when the available facts cannot distinguish competing causes.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>A useful root cause is not the deepest-sounding explanation. It is the deepest explanation the evidence can support that tells you what must change to stop the same mechanism happening again.</div>`
+},
+{
+ id:"b24",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Finding root cause.</strong></p>
+ <p>You can now move from repeated migration symptoms to an evidence-backed root cause: separate event, symptom, mechanism, root cause and control failure; use incident patterns and timelines to test causal hypotheses; apply five whys and causal trees without turning them into rituals; distinguish root cause from contributing conditions; and recommend corrective and preventive actions that address the mechanism rather than merely clearing the current defect population.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Fix, rerun and prove</strong></p>
+ <p>You will close the troubleshooting loop by choosing the correct recovery boundary, controlling the correction, preserving affected populations, rerunning safely and producing evidence that the defect is genuinely resolved without creating a new one.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time you're tempted to write "human error" and call it a day.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 3",
+  moduleTitle: "Diagnosing & Fixing Defects",
+  lessonLabel: "Lesson 5: Finding root cause",
+  lessonShortLabel: "Lesson 5",
+  lessonTagline: "Moving from repeated symptoms to an evidence-backed root cause",
+  storageKey: "tp_dmc3_lesson5_v1",
+  lessonId: "dmc3-lesson5",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson5-complete.html",
+  finalButtonLabel: "Finish Lesson 5",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

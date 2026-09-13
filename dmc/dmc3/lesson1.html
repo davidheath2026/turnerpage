@@ -1,1 +1,526 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | Diagnose before you fix</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
 
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 3 — LESSON 1 — "Diagnose before you fix". Built as an
+   unfolding live incident, per the manuscript's own authoring
+   notes — evidence panels revealed progressively, checklist
+   extracted only after the learner has lived through the incident,
+   not presented upfront.
+
+   Source: DMC3_Lesson1_Diagnose_Before_You_Fix_v3.docx.
+   moduleTitle: DMC3 is "Diagnosing & Fixing Defects" per
+   the alignment doc — the manuscript's own header says
+   "Troubleshooting Data Migration Issues" instead; this was
+   initially missed and used verbatim across all six DMC3 lessons,
+   caught and corrected during the module-boundary review at the
+   end of DMC3 (see STATE.md).
+
+   This lesson continues established Bramwell canon directly: the
+   seven missing key-account delivery addresses figure connects to
+   DMC2's established "31→7 missing key-account delivery addresses"
+   progression. C10482-DEL-02 (18 King Street, Bristol, BS1 4AB, UK),
+   its DELIVERY_SECONDARY purpose, its absence from transformed
+   stage with no exception, and the implemented filter keeping only
+   DELIVERY_PRIMARY against an approved rule that should exclude
+   only BILLING_ONLY, are all taken directly from the manuscript.
+   The exact total population affected by the filter defect is
+   deliberately NOT established — only the seven observed records
+   are canon; do not invent a larger number.
+
+   Section 18's 86-rejected-records vignette is a hypothetical
+   diagnostic scenario per the manuscript's own note ("label it as
+   a training scenario") — handled here via "Imagine" framing rather
+   than an explicit disclaimer sentence, consistent with the house
+   rule against provenance language leaking into learner-facing
+   text (see STATE.md §1). The independent case (open sales orders,
+   24,380/24,117) is fully synthetic per the manuscript and does not
+   enter the Bramwell Story Bible; it's also a genuinely new entity
+   for the hands-on-exercise ledger (Sales Orders), not yet used in
+   DMC1 or DMC2.
+
+   Persona: Sam, Data Migration Consultant, Energy ERP, is specified
+   directly by this manuscript's own "From the Field" section, not
+   chosen freely — per STATE.md, persona is manuscript-directed
+   wherever the manuscript names one; the ledger is for tracking,
+   not overriding.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1 and DMC2.
+============================================================== */
+
+const incidentSteps = [
+{html:`<h4>Evidence panel 1 \u2014 Raw stage</h4>
+ <p>You open the raw-stage evidence for C10482.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+ <tr><td>CustNo</td><td>C10482</td></tr>
+ <tr><td>AddressId</td><td>C10482-DEL-02</td></tr>
+ <tr><td>AddressPurpose</td><td>DELIVERY_SECONDARY</td></tr>
+ <tr><td>Address</td><td>18 King Street, Bristol, BS1 4AB, UK</td></tr>
+ <tr><td>Raw-stage presence</td><td>Yes</td></tr>
+ </tbody></table></div>
+ <p>What can you conclude?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Conclusion</th><th>Supported?</th></tr></thead><tbody>
+ <tr><td>The source extract omitted the address.</td><td>No</td></tr>
+ <tr><td>Raw ingestion lost the address.</td><td>No</td></tr>
+ <tr><td>The address exists before transformation.</td><td>Yes</td></tr>
+ <tr><td>The transformation filter is definitely wrong.</td><td>Not yet</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Evidence discipline</strong><br>You have eliminated two hypotheses. You have not yet proved the third.</div>`},
+{html:`<h4>Evidence panel 2 \u2014 Transformed stage</h4>
+ <p>You query the transformed address table.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT *
+FROM stage.CustomerAddressTransformed
+WHERE RunId = @RunId
+  AND AddressId = 'C10482-DEL-02';</code></pre></div>
+ <p>Result: zero rows. You then check the exception table. There is no exception for this address.</p>
+ <div class="principle"><strong>Current boundary</strong><br>The record exists in raw stage but not in transformed output, and no controlled exception explains its disappearance. The defect is now bounded to transformation processing or its immediate controls.</div>
+ <p class="small">Notice what you have not needed to inspect yet: target configuration, target duplicate rules, load sequencing or target validation.</p>`},
+{html:`<h4>Generate competing hypotheses</h4>
+ <p>Do not lock onto the first plausible explanation. Write several mechanisms that could produce the evidence.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Hypothesis</th><th>What evidence would support it?</th></tr></thead><tbody>
+ <tr><td>H1 Filter excludes DELIVERY_SECONDARY</td><td>Rule/code shows only another purpose is retained; affected population aligns</td></tr>
+ <tr><td>H2 Join drops address</td><td>Required parent/reference join has no match for affected rows</td></tr>
+ <tr><td>H3 Deduplication removes it</td><td>Window/ranking rule selects a different address</td></tr>
+ <tr><td>H4 Transformation error is swallowed</td><td>Logs show error path without exception persistence</td></tr>
+ <tr><td>H5 Wrong RunId/filter in your query</td><td>Record exists under correct run/output but investigation query is wrong</td></tr>
+ <tr><td>H6 Source changed between stages</td><td>Raw and transform inputs are not the same input/version</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Troubleshooting rule 3</strong><br>A hypothesis is useful when it predicts evidence you can check.</div>`},
+{html:`<h4>Choose the next check by information value</h4>
+ <p>You have 20 minutes before the next stand-up. Which check is most useful?</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Possible next action</th><th>Value</th></tr></thead><tbody>
+ <tr><td>Read the transformation rule/code that decides address eligibility</td><td>High: directly tests H1 at the known failure boundary</td></tr>
+ <tr><td>Inspect target address setup</td><td>Low now: the record never reached transformed output</td></tr>
+ <tr><td>Rerun C10482</td><td>Low: likely reproduces the same unexplained result and may disturb evidence</td></tr>
+ <tr><td>Ask Customer Service to re-enter the address</td><td>Very low: bypasses diagnosis</td></tr>
+ <tr><td>Compare an affected and unaffected address through the same rule</td><td>High: helps isolate the discriminating condition</td></tr>
+ </tbody></table></div>
+ <p>Good troubleshooting is partly about ordering. Check evidence that can eliminate the most plausible hypotheses at the smallest cost.</p>`},
+{html:`<h4>Evidence panel 3 \u2014 Compare good and bad records</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Field</th><th>Affected</th><th>Unaffected</th></tr></thead><tbody>
+ <tr><td>AddressId</td><td>C10482-DEL-02</td><td>C10731-DEL-01</td></tr>
+ <tr><td>Raw-stage presence</td><td>Yes</td><td>Yes</td></tr>
+ <tr><td>AddressPurpose</td><td>DELIVERY_SECONDARY</td><td>DELIVERY_PRIMARY</td></tr>
+ <tr><td>Transformed-stage presence</td><td>No</td><td>Yes</td></tr>
+ <tr><td>Exception</td><td>None</td><td>None</td></tr>
+ </tbody></table></div>
+ <p>This difference makes AddressPurpose more interesting, but correlation is not yet proof.</p>
+ <div class="principle"><strong>Next question</strong><br>What does the transformation actually do with AddressPurpose?</div>`},
+{html:`<h4>Evidence panel 4 \u2014 The transformation rule</h4>
+ <p>The intended business rule is to exclude addresses that are billing-only. The implemented filter is effectively:</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>WHERE AddressPurpose = 'DELIVERY_PRIMARY'</code></pre></div>
+ <p>The rule therefore keeps only DELIVERY_PRIMARY, rather than excluding BILLING_ONLY. C10482-DEL-02 is DELIVERY_SECONDARY and is a valid delivery address.</p>
+ <div class="callout misconception"><div class="callout-label">Diagnosis</div><p>The implemented eligibility rule is narrower than the approved business rule. Valid DELIVERY_SECONDARY addresses are silently excluded during transformation. C10482-DEL-02 is one confirmed example.</p></div>`}
+];
+
+const troubleshootingTraps = [
+ "Fix-first: \u201cI know what this is.\u201d",
+ "Single-record thinking: \u201cI fixed the customer in the ticket.\u201d",
+ "Target obsession: \u201cThe target rejected it.\u201d",
+ "Rerun reflex: \u201cTry it again.\u201d",
+ "Count-only diagnosis: \u201cSeven missing.\u201d",
+ "One hypothesis: \u201cIt must be the lookup.\u201d",
+ "Log worship: \u201cNo error in the log, so processing was fine.\u201d",
+ "Manual patch: \u201cJust update the target.\u201d",
+ "Cause without proof: \u201cProbably source data.\u201d",
+ "Happy-path retest: \u201cThe original record works now.\u201d"
+];
+const troubleshootingTrapsCoaching = [
+ "<strong>Why it fails:</strong> destroys evidence and anchors the investigation to whatever theory came first.",
+ "<strong>Why it fails:</strong> misses the full affected population \u2014 the ticket's examples may be a fraction of the real defect.",
+ "<strong>Why it fails:</strong> the failure may have occurred well upstream of the target; blaming the target skips the actual boundary.",
+ "<strong>Why it fails:</strong> can reproduce success or failure without explaining why either happened.",
+ "<strong>Why it fails:</strong> does not identify which records or which checkpoint \u2014 a count is not a diagnosis.",
+ "<strong>Why it fails:</strong> confirmation bias. A single hypothesis stops you looking for the evidence that would rule it out.",
+ "<strong>Why it fails:</strong> silent logical defects, like this lesson's own filter, may not throw any error at all.",
+ "<strong>Why it fails:</strong> breaks repeatability and hides the cause behind a change nobody can trace.",
+ "<strong>Why it fails:</strong> transfers blame instead of evidence \u2014 exactly the trap the second incident in this lesson sets up.",
+ "<strong>Why it fails:</strong> misses regression and broader impact. One record working again proves far less than it feels like it does."
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"10:12 \u2014 Seven customers are missing",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>A migration cycle has completed. Customer Service reports that seven key accounts have no delivery address in the target.</p>
+ <p>A developer responds immediately:</p>
+ </div>
+ <div class="quote">\u201cThe address filter is probably too strict. I'll loosen it and rerun the seven customers.\u201d</div>
+ <h3>What should you do first?</h3>`,
+ options:[
+   {label:"Approve the change, since the symptom strongly suggests a filter problem and the fix sounds reasonable.", correct:false, feedback:"A plausible-sounding fix is still just a hypothesis. Approving it before checking anything skips the whole investigation."},
+   {label:"Manually insert the seven target addresses so testing can continue while the real cause is looked at later.", correct:false, feedback:"That manufactures target data instead of proving what's actually wrong, and makes the real defect harder to reproduce and study."},
+   {label:"Define expected versus observed behaviour, identify the seven business keys and trace them through the migration stages before changing anything.", correct:true, feedback:"Correct. A plausible fix is still a hypothesis. Preserve the failing state and find the first point where expected and observed behaviour diverge."},
+   {label:"Rerun the whole address entity. If the records appear afterwards, the issue can be considered solved.", correct:false, feedback:"If the records appear after an unexplained rerun, you have an observation, not a diagnosis \u2014 and you may have also disturbed the evidence you needed."}
+ ]
+},
+{
+ id:"b2",nav:"The defect statement",title:"Start with a defect statement, not a theory",type:"content",
+ html:`<p class="lead">A strong defect statement is factual enough that two consultants would investigate the same problem.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak</th><th>Stronger</th></tr></thead><tbody>
+ <tr><td>Delivery address load is broken.</td><td>Seven identified key accounts expected to have delivery addresses in the target do not have them after Cycle X.</td></tr>
+ <tr><td>The filter excluded them.</td><td>The cause is not yet established.</td></tr>
+ <tr><td>Customer C10482 is missing.</td><td>For C10482, expected delivery address C10482-DEL-02 is absent from target; trace through source, raw stage, transformed stage and load evidence.</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Troubleshooting rule 1</strong><br>Write what is wrong before writing why you think it is wrong.</div>`
+},
+{
+ id:"b3",nav:"The affected population",title:"Establish the affected population",type:"content",
+ html:`<p class="lead">You receive the seven affected customer keys. Do not investigate only the first convenient example.</p>
+ <ul class="framework-checks">
+   <li>Confirm the seven are genuinely affected under the same expected rule.</li>
+   <li>Check whether other customers show the same symptom.</li>
+   <li>Record the business keys and expected child/address keys.</li>
+   <li>Separate observed sample from proven full affected population.</li>
+   <li>Keep the population query so you can rerun it after the fix.</li>
+ </ul>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: identify expected customer/address relationships</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  c.CustNo, a.AddressId, a.AddressPurpose
+FROM stage.Customer c
+JOIN raw.CustomerAddress a
+  ON a.CustNo = c.CustNo
+WHERE c.RunId = @RunId
+  AND &lt;approved condition that makes the address expected&gt;;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Do not let the ticket define the population</div><p>Seven reported records may be the whole defect, or merely the seven somebody noticed.</p></div>`
+},
+{
+ id:"b4",nav:"The evidence chain",title:"Build the evidence chain",type:"content",
+ html:`<p class="lead">For one affected record, C10482, the expected delivery address is C10482-DEL-02. Trace the same business object through the pipeline.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Checkpoint</th><th>Question</th></tr></thead><tbody>
+ <tr><td>Source/raw extract</td><td>Did the expected address exist in the received data?</td></tr>
+ <tr><td>Raw staging</td><td>Was it ingested correctly?</td></tr>
+ <tr><td>Transformation input</td><td>Was it available to the transformation?</td></tr>
+ <tr><td>Transformation output</td><td>Did it survive and receive the expected values?</td></tr>
+ <tr><td>Load file/package</td><td>Was it submitted?</td></tr>
+ <tr><td>Load result/log</td><td>Was it accepted, rejected or skipped?</td></tr>
+ <tr><td>Target</td><td>Does the expected record exist and relate correctly?</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Troubleshooting rule 2</strong><br>Find the first checkpoint where the record stops matching expectation. That boundary usually gives you a much smaller problem to investigate.</div>`
+},
+{
+ id:"b5",nav:"The incident unfolds",title:"Work through the incident",type:"guidedSteps",
+ html:`<p class="lead">Six moments in the live investigation. Work through them in order \u2014 don't skip ahead to a conclusion before the evidence in front of you supports it.</p>`,
+ steps: incidentSteps,
+ firstLabel:"Open Evidence panel 1"
+},
+{
+ id:"b6",nav:"Symptom vs root cause",title:"Symptom, mechanism and root cause",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Layer</th><th>Bramwell example</th></tr></thead><tbody>
+ <tr><td>Symptom</td><td>Seven reported key accounts have no delivery address in target</td></tr>
+ <tr><td>Failure boundary</td><td>Address exists in raw stage but is absent from transformed stage</td></tr>
+ <tr><td>Mechanism</td><td>Filter retains only DELIVERY_PRIMARY</td></tr>
+ <tr><td>Rule mismatch</td><td>Approved intent is to exclude BILLING_ONLY, not exclude all non-primary delivery addresses</td></tr>
+ <tr><td>Root cause</td><td>Transformation eligibility logic incorrectly implements the approved address-purpose rule</td></tr>
+ <tr><td>Control weakness</td><td>Silent exclusion produced no exception/control alert</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Why the distinction matters</strong><br>\u2018Missing addresses\u2019 is not the root cause. \u2018Bad filter\u2019 is closer, but the useful diagnosis states exactly how the implemented logic differs from the approved rule and why valid records disappear.</div>`
+},
+{
+ id:"b7",nav:"Beyond the seven",title:"Do not fix only the seven",type:"content",
+ html:`<p class="lead">The ticket names seven customers. The rule defect can affect any valid address whose purpose is excluded by the incorrect filter. Your next task is to identify the full affected population.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: conceptual impact query</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  a.CustNo, a.AddressId, a.AddressPurpose
+FROM raw.CustomerAddress a
+WHERE a.RunId = @RunId
+  AND a.AddressPurpose &lt;&gt; 'BILLING_ONLY'
+  AND a.AddressPurpose &lt;&gt; 'DELIVERY_PRIMARY'
+  AND NOT EXISTS (
+    SELECT 1 FROM stage.CustomerAddressTransformed t
+    WHERE t.RunId = a.RunId AND t.AddressId = a.AddressId
+  );</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Seven is your starting evidence, not the full picture</div><p>You know seven customers are affected because Customer Service noticed them. You do not yet know the true size of the affected population. Until the impact query above actually runs, resist stating a number you haven't proven.</p></div>`
+},
+{
+ id:"b8",nav:"Define the fix",title:"Define the fix from the approved rule",type:"content",
+ html:`<p class="lead">The fix should implement the business rule, not merely add the value that happened to fail.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Weak patch</th><th>Stronger correction</th></tr></thead><tbody>
+ <tr><td>Allow DELIVERY_SECONDARY as well as DELIVERY_PRIMARY</td><td>Implement the approved eligibility rule: exclude BILLING_ONLY and retain all other address purposes that satisfy the approved migration rule</td></tr>
+ <tr><td>Hard-code C10482-DEL-02</td><td>Correct the rule for the whole applicable population</td></tr>
+ <tr><td>Insert seven target rows manually</td><td>Rerun controlled transformation/load from a valid boundary</td></tr>
+ <tr><td>Suppress the issue</td><td>Add controls so future silent exclusions are detectable</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Troubleshooting rule 4</strong><br>Fix the faulty mechanism at the correct scope, not the examples that exposed it.</div>`
+},
+{
+ id:"b9",nav:"Retest the diagnosis",title:"Retest the diagnosis, not just the happy path",type:"content",
+ html:`<p class="lead">After the rule correction, prove more than "C10482 now appears."</p>
+ <ol class="framework-checks">
+   <li>Rerun the identified affected population from the valid transformation boundary.</li>
+   <li>Confirm C10482-DEL-02 appears in transformed output.</li>
+   <li>Confirm the other reported missing delivery addresses are treated as expected.</li>
+   <li>Recalculate the full impact query and confirm the defect population is resolved or explicitly explained.</li>
+   <li>Confirm BILLING_ONLY addresses remain excluded where required.</li>
+   <li>Check that already-correct DELIVERY_PRIMARY records remain stable.</li>
+   <li>Reconcile input eligible addresses to transformed + controlled exception/exclusion outcomes.</li>
+   <li>Run downstream load/target validation for the corrected population.</li>
+   <li>Record the build/rule version used for the successful retest.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Regression test</div><p>A fix that restores DELIVERY_SECONDARY but accidentally loads BILLING_ONLY has not solved the problem.</p></div>`
+},
+{
+ id:"b10",nav:"Add the control",title:"Add the missing control",type:"content",
+ html:`<p class="lead">The original defect was dangerous because valid records disappeared silently. A useful control compares expected eligible population to transformed outcomes.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">The control equation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>ExpectedEligible
+  = source addresses meeting approved migration eligibility
+
+Accounted
+  = transformed addresses
+  + approved exclusions
+  + controlled exceptions
+
+ExpectedEligible - Accounted = 0</code></pre></div>
+ <p>At record level, use business/address keys as well as counts.</p>
+ <div class="principle"><strong>The best troubleshooting leaves the process stronger</strong><br>Do not stop at correcting the defect. Add the smallest useful control that would make the same class of failure visible next time.</div>`
+},
+{
+ id:"b11",nav:"The diagnostic ladder",title:"The diagnostic ladder",type:"content",
+ html:`<p class="lead">The Bramwell incident illustrates a reusable investigation pattern. It is a ladder, not a rigid script.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Diagnostic question</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>What should have happened?</td><td>Defines expectation</td></tr>
+ <tr><td>What actually happened?</td><td>Defines symptom</td></tr>
+ <tr><td>Which records are affected?</td><td>Defines scope</td></tr>
+ <tr><td>Where is the last known-good checkpoint?</td><td>Narrows boundary</td></tr>
+ <tr><td>Where is the first known-bad checkpoint?</td><td>Narrows boundary</td></tr>
+ <tr><td>What mechanisms could cause that transition?</td><td>Creates hypotheses</td></tr>
+ <tr><td>Which evidence best discriminates between them?</td><td>Prioritises checks</td></tr>
+ <tr><td>What does the evidence eliminate?</td><td>Prevents fixation</td></tr>
+ <tr><td>What mechanism is now proven?</td><td>Supports diagnosis</td></tr>
+ <tr><td>What is the full impact of that mechanism?</td><td>Prevents sample-only fixes</td></tr>
+ <tr><td>What is the smallest controlled correction?</td><td>Reduces risk</td></tr>
+ <tr><td>What proves the fix and guards regression?</td><td>Closes the incident</td></tr>
+ </tbody></table></div>
+ <p class="small">In a simple issue you may answer several questions in minutes. In a difficult one you may cycle through them repeatedly.</p>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Diagnostic-Checkpoint-Map-Template.docx</strong><p class="small">The twelve-question ladder above, ready to work through for any incident.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Diagnostic-Checkpoint-Map-Template.docx" download>Download</a></div>`
+},
+{
+ id:"b12",nav:"Common traps",title:"Common troubleshooting traps",type:"selectAll",
+ html:`<p class="lead">Explore each trap below \u2014 all ten are genuine, common ways an otherwise capable consultant derails their own investigation.</p>`,
+ options: troubleshootingTraps,
+ coaching: troubleshootingTrapsCoaching,
+ hint:"Explore every trap before continuing."
+},
+{
+ id:"b13",nav:"Two more incidents",title:"A second incident, and a third",type:"content",
+ html:`<h3>The tempting source-data diagnosis</h3>
+ <p>Imagine a load rejects 86 records with "invalid country." A developer says the source countries are dirty.</p>
+ <p>You inspect three rejected rows. Their source country is UK, which has an approved Bramwell mapping to GB.</p>
+ <p>What should you investigate before asking the business to cleanse source data?</p>
+ <ul class="framework-checks">
+   <li>Was the correct reference version loaded?</li>
+   <li>Did the lookup execute for the rejected records?</li>
+   <li>Was the normalised match key correct?</li>
+   <li>Did the transformed value contain GB before load?</li>
+   <li>Did the load file/package contain GB?</li>
+   <li>Is the target rejection genuinely about country, or is the error message attached to a wider validation failure?</li>
+ </ul>
+ <div class="principle"><strong>Lesson</strong><br>A business-looking error can be caused by technical configuration, stale reference data, transformation logic or load packaging. Diagnose the boundary before assigning ownership.</div>
+ <h3>It worked on the rerun</h3>
+ <p>A batch fails. You rerun it unchanged and it succeeds. Is the issue resolved?</p>
+ <div class="callout misconception"><div class="callout-label">No</div><p>You have evidence of non-deterministic or environment-dependent behaviour. Possible causes include transient connectivity, timing/dependency, resource contention, uncommitted state, external service availability or concurrency. Record the failed and successful attempts and investigate what differed.</p></div>
+ <p class="small">A successful rerun is an observation, not a root cause.</p>`
+},
+{
+ id:"b14",nav:"The investigation notebook",title:"Your investigation notebook",type:"content",
+ html:`<p class="lead">Use a compact log so your reasoning remains visible.</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Time</th><th>Evidence / action</th><th>What it proves or eliminates</th><th>Next question</th></tr></thead><tbody>
+ <tr><td>10:12</td><td>Seven target addresses reported missing</td><td>Defines observed sample</td><td>Are they present upstream?</td></tr>
+ <tr><td>10:24</td><td>C10482-DEL-02 present raw</td><td>Eliminates extract/raw-loss for example</td><td>Present transformed?</td></tr>
+ <tr><td>10:31</td><td>Absent transformed; no exception</td><td>Bounds failure to transformation/control</td><td>What transformation conditions differ?</td></tr>
+ <tr><td>10:40</td><td>Good vs bad differs on AddressPurpose</td><td>Supports filter hypothesis</td><td>Inspect approved/implemented rule</td></tr>
+ <tr><td>10:47</td><td>Implemented filter = DELIVERY_PRIMARY only</td><td>Explains exclusion mechanism</td><td>Does this differ from approved intent?</td></tr>
+ <tr><td>10:55</td><td>Approved rule excludes BILLING_ONLY</td><td>Proves rule mismatch</td><td>Find full affected population</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Why timestamps help</strong><br>They are useful during live incidents, but the real value is the evidence trail. Another consultant should be able to see why you changed direction.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Investigation-Log-Template.xlsx</strong><p class="small">The four-column notebook shape above, ready to use for any live incident.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Investigation-Log-Template.xlsx" download>Download</a></div>`
+},
+{
+ id:"b15",nav:"Independent case",title:"Independent case \u2014 Diagnose the disappearing orders",type:"reflection",
+ html:`<p class="lead">You receive a synthetic migration incident. Expected: 24,380 in-scope open sales orders should reach transformed output. Observed: 24,117 are present. No transformation failure is reported.</p>
+ <p>Evidence is released only when requested: source population query and keys; raw-stage counts and samples; transformation SQL; reference coverage report; exception output; run/step logs; good-versus-missing record comparison; previous-cycle output; build/reference versions.</p>
+ <h3>Your deliverables</h3>
+ <ol class="framework-checks">
+   <li>Write a factual defect statement.</li>
+   <li>Define the observed and then proven affected population.</li>
+   <li>Draw the checkpoint chain.</li>
+   <li>Identify last known-good and first known-bad evidence.</li>
+   <li>Maintain at least three competing hypotheses until evidence eliminates them.</li>
+   <li>Choose the next evidence request and explain why it has high information value.</li>
+   <li>State the proven mechanism and root cause separately.</li>
+   <li>Identify the full impact population.</li>
+   <li>Recommend the smallest controlled fix.</li>
+   <li>Design regression tests and a control that would detect recurrence.</li>
+   <li>Write a five-line incident update for the DML/project team.</li>
+ </ol>
+ <p class="lead">Write your five-line incident update below.</p>
+ <textarea id="reflection" placeholder="263 expected order keys..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Impact-Query-Patterns.sql</strong><p class="small">The affected-population and reconciliation query shapes from this lesson, ready to adapt.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Impact-Query-Patterns.sql" download>Download</a></div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Incident-Update-Template.docx</strong><p class="small">A five-line incident update shape, ready to fill in for any live defect.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Incident-Update-Template.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/24,?380|24,?117|expected.*observed|absent/i, strength:"You wrote a factual defect statement grounded in the actual numbers.", gap:"State the defect factually: how many order keys were expected versus actually present in transformed output." },
+   { test:/checkpoint|boundary|raw|transform/i, strength:"You addressed the checkpoint chain and where the boundary sits.", gap:"State where in the pipeline the record last matched expectation, and where it first didn't." },
+   { test:/hypothes/i, strength:"You maintained multiple hypotheses rather than jumping to one cause.", gap:"Name at least two competing hypotheses you considered, not just the one you settled on." },
+   { test:/impact|full population|affected population/i, strength:"You addressed the full impact population, not just the reported sample.", gap:"State how you'd confirm the full population affected by the mechanism, not just the reported gap." },
+   { test:/control|regression|recur/i, strength:"You proposed a control that would detect recurrence.", gap:"Name a specific control you'd add so the same failure becomes visible automatically next time." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">263 expected order keys were absent from transformed output but present in the controlled raw-stage population. Comparison of affected and unaffected records isolated the divergence to the transformation eligibility rule. The implemented condition excluded a valid source state that the approved mapping rule includes. The rule has been corrected under a new build version, the full affected population has been reprocessed, expected exclusions remain excluded, and key-level reconciliation now accounts for the complete eligible population.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This reads like a genuine incident update: specific numbers, a proven mechanism, and reconciliation evidence, not a vague 'we think it's fixed.'":"You have the right structure. Make sure your defect statement uses the actual numbers, and that your update states a proven mechanism, not a suspected one."}</div>`
+},
+{
+ id:"b16",nav:"A strong diagnosis",title:"What a strong diagnosis sounds like",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201c263 orders were missing because the filter was wrong. We changed it and reran.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201c263 expected order keys were absent from transformed output but present in the controlled raw-stage population. Comparison of affected and unaffected records isolated the divergence to the transformation eligibility rule. The implemented condition excluded a valid source state that the approved mapping rule includes. The rule has been corrected under a new build version, the full affected population has been reprocessed, expected exclusions remain excluded, and key-level reconciliation now accounts for the complete eligible population.\u201d</p></div></div>`
+},
+{
+ id:"b17",nav:"Communicating during diagnosis",title:"Consultant communication during diagnosis",type:"content",
+ html:`<p class="lead">Do not wait for root cause before communicating, but label certainty correctly.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Stage</th><th>Useful language</th></tr></thead><tbody>
+ <tr><td>Symptom only</td><td>\u201cWe have confirmed seven affected records; cause not yet established.\u201d</td></tr>
+ <tr><td>Boundary found</td><td>\u201cThe records exist in raw stage but are absent after transformation. We are investigating transformation logic and controls.\u201d</td></tr>
+ <tr><td>Hypothesis supported</td><td>\u201cAddressPurpose is the main discriminating factor; we are validating the implemented rule against the approved rule.\u201d</td></tr>
+ <tr><td>Root cause proven</td><td>\u201cThe transformation retained only DELIVERY_PRIMARY although the approved rule excludes BILLING_ONLY. This silently removed valid secondary delivery addresses.\u201d</td></tr>
+ <tr><td>Fix/retest</td><td>\u201cCorrection is implemented; we are rerunning the full affected population and regression controls before closing.\u201d</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Professional credibility</strong><br>Saying \u2018we do not yet know\u2019 is stronger than presenting an untested theory as fact.</div>
+ <div class="to-record">${TPKit.fromField({
+   title:"The Fix That Was Too Fast", name:"Sam", role:"Data Migration Consultant", project:"Energy ERP",
+   src:"/assets/audio/FixThatWasTooFast-Sam.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2014 What evidence would change your mind?",type:"reflection",
+ html:`<p class="lead">Think of a migration defect where you feel you already know the likely cause. Write your leading hypothesis, then write two pieces of evidence that would prove you wrong.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>This is one of the most useful troubleshooting habits. If you cannot imagine evidence that would change your diagnosis, you may be defending a belief rather than testing a hypothesis.</p></div></div>
+ <textarea id="reflection" placeholder="My leading hypothesis is..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/hypothes|cause|believe|think/i, strength:"You stated a specific leading hypothesis.", gap:"State your actual leading hypothesis for a real or imagined defect, not just the topic area." },
+   { test:/prove.*wrong|disprove|evidence.*(change|against)/i, strength:"You named specific evidence that would prove your hypothesis wrong.", gap:"Name two specific pieces of evidence that, if you saw them, would make you abandon your current hypothesis." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">My leading hypothesis: a batch of rejected records failed because of a stale reference version. Two things that would prove me wrong: if the run record shows the correct, current reference version was actually loaded for this run; or if the rejected records still fail even after confirming the reference match key was correctly normalised before lookup. If either of those turns up, the reference-version theory is dead and I need a new hypothesis.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the habit the lesson is built around: naming what would actually change your mind, not just restating your theory more confidently.":"You have the right instinct. Make sure the evidence you named would genuinely disprove your hypothesis, not just add more support to it."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2014 Diagnose before you fix",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>State expected versus observed behaviour before proposing a cause.</li>
+   <li>Identify business keys and prove the affected population.</li>
+   <li>Preserve the failing evidence before changing or rerunning.</li>
+   <li>Trace the same record through migration checkpoints.</li>
+   <li>Find the last known-good and first known-bad state.</li>
+   <li>Generate competing hypotheses that predict checkable evidence.</li>
+   <li>Choose the next check for information value, not convenience.</li>
+   <li>Distinguish symptom, failure mechanism, root cause and control weakness.</li>
+   <li>Find the full population affected by the mechanism, not just the reported examples.</li>
+   <li>Fix the approved rule or mechanism at the correct scope.</li>
+   <li>Retest affected records, already-correct records and excluded cases.</li>
+   <li>Reconcile the population after the fix.</li>
+   <li>Add a control that makes recurrence visible.</li>
+   <li>Communicate what is known, suspected and proven separately.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>The fastest reliable troubleshooter is not the person who proposes the first fix. It is the person who reduces uncertainty quickly, preserves evidence and can prove where the data first stopped behaving as expected.</div>`
+},
+{
+ id:"b20",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed Diagnose before you fix.</strong></p>
+ <p>You can now investigate a migration defect without jumping to a convenient fix: define expected versus observed behaviour, establish the affected population, preserve evidence, locate the first point where data diverges, form and test competing hypotheses, distinguish symptom from cause, and recommend the smallest controlled next action supported by evidence.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Investigating rejected records</strong></p>
+ <p>You will take target/load rejection evidence and work backwards from error message to record, transformation, reference, rule and source without assuming the target message tells the whole story.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a fix feels obvious before you've looked at the evidence.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 3",
+  moduleTitle: "Diagnosing & Fixing Defects",
+  lessonLabel: "Lesson 1: Diagnose before you fix",
+  lessonShortLabel: "Lesson 1",
+  lessonTagline: "Investigating a migration defect without jumping to a convenient fix",
+  storageKey: "tp_dmc3_lesson1_v1",
+  lessonId: "dmc3-lesson1",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson1-complete.html",
+  finalButtonLabel: "Finish Lesson 1",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>

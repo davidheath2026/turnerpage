@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turner Page | When the load succeeds but the data is wrong</title>
+<link rel="stylesheet" href="/shared/turner-page-kit.css">
+<style>
+/* ==============================================================
+   .to-record placeholder banner — per tp-html-build-guide.md §4/
+   the persona-device note: the shared kit has no built-in styling
+   for this, so every lesson using TPKit.fromField needs its own
+   scoped copy until the clip is recorded, at which point this
+   block (and the wrapper markup around the fromField call) comes
+   back out.
+============================================================== */
+.to-record{position:relative;margin:24px 0;padding:22px 20px 18px;border:2px dashed #ead7aa;border-radius:16px;background:#fffaf1}
+.to-record::before{content:"PLACEHOLDER: AWAITING RECORDING";position:absolute;top:-11px;left:18px;background:#fff9ec;color:#8a6113;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid #ead7aa}
+</style>
+</head>
+<body>
+<div id="tpRoot"></div>
+
+<script src="/shared/footer-config.js"></script>
+<script src="/shared/turner-page-kit.js"></script>
+<script>
+/* ==============================================================
+   DMC MODULE 3 — LESSON 3 — "When the load succeeds but the data
+   is wrong". Built as a forensic validation case after a green
+   load, per the manuscript's own authoring notes — deliberately
+   NOT the rejected-record-desk structure from Lesson 2.
+
+   Source: DMC3_Lesson3_When_the_Load_Succeeds_But_the_Data_Is_Wrong_v3.docx.
+   moduleTitle: "Diagnosing & Fixing Defects" per the alignment
+   doc — the manuscript's own header says "Troubleshooting Data
+   Migration Issues" instead; corrected during the DMC3
+   module-boundary review (see STATE.md).
+
+   Continues the 18,573 population directly from Lesson 2 (now
+   fully accepted, 0 rejects — the "green dashboard" this lesson
+   opens on). New later-cycle Bramwell facts established here: 42
+   UK customers misclassified into the Belgian legal entity; the
+   later target CustomerGroup distribution (STANDARD 15,021 / KEY
+   1,984 / INTERNATIONAL 1,298 / INTERNAL 270 = 18,573). Existing
+   facts carried over exactly: 45E unresolved, NET30 not approved;
+   27 overlength names, no approved truncation treatment;
+   CustomerGroup 99 unresolved. Section 22's independent lab
+   (185,000 products, 97 defects) is fully synthetic and does not
+   enter the Bramwell Story Bible — Product entity, per STATE.md's
+   ledger, is good variety (not overused like Supplier).
+
+   Persona: Marcus, Data Migration Consultant, Logistics ERP, is
+   specified directly by this manuscript's own "From the Field"
+   section.
+
+   Position-sequence discipline note (per STATE.md §2 process
+   refinement after the L2 slip): target index for every graded
+   item was fixed before writing option text, and is annotated
+   inline in this comment for cross-check: b1=2; b14 cards 1-6 =
+   0,3,1,2,0,3; b17 items A-F = 1,0,2,3,1,0.
+
+   Downloadable assets referenced below are assumed to live at
+   /assets/downloads/, consistent with DMC1-3 so far.
+============================================================== */
+
+const traceSteps = [
+{html:`<h4>Trace one accepted-but-wrong record</h4>
+ <p>Pick one affected customer and compare the same decision across checkpoints.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Checkpoint</th><th>Evidence to capture</th></tr></thead><tbody>
+ <tr><td>Source</td><td>Country/legal-entity-driving attributes</td></tr>
+ <tr><td>Mapping/rule</td><td>Approved rule for target legal entity</td></tr>
+ <tr><td>Transformed stage</td><td>Derived legal entity</td></tr>
+ <tr><td>Load package</td><td>Entity/company context actually submitted</td></tr>
+ <tr><td>Target</td><td>Entity/company where record was created</td></tr>
+ </tbody></table></div>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: trace the same decision across checkpoints</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  s.CustNo, s.Country AS SourceCountry,
+  t.TargetLegalEntity AS TransformedEntity,
+  p.TargetLegalEntity AS PackagedEntity,
+  a.TargetLegalEntity AS ActualTargetEntity
+FROM raw.Customer s
+JOIN stage.CustomerTransformed t ON t.RunId=s.RunId AND t.CustNo=s.CustNo
+JOIN load.CustomerPackageAudit p ON p.RunId=t.RunId AND p.CustNo=t.CustNo
+JOIN audit.TargetCustomer a ON a.RunId=p.RunId AND a.CustNo=p.CustNo
+WHERE s.RunId=@RunId AND s.CustNo=@CustNo;</code></pre></div>
+ <p>The first checkpoint where the intended entity changes identifies the useful failure boundary.</p>`},
+{html:`<h4>Evidence panel \u2014 The transformed value is correct</h4>
+ <p>For an affected record, transformed stage shows the expected UK target entity. The load package audit shows Belgian entity.</p>
+ <div class="callout misconception"><div class="callout-label">Boundary</div><p>The semantic divergence occurs after transformation and before or during packaging/execution context. Do not change the legal-entity derivation rule.</p></div>
+ <p>Now investigate: package-generation logic; environment/entity parameter passed to the load; file-to-entity routing; batch grouping; configuration inherited from a previous entity run; manual package manipulation.</p>`},
+{html:`<h4>Compare affected and unaffected accepted records</h4>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Attribute</th><th>Affected accepted records</th><th>Unaffected accepted records</th></tr></thead><tbody>
+ <tr><td>Source country</td><td>UK</td><td>UK</td></tr>
+ <tr><td>Transformed entity</td><td>Expected UK entity</td><td>Expected UK entity</td></tr>
+ <tr><td>Package entity</td><td>Belgian</td><td>UK</td></tr>
+ <tr><td>Target result</td><td>Accepted</td><td>Accepted</td></tr>
+ <tr><td>Batch/package</td><td>Package B</td><td>Package A</td></tr>
+ </tbody></table></div>
+ <p>Package identity becomes the discriminating factor.</p>
+ <div class="principle"><strong>Forensic technique</strong><br>When there is no error message, compare wrong accepted records with right accepted records and look for the first attribute that separates the populations.</div>`},
+{html:`<h4>Prove the full affected population</h4>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: target-side reconciliation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  t.CustNo, t.TargetLegalEntity AS ExpectedEntity, a.TargetLegalEntity AS ActualEntity
+FROM stage.CustomerTransformed t
+JOIN audit.TargetCustomer a ON a.RunId=t.RunId AND a.CustNo=t.CustNo
+WHERE t.RunId=@RunId AND t.TargetLegalEntity <> a.TargetLegalEntity;</code></pre></div>
+ <p>For the established Bramwell later-cycle case, this identifies 42 UK customers misclassified into the Belgian legal entity.</p>
+ <div class="principle"><strong>Why target-side reconciliation matters</strong><br>Source-to-stage checks can all pass while packaging or execution changes the final target context.</div>`}
+];
+
+const forensicCards = [
+ { title:"Card 1: 42 customers in unexpected legal entity",
+   question:"Total counts match. What's the strongest independent validation check?",
+   options:[
+     {label:"Compare each accepted record's actual target entity against its transformed entity, since counts alone can't reveal misplacement.", correct:true, feedback:"Correct. Counts can never detect a record that migrated successfully to the wrong place \u2014 only comparing transformed intent to actual target state can."},
+     {label:"Recheck that the total submitted, accepted and rejected figures still reconcile to zero unaccounted.", correct:false, feedback:"You already know the counts reconcile \u2014 that's exactly what's making this defect invisible. Reconciliation by count can't detect a wrong-but-present record."},
+     {label:"Re-run the legal-entity derivation rule to confirm it still produces UK for these customers.", correct:false, feedback:"Re-running the same rule that already produced the correct transformed value doesn't explain why the wrong entity appeared later in the pipeline."},
+     {label:"Sample a handful of the 18,573 records at random to see if anything looks unusual.", correct:false, feedback:"Random sampling is a broad detection tool, not the targeted check this specific, already-identified population needs."}
+   ]
+ },
+ { title:"Card 2: Source 45E became valid target term NET30",
+   question:"What's the strongest independent validation check?",
+   options:[
+     {label:"Confirm NET30 is a valid, existing value in the target payment-terms domain configuration.", correct:false, feedback:"You're told the target already accepted it \u2014 domain validity isn't in question. The problem is whether NET30 was ever an approved answer for 45E specifically."},
+     {label:"Check whether the transformation code that produced NET30 is still running today without any errors.", correct:false, feedback:"The code running without errors is exactly why this defect is invisible technically. That doesn't establish whether NET30 was ever an approved decision."},
+     {label:"Ask Finance whether NET30 looks like a reasonable, sensible payment term to assign this customer.", correct:false, feedback:"Plausibility to a reviewer isn't the test. The test is whether an approved mapping actually authorises NET30 for source value 45E."},
+     {label:"Compare the target value against the approved mapping/rule baseline for source 45E, independently of the transformation code that produced it.", correct:true, feedback:"Correct. Ask whether the target value is supported by the approved mapping for that source record, not merely whether the target permits it."}
+   ]
+ },
+ { title:"Card 3: 27 target names are exactly 60 characters",
+   question:"They differ from source. What's the strongest independent validation check?",
+   options:[
+     {label:"Confirm the target field's 60-character limit is being enforced correctly across the whole target system.", correct:false, feedback:"The limit being enforced is precisely why this passes silently. That's not what needs checking \u2014 the data loss itself is the concern."},
+     {label:"Compare source and target-facing name values directly for length and content, since the target's own validity check can't detect an approved-looking truncation.", correct:true, feedback:"Correct. Data loss can be completely valid according to the target schema and still violate the migration decision \u2014 direct source-to-target comparison is the only thing that reveals it."},
+     {label:"Check whether any of the 27 affected customers have generated a support ticket from a confused end user.", correct:false, feedback:"Waiting for a complaint is reactive, not a validation control, and most truncations may never be noticed by an end user at all."},
+     {label:"Recount how many customer names exceed 60 characters in the original source system records.", correct:false, feedback:"You already know there are 27. The open question is what happened to those specific 27 in the target, not the count itself."}
+   ]
+ },
+ { title:"Card 4: All CustomerGroup values exist in target, including records sourced as 99",
+   question:"What's the strongest independent validation check?",
+   options:[
+     {label:"Confirm CustomerGroup is a mandatory field and that the target rejects any blank or null values.", correct:false, feedback:"Mandatory-field enforcement is unrelated to whether the specific value assigned to a CustomerGroup-99 record was ever approved."},
+     {label:"Check that the CustomerGroup domain in the target contains all the same category names as the source system.", correct:false, feedback:"Domain overlap between source and target doesn't establish whether this specific unresolved source value was mapped correctly."},
+     {label:"Trace target CustomerGroup values back to the approved mapping lineage for each source record, not just confirm the value exists in the target domain.", correct:true, feedback:"Correct. The target cannot tell you that the migration team lacked authority to choose that value \u2014 only lineage back to the approved mapping can."},
+     {label:"Ask the business which CustomerGroup value they would have preferred assigned to the 99 records.", correct:false, feedback:"That invites a retroactive, informal decision instead of checking whether any approved mapping was actually used to produce the value already in the target."}
+   ]
+ },
+ { title:"Card 5: 12 addresses point to a different customer than expected",
+   question:"All addresses have a valid parent customer. What's the strongest independent validation check?",
+   options:[
+     {label:"Compare each address's actual parent against its expected parent from the source relationship, not just confirm a parent exists.", correct:true, feedback:"Correct. Do not ask only 'does the parent exist?' Ask 'is this the intended parent for this child?'"},
+     {label:"Confirm that every address record in the target has a non-null CustomerNumber.", correct:false, feedback:"Non-null is exactly what already passed. The problem is that the value is wrong, not missing."},
+     {label:"Check whether the total number of addresses in the target matches the total expected.", correct:false, feedback:"A matching total can't reveal that specific addresses attached to the wrong parent \u2014 the count itself gives no identity information."},
+     {label:"Verify the address fields themselves (street, city, postcode) are correctly formatted.", correct:false, feedback:"The address content isn't in question here \u2014 the problem is which customer it's linked to, a relationship issue, not a field-formatting one."}
+   ]
+ },
+ { title:"Card 6: Target count matches scope count",
+   question:"But EXCEPT queries show 9 missing in-scope keys and 9 unexpected keys. What's the strongest independent validation check?",
+   options:[
+     {label:"Recheck that the target row count still equals the approved scope row count exactly.", correct:false, feedback:"You already know the totals match \u2014 that's exactly what's hiding the substitution. A repeat count check adds nothing."},
+     {label:"Confirm the 9 unexpected keys are technically valid records that loaded without any errors.", correct:false, feedback:"Their technical validity isn't in dispute. The question is whether they belong in scope at all, which validity checks can't answer."},
+     {label:"Ask the source system owner whether the 9 missing customers still genuinely exist in the source.", correct:false, feedback:"That may be worth asking eventually, but it doesn't establish the actual scope mismatch the way a direct key comparison does."},
+     {label:"Reconcile business keys between approved scope and target population directly, since matching totals can hide a substituted population.", correct:true, feedback:"Correct. Never use target row count as a substitute for scope identity \u2014 reconcile business keys against the approved in-scope population directly."}
+   ]
+ }
+];
+
+const consultantSituationsC = [
+ { title:"A. The PM says: \u201cBut the load was green\u201d",
+   question:"What's the right response?",
+   options:[
+     {label:"Agree that green means the migration is fully complete and move straight on to the next entity.", correct:false, feedback:"Green means the target accepted the submitted data, not that the migration is correct. Moving on skips the actual question the PM is implicitly raising."},
+     {label:"Explain that green means the target accepted the submitted data. Show the semantic control that proves the target state differs from approved migration intent.", correct:true, feedback:"Correct. Explain that green means the target accepted the submitted data. Show the semantic control that proves the target state differs from approved migration intent."},
+     {label:"Suggest the dashboard itself must be misconfigured, since a real defect clearly exists underneath a green status.", correct:false, feedback:"That misdiagnoses the tool. The dashboard is reporting technical acceptance correctly \u2014 it was never designed to detect semantic correctness."},
+     {label:"Avoid raising the defect with the PM until every affected record has been individually corrected.", correct:false, feedback:"Delaying the conversation until everything is already fixed removes the PM's chance to weigh in on scope, risk or timeline before correction begins."}
+   ]
+ },
+ { title:"B. A business user spots one wrong customer group",
+   question:"What's the right response?",
+   options:[
+     {label:"Use the example to define the mechanism, then query the full population. Do not assume it is isolated.", correct:true, feedback:"Correct. Use the example to define the mechanism, then query the full population. Do not assume it is isolated."},
+     {label:"Fix that one customer's group manually, since it's the only one reported so far.", correct:false, feedback:"Treating the reported example as the whole problem is exactly the single-record thinking this module has already warned against."},
+     {label:"Thank the user but take no further action unless more examples are reported.", correct:false, feedback:"Waiting for more reports to arrive delays finding a population that may already be affecting many records silently."},
+     {label:"Ask the business user to check every other customer group themselves and report back.", correct:false, feedback:"That outsources the actual investigation work to someone without access to the mapping lineage needed to define the real mechanism."}
+   ]
+ },
+ { title:"C. The developer says validation is wrong because it disagrees with ETL",
+   question:"What's the right response?",
+   options:[
+     {label:"Trust the ETL result over validation, since it's the production system actually generating the real migration output.", correct:false, feedback:"Production status doesn't make ETL correct by definition \u2014 that's exactly the circular-validation trap this lesson warns against."},
+     {label:"Adjust the validation logic to match whatever the ETL currently produces in every case.", correct:false, feedback:"That would make validation circular by design, incapable of ever detecting a defect in the ETL it's supposed to be checking."},
+     {label:"Check whether validation is independently derived from approved rules: disagreement is evidence to investigate, not proof ETL is right.", correct:true, feedback:"Correct. Check whether validation is independently derived from approved rules. Disagreement is evidence to investigate, not a reason to trust production code automatically."},
+     {label:"Escalate to the project manager to decide which of the two systems should be considered authoritative.", correct:false, feedback:"That skips the actual technical question of which system, if either, is independently derived from the approved rule \u2014 an answerable question, not a judgement call to escalate."}
+   ]
+ },
+ { title:"D. A target field differs from source",
+   question:"What's the right response?",
+   options:[
+     {label:"Treat any difference between source and target as a defect requiring immediate correction.", correct:false, feedback:"That ignores the possibility of a legitimate, approved transformation. Not every difference is wrong."},
+     {label:"Leave the field as-is, since the target accepted it without a technical error.", correct:false, feedback:"Technical acceptance says nothing about whether the difference is approved \u2014 it could just as easily be an unapproved defect."},
+     {label:"Ask the business user who noticed the difference whether they think it looks correct.", correct:false, feedback:"That substitutes an informal opinion for checking the actual approved transformation or reference behind the value."},
+     {label:"Difference is not automatically a defect. Determine whether an approved transformation/reference explains it.", correct:true, feedback:"Correct. Difference is not automatically a defect. Determine whether an approved transformation/reference explains it."}
+   ]
+ },
+ { title:"E. All distributions match exactly",
+   question:"What's the right response?",
+   options:[
+     {label:"Still test business-key identity and source-to-target lineage. Aggregates can hide swaps.", correct:true, feedback:"Correct. Still test business-key identity and source-to-target lineage. Aggregates can hide swaps."},
+     {label:"Treat matching distributions as sufficient proof that the migration is correct.", correct:false, feedback:"Forty-two customers could swap categories and leave every aggregate unchanged \u2014 matching distributions are a detector, not complete proof."},
+     {label:"Report the migration as fully validated and move to the next validation task.", correct:false, feedback:"That closes the investigation on aggregate evidence alone, exactly what this lesson's distribution-reconciliation section warns against."},
+     {label:"Reduce the sampling rate for this entity going forward, since the aggregates already look healthy.", correct:false, feedback:"Healthy aggregates don't justify less identity-level checking \u2014 they can coexist with record-level swaps that sampling or lineage checks would catch."}
+   ]
+ },
+ { title:"F. The target cannot export the source legacy key",
+   question:"What's the right response?",
+   options:[
+     {label:"Accept that post-load identity reconciliation isn't possible for this entity and skip it.", correct:false, feedback:"Giving up on reconciliation removes the ability to prove population and relationship correctness for this entity going forward."},
+     {label:"Use a controlled source-target bridge created during migration so post-load identity can still be reconciled.", correct:true, feedback:"Correct. Use a controlled source-target bridge created during migration so post-load identity can still be reconciled."},
+     {label:"Rely on matching row counts between source and target as a substitute for key-level reconciliation.", correct:false, feedback:"Counts can't substitute for identity \u2014 exactly the distinction this lesson draws between quantity and population proof."},
+     {label:"Ask the target vendor to add legacy-key export support before continuing any further validation.", correct:false, feedback:"That's a reasonable longer-term ask, but it doesn't solve today's need \u2014 a migration-created bridge table solves it immediately without depending on a vendor change."}
+   ]
+ }
+];
+
+const blocks=[
+{
+ id:"b1",nav:"Opening scenario",title:"08:20 \u2014 Green dashboard, red problem",type:"mcq",
+ _correctIndex:2,
+ html:`<div class="callout experience">
+ <div class="callout-label">Before you begin</div>
+ <p>The customer load reports:</p>
+ </div>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Control</th><th>Result</th></tr></thead><tbody>
+ <tr><td>Submitted</td><td>18,573</td></tr>
+ <tr><td>Accepted</td><td>18,573</td></tr>
+ <tr><td>Rejected</td><td>0</td></tr>
+ <tr><td>Technical load status</td><td>Success</td></tr>
+ </tbody></table></div>
+ <p>Ten minutes later, a regional user reports that several UK customers appear under the Belgian legal entity. A quick query confirms 42 UK customers are misclassified into the Belgian legal entity.</p>
+ <h3>Which statement is strongest?</h3>`,
+ options:[
+   {label:"The load is technically correct because all 18,573 records were accepted.", correct:false, feedback:"Technical acceptance proves the target received the data. It says nothing about whether the data ended up in the right place."},
+   {label:"The 42 records should be moved manually in the target because the load itself succeeded.", correct:false, feedback:"A manual target edit fixes the 42 you know about while leaving the actual packaging or routing mechanism free to repeat the same error next cycle."},
+   {label:"Acceptance proves only that the target accepted the submitted records. Investigate the intended legal entity, transformed value, package context and target result for the 42 keys, then determine the full affected population and failure mechanism.", correct:true, feedback:"Correct. Successful loading proves technical acceptance, not business correctness. The migration can be perfectly executable and completely wrong."},
+   {label:"The source country must be wrong because legal entity is derived from country.", correct:false, feedback:"That assumes the failure boundary before checking it. The source country could be entirely correct while a later stage misroutes the record."}
+ ]
+},
+{
+ id:"b2",nav:"Four dimensions",title:"Four dimensions of migration correctness",type:"content",
+ html:`<p class="lead">A useful post-load validation model asks four different questions.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Dimension</th><th>Question</th><th>Example failure despite successful load</th></tr></thead><tbody>
+ <tr><td>Population</td><td>Did the right records migrate?</td><td>Wrong customers included; in-scope customers omitted</td></tr>
+ <tr><td>Value</td><td>Did each field contain the intended value?</td><td>Wrong payment term or group accepted</td></tr>
+ <tr><td>Relationship</td><td>Does the record point to the right parent/context?</td><td>Correct address linked to wrong customer</td></tr>
+ <tr><td>Meaning/context</td><td>Does the target representation preserve business intent?</td><td>UK customer created in Belgian legal entity</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Technical acceptance is a fifth, narrower question</strong><br>Did the target accept what we submitted? It matters, but it does not answer the four questions above.</div>`
+},
+{
+ id:"b3",nav:"Expected vs observed",title:"The 42-customer incident \u2014 Define expected versus observed",type:"content",
+ html:`<div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Evidence</th><th>Expected</th><th>Observed</th></tr></thead><tbody>
+ <tr><td>Customer population</td><td>42 identified UK customers</td><td>42 target customers exist</td></tr>
+ <tr><td>Target legal entity</td><td>UK context under approved migration rule</td><td>Belgian legal entity</td></tr>
+ <tr><td>Load result</td><td>Accepted</td><td>Accepted</td></tr>
+ <tr><td>Reject message</td><td>None</td><td>None</td></tr>
+ <tr><td>Total count</td><td>18,573</td><td>18,573</td></tr>
+ </tbody></table></div>
+ <p>The count is correct because the records are present. The defect is semantic placement, not population loss.</p>
+ <div class="principle"><strong>Key lesson</strong><br>Reconciliation by count cannot detect a record that migrated successfully to the wrong place.</div>`
+},
+{
+ id:"b4",nav:"Trace the incident",title:"Trace the 42-customer incident",type:"guidedSteps",
+ html:`<p class="lead">Four moments in the forensic trace. Work through them in order.</p>`,
+ steps: traceSteps,
+ firstLabel:"Trace one record"
+},
+{
+ id:"b5",nav:"Fix mechanism, then state",title:"Correct the mechanism, then repair target state",type:"content",
+ html:`<p class="lead">A successful-but-wrong load often requires two controlled actions.</p>
+ <ol class="framework-checks">
+   <li>Correct the migration mechanism so a rerun produces the intended result.</li>
+   <li>Determine the approved recovery method for the incorrect target records: remove/reverse/recreate, update through supported process, or reload into a clean target state.</li>
+   <li>Preserve the 42 affected business keys.</li>
+   <li>Reprocess using the corrected package/entity context.</li>
+   <li>Validate each affected key against expected entity.</li>
+   <li>Run regression checks on unaffected UK and Belgian populations.</li>
+   <li>Reconcile the complete submitted population again.</li>
+   <li>Record the corrected build/package/run evidence.</li>
+ </ol>
+ <div class="callout misconception"><div class="callout-label">Do not simply edit the 42 target rows</div><p>If the packaging defect remains, the next cycle can reproduce the same error across a different population.</p></div>`
+},
+{
+ id:"b6",nav:"Patterns 2 & 3",title:"Successful-but-wrong pattern 2 \u2014 The plausible default; pattern 3 \u2014 Silent truncation",type:"content",
+ html:`<h3>The plausible default</h3>
+ <p>A customer loads successfully with PaymentTerms = NET30. The target accepts NET30. Source Terms = 45E. There is no approved Bramwell target equivalent for 45E.</p>
+ <div class="callout misconception"><div class="callout-label">Defect</div><p>The target value is technically valid but migration-invalid because the process invented a business decision.</p></div>
+ <p>This is why target-domain validation alone is insufficient.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Validation</th><th>NET30 result</th></tr></thead><tbody>
+ <tr><td>Exists in target?</td><td>Yes</td></tr>
+ <tr><td>Correct data type?</td><td>Yes</td></tr>
+ <tr><td>Load accepted?</td><td>Yes</td></tr>
+ <tr><td>Approved for source 45E?</td><td>No</td></tr>
+ <tr><td>Migration-correct?</td><td>No</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Semantic validation</strong><br>Ask whether the target value is supported by the approved mapping/rule for that source record, not merely whether the target permits it.</div>
+ <h3>Silent truncation</h3>
+ <p>A target field allows 60 characters. The migration process truncates every longer customer name to 60. All records load. Bramwell has 27 customer names longer than the target limit, but no approved canonical treatment has been established.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: compare source and target-facing values</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  CustNo, Name_Source, CustomerName_Target,
+  LEN(Name_Source) AS SourceLength, LEN(CustomerName_Target) AS TargetLength
+FROM audit.CustomerLineage
+WHERE RunId=@RunId AND Name_Source <> CustomerName_Target;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Wrong does not require a rejection</div><p>Data loss can be completely valid according to the target schema and still violate the migration decision.</p></div>`
+},
+{
+ id:"b7",nav:"Patterns 4 & 5",title:"Successful-but-wrong pattern 4 \u2014 Correct code, wrong meaning; pattern 5 \u2014 Wrong parent",type:"content",
+ html:`<h3>Correct code, wrong meaning</h3>
+ <p>A CustomerGroup target value exists and loads successfully. But the source value was CustomerGroup 99, for which no approved final mapping exists. The target cannot tell you that the migration team lacked authority to choose that value.</p>
+ <div class="principle"><strong>Control</strong><br>Post-load validation should sample or reconcile target values against approved mapping lineage, especially for fields where plausible defaults are dangerous.</div>
+ <h3>Relationship points to the wrong parent</h3>
+ <p>An address record loads successfully and its CustomerNumber exists. Unfortunately, it is linked to the wrong customer. Count checks pass. Mandatory relationship validation passes. Only relationship identity is wrong.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: expected versus actual parent</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  s.AddressId, s.ExpectedCustomerNumber, t.ActualCustomerNumber
+FROM stage.ExpectedAddressRelationship s
+JOIN audit.TargetAddress t ON t.RunId=s.RunId AND t.AddressId=s.AddressId
+WHERE s.RunId=@RunId AND s.ExpectedCustomerNumber <> t.ActualCustomerNumber;</code></pre></div>
+ <div class="principle"><strong>Relationship validation</strong><br>Do not ask only 'does the parent exist?' Ask 'is this the intended parent for this child?'</div>`
+},
+{
+ id:"b8",nav:"Patterns 6 & 7",title:"Successful-but-wrong pattern 6 \u2014 Duplicate-but-valid; pattern 7 \u2014 Scope leakage",type:"content",
+ html:`<h3>Duplicate-but-valid records</h3>
+ <p>Two target customers are created for one source customer under different target IDs. Both records are individually valid. Possible mechanisms: source grain misunderstood; duplicate source rows not controlled; restart created a second record because target key generation changed; same customer entered two packages; deduplication/reference identity logic failed; legal-entity split is legitimate but expected grain was documented incorrectly.</p>
+ <p>Validate at the intended business grain, not only target technical key.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: multiplicity check</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT SourceCustomerKey, COUNT(*) AS TargetRecords
+FROM audit.SourceTargetCustomerBridge
+WHERE RunId=@RunId
+GROUP BY SourceCustomerKey
+HAVING COUNT(*) <> &lt;expected target multiplicity&gt;;</code></pre></div>
+ <h3>Scope leakage</h3>
+ <p>Inactive or historical records can load perfectly even if the agreed migration scope excludes them. Conversely, an in-scope record can be absent while total counts still match because an out-of-scope record replaced it.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: scope reconciliation</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>-- In-scope source keys missing from target
+SELECT BusinessKey FROM ctl.ApprovedScope
+EXCEPT
+SELECT SourceBusinessKey FROM audit.TargetBridge;
+
+-- Target source keys not in approved scope
+SELECT SourceBusinessKey FROM audit.TargetBridge
+EXCEPT
+SELECT BusinessKey FROM ctl.ApprovedScope;</code></pre></div>
+ <div class="principle"><strong>Scope validation</strong><br>Reconcile business keys against the approved in-scope population. Never use target row count as a substitute for scope identity.</div>`
+},
+{
+ id:"b9",nav:"Validation invariants",title:"Build post-load validation around invariants",type:"content",
+ html:`<p class="lead">An invariant is something that should remain true if migration is correct.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Invariant</th><th>Example</th></tr></thead><tbody>
+ <tr><td>Population identity</td><td>Every approved in-scope key is accounted for</td></tr>
+ <tr><td>Value lineage</td><td>Target PaymentTerms equals the approved mapping result</td></tr>
+ <tr><td>Entity context</td><td>Target legal entity equals approved derivation</td></tr>
+ <tr><td>Relationship identity</td><td>Address points to intended customer</td></tr>
+ <tr><td>Reference validity</td><td>Target code exists and is the approved source-to-target mapping</td></tr>
+ <tr><td>No silent data loss</td><td>Source value changes only under an approved rule</td></tr>
+ <tr><td>Multiplicity</td><td>One source customer produces expected number of target customers</td></tr>
+ <tr><td>Exclusion</td><td>Approved excluded records do not appear</td></tr>
+ <tr><td>Control totals</td><td>Financial/quantity totals reconcile where applicable</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Validation design question</strong><br>What could be wrong even if every row loaded successfully? Build checks for those conditions.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Post-Load-Invariants-Checklist.xlsx</strong><p class="small">The nine-invariant structure above, ready to adapt for any entity.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Post-Load-Invariants-Checklist.xlsx" download>Download</a></div>`
+},
+{
+ id:"b10",nav:"Counts are reassuring",title:"Row counts are necessary and dangerously reassuring",type:"content",
+ html:`<p class="lead">Consider two populations of 18,573 records. They can have the same count while: 42 records sit in the wrong legal entity; one set of 42 keys is missing and another set duplicated; 27 names have been silently truncated; unresolved codes have been defaulted to valid target values; relationships point to the wrong parents; out-of-scope records have replaced in-scope records.</p>
+ <div class="principle"><strong>Count + identity + meaning</strong><br>Use counts to detect quantity differences, keys to detect population differences and semantic controls to detect wrong values/relationships.</div>`
+},
+{
+ id:"b11",nav:"Distribution reconciliation",title:"Distribution reconciliation can reveal semantic drift",type:"content",
+ html:`<p class="lead">Bramwell's later target CustomerGroup distribution is established as:</p>
+ <div class="tp-table-wrap"><table class="tp-table tp-table--mono"><thead><tr><th>Target CustomerGroup</th><th>Records</th></tr></thead><tbody>
+ <tr><td>STANDARD</td><td>15,021</td></tr>
+ <tr><td>KEY</td><td>1,984</td></tr>
+ <tr><td>INTERNATIONAL</td><td>1,298</td></tr>
+ <tr><td>INTERNAL</td><td>270</td></tr>
+ <tr><td><strong>Total</strong></td><td><strong>18,573</strong></td></tr>
+ </tbody></table></div>
+ <p>A distribution comparison can reveal unexpected shifts even when total count is correct.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT CustomerGroup, COUNT(*) AS TargetRecords
+FROM audit.TargetCustomer
+WHERE RunId=@RunId
+GROUP BY CustomerGroup
+ORDER BY TargetRecords DESC;</code></pre></div>
+ <p>However, a matching distribution still does not prove record-level correctness. Forty-two customers could swap categories and leave every aggregate unchanged.</p>
+ <div class="principle"><strong>Use aggregates to find signals, then validate identities</strong><br>Distribution controls are powerful detectors, not complete proof.</div>`
+},
+{
+ id:"b12",nav:"Sampling",title:"Sampling: useful, but not your only proof",type:"content",
+ html:`<p class="lead">Business users often validate samples because they understand meaning better than automated checks. Use sampling deliberately.</p>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Sample type</th><th>Purpose</th></tr></thead><tbody>
+ <tr><td>High-risk fields</td><td>Terms, tax, legal entity, classifications</td></tr>
+ <tr><td>Boundary values</td><td>Maximum lengths, zero, unusual dates</td></tr>
+ <tr><td>Rare values</td><td>Uncommon groups/countries</td></tr>
+ <tr><td>Changed values</td><td>Source differs from target-facing output</td></tr>
+ <tr><td>New mappings</td><td>Recently approved references</td></tr>
+ <tr><td>Previously failing records</td><td>Regression evidence</td></tr>
+ <tr><td>Random sample</td><td>Broad detection of unexpected issues</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Do not confuse sample success with population proof</strong><br>Automate deterministic checks across the full population where possible; use sampling for judgement and semantics that cannot be fully automated.</div>`
+},
+{
+ id:"b13",nav:"Avoid circular validation",title:"A semantic diff toolkit, and avoiding circular validation",type:"content",
+ html:`<p class="lead">For important fields, create a source-expected-target comparison.</p>
+ <div class="tp-code"><div class="tp-code-head"><span class="tp-code-lang">SQL: semantic diff</span><button class="tp-code-copy" type="button">Copy</button></div><pre><code>SELECT
+  x.BusinessKey, x.SourceValue, x.ExpectedTargetValue, x.ActualTargetValue,
+  CASE WHEN x.ExpectedTargetValue = x.ActualTargetValue THEN 'MATCH' ELSE 'MISMATCH' END AS ValidationResult
+FROM audit.ExpectedVsActual x
+WHERE x.RunId=@RunId;</code></pre></div>
+ <div class="callout misconception"><div class="callout-label">Independent expectation</div><p>ExpectedTargetValue must come from the controlled mapping/rule/reference baseline, not from the actual transformed output if the transformation itself is under investigation. A validation that calculates expected values using the same faulty code as the transformation can reproduce the defect and report a false pass.</p></div>
+ <h3>Avoid circular validation</h3>
+ <div class="tp-table-wrap"><table class="tp-table"><thead><tr><th>Circular check</th><th>Stronger independent check</th></tr></thead><tbody>
+ <tr><td>Transform says GB; validation reruns same function and gets GB</td><td>Compare target to approved country cross-reference baseline</td></tr>
+ <tr><td>ETL derives entity; validation calls same ETL expression</td><td>Calculate expectation from approved rule independently</td></tr>
+ <tr><td>Load file count equals stage output count</td><td>Compare approved source keys to target bridge</td></tr>
+ <tr><td>Target value exists in domain</td><td>Compare target value to approved source-to-target decision</td></tr>
+ <tr><td>Transformation truncates to 60; validator checks &lt;=60</td><td>Compare against approved treatment and original value</td></tr>
+ </tbody></table></div>
+ <div class="principle"><strong>Principle</strong><br>Validation should challenge the migration, not merely replay it.</div>
+ <div class="tp-download"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Semantic-Diff-SQL.sql</strong><p class="small">The expected-versus-actual comparison pattern above, ready to adapt to any field.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Semantic-Diff-SQL.sql" download>Download</a></div>`
+},
+{
+ id:"b14",nav:"The green-load exercise",title:"The green-load forensic exercise",type:"situations",
+ html:`<p class="lead">Six evidence cards. Every record loaded successfully. For each, choose the strongest independent validation check.</p>`,
+ items: forensicCards,
+ takeawayHtml:`<div class="principle"><strong>What each card should also make you ask</strong><br>Why did the technical load status fail to detect this? Where's the likely failure boundary? What evidence do you need before proposing a fix? What full-population control should be added for future cycles?</div>`
+},
+{
+ id:"b15",nav:"Independent lab",title:"Independent lab \u2014 100% accepted, 97 defects",type:"reflection",
+ html:`<p class="lead">This is a synthetic case. A product load submits 185,000 records and all 185,000 are accepted. A validation pack contains evidence of 97 suspected semantic defects across category, unit, site, description and source-to-target identity.</p>
+ <p>You receive: approved scope keys; source extract; transformed output; load-package audit; target extract; mapping/rule catalogue; reference baseline; aggregate distributions; a business-user sample report.</p>
+ <h3>Required deliverables</h3>
+ <ol class="framework-checks">
+   <li>Reconcile scope keys to target identities.</li>
+   <li>Identify at least four distinct successful-but-wrong defect mechanisms.</li>
+   <li>Build an independent expected-versus-actual check for two fields.</li>
+   <li>Find one aggregate control that detects a problem and one that falsely appears healthy.</li>
+   <li>Trace one defect through source, transformation, package and target.</li>
+   <li>Prove the full affected population for each confirmed mechanism.</li>
+   <li>Separate migration defects from legitimate target representations.</li>
+   <li>Recommend corrections at the correct layer.</li>
+   <li>Design post-fix regression checks.</li>
+   <li>Produce a concise semantic-validation report.</li>
+ </ol>
+ <p class="lead">Write your semantic-validation report below.</p>
+ <textarea id="reflection" placeholder="Technical acceptance was 100%, but..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>
+ <div class="tp-download" style="margin-top:20px"><div class="tp-download-icon">&#8681;</div><div class="tp-download-body"><strong>DMC3_Semantic-Validation-Report-Template.docx</strong><p class="small">Confirmed mechanisms, affected populations and corrective layers, ready to fill in.</p></div><a class="btn secondary" href="/assets/downloads/DMC3_Semantic-Validation-Report-Template.docx" download>Download</a></div>`,
+ minLength:60,
+ checks:[
+   { test:/185,?000|reconcil|scope keys/i, strength:"You reconciled scope keys to target identities using the actual population.", gap:"State how you reconciled the 185,000 scope keys to what actually landed in the target." },
+   { test:/mechanism|defect/i, strength:"You named at least one distinct defect mechanism.", gap:"Name at least one specific successful-but-wrong mechanism you found, not just \u201897 defects.\u2019" },
+   { test:/independent|expected.*(value|versus)/i, strength:"You addressed building an independent expected-versus-actual check.", gap:"Describe how your expected value was calculated independently of the transformation under investigation." },
+   { test:/aggregate|distribution/i, strength:"You addressed which aggregate control detected a problem and which looked falsely healthy.", gap:"Name one aggregate control that caught something and one that looked healthy despite a real defect." },
+   { test:/legitimate|not.*(defect|migration)/i, strength:"You separated migration defects from legitimate target representations.", gap:"State how you distinguished a genuine defect from a difference that's actually an approved, legitimate transformation." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">Technical acceptance was 100%, but independent post-load validation identified four confirmed migration defect mechanisms. Population identity controls found scope substitution despite matching counts; field-lineage checks found valid target values unsupported by approved source mappings; relationship checks found children linked to valid but incorrect parents; and package-to-target comparison identified context drift. Each affected population is preserved by business key, corrections are assigned to the causal migration layer, and rerun validation will compare expected versus actual values independently of the production transformation.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is the model semantic-validation report: specific mechanisms, independent checks, and a rerun plan that doesn't just replay the same transformation.":"You have the right structure. Make sure each mechanism you name is distinct, and that your expected-value calculation is genuinely independent of the code under investigation."}</div>`
+},
+{
+ id:"b16",nav:"A strong report",title:"A strong semantic-validation report",type:"content",
+ html:`<div class="callout misconception"><div class="callout-label">Weak</div><p>\u201cLoad successful. 97 data-quality issues found during checking. Team to correct.\u201d</p></div>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Strong</div><p>\u201cTechnical acceptance was 100%, but independent post-load validation identified four confirmed migration defect mechanisms. Population identity controls found scope substitution despite matching counts; field-lineage checks found valid target values unsupported by approved source mappings; relationship checks found children linked to valid but incorrect parents; and package-to-target comparison identified context drift. Each affected population is preserved by business key, corrections are assigned to the causal migration layer, and rerun validation will compare expected versus actual values independently of the production transformation.\u201d</p></div></div>`
+},
+{
+ id:"b17",nav:"Consultant situations",title:"Consultant situations",type:"situations",
+ html:`<p class="lead">Six moments where "it loaded" and "it's correct" pull in different directions.</p>`,
+ items: consultantSituationsC,
+ takeawayHtml:`<div class="to-record">${TPKit.fromField({
+   title:"Green Wasn't Good", name:"Marcus", role:"Data Migration Consultant", project:"Logistics ERP",
+   src:"/assets/audio/GreenWasntGood-Marcus.mp3",
+   reflection:"What control or habit in this story would you carry into your own migration work?"
+ })}</div>`
+},
+{
+ id:"b18",nav:"Reflection",title:"Reflection \u2014 What would you validate if nothing rejected?",type:"reflection",
+ html:`<p class="lead">Choose one migration entity you know well. Assume every row loads successfully. Write the five checks most likely to detect a serious business defect anyway.</p>
+ <div class="callout tp-insight"><img class="tp-insight-mark" src="/assets/turner-page-monogram.png" alt="" aria-hidden="true"><div class="tp-insight-content"><div class="callout-label">Reflection coaching</div><p>Strong answers usually span population identity, important mapped values, relationship identity, target context and an entity-specific business control rather than five technical field checks.</p></div></div>
+ <textarea id="reflection" placeholder="The five checks I'd run are..."></textarea>
+ <div class="voice-row">
+   <button id="micButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="micStatus" class="small"></span>
+ </div>
+ <div style="margin-top:16px">
+   <button id="analyseButton" class="btn primary" type="button">Get AI feedback</button>
+ </div>
+ <div id="reflectionFeedback"></div>`,
+ minLength:40,
+ checks:[
+   { test:/population|scope|identity/i, strength:"You included a population/scope identity check.", gap:"Include a check for population or scope identity, not just field values." },
+   { test:/value|mapping|term/i, strength:"You included a check on important mapped values.", gap:"Include a check on at least one important mapped value or field." },
+   { test:/relationship|parent/i, strength:"You included a relationship identity check.", gap:"Include a check on relationship identity, not just whether a parent exists." },
+   { test:/context|entity|legal/i, strength:"You included a target context check.", gap:"Include a check on target context, like legal entity or similar placement." },
+   { test:/business|entity-specific/i, strength:"You included an entity-specific business control, not just a generic technical check.", gap:"Include one check specific to this entity's business meaning, not a generic technical field check." }
+ ],
+ modelAnswerHtml:`<h3>Turner Page model answer</h3>
+ <div class="quote">For customer: I'd check that every approved in-scope business key is present in the target, exactly once; that PaymentTerms matches the approved mapping lineage, not just a valid target value; that every address points to its actually-intended customer, not merely a valid one; that legal entity matches the approved derivation for each source country; and that CustomerGroup values sourced from unresolved codes like 99 haven't quietly acquired an unapproved target value.</div>`,
+ mentorFeedbackHtml: (score) => `<div class="principle"><strong>Overall coaching</strong><br>${score>=8?"This is exactly the spread the lesson is built around: population, value, relationship, context and one entity-specific control, not five variations on the same technical check.":"You have good instincts. Make sure your five checks span different dimensions \u2014 population, value, relationship, context \u2014 rather than five versions of the same kind of check."}</div>`
+},
+{
+ id:"b19",nav:"Summary",title:"Summary \u2014 Success is not correctness",type:"content",
+ html:`<ul class="framework-checks lesson-outcomes">
+   <li>Technical acceptance proves only that the target accepted what it received.</li>
+   <li>Validate population, values, relationships and business context independently.</li>
+   <li>Use business keys as well as counts.</li>
+   <li>Trace accepted-but-wrong records through source, transformation, package and target.</li>
+   <li>Compare wrong accepted records with right accepted controls.</li>
+   <li>Find the first point of semantic divergence.</li>
+   <li>Do not use target-domain validity as proof of approved mapping correctness.</li>
+   <li>Detect silent truncation and plausible defaults through lineage checks.</li>
+   <li>Validate intended parent identity, not merely parent existence.</li>
+   <li>Reconcile scope identity to detect leakage/substitution.</li>
+   <li>Use distributions as detectors, then drill to record identity.</li>
+   <li>Avoid circular validation that reuses the same production logic.</li>
+   <li>Preserve the full affected population and fix the causal mechanism.</li>
+   <li>Add independent post-load controls that make the same defect visible next cycle.</li>
+ </ul>
+ <div class="principle"><strong>The one thing to remember</strong><br>The most dangerous migration defect may be the one that generates no error at all. Build validation that asks whether the target contains the right business truth, not merely whether the load completed.</div>`
+},
+{
+ id:"b20",nav:"Lesson complete",title:"Lesson complete",type:"valuable",
+ html:`<div class="complete"><div class="tick">\u2713</div>
+ <p class="lead"><strong>You have completed When the load succeeds but the data is wrong.</strong></p>
+ <p>You can now investigate migration defects that produce no technical rejection: wrong values, wrong legal entity, wrong relationships, wrong scope, duplicate-but-valid records and semantically incorrect defaults. You can design post-load checks that compare source intent, transformed output and target state, identify the first point of semantic divergence, prove the affected population and correct the migration without treating "load succeeded" as evidence of correctness.</p>
+ </div>
+ ${TPKit.promiseCard({title:"Learning that builds real consulting capability"})}
+ <h3>What is the single most valuable thing you learned?</h3>
+ <p>This is not assessed. It is your opportunity to pause and identify the idea that will matter most on your next project.</p>
+ <textarea id="valuableReflection" placeholder="The single most valuable thing I learned was..."></textarea>
+ <div class="voice-row">
+   <button id="valuableMicButton" class="btn secondary" type="button">Use microphone</button>
+   <span id="valuableMicStatus" class="small"></span>
+ </div>
+ <div id="valuableFeedback"></div>
+ <h3>Next lesson</h3>
+ <p><strong>Relationship and dependency failures</strong></p>
+ <p>You will investigate missing parents, broken child relationships, sequencing problems and cross-entity dependencies where the individual records may be valid but the migration graph is not.</p>`,
+ minLength:20,
+ savedHtml:`<div class="feedback"><strong>Your takeaway has been saved.</strong><br>Return to it the next time a dashboard turns green and you're tempted to stop looking.</div>`
+}
+];
+
+const LESSON_CONFIG = {
+  moduleKicker: "DMC Module 3",
+  moduleTitle: "Diagnosing & Fixing Defects",
+  lessonLabel: "Lesson 3: When the load succeeds but the data is wrong",
+  lessonShortLabel: "Lesson 3",
+  lessonTagline: "Validating business truth, not just technical acceptance",
+  storageKey: "tp_dmc3_lesson3_v1",
+  lessonId: "dmc3-lesson3",
+  homeUrl: "/index.html",
+  logoSrc: "/assets/turner-page-logo.png",
+  nextUrl: "lesson3-complete.html",
+  finalButtonLabel: "Finish Lesson 3",
+  blocks: blocks
+};
+
+TPKit.mount(document.getElementById("tpRoot"), LESSON_CONFIG);
+</script>
+
+<script>
+(function(){
+ const learner=JSON.parse(localStorage.getItem('tpCurrentLearner')||localStorage.getItem('tpLearner')||'{}');
+ if(!learner.name) return;
+ const first=learner.name.split(' ')[0];
+ document.querySelectorAll('[data-tp-name]').forEach(el=>el.textContent=first);
+ const h1=document.querySelector('h1');
+ if(h1 && !document.getElementById('tpGreeting')){
+   const d=document.createElement('div');
+   d.id='tpGreeting';
+   d.style.cssText='margin:0 0 12px;font-size:1rem;color:#0b7f8e;font-weight:600';
+   d.textContent='Welcome back, '+first+'.';
+   h1.parentNode.insertBefore(d,h1);
+ }
+})();
+</script>
+</body>
+</html>
